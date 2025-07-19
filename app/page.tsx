@@ -137,10 +137,10 @@ export default function HomePage() {
               family visits while ensuring 100% TAC Chapter 749 and RCC contract compliance.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/quotaguard-setup">
+              <Link href="/fixie-setup">
                 <Button size="lg" className="w-full sm:w-auto">
                   <Network className="w-4 h-4 mr-2" />
-                  Configure QuotaGuard Setup
+                  Set Up Fixie Proxy
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
@@ -152,7 +152,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-gray-500">
-              QuotaGuard configured! Follow the setup guide to complete integration
+              Recommended: Use Fixie for better SQL Server connection support
             </p>
           </div>
         </div>
@@ -229,13 +229,13 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Solve Your Connection Issues?</h2>
           <p className="text-xl text-blue-100 mb-8">
-            Explore sustainable solutions that work with Vercel's rotating IP addresses.
+            Set up Fixie proxy for reliable SQL Server connections with static IP addresses.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/solutions">
+            <Link href="/fixie-setup">
               <Button size="lg" variant="secondary" className="w-full sm:w-auto">
                 <Network className="w-4 h-4 mr-2" />
-                View All Solutions
+                Set Up Fixie Proxy
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
@@ -250,7 +250,7 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          <p className="mt-4 text-blue-100 text-sm">Find the right solution for your deployment needs</p>
+          <p className="mt-4 text-blue-100 text-sm">Fixie has better SQL Server support than QuotaGuard</p>
         </div>
       </section>
     </div>

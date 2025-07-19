@@ -45,46 +45,55 @@ function getConfig(): sql.config {
     },
   }
 
-  // Add proxy configuration if available
-  const proxyUrl = process.env.QUOTAGUARD_URL || process.env.PROXY_URL
+  // Check for proxy configuration (Fixie, QuotaGuard, or generic proxy)
+  const proxyUrl = process.env.FIXIE_URL || process.env.QUOTAGUARD_URL || process.env.PROXY_URL
+
   if (proxyUrl) {
-    console.log("🔗 Configuring QuotaGuard proxy for database connection")
+    console.log("🔗 Configuring proxy for database connection")
     console.log("🌐 Proxy URL configured:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
 
     try {
       // Parse the proxy URL to get components
       const url = new URL(proxyUrl)
       const proxyHost = url.hostname
-      const proxyPort = Number.parseInt(url.port) || 9294
+      const proxyPort = Number.parseInt(url.port) || (url.protocol === "https:" ? 443 : 80)
       const proxyAuth = url.username && url.password ? `${url.username}:${url.password}` : undefined
 
       console.log("🔧 Proxy host:", proxyHost)
       console.log("🔧 Proxy port:", proxyPort)
+      console.log("🔧 Proxy protocol:", url.protocol)
       console.log("🔧 Proxy auth configured:", !!proxyAuth)
 
-      // Create proxy agent
-      const proxyAgent = new HttpsProxyAgent(proxyUrl)
+      // For HTTP proxies (like Fixie), we need to handle this differently
+      if (url.protocol === "http:") {
+        console.log("🔧 Using HTTP proxy configuration")
 
-      // Add proxy configuration to the connection options
-      if (baseConfig.options) {
-        // Try different approaches for proxy configuration
-        baseConfig.options.agent = proxyAgent
+        // Set proxy in options for HTTP proxy
+        if (baseConfig.options) {
+          baseConfig.options.proxy = {
+            host: proxyHost,
+            port: proxyPort,
+            auth: proxyAuth,
+          }
+        }
+      } else {
+        console.log("🔧 Using HTTPS proxy agent")
+        // Create proxy agent for HTTPS proxy
+        const proxyAgent = new HttpsProxyAgent(proxyUrl)
 
-        // Also try setting proxy directly on options (some versions support this)
-        ;(baseConfig.options as any).proxy = {
-          host: proxyHost,
-          port: proxyPort,
-          auth: proxyAuth,
+        if (baseConfig.options) {
+          baseConfig.options.agent = proxyAgent
         }
       }
 
-      console.log("✅ Proxy agent configured successfully")
+      console.log("✅ Proxy configured successfully")
     } catch (error) {
       console.error("❌ Failed to configure proxy:", error)
     }
   } else {
-    console.log("⚠️ No QuotaGuard proxy configured - using direct connection")
+    console.log("⚠️ No proxy configured - using direct connection")
     console.log("🔍 Available env vars:", {
+      FIXIE_URL: !!process.env.FIXIE_URL,
       QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
       PROXY_URL: !!process.env.PROXY_URL,
     })
@@ -114,7 +123,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
       console.log("👤 User:", config.user)
       console.log("🔐 Encryption:", config.options?.encrypt)
       console.log("🌐 Using proxy agent:", !!config.options?.agent)
-      console.log("🌐 Proxy config:", !!(config.options as any)?.proxy)
+      console.log("🌐 Using HTTP proxy:", !!(config.options as any)?.proxy)
 
       pool = new sql.ConnectionPool(config)
 
@@ -282,7 +291,7 @@ export async function forceReconnect(): Promise<void> {
 // Get connection configuration info for debugging
 export function getConnectionInfo(): any {
   const config = getConfig()
-  const proxyUrl = process.env.QUOTAGUARD_URL || process.env.PROXY_URL
+  const proxyUrl = process.env.FIXIE_URL || process.env.QUOTAGUARD_URL || process.env.PROXY_URL
 
   return {
     server: config.server,
@@ -290,11 +299,14 @@ export function getConnectionInfo(): any {
     user: config.user,
     encrypt: config.options?.encrypt,
     usingProxyAgent: !!config.options?.agent,
+    usingHttpProxy: !!(config.options as any)?.proxy,
     proxyConfigured: !!proxyUrl,
     proxyUrl: proxyUrl ? proxyUrl.replace(/\/\/.*@/, "//***:***@") : null,
+    proxyType: proxyUrl ? (proxyUrl.startsWith("http:") ? "HTTP" : "HTTPS") : null,
     poolConnected: pool?.connected || false,
     poolExists: !!pool,
     environmentVariables: {
+      FIXIE_URL: !!process.env.FIXIE_URL,
       QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
       PROXY_URL: !!process.env.PROXY_URL,
     },
