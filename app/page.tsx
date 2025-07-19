@@ -85,11 +85,17 @@ export default function Home() {
               <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/sign-in">
-                <Button variant="ghost">Sign In</Button>
+              <Link href="/test-db">
+                <Button variant="ghost">
+                  <Database className="w-4 h-4 mr-2" />
+                  Test Database
+                </Button>
               </Link>
-              <Link href="/sign-up">
-                <Button>Get Started</Button>
+              <Link href="/dashboard">
+                <Button variant="ghost">Demo</Button>
+              </Link>
+              <Link href="/features">
+                <Button>Features</Button>
               </Link>
             </div>
           </div>
@@ -116,9 +122,10 @@ export default function Home() {
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
-              <Link href="/features">
+              <Link href="/test-db">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
-                  Explore Features
+                  <Database className="w-4 h-4 mr-2" />
+                  Test Database Connection
                 </Button>
               </Link>
             </div>
@@ -210,13 +217,14 @@ export default function Home() {
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/features">
+            <Link href="/test-db">
               <Button
                 size="lg"
                 variant="outline"
                 className="w-full sm:w-auto bg-transparent border-white text-white hover:bg-white hover:text-blue-600"
               >
-                Learn More
+                <Database className="w-4 h-4 mr-2" />
+                Test Database
               </Button>
             </Link>
           </div>
