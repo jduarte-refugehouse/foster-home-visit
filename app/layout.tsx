@@ -1,13 +1,12 @@
 import type React from "react"
-import { ClerkProvider } from "@clerk/nextjs"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Family Visits Case Management",
-  description: "TAC Chapter 749 compliant case management system",
+  title: "Family Visits Pro - TAC Chapter 749 Compliant Case Management",
+  description: "Professional case management system for Texas child welfare requirements",
     generator: 'v0.dev'
 }
 
@@ -17,10 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
+    </html>
   )
 }
