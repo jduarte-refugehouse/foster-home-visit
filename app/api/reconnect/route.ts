@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { forceReconnect, testConnection } from "@/lib/db"
 
+// Force Node.js runtime (not Edge)
+export const runtime = "nodejs"
+
 export async function POST() {
   try {
     console.log("=== 🔄 Force reconnect requested ===")

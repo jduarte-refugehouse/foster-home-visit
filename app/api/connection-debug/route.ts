@@ -4,6 +4,9 @@ import { ClientSecretCredential } from "@azure/identity"
 import sql from "mssql"
 import { getConnectionInfo } from "@/lib/db"
 
+// Force Node.js runtime (not Edge)
+export const runtime = "nodejs"
+
 export async function GET() {
   try {
     console.log("=== 🔍 Starting comprehensive connection debug ===")
@@ -103,45 +106,48 @@ export async function GET() {
         errorAnalysis = "Network/DNS issue - check server name"
       } else if (errorMsg.includes("firewall") || errorMsg.includes("blocked")) {
         errorAnalysis = "Firewall blocking connection - IP address not whitelisted"
+      } else if (errorMsg.includes("dns.lookup") || errorMsg.includes("unenv")) {
+        errorAnalysis = "Runtime environment issue - using Node.js runtime now"
       } else {
         errorAnalysis = "Unknown connection error - check Azure SQL configuration"
       }
     }
 
-    // Check if QuotaGuard IPs are expected
-    const quotaguardIPs = ["3.222.129.4", "54.205.35.75"]
-    const isUsingQuotaguardIP = quotaguardIPs.includes(currentIP)
+    // Check if Fixie IPs are expected (you'll need to update these with your actual Fixie IPs)
+    const fixieIPs = ["52.87.187.138", "52.87.187.139"] // Example - replace with actual Fixie IPs
+    const isUsingFixieIP = fixieIPs.includes(currentIP)
 
     return NextResponse.json({
       success: dbConnectionTest.success,
       timestamp: new Date().toISOString(),
       currentIP,
       vercelRegion: process.env.VERCEL_REGION || "Unknown",
+      runtime: "nodejs", // Confirm we're using Node.js runtime
       connectionInfo,
       keyVaultTest,
       dbConnectionTest,
       errorAnalysis,
       proxyAnalysis: {
-        expectedQuotaguardIPs: quotaguardIPs,
-        currentIPIsQuotaguard: isUsingQuotaguardIP,
+        expectedFixieIPs: fixieIPs,
+        currentIPIsFixie: isUsingFixieIP,
         proxyConfigured: connectionInfo.proxyConfigured,
         proxyAgentSet: connectionInfo.usingProxyAgent,
-        message: isUsingQuotaguardIP
-          ? "✅ Using QuotaGuard IP - proxy is working!"
-          : "❌ Not using QuotaGuard IP - proxy may not be configured correctly",
+        httpProxySet: connectionInfo.usingHttpProxy,
+        message: isUsingFixieIP
+          ? "✅ Using Fixie IP - proxy is working!"
+          : "❌ Not using Fixie IP - proxy may not be configured correctly",
       },
       recommendations: dbConnectionTest.success
         ? ["Connection is working properly"]
         : [
             !connectionInfo.proxyConfigured
-              ? "❌ QUOTAGUARD_URL environment variable not set"
-              : "✅ QUOTAGUARD_URL environment variable is set",
-            !isUsingQuotaguardIP
-              ? `❌ Current IP (${currentIP}) is not a QuotaGuard IP`
-              : "✅ Using QuotaGuard static IP",
+              ? "❌ FIXIE_URL environment variable not set"
+              : "✅ FIXIE_URL environment variable is set",
+            !isUsingFixieIP ? `❌ Current IP (${currentIP}) is not a Fixie IP` : "✅ Using Fixie static IP",
             "Check Azure SQL firewall rules",
-            "Verify QuotaGuard proxy configuration",
-            "Add QuotaGuard IPs to Azure SQL firewall: " + quotaguardIPs.join(", "),
+            "Verify Fixie proxy configuration",
+            "Add Fixie IPs to Azure SQL firewall: " + fixieIPs.join(", "),
+            "Ensure using Node.js runtime (not Edge)",
           ],
     })
   } catch (error) {
@@ -151,6 +157,7 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
+        runtime: "nodejs",
       },
       { status: 500 },
     )

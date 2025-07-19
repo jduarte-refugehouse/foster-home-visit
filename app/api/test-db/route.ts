@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { query, testConnection, healthCheck, forceReconnect } from "@/lib/db"
 
+// Force Node.js runtime (not Edge)
+export const runtime = "nodejs"
+
 export async function GET() {
   try {
     console.log("=== 🚀 Starting database connection test ===")

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { query, healthCheck } from "@/lib/db"
 
+// Force Node.js runtime (not Edge)
+export const runtime = "nodejs"
+
 export async function GET() {
   try {
     console.log("=== Fetching homes data ===")

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 
+// Force Node.js runtime (not Edge)
+export const runtime = "nodejs"
+
 export async function GET() {
   try {
     console.log("=== 🔍 Running connection diagnostics ===")
@@ -20,6 +23,7 @@ export async function GET() {
       region: process.env.VERCEL_REGION || "Unknown",
       url: process.env.VERCEL_URL || "Unknown",
       environment: process.env.VERCEL_ENV || "Unknown",
+      runtime: "nodejs",
     }
 
     // Check environment variables
@@ -28,6 +32,9 @@ export async function GET() {
       hasAzureClientId: !!process.env.AZURE_CLIENT_ID,
       hasAzureClientSecret: !!process.env.AZURE_CLIENT_SECRET,
       hasKeyVaultName: !!process.env.AZURE_KEY_VAULT_NAME,
+      hasFixieUrl: !!process.env.FIXIE_URL,
+      hasQuotaguardUrl: !!process.env.QUOTAGUARD_URL,
+      hasProxyUrl: !!process.env.PROXY_URL,
     }
 
     console.log("Deployment info:", deploymentInfo)
@@ -48,6 +55,7 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
+        runtime: "nodejs",
       },
       { status: 500 },
     )

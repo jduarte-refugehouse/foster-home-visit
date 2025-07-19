@@ -1,6 +1,5 @@
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
-import { HttpsProxyAgent } from "https-proxy-agent"
 import sql from "mssql"
 
 let pool: sql.ConnectionPool | null = null
@@ -42,6 +41,8 @@ function getConfig(): sql.config {
       enableArithAbort: true,
       connectTimeout: 30000,
       requestTimeout: 30000,
+      useUTC: true,
+      abortTransactionOnError: true,
     },
   }
 
@@ -49,50 +50,55 @@ function getConfig(): sql.config {
   const proxyUrl = process.env.FIXIE_URL || process.env.QUOTAGUARD_URL || process.env.PROXY_URL
 
   if (proxyUrl) {
-    console.log("🔗 Configuring proxy for database connection")
-    console.log("🌐 Proxy URL configured:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
+    console.log("🔗 Proxy URL detected:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
 
     try {
-      // Parse the proxy URL to get components
+      // Parse the proxy URL
       const url = new URL(proxyUrl)
       const proxyHost = url.hostname
       const proxyPort = Number.parseInt(url.port) || (url.protocol === "https:" ? 443 : 80)
       const proxyAuth = url.username && url.password ? `${url.username}:${url.password}` : undefined
 
-      console.log("🔧 Proxy host:", proxyHost)
-      console.log("🔧 Proxy port:", proxyPort)
-      console.log("🔧 Proxy protocol:", url.protocol)
-      console.log("🔧 Proxy auth configured:", !!proxyAuth)
+      console.log("🔧 Proxy configuration:")
+      console.log("  - Host:", proxyHost)
+      console.log("  - Port:", proxyPort)
+      console.log("  - Protocol:", url.protocol)
+      console.log("  - Auth configured:", !!proxyAuth)
 
-      // For HTTP proxies (like Fixie), we need to handle this differently
-      if (url.protocol === "http:") {
-        console.log("🔧 Using HTTP proxy configuration")
+      // For HTTP proxies (like Fixie), try setting environment variables
+      // This is a workaround since mssql doesn't directly support proxy configuration
+      if (url.protocol === "http:" && proxyAuth) {
+        // Set proxy environment variables that some libraries respect
+        process.env.HTTP_PROXY = proxyUrl
+        process.env.HTTPS_PROXY = proxyUrl
+        process.env.http_proxy = proxyUrl
+        process.env.https_proxy = proxyUrl
 
-        // Set proxy in options for HTTP proxy
-        if (baseConfig.options) {
-          baseConfig.options.proxy = {
+        console.log("🔧 Set HTTP_PROXY environment variables")
+      }
+
+      // Try to configure proxy in options (may not work with all versions)
+      if (baseConfig.options) {
+        // Some versions of mssql support proxy configuration
+        try {
+          ;(baseConfig.options as any).proxy = {
             host: proxyHost,
             port: proxyPort,
             auth: proxyAuth,
           }
-        }
-      } else {
-        console.log("🔧 Using HTTPS proxy agent")
-        // Create proxy agent for HTTPS proxy
-        const proxyAgent = new HttpsProxyAgent(proxyUrl)
-
-        if (baseConfig.options) {
-          baseConfig.options.agent = proxyAgent
+          console.log("🔧 Added proxy to connection options")
+        } catch (error) {
+          console.log("⚠️ Could not add proxy to connection options:", error)
         }
       }
 
-      console.log("✅ Proxy configured successfully")
+      console.log("✅ Proxy configuration applied")
     } catch (error) {
       console.error("❌ Failed to configure proxy:", error)
     }
   } else {
     console.log("⚠️ No proxy configured - using direct connection")
-    console.log("🔍 Available env vars:", {
+    console.log("🔍 Available proxy env vars:", {
       FIXIE_URL: !!process.env.FIXIE_URL,
       QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
       PROXY_URL: !!process.env.PROXY_URL,
@@ -118,12 +124,15 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     try {
       const config = getConfig()
 
-      console.log("🔌 Attempting connection to:", config.server)
-      console.log("📊 Database:", config.database)
-      console.log("👤 User:", config.user)
-      console.log("🔐 Encryption:", config.options?.encrypt)
-      console.log("🌐 Using proxy agent:", !!config.options?.agent)
-      console.log("🌐 Using HTTP proxy:", !!(config.options as any)?.proxy)
+      console.log("🔌 Attempting database connection:")
+      console.log("  - Server:", config.server)
+      console.log("  - Database:", config.database)
+      console.log("  - User:", config.user)
+      console.log("  - Encryption:", config.options?.encrypt)
+      console.log(
+        "  - Proxy configured:",
+        !!(process.env.FIXIE_URL || process.env.QUOTAGUARD_URL || process.env.PROXY_URL),
+      )
 
       pool = new sql.ConnectionPool(config)
 
@@ -193,7 +202,9 @@ export async function query(queryText: string, params: any[] = []): Promise<any[
           error.message.includes("Connection not active") ||
           error.message.includes("socket hang up") ||
           error.message.includes("ECONNRESET") ||
-          error.message.includes("timeout"))
+          error.message.includes("timeout") ||
+          error.message.includes("dns.lookup") ||
+          error.message.includes("unenv"))
       ) {
         console.log("🔄 Connection error detected, resetting pool...")
         if (pool) {
@@ -309,6 +320,7 @@ export function getConnectionInfo(): any {
       FIXIE_URL: !!process.env.FIXIE_URL,
       QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
       PROXY_URL: !!process.env.PROXY_URL,
+      HTTP_PROXY: !!process.env.HTTP_PROXY,
     },
   }
 }
