@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Home,
   Info,
+  Network,
 } from "lucide-react"
 
 export default function HomePage() {
@@ -99,6 +100,12 @@ export default function HomePage() {
                   Diagnostics
                 </Button>
               </Link>
+              <Link href="/solutions">
+                <Button variant="ghost">
+                  <Network className="w-4 h-4 mr-2" />
+                  Solutions
+                </Button>
+              </Link>
               <Link href="/homes">
                 <Button variant="ghost">
                   <Home className="w-4 h-4 mr-2" />
@@ -130,10 +137,10 @@ export default function HomePage() {
               family visits while ensuring 100% TAC Chapter 749 and RCC contract compliance.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/homes">
+              <Link href="/quotaguard-setup">
                 <Button size="lg" className="w-full sm:w-auto">
-                  <Home className="w-4 h-4 mr-2" />
-                  View Active Homes
+                  <Network className="w-4 h-4 mr-2" />
+                  Configure QuotaGuard Setup
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
@@ -144,7 +151,9 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
-            <p className="mt-4 text-sm text-gray-500">Connected to Azure SQL • Secure Key Vault • Real-time data</p>
+            <p className="mt-4 text-sm text-gray-500">
+              QuotaGuard configured! Follow the setup guide to complete integration
+            </p>
           </div>
         </div>
       </section>
@@ -218,30 +227,30 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-700">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Streamline Your Family Visits?</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Solve Your Connection Issues?</h2>
           <p className="text-xl text-blue-100 mb-8">
-            Connect to your Azure SQL database and start managing family visits with full compliance.
+            Explore sustainable solutions that work with Vercel's rotating IP addresses.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/homes">
+            <Link href="/solutions">
               <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                <Home className="w-4 h-4 mr-2" />
-                View Active Homes
+                <Network className="w-4 h-4 mr-2" />
+                View All Solutions
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/test-db">
+            <Link href="/diagnostics">
               <Button
                 size="lg"
                 variant="outline"
                 className="w-full sm:w-auto bg-transparent border-white text-white hover:bg-white hover:text-blue-600"
               >
-                <Database className="w-4 h-4 mr-2" />
-                Test Database
+                <Info className="w-4 h-4 mr-2" />
+                Run Diagnostics
               </Button>
             </Link>
           </div>
-          <p className="mt-4 text-blue-100 text-sm">Secure Azure connection • Key Vault protected • Real-time data</p>
+          <p className="mt-4 text-blue-100 text-sm">Find the right solution for your deployment needs</p>
         </div>
       </section>
     </div>

@@ -16,6 +16,7 @@ import {
   Key,
   AlertTriangle,
   Lightbulb,
+  Settings,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -87,10 +88,18 @@ export default function Diagnostics() {
                 <span className="text-lg font-semibold text-gray-900">Connection Diagnostics</span>
               </div>
             </div>
-            <Button onClick={runDiagnostics} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Running..." : "Run Diagnostics"}
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Link href="/ip-management">
+                <Button variant="outline">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Fix IP Issue
+                </Button>
+              </Link>
+              <Button onClick={runDiagnostics} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                {loading ? "Running..." : "Run Diagnostics"}
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
@@ -165,6 +174,16 @@ export default function Diagnostics() {
                       must allow this IP address: <code className="bg-gray-100 px-1 rounded">{result.currentIP}</code>
                     </AlertDescription>
                   </Alert>
+                  {!result.success && (
+                    <div className="mt-4">
+                      <Link href="/ip-management">
+                        <Button>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Fix IP Address Issue
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -259,9 +278,8 @@ export default function Diagnostics() {
                       <Alert className="mt-4">
                         <Lightbulb className="h-4 w-4" />
                         <AlertDescription>
-                          <strong>Quick Fix:</strong> In your Azure SQL Server firewall settings, enable "Allow Azure
-                          services and resources to access this server" to allow connections from Vercel's rotating IP
-                          addresses.
+                          <strong>Quick Fix:</strong> Use our IP Management tool to automatically add the current IP
+                          address to your Azure SQL firewall rules.
                         </AlertDescription>
                       </Alert>
                     )}

@@ -1,5 +1,6 @@
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
+import { HttpsProxyAgent } from "https-proxy-agent"
 import sql from "mssql"
 
 let pool: sql.ConnectionPool | null = null
@@ -23,9 +24,9 @@ async function getConnectionString(): Promise<string> {
   }
 }
 
-// Use the simple direct config approach that was working
+// Get database configuration with proxy support
 function getConfig(): sql.config {
-  const config: sql.config = {
+  const baseConfig: sql.config = {
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
     database: "RadiusBifrost",
@@ -44,7 +45,26 @@ function getConfig(): sql.config {
     },
   }
 
-  return config
+  // Add proxy configuration if available
+  const proxyUrl = process.env.QUOTAGUARD_URL || process.env.PROXY_URL
+  if (proxyUrl) {
+    console.log("🔗 Using QuotaGuard proxy for database connection")
+    console.log("🌐 Proxy server:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
+
+    // Create proxy agent for HTTPS proxy
+    const proxyAgent = new HttpsProxyAgent(proxyUrl)
+
+    // Add proxy agent to options
+    if (baseConfig.options) {
+      baseConfig.options.agent = proxyAgent
+    } else {
+      baseConfig.options = { agent: proxyAgent }
+    }
+  } else {
+    console.log("⚠️ No QuotaGuard proxy configured - using direct connection (may fail with rotating IPs)")
+  }
+
+  return baseConfig
 }
 
 export async function getConnection(): Promise<sql.ConnectionPool> {
@@ -63,9 +83,11 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     try {
       const config = getConfig()
 
-      console.log("Attempting connection to:", config.server)
-      console.log("Database:", config.database)
-      console.log("User:", config.user)
+      console.log("🔌 Attempting connection to:", config.server)
+      console.log("📊 Database:", config.database)
+      console.log("👤 User:", config.user)
+      console.log("🔐 Encryption:", config.options?.encrypt)
+      console.log("🌐 Using proxy:", !!config.options?.agent)
 
       pool = new sql.ConnectionPool(config)
 
@@ -228,4 +250,19 @@ export async function forceReconnect(): Promise<void> {
   }
   pool = null
   console.log("Pool reset, next query will create new connection")
+}
+
+// Get connection configuration info for debugging
+export function getConnectionInfo(): any {
+  const config = getConfig()
+  return {
+    server: config.server,
+    database: config.database,
+    user: config.user,
+    encrypt: config.options?.encrypt,
+    usingProxy: !!config.options?.agent,
+    proxyConfigured: !!(process.env.QUOTAGUARD_URL || process.env.PROXY_URL),
+    poolConnected: pool?.connected || false,
+    poolExists: !!pool,
+  }
 }
