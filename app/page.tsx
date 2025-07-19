@@ -15,6 +15,7 @@ import {
   Award,
   ArrowRight,
   Home,
+  Info,
 } from "lucide-react"
 
 export default function HomePage() {
@@ -90,6 +91,12 @@ export default function HomePage() {
                 <Button variant="ghost">
                   <Database className="w-4 h-4 mr-2" />
                   Test Database
+                </Button>
+              </Link>
+              <Link href="/diagnostics">
+                <Button variant="ghost">
+                  <Info className="w-4 h-4 mr-2" />
+                  Diagnostics
                 </Button>
               </Link>
               <Link href="/homes">
