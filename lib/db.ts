@@ -1,6 +1,7 @@
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
 import sql from "mssql"
+import { lookup } from "node:dns/promises"
 
 let pool: sql.ConnectionPool | null = null
 
@@ -24,12 +25,24 @@ async function getConnectionString(): Promise<string> {
 }
 
 // Get database configuration with proxy support
-function getConfig(): sql.config {
+async function getConfig(): Promise<sql.config> {
+  const serverName = "refugehouse-bifrost-server.database.windows.net"
+
+  // Manually resolve the DNS to bypass the problematic lookup in `mssql`
+  let serverIpAddress = serverName
+  try {
+    const { address } = await lookup(serverName)
+    serverIpAddress = address
+    console.log(`✅ DNS lookup successful: ${serverName} -> ${serverIpAddress}`)
+  } catch (dnsError) {
+    console.error(`❌ DNS lookup failed for ${serverName}. Falling back to hostname.`, dnsError)
+  }
+
   const baseConfig: sql.config = {
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
     database: "RadiusBifrost",
-    server: "refugehouse-bifrost-server.database.windows.net",
+    server: serverIpAddress, // Use the resolved IP address
     pool: {
       max: 10,
       min: 0,
@@ -38,6 +51,7 @@ function getConfig(): sql.config {
     options: {
       encrypt: true,
       trustServerCertificate: false,
+      hostNameInCertificate: serverName, // IMPORTANT: Tell the driver to expect the hostname in the SSL cert
       enableArithAbort: true,
       connectTimeout: 30000,
       requestTimeout: 30000,
@@ -66,43 +80,19 @@ function getConfig(): sql.config {
       console.log("  - Auth configured:", !!proxyAuth)
 
       // For HTTP proxies (like Fixie), try setting environment variables
-      // This is a workaround since mssql doesn't directly support proxy configuration
-      if (url.protocol === "http:" && proxyAuth) {
-        // Set proxy environment variables that some libraries respect
+      if (url.protocol === "http:") {
         process.env.HTTP_PROXY = proxyUrl
         process.env.HTTPS_PROXY = proxyUrl
-        process.env.http_proxy = proxyUrl
-        process.env.https_proxy = proxyUrl
-
-        console.log("🔧 Set HTTP_PROXY environment variables")
+        console.log("🔧 Set HTTP_PROXY/HTTPS_PROXY environment variables for the process.")
       }
 
-      // Try to configure proxy in options (may not work with all versions)
-      if (baseConfig.options) {
-        // Some versions of mssql support proxy configuration
-        try {
-          ;(baseConfig.options as any).proxy = {
-            host: proxyHost,
-            port: proxyPort,
-            auth: proxyAuth,
-          }
-          console.log("🔧 Added proxy to connection options")
-        } catch (error) {
-          console.log("⚠️ Could not add proxy to connection options:", error)
-        }
-      }
-
-      console.log("✅ Proxy configuration applied")
+      // Update baseConfig to include proxy settings
+      baseConfig.options.agent = new sql.ProxyAgent(proxyUrl)
     } catch (error) {
-      console.error("❌ Failed to configure proxy:", error)
+      console.error("❌ Failed to parse or configure proxy:", error)
     }
   } else {
     console.log("⚠️ No proxy configured - using direct connection")
-    console.log("🔍 Available proxy env vars:", {
-      FIXIE_URL: !!process.env.FIXIE_URL,
-      QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
-      PROXY_URL: !!process.env.PROXY_URL,
-    })
   }
 
   return baseConfig
@@ -122,7 +112,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 
   if (!pool) {
     try {
-      const config = getConfig()
+      const config = await getConfig()
 
       console.log("🔌 Attempting database connection:")
       console.log("  - Server:", config.server)
@@ -300,8 +290,8 @@ export async function forceReconnect(): Promise<void> {
 }
 
 // Get connection configuration info for debugging
-export function getConnectionInfo(): any {
-  const config = getConfig()
+export async function getConnectionInfo(): Promise<any> {
+  const config = await getConfig()
   const proxyUrl = process.env.FIXIE_URL || process.env.QUOTAGUARD_URL || process.env.PROXY_URL
 
   return {
@@ -310,7 +300,6 @@ export function getConnectionInfo(): any {
     user: config.user,
     encrypt: config.options?.encrypt,
     usingProxyAgent: !!config.options?.agent,
-    usingHttpProxy: !!(config.options as any)?.proxy,
     proxyConfigured: !!proxyUrl,
     proxyUrl: proxyUrl ? proxyUrl.replace(/\/\/.*@/, "//***:***@") : null,
     proxyType: proxyUrl ? (proxyUrl.startsWith("http:") ? "HTTP" : "HTTPS") : null,
