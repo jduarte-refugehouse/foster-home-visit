@@ -1,28 +1,31 @@
 import { NextResponse } from "next/server"
-import { query, testConnection, healthCheck, getConnectionInfo } from "@/lib/db"
+import { query, testConnection, healthCheck, forceReconnect } from "@/lib/db"
 
 export async function GET() {
   try {
-    console.log("=== 🚀 Starting comprehensive database test ===")
-
-    // Get connection info for debugging
-    const connectionInfo = await getConnectionInfo()
-    console.log("Connection info:", connectionInfo)
+    console.log("=== 🚀 Starting database connection test ===")
 
     // First do a health check
+    console.log("🏥 Running health check...")
     const isHealthy = await healthCheck()
     console.log("Health check result:", isHealthy)
 
     if (!isHealthy) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Database health check failed",
-          error: "Unable to establish database connection",
-          connectionInfo,
-        },
-        { status: 503 },
-      )
+      console.log("🔄 Health check failed, trying force reconnect...")
+      await forceReconnect()
+
+      // Try health check again after force reconnect
+      const isHealthyAfterReconnect = await healthCheck()
+      if (!isHealthyAfterReconnect) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Database health check failed even after reconnection attempt",
+            error: "Unable to establish database connection",
+          },
+          { status: 503 },
+        )
+      }
     }
 
     // Test basic connection
@@ -35,7 +38,6 @@ export async function GET() {
           success: false,
           message: "Database connection test failed",
           error: connectionTest.message,
-          connectionInfo,
         },
         { status: 500 },
       )
@@ -51,30 +53,10 @@ export async function GET() {
         @@VERSION as sql_version,
         GETDATE() as current_time,
         USER_NAME() as current_user,
-        @@SERVERNAME as server_name,
-        @@LANGUAGE as language_setting,
-        @@LOCK_TIMEOUT as lock_timeout
+        @@SERVERNAME as server_name
     `)
 
-    // Try to list available tables
-    console.log("📋 Fetching table list...")
-    let tableList = []
-    try {
-      tableList = await query(`
-        SELECT 
-          TABLE_SCHEMA,
-          TABLE_NAME,
-          TABLE_TYPE
-        FROM INFORMATION_SCHEMA.TABLES 
-        WHERE TABLE_TYPE = 'BASE TABLE'
-        ORDER BY TABLE_SCHEMA, TABLE_NAME
-      `)
-      console.log(`Found ${tableList.length} tables`)
-    } catch (error) {
-      console.error("Error fetching table list:", error)
-    }
-
-    // Try to query the specific table
+    // Try to query the specific tables with individual error handling
     console.log("🏠 Testing SyncActiveHomesDisplay query...")
     let syncHomesData = []
     let syncHomesError = null
@@ -87,7 +69,7 @@ export async function GET() {
       syncHomesError = error instanceof Error ? error.message : "Unknown error querying SyncActiveHomesDisplay"
     }
 
-    // Test SyncActiveHomes table as well
+    // Test SyncActiveHomes table
     console.log("🏡 Testing SyncActiveHomes query...")
     let syncActiveHomesData = []
     let syncActiveHomesError = null
@@ -106,10 +88,8 @@ export async function GET() {
       success: true,
       message: "Database connection and queries successful",
       timestamp: new Date().toISOString(),
-      connectionInfo,
       connectionTest: connectionTest.data,
       databaseInfo: dbInfo,
-      tableList: tableList.slice(0, 20), // First 20 tables
       syncActiveHomesDisplay: {
         success: !syncHomesError,
         error: syncHomesError,

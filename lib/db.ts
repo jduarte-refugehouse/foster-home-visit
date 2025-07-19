@@ -15,10 +15,7 @@ async function getConnectionString(): Promise<string> {
     const vaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`
     const client = new SecretClient(vaultUrl, credential)
 
-    console.log("Retrieving connection string from Key Vault...")
     const secret = await client.getSecret("v0-db-connection-string")
-    console.log("Connection string retrieved successfully")
-
     return secret.value || ""
   } catch (error) {
     console.error("Failed to get connection string from Key Vault:", error)
@@ -26,52 +23,26 @@ async function getConnectionString(): Promise<string> {
   }
 }
 
-// Properly parse the connection string
-function parseConnectionString(connectionString: string): sql.config {
-  console.log("Parsing connection string...")
-
-  // Parse the connection string key-value pairs
-  const params: Record<string, string> = {}
-  connectionString.split(";").forEach((pair) => {
-    const [key, value] = pair.split("=")
-    if (key && value) {
-      params[key.trim()] = value.trim()
-    }
-  })
-
-  console.log("Connection string parameters parsed:")
-  console.log("- Server:", params["Server"])
-  console.log("- Database:", params["Initial Catalog"])
-  console.log("- User:", params["User ID"])
-  console.log("- Encrypt:", params["Encrypt"])
-  console.log("- Trust Server Certificate:", params["TrustServerCertificate"])
-
-  // Map to mssql config format
+// Use the simple direct config approach that was working
+function getConfig(): sql.config {
   const config: sql.config = {
-    user: params["User ID"],
-    password: params["Password"],
-    database: params["Initial Catalog"],
-    server: params["Server"].replace("tcp:", "").replace(",1433", ""),
+    user: "v0_app_user",
+    password: "M7w!vZ4#t8LcQb1R",
+    database: "RadiusBifrost",
+    server: "refugehouse-bifrost-server.database.windows.net",
     pool: {
       max: 10,
       min: 0,
       idleTimeoutMillis: 30000,
     },
     options: {
-      encrypt: params["Encrypt"] === "True",
-      trustServerCertificate: params["TrustServerCertificate"] === "True",
+      encrypt: true,
+      trustServerCertificate: false,
       enableArithAbort: true,
-      connectionTimeout: Number.parseInt(params["Connection Timeout"]) * 1000 || 30000,
+      connectTimeout: 30000,
       requestTimeout: 30000,
     },
   }
-
-  console.log("Final config:")
-  console.log("- Server:", config.server)
-  console.log("- Database:", config.database)
-  console.log("- User:", config.user)
-  console.log("- Encrypt:", config.options?.encrypt)
-  console.log("- Connection Timeout:", config.options?.connectionTimeout)
 
   return config
 }
@@ -80,14 +51,17 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   // If pool exists but is closed, reset it
   if (pool && !pool.connected) {
     console.log("Pool exists but is not connected, resetting...")
+    try {
+      await pool.close()
+    } catch (error) {
+      console.log("Error closing existing pool:", error)
+    }
     pool = null
   }
 
   if (!pool) {
     try {
-      console.log("=== Establishing new database connection ===")
-      const connectionString = await getConnectionString()
-      const config = parseConnectionString(connectionString)
+      const config = getConfig()
 
       console.log("Attempting connection to:", config.server)
       console.log("Database:", config.database)
@@ -132,9 +106,9 @@ export async function query(queryText: string, params: any[] = []): Promise<any[
 
       const connection = await getConnection()
 
-      // Check if connection is still valid
+      // Check if connection is still valid before using it
       if (!connection.connected) {
-        console.log("⚠️ Connection not active, reconnecting...")
+        console.log("⚠️ Connection not active, forcing reconnection...")
         pool = null
         throw new Error("Connection not active")
       }
@@ -154,21 +128,31 @@ export async function query(queryText: string, params: any[] = []): Promise<any[
       lastError = error as Error
       console.error(`❌ Query attempt failed (${4 - retries}/3):`, error)
 
-      // Reset pool on connection errors
+      // Reset pool on any connection-related errors
       if (
         error instanceof Error &&
         (error.message.includes("Connection is closed") ||
           error.message.includes("Connection not active") ||
-          error.message.includes("socket hang up"))
+          error.message.includes("socket hang up") ||
+          error.message.includes("ECONNRESET") ||
+          error.message.includes("timeout"))
       ) {
         console.log("🔄 Connection error detected, resetting pool...")
+        if (pool) {
+          try {
+            await pool.close()
+          } catch (closeError) {
+            console.log("Error closing pool:", closeError)
+          }
+        }
         pool = null
       }
 
       retries--
       if (retries > 0) {
-        console.log(`⏳ Retrying in 2 seconds... (${retries} attempts remaining)`)
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+        const delay = (4 - retries) * 1000 // Increasing delay: 1s, 2s, 3s
+        console.log(`⏳ Retrying in ${delay}ms... (${retries} attempts remaining)`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
   }
@@ -232,24 +216,16 @@ export async function healthCheck(): Promise<boolean> {
   }
 }
 
-// Get connection info for debugging
-export async function getConnectionInfo(): Promise<any> {
-  try {
-    const connectionString = await getConnectionString()
-    const config = parseConnectionString(connectionString)
-
-    return {
-      server: config.server,
-      database: config.database,
-      user: config.user,
-      encrypt: config.options?.encrypt,
-      trustServerCertificate: config.options?.trustServerCertificate,
-      connectionTimeout: config.options?.connectionTimeout,
-      poolConnected: pool?.connected || false,
-      poolExists: !!pool,
+// Force reconnection - useful for troubleshooting
+export async function forceReconnect(): Promise<void> {
+  console.log("🔄 Forcing reconnection...")
+  if (pool) {
+    try {
+      await pool.close()
+    } catch (error) {
+      console.log("Error closing pool during force reconnect:", error)
     }
-  } catch (error) {
-    console.error("Failed to get connection info:", error)
-    return { error: error instanceof Error ? error.message : "Unknown error" }
   }
+  pool = null
+  console.log("Pool reset, next query will create new connection")
 }

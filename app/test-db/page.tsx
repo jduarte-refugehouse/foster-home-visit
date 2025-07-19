@@ -55,6 +55,23 @@ export default function TestDatabase() {
     }
   }
 
+  const forceReconnect = async () => {
+    setLoading(true)
+    try {
+      console.log("Force reconnecting...")
+      const response = await fetch("/api/reconnect", { method: "POST" })
+      const data = await response.json()
+      console.log("Force reconnect result:", data)
+
+      // After force reconnect, run the full test
+      await testDatabase()
+    } catch (error) {
+      console.error("Force reconnect error:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     testDatabase()
   }, [])
@@ -84,6 +101,10 @@ export default function TestDatabase() {
                   View Homes
                 </Button>
               </Link>
+              <Button onClick={forceReconnect} disabled={loading} variant="outline">
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                Force Reconnect
+              </Button>
               <Button onClick={testDatabase} disabled={loading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                 {loading ? "Testing..." : "Test Again"}
