@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { query, healthCheck } from "@/lib/db"
 
 export async function GET() {
   try {
-    console.log("Fetching homes from SyncActiveHomes table...")
+    console.log("=== Fetching homes data ===")
+
+    // Quick health check first
+    const isHealthy = await healthCheck()
+    if (!isHealthy) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database connection unhealthy",
+          message: "Unable to establish database connection",
+        },
+        { status: 503 },
+      )
+    }
+
+    console.log("Health check passed, querying SyncActiveHomes...")
 
     // Query the SyncActiveHomes table
-    const homes = await query("SELECT TOP 10 * FROM dbo.SyncActiveHomes")
+    const homes = await query("SELECT TOP 20 * FROM dbo.SyncActiveHomes ORDER BY HomeID")
 
     console.log(`Successfully retrieved ${homes.length} homes`)
 
@@ -14,14 +29,16 @@ export async function GET() {
       success: true,
       homes,
       count: homes.length,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("Database query error:", error)
+    console.error("=== Homes query failed ===", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch homes",
         message: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
