@@ -48,20 +48,46 @@ function getConfig(): sql.config {
   // Add proxy configuration if available
   const proxyUrl = process.env.QUOTAGUARD_URL || process.env.PROXY_URL
   if (proxyUrl) {
-    console.log("🔗 Using QuotaGuard proxy for database connection")
-    console.log("🌐 Proxy server:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
+    console.log("🔗 Configuring QuotaGuard proxy for database connection")
+    console.log("🌐 Proxy URL configured:", proxyUrl.replace(/\/\/.*@/, "//***:***@"))
 
-    // Create proxy agent for HTTPS proxy
-    const proxyAgent = new HttpsProxyAgent(proxyUrl)
+    try {
+      // Parse the proxy URL to get components
+      const url = new URL(proxyUrl)
+      const proxyHost = url.hostname
+      const proxyPort = Number.parseInt(url.port) || 9294
+      const proxyAuth = url.username && url.password ? `${url.username}:${url.password}` : undefined
 
-    // Add proxy agent to options
-    if (baseConfig.options) {
-      baseConfig.options.agent = proxyAgent
-    } else {
-      baseConfig.options = { agent: proxyAgent }
+      console.log("🔧 Proxy host:", proxyHost)
+      console.log("🔧 Proxy port:", proxyPort)
+      console.log("🔧 Proxy auth configured:", !!proxyAuth)
+
+      // Create proxy agent
+      const proxyAgent = new HttpsProxyAgent(proxyUrl)
+
+      // Add proxy configuration to the connection options
+      if (baseConfig.options) {
+        // Try different approaches for proxy configuration
+        baseConfig.options.agent = proxyAgent
+
+        // Also try setting proxy directly on options (some versions support this)
+        ;(baseConfig.options as any).proxy = {
+          host: proxyHost,
+          port: proxyPort,
+          auth: proxyAuth,
+        }
+      }
+
+      console.log("✅ Proxy agent configured successfully")
+    } catch (error) {
+      console.error("❌ Failed to configure proxy:", error)
     }
   } else {
-    console.log("⚠️ No QuotaGuard proxy configured - using direct connection (may fail with rotating IPs)")
+    console.log("⚠️ No QuotaGuard proxy configured - using direct connection")
+    console.log("🔍 Available env vars:", {
+      QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
+      PROXY_URL: !!process.env.PROXY_URL,
+    })
   }
 
   return baseConfig
@@ -87,7 +113,8 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
       console.log("📊 Database:", config.database)
       console.log("👤 User:", config.user)
       console.log("🔐 Encryption:", config.options?.encrypt)
-      console.log("🌐 Using proxy:", !!config.options?.agent)
+      console.log("🌐 Using proxy agent:", !!config.options?.agent)
+      console.log("🌐 Proxy config:", !!(config.options as any)?.proxy)
 
       pool = new sql.ConnectionPool(config)
 
@@ -255,14 +282,21 @@ export async function forceReconnect(): Promise<void> {
 // Get connection configuration info for debugging
 export function getConnectionInfo(): any {
   const config = getConfig()
+  const proxyUrl = process.env.QUOTAGUARD_URL || process.env.PROXY_URL
+
   return {
     server: config.server,
     database: config.database,
     user: config.user,
     encrypt: config.options?.encrypt,
-    usingProxy: !!config.options?.agent,
-    proxyConfigured: !!(process.env.QUOTAGUARD_URL || process.env.PROXY_URL),
+    usingProxyAgent: !!config.options?.agent,
+    proxyConfigured: !!proxyUrl,
+    proxyUrl: proxyUrl ? proxyUrl.replace(/\/\/.*@/, "//***:***@") : null,
     poolConnected: pool?.connected || false,
     poolExists: !!pool,
+    environmentVariables: {
+      QUOTAGUARD_URL: !!process.env.QUOTAGUARD_URL,
+      PROXY_URL: !!process.env.PROXY_URL,
+    },
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
 import sql from "mssql"
+import { getConnectionInfo } from "@/lib/db"
 
 export async function GET() {
   try {
@@ -17,6 +18,10 @@ export async function GET() {
     } catch (error) {
       console.error("Failed to get current IP:", error)
     }
+
+    // Get connection configuration info
+    const connectionInfo = getConnectionInfo()
+    console.log("🔧 Connection info:", connectionInfo)
 
     // Test Key Vault access
     console.log("🔑 Testing Key Vault access...")
@@ -103,21 +108,40 @@ export async function GET() {
       }
     }
 
+    // Check if QuotaGuard IPs are expected
+    const quotaguardIPs = ["3.222.129.4", "54.205.35.75"]
+    const isUsingQuotaguardIP = quotaguardIPs.includes(currentIP)
+
     return NextResponse.json({
       success: dbConnectionTest.success,
       timestamp: new Date().toISOString(),
       currentIP,
       vercelRegion: process.env.VERCEL_REGION || "Unknown",
+      connectionInfo,
       keyVaultTest,
       dbConnectionTest,
       errorAnalysis,
+      proxyAnalysis: {
+        expectedQuotaguardIPs: quotaguardIPs,
+        currentIPIsQuotaguard: isUsingQuotaguardIP,
+        proxyConfigured: connectionInfo.proxyConfigured,
+        proxyAgentSet: connectionInfo.usingProxyAgent,
+        message: isUsingQuotaguardIP
+          ? "✅ Using QuotaGuard IP - proxy is working!"
+          : "❌ Not using QuotaGuard IP - proxy may not be configured correctly",
+      },
       recommendations: dbConnectionTest.success
         ? ["Connection is working properly"]
         : [
+            !connectionInfo.proxyConfigured
+              ? "❌ QUOTAGUARD_URL environment variable not set"
+              : "✅ QUOTAGUARD_URL environment variable is set",
+            !isUsingQuotaguardIP
+              ? `❌ Current IP (${currentIP}) is not a QuotaGuard IP`
+              : "✅ Using QuotaGuard static IP",
             "Check Azure SQL firewall rules",
-            "Consider enabling 'Allow Azure services and resources to access this server'",
-            "Verify IP address whitelist includes current IP: " + currentIP,
-            "Check if Vercel IP ranges are whitelisted",
+            "Verify QuotaGuard proxy configuration",
+            "Add QuotaGuard IPs to Azure SQL firewall: " + quotaguardIPs.join(", "),
           ],
     })
   } catch (error) {
