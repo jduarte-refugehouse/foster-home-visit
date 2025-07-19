@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  role      String   @default("caseworker")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  visits    Visit[]
+
+  @@map("users")
+}
+
+model Family {
+  id          String      @id @default(cuid())
+  radiusId    String?     @unique
+  familyName  String
+  address     String?
+  phone       String?
+  email       String?
+  caseNumber  String?
+  status      String      @default("active")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  placements  Placement[]
+  visits      Visit[]
+
+  @@map("families")
+}
+
+model Placement {
+  id               String   @id @default(cuid())
+  radiusId         String?  @unique
+  familyId         String
+  childName        String
+  childAge         Int?
+  placementDate    DateTime
+  placementType    String
+  specialNeeds     String?
+  medicationInfo   String?
+  schoolInfo       String?
+  emergencyContact String?
+  status           String   @default("active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  family           Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  visits           Visit[]
+
+  @@map("placements")
+}
+
+model Visit {
+  id           String        @id @default(cuid())
+  familyId     String
+  placementId  String?
+  userId       String
+  visitType    String // "scheduled", "unannounced", "emergency"
+  visitDate    DateTime
+  startTime    DateTime?
+  endTime      DateTime?
+  status       String        @default("scheduled") // "scheduled", "completed", "cancelled", "no_show"
+  purpose      String?
+  location     String?
+  notes        String?
+  tacCompliant Boolean       @default(false)
+  rccCompliant Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  family       Family        @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  placement    Placement?    @relation(fields: [placementId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  visitDetails VisitDetail[]
+
+  @@map("visits")
+}
+
+model VisitDetail {
+  id                    String   @id @default(cuid())
+  visitId               String
+  // TAC Chapter 749 Requirements
+  homeConditions        String?
+  childSafety           String?
+  childWellbeing        String?
+  caregiverInteraction  String?
+  educationalNeeds      String?
+  medicalNeeds          String?
+  behavioralConcerns    String?
+  // RCC Contract Requirements
+  serviceDelivery       String?
+  goalProgress          String?
+  familyStrengths       String?
+  challengesIdentified  String?
+  recommendedActions    String?
+  followUpRequired      Boolean  @default(false)
+  followUpDate          DateTime?
+  supervisorReview      Boolean  @default(false)
+  supervisorNotes       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  visit                 Visit    @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@map("visit_details")
+}
