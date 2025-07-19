@@ -14,9 +14,10 @@ import {
   Lock,
   Award,
   ArrowRight,
+  Home,
 } from "lucide-react"
 
-export default function Home() {
+export default function HomePage() {
   const features = [
     {
       icon: Shield,
@@ -91,6 +92,12 @@ export default function Home() {
                   Test Database
                 </Button>
               </Link>
+              <Link href="/homes">
+                <Button variant="ghost">
+                  <Home className="w-4 h-4 mr-2" />
+                  View Homes
+                </Button>
+              </Link>
               <Link href="/dashboard">
                 <Button variant="ghost">Demo</Button>
               </Link>
@@ -116,9 +123,10 @@ export default function Home() {
               family visits while ensuring 100% TAC Chapter 749 and RCC contract compliance.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/dashboard">
+              <Link href="/homes">
                 <Button size="lg" className="w-full sm:w-auto">
-                  View Dashboard Demo
+                  <Home className="w-4 h-4 mr-2" />
+                  View Active Homes
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
@@ -129,9 +137,7 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-            <p className="mt-4 text-sm text-gray-500">
-              No credit card required • 30-day free trial • Setup in under 5 minutes
-            </p>
+            <p className="mt-4 text-sm text-gray-500">Connected to Azure SQL • Secure Key Vault • Real-time data</p>
           </div>
         </div>
       </section>
@@ -207,13 +213,13 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Streamline Your Family Visits?</h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join hundreds of Texas caseworkers who've already made the switch to compliant, efficient family visit
-            management.
+            Connect to your Azure SQL database and start managing family visits with full compliance.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/dashboard">
+            <Link href="/homes">
               <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                Try Demo Dashboard
+                <Home className="w-4 h-4 mr-2" />
+                View Active Homes
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
@@ -228,7 +234,7 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-          <p className="mt-4 text-blue-100 text-sm">30-day free trial • No setup fees • Cancel anytime</p>
+          <p className="mt-4 text-blue-100 text-sm">Secure Azure connection • Key Vault protected • Real-time data</p>
         </div>
       </section>
     </div>
