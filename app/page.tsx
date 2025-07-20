@@ -16,7 +16,7 @@ import {
   ArrowRight,
   Home,
   Info,
-  Network,
+  MapPin,
 } from "lucide-react"
 
 export default function HomePage() {
@@ -88,10 +88,16 @@ export default function HomePage() {
               <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
             </div>
             <div className="flex items-center space-x-4">
+              <Link href="/homes-map">
+                <Button variant="ghost">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  View Homes Map
+                </Button>
+              </Link>
               <Link href="/homes-list">
                 <Button variant="ghost">
                   <Home className="w-4 h-4 mr-2" />
-                  View Homes
+                  View Homes List
                 </Button>
               </Link>
               <Link href="/admin">
@@ -125,22 +131,22 @@ export default function HomePage() {
               family visits while ensuring 100% TAC Chapter 749 and RCC contract compliance.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/fixie-setup">
+              <Link href="/homes-map">
                 <Button size="lg" className="w-full sm:w-auto">
-                  <Network className="w-4 h-4 mr-2" />
-                  Set Up Fixie Proxy
+                  <MapPin className="w-4 h-4 mr-2" />
+                  View Homes Map
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
-              <Link href="/test-db">
+              <Link href="/dashboard">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
                   <Database className="w-4 h-4 mr-2" />
-                  Test Database Connection
+                  Try Demo Dashboard
                 </Button>
               </Link>
             </div>
             <p className="mt-4 text-sm text-gray-500">
-              Recommended: Use Fixie for better SQL Server connection support
+              Interactive map showing all active homes with Dallas and San Antonio unit filtering
             </p>
           </div>
         </div>
@@ -215,30 +221,29 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-700">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Solve Your Connection Issues?</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-blue-100 mb-8">
-            Set up Fixie proxy for reliable SQL Server connections with static IP addresses.
+            Explore your homes on an interactive map and see how Family Visits Pro can streamline your workflow.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/fixie-setup">
+            <Link href="/homes-map">
               <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                <Network className="w-4 h-4 mr-2" />
-                Set Up Fixie Proxy
+                <MapPin className="w-4 h-4 mr-2" />
+                View Homes Map
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/diagnostics">
+            <Link href="/features">
               <Button
                 size="lg"
                 variant="outline"
                 className="w-full sm:w-auto bg-transparent border-white text-white hover:bg-white hover:text-blue-600"
               >
                 <Info className="w-4 h-4 mr-2" />
-                Run Diagnostics
+                Explore Features
               </Button>
             </Link>
           </div>
-          <p className="mt-4 text-blue-100 text-sm">Fixie has better SQL Server support than QuotaGuard</p>
         </div>
       </section>
     </div>
