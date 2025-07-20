@@ -32,7 +32,7 @@ interface HomesData {
 const Map = dynamic(() => import("@/components/homes-map"), {
   ssr: false,
   loading: () => (
-    <div className="h-[600px] w-full bg-gray-200 animate-pulse flex items-center justify-center">
+    <div className="h-[600px] w-full bg-gray-200 animate-pulse flex items-center justify-center rounded-md">
       <p className="text-gray-500">Loading map...</p>
     </div>
   ),
