@@ -1,19 +1,26 @@
 import sql from "mssql"
 import Agent from "proxy-agent"
 
-// --- The Fix ---
-// Instantiate the proxy agent. This automatically monkey-patches the global
-// networking modules (like `net` and `http`) to route all outbound TCP
-// connections through the proxy defined in the environment variables.
-// It will automatically pick up and use your `FIXIE_URL`.
-new Agent()
-// ---------------
+let isProxyAgentInitialized = false
+
+/**
+ * Initializes the proxy agent. This should only be called once.
+ * It patches the global networking modules to route all outbound TCP
+ * connections through the proxy defined in the environment variables.
+ */
+function initializeProxyAgent() {
+  if (!isProxyAgentInitialized) {
+    console.log("Initializing proxy agent...")
+    // This will automatically pick up and use your `FIXIE_URL`.
+    new Agent()
+    isProxyAgentInitialized = true
+    console.log("✅ Proxy agent initialized.")
+  }
+}
 
 let pool: sql.ConnectionPool | null = null
 
 function getConfig(): sql.config {
-  // The configuration is now much simpler. We don't need to manually
-  // configure the proxy here because `proxy-agent` handles it globally.
   const config: sql.config = {
     server: "refugehouse-bifrost-server.database.windows.net",
     database: "RadiusBifrost",
@@ -25,30 +32,25 @@ function getConfig(): sql.config {
       idleTimeoutMillis: 30000,
     },
     options: {
-      encrypt: true, // Encryption is required for Azure SQL
+      encrypt: true,
       trustServerCertificate: false,
-      connectTimeout: 45000, // Increased timeout for proxy connections
+      connectTimeout: 45000,
       requestTimeout: 45000,
     },
   }
-
-  if (process.env.FIXIE_URL) {
-    console.log("✅ Fixie proxy is configured. All TCP connections will be routed through it.")
-  } else {
-    console.warn("⚠️ WARNING: FIXIE_URL is not set. Database connection will likely fail.")
-  }
-
   return config
 }
 
 export async function getConnection(): Promise<sql.ConnectionPool> {
+  // Initialize the proxy agent on the first connection attempt.
+  // This ensures it only runs in the server runtime, not during build.
+  initializeProxyAgent()
+
   if (pool && pool.connected) {
     return pool
   }
 
-  // If the pool exists but is not connected, close it before creating a new one.
   if (pool) {
-    console.log("Stale connection pool found. Closing it.")
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
     pool = null
   }
@@ -61,7 +63,6 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 
     pool.on("error", (err) => {
       console.error("❌ Database Pool Error:", err)
-      // On error, close the pool and set it to null to force reconnection.
       if (pool) {
         pool.close()
         pool = null
@@ -73,7 +74,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     return pool
   } catch (error) {
     console.error("❌ Failed to establish database connection:", error)
-    pool = null // Ensure pool is null on failure
+    pool = null
     throw error
   }
 }
@@ -93,8 +94,6 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
     return result.recordset
   } catch (error) {
     console.error("❌ Query execution failed:", error)
-    // If a query fails, it might be due to a connection issue.
-    // Force a reconnection on the next attempt.
     if (pool) {
       await pool.close()
       pool = null
