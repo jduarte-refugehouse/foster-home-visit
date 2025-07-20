@@ -1,22 +1,5 @@
 import sql from "mssql"
-import Agent from "proxy-agent"
-
-let isProxyAgentInitialized = false
-
-/**
- * Initializes the proxy agent. This should only be called once.
- * It patches the global networking modules to route all outbound TCP
- * connections through the proxy defined in the environment variables.
- */
-function initializeProxyAgent() {
-  if (!isProxyAgentInitialized) {
-    console.log("Initializing proxy agent...")
-    // This will automatically pick up and use your `FIXIE_URL`.
-    new Agent()
-    isProxyAgentInitialized = true
-    console.log("✅ Proxy agent initialized.")
-  }
-}
+import { SocksProxyAgent } from "socks-proxy-agent"
 
 let pool: sql.ConnectionPool | null = null
 
@@ -33,19 +16,30 @@ function getConfig(): sql.config {
     },
     options: {
       encrypt: true,
-      trustServerCertificate: false,
-      connectTimeout: 45000,
-      requestTimeout: 45000,
+      trustServerCertificate: false, // More secure, as we connect by hostname
+      connectTimeout: 60000,
+      requestTimeout: 60000,
     },
   }
+
+  const fixieUrl = process.env.FIXIE_URL
+  if (fixieUrl) {
+    console.log("✅ FIXIE_URL detected. Configuring SOCKS proxy agent.")
+    try {
+      // The agent will correctly parse the `fixie:PASSWORD@...` URL format
+      const agent = new SocksProxyAgent(fixieUrl)
+      config.options.agent = agent
+    } catch (error) {
+      console.error("❌ Failed to create SOCKS proxy agent:", error)
+    }
+  } else {
+    console.warn("⚠️ FIXIE_URL is not set. Direct connection will be attempted.")
+  }
+
   return config
 }
 
 export async function getConnection(): Promise<sql.ConnectionPool> {
-  // Initialize the proxy agent on the first connection attempt.
-  // This ensures it only runs in the server runtime, not during build.
-  initializeProxyAgent()
-
   if (pool && pool.connected) {
     return pool
   }
@@ -57,7 +51,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 
   try {
     const config = getConfig()
-    console.log(`🔌 Attempting new connection to ${config.server}...`)
+    console.log(`🔌 Attempting new connection to ${config.server} via SOCKS proxy...`)
 
     pool = new sql.ConnectionPool(config)
 
@@ -107,13 +101,13 @@ export async function testConnection(): Promise<{ success: boolean; message: str
     const result = await query("SELECT 1 as test, GETDATE() as current_time")
     return {
       success: true,
-      message: "Database connection successful",
+      message: "Database connection successful via SOCKS proxy.",
       data: result,
     }
   } catch (error) {
     return {
       success: false,
-      message: error instanceof Error ? error.message : "Unknown error during connection test",
+      message: error instanceof Error ? error.message : "Unknown error during connection test.",
     }
   }
 }
@@ -129,14 +123,4 @@ export async function forceReconnect(): Promise<void> {
     pool = null
   }
   console.log("🔄 Connection pool has been forcefully closed.")
-}
-
-export function getConnectionInfo(): any {
-  const config = getConfig()
-  return {
-    server: config.server,
-    database: config.database,
-    proxyConfigured: !!process.env.FIXIE_URL,
-    poolConnected: pool?.connected || false,
-  }
 }
