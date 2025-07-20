@@ -24,7 +24,7 @@ export async function GET() {
     console.log("Health check passed, querying SyncActiveHomes...")
 
     // Query the SyncActiveHomes table
-    const homes = await query("SELECT TOP 20 * FROM dbo.SyncActiveHomes ORDER BY HomeID")
+    const homes = await query("SELECT TOP 20 * FROM dbo.SyncActiveHomes ORDER BY HomeName")
 
     console.log(`Successfully retrieved ${homes.length} homes`)
 

@@ -128,8 +128,8 @@ export default function HomesDisplay() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {data.homes.map((home, index) => (
-                        <Card key={index} className="bg-gray-50">
+                      {data.homes.map((home) => (
+                        <Card key={home.Guid} className="bg-gray-50">
                           <CardContent className="pt-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
                               {Object.entries(home).map(([key, value]) => (
