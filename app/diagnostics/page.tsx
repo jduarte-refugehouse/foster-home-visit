@@ -5,14 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Database, RefreshCw, CheckCircle, XCircle, ArrowLeft, Globe, Lightbulb, Settings } from "lucide-react"
+import { Database, RefreshCw, CheckCircle, XCircle, ArrowLeft, Lightbulb, Settings } from "lucide-react"
 import Link from "next/link"
 
 interface DiagnosticResult {
   success: boolean
   timestamp: string
-  outboundIP: string
-  isUsingFixieIP: boolean
   dbConnectionTest: {
     success: boolean
     message: string
@@ -35,9 +33,10 @@ export default function Diagnostics() {
       setResult({
         success: false,
         timestamp: new Date().toISOString(),
-        outboundIP: "Unknown",
-        isUsingFixieIP: false,
-        dbConnectionTest: { success: false, message: "Failed to run diagnostics" },
+        dbConnectionTest: {
+          success: false,
+          message: "The diagnostics API failed to respond. This indicates a server-side error.",
+        },
         analysis: "The diagnostics API failed to respond. This indicates a server-side error.",
         error: error instanceof Error ? error.message : "Unknown error",
       })
@@ -66,7 +65,7 @@ export default function Diagnostics() {
               )}
               Overall Status
             </CardTitle>
-            <Badge variant={isSuccess ? "default" : "destructive"}>{isSuccess ? "Success" : "Issues Detected"}</Badge>
+            <Badge variant={isSuccess ? "default" : "destructive"}>{isSuccess ? "Success" : "Failed"}</Badge>
           </div>
           <CardDescription>Diagnostic completed at {new Date(result.timestamp).toLocaleString()}</CardDescription>
         </CardHeader>
@@ -113,7 +112,7 @@ export default function Diagnostics() {
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900">Connection Diagnostics</h1>
-            <p className="text-gray-600">Analysis of the Fixie SOCKS proxy and Azure SQL connection</p>
+            <p className="text-gray-600">Testing the database connection via the Fixie SOCKS proxy.</p>
           </div>
 
           {loading && (
@@ -121,7 +120,7 @@ export default function Diagnostics() {
               <CardContent className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Running diagnostics...</p>
+                  <p className="text-gray-600">Testing database connection...</p>
                 </div>
               </CardContent>
             </Card>
@@ -130,35 +129,6 @@ export default function Diagnostics() {
           {result && !loading && (
             <div className="space-y-6">
               {getStatusCard()}
-
-              {/* Network Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Globe className="w-5 h-5 mr-2" />
-                    Network Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Outbound IP Address</p>
-                      <p className="text-lg font-mono bg-gray-100 p-2 rounded">{result.outboundIP}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Using Fixie Static IP?</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        {result.isUsingFixieIP ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-red-500" />
-                        )}
-                        <span className="text-lg">{result.isUsingFixieIP ? "Yes" : "No"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
               {/* Database Connection Test */}
               <Card>
