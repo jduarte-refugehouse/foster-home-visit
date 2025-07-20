@@ -22,9 +22,9 @@ function getConfig(): sql.config {
     },
   }
 
-  const fixieUrl = process.env.FIXIE_URL
+  const fixieUrl = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
   if (fixieUrl) {
-    console.log("✅ FIXIE_URL detected. Configuring SOCKS proxy agent.")
+    console.log("✅ Fixie proxy URL detected. Configuring SOCKS proxy agent.")
     try {
       // The agent will correctly parse the `fixie:PASSWORD@...` URL format
       const agent = new SocksProxyAgent(fixieUrl)
@@ -33,7 +33,7 @@ function getConfig(): sql.config {
       console.error("❌ Failed to create SOCKS proxy agent:", error)
     }
   } else {
-    console.warn("⚠️ FIXIE_URL is not set. Direct connection will be attempted.")
+    console.warn("⚠️ No Fixie proxy URL (FIXIE_SOCKS_HOST or FIXIE_URL) is set. Direct connection will be attempted.")
   }
 
   return config
