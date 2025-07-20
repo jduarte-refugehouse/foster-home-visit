@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Home, RefreshCw, XCircle, ArrowLeft, Shield, Filter } from "lucide-react"
+import { Home, RefreshCw, XCircle, ArrowLeft, Shield, Filter, Database } from "lucide-react"
 import Link from "next/link"
 import HomesMap from "@/components/homes-map"
 
@@ -20,6 +20,12 @@ interface HomeLocation {
   CaseManager: string
   Latitude: number
   Longitude: number
+  HomePhone?: string
+  Xref?: string
+  CaseManagerEmail?: string
+  CaseManagerPhone?: string
+  CaregiverEmail?: string
+  LastSync?: string
 }
 
 interface HomesData {
@@ -27,6 +33,7 @@ interface HomesData {
   homes?: HomeLocation[]
   count?: number
   error?: string
+  message?: string
 }
 
 export default function HomesMapPage() {
@@ -38,13 +45,17 @@ export default function HomesMapPage() {
   const fetchHomes = async () => {
     setLoading(true)
     try {
+      console.log("Fetching homes from API...")
       const response = await fetch("/api/homes-for-map")
       const result = await response.json()
+      console.log("API Response:", result)
       setData(result)
     } catch (error) {
+      console.error("Failed to fetch homes:", error)
       setData({
         success: false,
         error: "Failed to connect to API",
+        message: error instanceof Error ? error.message : "Unknown error",
       })
     } finally {
       setLoading(false)
@@ -81,6 +92,12 @@ export default function HomesMapPage() {
               <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
             </div>
             <div className="flex items-center space-x-4">
+              <Link href="/test-db">
+                <Button variant="outline" size="sm">
+                  <Database className="w-4 h-4 mr-2" />
+                  Test DB
+                </Button>
+              </Link>
               <Link href="/">
                 <Button variant="ghost">
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -150,16 +167,55 @@ export default function HomesMapPage() {
                 <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             )}
+
+            {/* Debug Information */}
+            {data && !loading && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
+                <strong>Debug Info:</strong>
+                {data.success ? (
+                  <span className="text-green-600"> ✅ Query successful - Found {data.count} homes</span>
+                ) : (
+                  <span className="text-red-600"> ❌ Query failed - {data.error}</span>
+                )}
+                {data.message && <div className="text-gray-600 mt-1">Details: {data.message}</div>}
+              </div>
+            )}
+
             {data && !data.success && (
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
                   <strong>Error:</strong> {data.error}
+                  {data.message && <div className="mt-2 text-sm">{data.message}</div>}
                 </AlertDescription>
               </Alert>
             )}
+
+            {data && data.success && data.count === 0 && (
+              <Alert>
+                <Home className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>No homes found with coordinates.</strong> This could mean:
+                  <ul className="mt-2 ml-4 list-disc text-sm">
+                    <li>No homes have Latitude/Longitude values in the database</li>
+                    <li>All coordinate values are NULL or 0</li>
+                    <li>Database connection issue</li>
+                  </ul>
+                  <div className="mt-2">
+                    <Link href="/test-db">
+                      <Button variant="outline" size="sm">
+                        <Database className="w-4 h-4 mr-2" />
+                        Test Database Connection
+                      </Button>
+                    </Link>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {data && data.success && filteredHomes.length > 0 && <HomesMap key={mapKey} homes={filteredHomes} />}
-            {data && data.success && filteredHomes.length === 0 && selectedUnit !== "ALL" && (
+
+            {data && data.success && data.count! > 0 && filteredHomes.length === 0 && selectedUnit !== "ALL" && (
               <div className="h-[600px] w-full bg-gray-100 rounded-md flex items-center justify-center">
                 <div className="text-center">
                   <Home className="w-12 h-12 text-gray-400 mx-auto mb-4" />
