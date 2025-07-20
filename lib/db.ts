@@ -1,80 +1,34 @@
+// IMPORTANT: This line MUST be at the top to patch Node.js internals
+import "global-socks/cjs/register"
+
 import sql from "mssql"
-import { SocksProxyAgent } from "socks-proxy-agent"
-import dns from "node:dns"
 
-let pool: sql.ConnectionPool | null = null
-let dbServerIp: string | null = null
+// Set the SOCKS_PROXY environment variable for global-socks to use.
+// This allows the user to keep their FIXIE_SOCKS_HOST or FIXIE_URL variable.
+const fixieEnvVar = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
 
-const DB_HOST = "refugehouse-bifrost-server.database.windows.net"
-
-/**
- * Resolves the database hostname to an IP address using a SOCKS proxy.
- * This is necessary because direct DNS lookups can fail in some serverless environments.
- * The result is cached to avoid repeated lookups.
- */
-async function getDbServerIp(agent: SocksProxyAgent): Promise<string> {
-  if (dbServerIp) {
-    return dbServerIp
-  }
-
-  console.log(`🔍 Resolving DNS for ${DB_HOST} through SOCKS proxy...`)
-
-  return new Promise((resolve, reject) => {
-    // Use the agent's internal mechanism to perform a DNS lookup.
-    // This is an undocumented but effective way to resolve DNS through the proxy.
-    const lookup = (
-      hostname: string,
-      options: any,
-      callback: (err: Error | null, address: string, family: number) => void,
-    ) => {
-      // The agent's `connect` method handles the DNS resolution.
-      // We can piggyback on it without actually establishing a full connection.
-      const socket = agent.connect({ host: hostname, port: 443 }, (err?: Error) => {
-        if (err) {
-          return callback(err, "", 0)
-        }
-      })
-
-      socket.on("error", (err) => {
-        reject(new Error(`SOCKS DNS lookup failed: ${err.message}`))
-      })
-
-      // The 'proxyconnect' event gives us the resolved IP address.
-      socket.on("proxyconnect", (res: any) => {
-        if (res.socket?._peername?.address) {
-          const resolvedIp = res.socket._peername.address
-          console.log(`✅ DNS for ${DB_HOST} resolved to ${resolvedIp}`)
-          dbServerIp = resolvedIp
-          callback(null, resolvedIp, 4)
-        } else {
-          reject(new Error("Failed to get resolved IP from proxy response."))
-        }
-        socket.destroy()
-      })
+if (fixieEnvVar) {
+  // This check ensures we only set the proxy once.
+  if (!process.env.SOCKS_PROXY) {
+    let proxyUrl = fixieEnvVar
+    // The global-socks library expects SOCKS_PROXY format: socks://[user:password@]host:port
+    // The fixie URL is `fixie:USER:PASSWORD@HOST:PORT`. We must convert it.
+    if (proxyUrl.startsWith("fixie:")) {
+      proxyUrl = "socks://" + proxyUrl.substring(6)
     }
-
-    // We call dns.lookup with our custom lookup function.
-    dns.lookup(DB_HOST, { lookup }, (err, address) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(address)
-      }
-    })
-  })
+    process.env.SOCKS_PROXY = proxyUrl
+    console.log("✅ global-socks proxy configured using Fixie environment variable.")
+    console.log("Formatted SOCKS_PROXY URL (masked):", proxyUrl.replace(/:.*@/, ":********@"))
+  }
+} else {
+  console.warn("⚠️ No Fixie proxy URL (FIXIE_SOCKS_HOST or FIXIE_URL) is set. Direct connection will be attempted.")
 }
 
-async function getConfig(): Promise<sql.config> {
-  const fixieUrl = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
-  if (!fixieUrl) {
-    throw new Error("FIXIE_SOCKS_HOST or FIXIE_URL environment variable is not set.")
-  }
+let pool: sql.ConnectionPool | null = null
 
-  const agent = new SocksProxyAgent(fixieUrl)
-  const resolvedIp = await getDbServerIp(agent)
-
+function getConfig(): sql.config {
   const config: sql.config = {
-    server: resolvedIp, // Connect directly to the resolved IP
+    server: "refugehouse-bifrost-server.database.windows.net",
     database: "RadiusBifrost",
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
@@ -85,14 +39,13 @@ async function getConfig(): Promise<sql.config> {
     },
     options: {
       encrypt: true,
-      trustServerCertificate: true, // MUST be true when connecting by IP
+      trustServerCertificate: false,
       connectTimeout: 60000,
       requestTimeout: 60000,
-      // The agent is still needed for the actual TCP connection
-      agent: agent,
     },
   }
-
+  // No more agent configuration needed here.
+  // global-socks patches the underlying 'net' module.
   return config
 }
 
@@ -107,8 +60,8 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 
   try {
-    const config = await getConfig()
-    console.log(`🔌 Attempting new connection to ${DB_HOST} (at ${config.server}) via SOCKS proxy...`)
+    const config = getConfig()
+    console.log(`🔌 Attempting new connection to ${config.server} via global SOCKS proxy...`)
 
     pool = new sql.ConnectionPool(config)
 

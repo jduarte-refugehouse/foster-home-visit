@@ -167,8 +167,7 @@ export default function Diagnostics() {
                   <CardContent>
                     <ul className="space-y-2 list-disc list-inside">
                       <li className="text-sm">
-                        Ensure the `FIXIE_SOCKS_HOST` (or `FIXIE_URL`) environment variable in Vercel is set to your
-                        **SOCKS** proxy URL.
+                        Ensure the `FIXIE_SOCKS_HOST` environment variable in Vercel is set correctly.
                       </li>
                       <li className="text-sm">
                         Verify both Fixie outbound IPs (`3.224.144.155`, `3.223.196.67`) are added to your Azure SQL
