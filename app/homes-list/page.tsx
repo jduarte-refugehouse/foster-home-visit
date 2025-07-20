@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RefreshCw, CheckCircle, XCircle, ArrowLeft, Shield } from "lucide-react"
+import { RefreshCw, CheckCircle, XCircle, ArrowLeft, Shield, MapPin } from "lucide-react"
 import Link from "next/link"
 
 interface Home {
@@ -17,6 +17,14 @@ interface Home {
   Zip: string
   HomePhone: string
   CaseManager: string
+  Unit: string
+  Latitude?: number
+  Longitude?: number
+  Xref?: string
+  CaseManagerEmail?: string
+  CaseManagerPhone?: string
+  CaregiverEmail?: string
+  LastSync?: string
 }
 
 interface HomesData {
@@ -36,6 +44,7 @@ export default function HomesListPage() {
     try {
       const response = await fetch("/api/homes-list")
       const result = await response.json()
+      console.log("Homes list API response:", result)
       setData(result)
     } catch (error) {
       setData({
@@ -51,6 +60,15 @@ export default function HomesListPage() {
   useEffect(() => {
     fetchHomes()
   }, [])
+
+  const formatCoordinate = (coord: number | undefined | null): string => {
+    if (coord === null || coord === undefined) return "N/A"
+    return coord.toFixed(6)
+  }
+
+  const hasValidCoordinates = (home: Home): boolean => {
+    return home.Latitude != null && home.Longitude != null && home.Latitude !== 0 && home.Longitude !== 0
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -81,7 +99,7 @@ export default function HomesListPage() {
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900">Active Homes List</h1>
-            <p className="text-gray-600">Displaying data directly from the SyncActiveHomes table.</p>
+            <p className="text-gray-600">Displaying data with coordinates from the SyncActiveHomes table.</p>
           </div>
 
           {loading && (
@@ -108,9 +126,16 @@ export default function HomesListPage() {
                       )}
                       Query Status
                     </CardTitle>
-                    <Badge variant={data.success ? "default" : "destructive"}>
-                      {data.success ? `${data.count || 0} records found` : "Failed"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={data.success ? "default" : "destructive"}>
+                        {data.success ? `${data.count || 0} records found` : "Failed"}
+                      </Badge>
+                      {data.success && data.homes && (
+                        <Badge variant="outline">
+                          {data.homes.filter(hasValidCoordinates).length} with coordinates
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 {data.error && (
@@ -129,19 +154,58 @@ export default function HomesListPage() {
               {data.success && data.homes && data.homes.length > 0 && (
                 <div className="space-y-4">
                   {data.homes.map((home) => (
-                    <Card key={home.Guid}>
+                    <Card
+                      key={home.Guid}
+                      className={hasValidCoordinates(home) ? "border-green-200" : "border-gray-200"}
+                    >
                       <CardHeader>
-                        <CardTitle>{home.HomeName}</CardTitle>
-                        <CardDescription>Case Manager: {home.CaseManager || "N/A"}</CardDescription>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              {home.HomeName}
+                              {hasValidCoordinates(home) && (
+                                <Badge variant="outline" className="text-green-700 border-green-300">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  Has Coordinates
+                                </Badge>
+                              )}
+                            </CardTitle>
+                            <CardDescription>
+                              Case Manager: {home.CaseManager || "N/A"} | Unit: {home.Unit || "N/A"}
+                            </CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-sm">
-                          <p>
-                            {home.Street}, {home.City}, {home.State} {home.Zip}
-                          </p>
-                          <p>
-                            <strong>Phone:</strong> {home.HomePhone || "N/A"}
-                          </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <div className="text-sm">
+                              <strong>Address:</strong>
+                              <br />
+                              {home.Street}
+                              <br />
+                              {home.City}, {home.State} {home.Zip}
+                            </div>
+                            <div className="text-sm">
+                              <strong>Phone:</strong> {home.HomePhone || "N/A"}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-sm">
+                              <strong>Coordinates:</strong>
+                              <br />
+                              <span className="font-mono text-xs">
+                                Lat: {formatCoordinate(home.Latitude)}
+                                <br />
+                                Lng: {formatCoordinate(home.Longitude)}
+                              </span>
+                            </div>
+                            {hasValidCoordinates(home) && (
+                              <Badge variant="outline" className="text-green-700">
+                                ✓ Map Ready
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

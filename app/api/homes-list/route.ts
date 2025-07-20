@@ -17,15 +17,24 @@ export async function GET() {
       )
     }
 
-    // Using the exact same table name as the map query
+    // Including Latitude and Longitude to test coordinate retrieval
     const homes = await query(
       `SELECT TOP 20 
         [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
         [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
-        [CaseManagerPhone], [CaregiverEmail], [LastSync] 
+        [CaseManagerPhone], [CaregiverEmail], [LastSync], [Latitude], [Longitude]
        FROM SyncActiveHomes 
        ORDER BY HomeName;`,
     )
+
+    console.log(`📍 Homes list query returned ${homes.length} records`)
+    if (homes.length > 0) {
+      console.log("Sample coordinates:", {
+        HomeName: homes[0].HomeName,
+        Latitude: homes[0].Latitude,
+        Longitude: homes[0].Longitude,
+      })
+    }
 
     return NextResponse.json({
       success: true,
