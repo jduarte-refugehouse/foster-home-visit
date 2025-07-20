@@ -1,32 +1,24 @@
 import { NextResponse } from "next/server"
 import { query, healthCheck } from "@/lib/db"
 
-// Force Node.js runtime (not Edge)
 export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    console.log("=== Fetching homes data ===")
-
-    // Quick health check first
     const isHealthy = await healthCheck()
     if (!isHealthy) {
       return NextResponse.json(
         {
           success: false,
           error: "Database connection unhealthy",
-          message: "Unable to establish database connection",
         },
         { status: 503 },
       )
     }
 
-    console.log("Health check passed, querying SyncActiveHomes...")
-
-    // Query the SyncActiveHomes table
-    const homes = await query("SELECT TOP 20 * FROM dbo.SyncActiveHomes ORDER BY HomeName")
-
-    console.log(`Successfully retrieved ${homes.length} homes`)
+    const homes = await query(
+      "SELECT Guid, HomeName, Latitude, Longitude FROM dbo.SyncActiveHomes WHERE Latitude IS NOT NULL AND Longitude IS NOT NULL",
+    )
 
     return NextResponse.json({
       success: true,
@@ -35,13 +27,12 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("=== Homes query failed ===", error)
+    console.error("=== Homes for map query failed ===", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch homes",
+        error: "Failed to fetch homes for map",
         message: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
