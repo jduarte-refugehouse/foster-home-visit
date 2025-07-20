@@ -21,11 +21,13 @@ export async function GET() {
 
     console.log("✅ Database health check passed")
 
-    // Using the exact query structure that works in SSMS
+    // Cast decimal coordinates to float and filter for valid coordinates
     const homes = await query(
       `SELECT [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
           [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
-          [CaseManagerPhone], [CaregiverEmail], [LastSync], [Latitude], [Longitude]
+          [CaseManagerPhone], [CaregiverEmail], [LastSync], 
+          CAST([Latitude] AS FLOAT) AS Latitude,
+          CAST([Longitude] AS FLOAT) AS Longitude
    FROM SyncActiveHomes 
    WHERE [Latitude] IS NOT NULL 
      AND [Longitude] IS NOT NULL
@@ -35,31 +37,37 @@ export async function GET() {
     )
 
     console.log(`📍 Raw query result: ${homes.length} records`)
-    console.log("First few records:", homes.slice(0, 2))
 
-    // Check for coordinate issues
-    const invalidCoords = homes.filter((h) => !h.Latitude || !h.Longitude || h.Latitude === 0 || h.Longitude === 0)
-    if (invalidCoords.length > 0) {
-      console.log(`⚠️ Found ${invalidCoords.length} homes with invalid coordinates`)
-    }
-
-    console.log(`📍 Found ${homes.length} homes with valid coordinates`)
-
-    // Log a sample of the data for debugging
     if (homes.length > 0) {
-      console.log("Sample home data:", {
+      console.log("First record coordinates:", {
         HomeName: homes[0].HomeName,
-        Unit: homes[0].Unit,
         Latitude: homes[0].Latitude,
+        LatitudeType: typeof homes[0].Latitude,
         Longitude: homes[0].Longitude,
+        LongitudeType: typeof homes[0].Longitude,
+        Unit: homes[0].Unit,
         City: homes[0].City,
       })
     }
 
+    // Additional validation to ensure coordinates are numbers
+    const validHomes = homes.filter(
+      (home) =>
+        typeof home.Latitude === "number" &&
+        typeof home.Longitude === "number" &&
+        !isNaN(home.Latitude) &&
+        !isNaN(home.Longitude) &&
+        home.Latitude !== 0 &&
+        home.Longitude !== 0,
+    )
+
+    console.log(`📍 Found ${validHomes.length} homes with valid numeric coordinates`)
+
     return NextResponse.json({
       success: true,
-      homes,
-      count: homes.length,
+      homes: validHomes,
+      count: validHomes.length,
+      totalQueried: homes.length,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

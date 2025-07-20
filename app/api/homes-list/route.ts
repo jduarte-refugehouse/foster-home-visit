@@ -17,22 +17,26 @@ export async function GET() {
       )
     }
 
-    // Including Latitude and Longitude to test coordinate retrieval
+    // Cast decimal coordinates to float to ensure proper JavaScript conversion
     const homes = await query(
       `SELECT TOP 20 
         [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
         [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
-        [CaseManagerPhone], [CaregiverEmail], [LastSync], [Latitude], [Longitude]
+        [CaseManagerPhone], [CaregiverEmail], [LastSync], 
+        CAST([Latitude] AS FLOAT) AS Latitude,
+        CAST([Longitude] AS FLOAT) AS Longitude
        FROM SyncActiveHomes 
        ORDER BY HomeName;`,
     )
 
     console.log(`📍 Homes list query returned ${homes.length} records`)
     if (homes.length > 0) {
-      console.log("Sample coordinates:", {
+      console.log("Sample coordinates after CAST:", {
         HomeName: homes[0].HomeName,
         Latitude: homes[0].Latitude,
+        LatitudeType: typeof homes[0].Latitude,
         Longitude: homes[0].Longitude,
+        LongitudeType: typeof homes[0].Longitude,
       })
     }
 
