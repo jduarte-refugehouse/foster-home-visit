@@ -23,6 +23,8 @@ export async function GET() {
         [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
         [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
         [CaseManagerPhone], [CaregiverEmail], [LastSync], 
+        CAST([Latitude] AS VARCHAR(20)) AS LatString,
+        CAST([Longitude] AS VARCHAR(20)) AS LonString,
         CAST([Latitude] AS FLOAT) AS Latitude,
         CAST([Longitude] AS FLOAT) AS Longitude
        FROM SyncActiveHomes 
@@ -33,6 +35,8 @@ export async function GET() {
     if (homes.length > 0) {
       console.log("Sample coordinates after CAST:", {
         HomeName: homes[0].HomeName,
+        LatString: homes[0].LatString,
+        LonString: homes[0].LonString,
         Latitude: homes[0].Latitude,
         LatitudeType: typeof homes[0].Latitude,
         Longitude: homes[0].Longitude,
@@ -40,10 +44,17 @@ export async function GET() {
       })
     }
 
+    // Process the homes to ensure coordinates are numbers
+    const processedHomes = homes.map((home) => ({
+      ...home,
+      Latitude: typeof home.Latitude === "number" ? home.Latitude : Number.parseFloat(home.LatString || "0"),
+      Longitude: typeof home.Longitude === "number" ? home.Longitude : Number.parseFloat(home.LonString || "0"),
+    }))
+
     return NextResponse.json({
       success: true,
-      homes,
-      count: homes.length,
+      homes: processedHomes,
+      count: processedHomes.length,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
