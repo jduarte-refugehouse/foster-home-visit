@@ -88,7 +88,7 @@ export default function HomePage() {
               <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/homes-map">
+              <Link href="/homes-list">
                 <Button variant="ghost">
                   <Home className="w-4 h-4 mr-2" />
                   View Homes
