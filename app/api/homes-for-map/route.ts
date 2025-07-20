@@ -21,18 +21,27 @@ export async function GET() {
 
     console.log("✅ Database health check passed")
 
-    // Using the exact column structure you provided
+    // Using the exact query structure that works in SSMS
     const homes = await query(
       `SELECT [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
-              [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
-              [CaseManagerPhone], [CaregiverEmail], [LastSync], [Latitude], [Longitude]
-       FROM SyncActiveHomes 
-       WHERE [Latitude] IS NOT NULL 
-         AND [Longitude] IS NOT NULL
-         AND [Latitude] != 0 
-         AND [Longitude] != 0
-       ORDER BY [Unit], [HomeName]`,
+          [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
+          [CaseManagerPhone], [CaregiverEmail], [LastSync], [Latitude], [Longitude]
+   FROM SyncActiveHomes 
+   WHERE [Latitude] IS NOT NULL 
+     AND [Longitude] IS NOT NULL
+     AND [Latitude] != 0 
+     AND [Longitude] != 0
+   ORDER BY [Unit], [HomeName]`,
     )
+
+    console.log(`📍 Raw query result: ${homes.length} records`)
+    console.log("First few records:", homes.slice(0, 2))
+
+    // Check for coordinate issues
+    const invalidCoords = homes.filter((h) => !h.Latitude || !h.Longitude || h.Latitude === 0 || h.Longitude === 0)
+    if (invalidCoords.length > 0) {
+      console.log(`⚠️ Found ${invalidCoords.length} homes with invalid coordinates`)
+    }
 
     console.log(`📍 Found ${homes.length} homes with valid coordinates`)
 

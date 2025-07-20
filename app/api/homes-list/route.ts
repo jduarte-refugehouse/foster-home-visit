@@ -17,13 +17,13 @@ export async function GET() {
       )
     }
 
-    // Using the exact column list provided by the user
+    // Using the exact same table name as the map query
     const homes = await query(
       `SELECT TOP 20 
         [HomeName], [Street], [City], [State], [Zip], [HomePhone], 
         [Xref], [CaseManager], [Unit], [Guid], [CaseManagerEmail], 
         [CaseManagerPhone], [CaregiverEmail], [LastSync] 
-       FROM dbo.SyncActiveHomes 
+       FROM SyncActiveHomes 
        ORDER BY HomeName;`,
     )
 
