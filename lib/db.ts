@@ -1,5 +1,26 @@
+// IMPORTANT: This line MUST be at the top to patch Node.js internals
+import "global-socks/cjs/register"
+
 import sql from "mssql"
-import { SocksProxyAgent } from "socks-proxy-agent"
+
+// Set the SOCKS_PROXY environment variable for global-socks to use.
+// This allows the user to keep their FIXIE_SOCKS_HOST or FIXIE_URL variable.
+const fixieEnvVar = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
+
+if (fixieEnvVar) {
+  if (!process.env.SOCKS_PROXY) {
+    let proxyUrl = fixieEnvVar
+    // The global-socks library expects SOCKS_PROXY format: socks://[user:password@]host:port
+    // The fixie URL is `fixie:user@host:port`. We need to convert it.
+    if (proxyUrl.startsWith("fixie:")) {
+      proxyUrl = "socks://" + proxyUrl.substring(6)
+    }
+    process.env.SOCKS_PROXY = proxyUrl
+    console.log("✅ global-socks proxy configured using Fixie environment variable.")
+  }
+} else {
+  console.warn("⚠️ No Fixie proxy URL (FIXIE_SOCKS_HOST or FIXIE_URL) is set. Direct connection will be attempted.")
+}
 
 let pool: sql.ConnectionPool | null = null
 
@@ -16,26 +37,13 @@ function getConfig(): sql.config {
     },
     options: {
       encrypt: true,
-      trustServerCertificate: false, // More secure, as we connect by hostname
+      trustServerCertificate: false,
       connectTimeout: 60000,
       requestTimeout: 60000,
     },
   }
-
-  const fixieUrl = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
-  if (fixieUrl) {
-    console.log("✅ Fixie proxy URL detected. Configuring SOCKS proxy agent.")
-    try {
-      // The agent will correctly parse the `fixie:PASSWORD@...` URL format
-      const agent = new SocksProxyAgent(fixieUrl)
-      config.options.agent = agent
-    } catch (error) {
-      console.error("❌ Failed to create SOCKS proxy agent:", error)
-    }
-  } else {
-    console.warn("⚠️ No Fixie proxy URL (FIXIE_SOCKS_HOST or FIXIE_URL) is set. Direct connection will be attempted.")
-  }
-
+  // No more agent configuration needed here.
+  // global-socks patches the underlying 'net' module.
   return config
 }
 
@@ -51,7 +59,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 
   try {
     const config = getConfig()
-    console.log(`🔌 Attempting new connection to ${config.server} via SOCKS proxy...`)
+    console.log(`🔌 Attempting new connection to ${config.server} via global SOCKS proxy...`)
 
     pool = new sql.ConnectionPool(config)
 
