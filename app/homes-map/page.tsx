@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Home, RefreshCw, XCircle, ArrowLeft, Shield, Filter } from "lucide-react"
 import Link from "next/link"
+import HomesMap from "@/components/homes-map"
 
 interface HomeLocation {
   Guid: string
@@ -29,19 +29,11 @@ interface HomesData {
   error?: string
 }
 
-const Map = dynamic(() => import("@/components/homes-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[600px] w-full bg-gray-200 animate-pulse flex items-center justify-center rounded-md">
-      <p className="text-gray-500">Loading map...</p>
-    </div>
-  ),
-})
-
 export default function HomesMapPage() {
   const [data, setData] = useState<HomesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedUnit, setSelectedUnit] = useState<string>("ALL")
+  const [mapKey, setMapKey] = useState(0) // Force re-render when unit changes
 
   const fetchHomes = async () => {
     setLoading(true)
@@ -72,6 +64,12 @@ export default function HomesMapPage() {
 
   // Get unique units for the filter buttons
   const availableUnits = data?.homes ? [...new Set(data.homes.map((home) => home.Unit))].filter(Boolean) : []
+
+  // Handle unit change
+  const handleUnitChange = (unit: string) => {
+    setSelectedUnit(unit)
+    setMapKey((prev) => prev + 1) // Force map re-render
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,7 +122,7 @@ export default function HomesMapPage() {
                     <Button
                       variant={selectedUnit === "ALL" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setSelectedUnit("ALL")}
+                      onClick={() => handleUnitChange("ALL")}
                     >
                       All Units
                     </Button>
@@ -133,7 +131,7 @@ export default function HomesMapPage() {
                         key={unit}
                         variant={selectedUnit === unit ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setSelectedUnit(unit)}
+                        onClick={() => handleUnitChange(unit)}
                       >
                         {unit}
                         <Badge variant="secondary" className="ml-1">
@@ -160,7 +158,7 @@ export default function HomesMapPage() {
                 </AlertDescription>
               </Alert>
             )}
-            {data && data.success && filteredHomes.length > 0 && <Map homes={filteredHomes} />}
+            {data && data.success && filteredHomes.length > 0 && <HomesMap key={mapKey} homes={filteredHomes} />}
             {data && data.success && filteredHomes.length === 0 && selectedUnit !== "ALL" && (
               <div className="h-[600px] w-full bg-gray-100 rounded-md flex items-center justify-center">
                 <div className="text-center">
