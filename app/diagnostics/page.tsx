@@ -8,13 +8,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Database, RefreshCw, CheckCircle, XCircle, ArrowLeft, Lightbulb, Settings } from "lucide-react"
 import Link from "next/link"
 
+interface DbTestResult {
+  success: boolean
+  message: string
+  data?: {
+    login_name: string
+    db_name: string
+    client_ip: string
+  }[]
+}
+
 interface DiagnosticResult {
   success: boolean
   timestamp: string
-  dbConnectionTest: {
-    success: boolean
-    message: string
-  }
+  usingProxy: boolean
+  fixieUrlMasked: string
+  dbConnectionTest: DbTestResult
   analysis: string
   error?: string
 }
@@ -26,19 +35,22 @@ export default function Diagnostics() {
   const runDiagnostics = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/connection-debug")
+      const response = await fetch("/api/diagnostics")
       const data = await response.json()
       setResult(data)
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error"
       setResult({
         success: false,
         timestamp: new Date().toISOString(),
+        usingProxy: false,
+        fixieUrlMasked: "N/A",
         dbConnectionTest: {
           success: false,
-          message: "The diagnostics API failed to respond. This indicates a server-side error.",
+          message: `The diagnostics API failed to respond: ${errorMessage}`,
         },
         analysis: "The diagnostics API failed to respond. This indicates a server-side error.",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       })
     } finally {
       setLoading(false)
@@ -80,6 +92,10 @@ export default function Diagnostics() {
       </Card>
     )
   }
+
+  const clientIP = result?.dbConnectionTest.data?.[0]?.client_ip
+  const fixieStaticIPs = ["3.224.144.155", "3.223.196.67"]
+  const isFixieIP = clientIP && fixieStaticIPs.includes(clientIP)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -130,13 +146,35 @@ export default function Diagnostics() {
             <div className="space-y-6">
               {getStatusCard()}
 
+              {/* Proxy Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Settings className="w-5 h-5 mr-2" />
+                    Proxy Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm">
+                    <strong>Using Proxy:</strong>{" "}
+                    <Badge variant={result.usingProxy ? "default" : "secondary"}>
+                      {result.usingProxy ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm mt-2">
+                    <strong>Fixie URL (Masked):</strong>{" "}
+                    <code className="bg-gray-100 p-1 rounded">{result.fixieUrlMasked}</code>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Database Connection Test */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center">
                       <Database className="w-5 h-5 mr-2" />
-                      Database Connection Test
+                      Database Connection Details
                     </CardTitle>
                     <Badge variant={result.dbConnectionTest.success ? "default" : "destructive"}>
                       {result.dbConnectionTest.success ? "Connected" : "Failed"}
@@ -152,6 +190,25 @@ export default function Diagnostics() {
                     )}
                     <AlertDescription>{result.dbConnectionTest.message}</AlertDescription>
                   </Alert>
+                  {clientIP && (
+                    <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+                      <h4 className="font-semibold text-gray-800">Client IP Address Seen by SQL Server:</h4>
+                      <div className="flex items-center mt-2">
+                        <p className="text-lg font-mono mr-4">{clientIP}</p>
+                        {isFixieIP ? (
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Matches Fixie IP
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Does NOT Match Fixie IP
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -165,15 +222,20 @@ export default function Diagnostics() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-2 list-disc list-inside">
-                      <li className="text-sm">
-                        Ensure the `FIXIE_SOCKS_HOST` environment variable in Vercel is set correctly.
+                    <ul className="space-y-2 list-disc list-inside text-sm">
+                      <li>
+                        Ensure the `FIXIE_SOCKS_HOST` environment variable in Vercel is set correctly with your
+                        username, password, host, and port.
                       </li>
-                      <li className="text-sm">
+                      <li>
                         Verify both Fixie outbound IPs (`3.224.144.155`, `3.223.196.67`) are added to your Azure SQL
                         firewall rules.
                       </li>
-                      <li className="text-sm">Check your Fixie dashboard for any service alerts or issues.</li>
+                      <li>Check your Fixie dashboard for any service alerts or issues.</li>
+                      <li>
+                        If the connection works but the IP is wrong, it means the proxy is not being used. Double-check
+                        the `FIXIE_SOCKS_HOST` variable name and value.
+                      </li>
                     </ul>
                   </CardContent>
                 </Card>

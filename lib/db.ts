@@ -1,37 +1,96 @@
-// IMPORTANT: This line MUST be at the top to patch Node.js internals
-import "global-socks/cjs/register"
-
 import sql from "mssql"
-
-// Set the SOCKS_PROXY environment variable for global-socks to use.
-// This allows the user to keep their FIXIE_SOCKS_HOST or FIXIE_URL variable.
-const fixieEnvVar = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
-
-if (fixieEnvVar) {
-  // This check ensures we only set the proxy once.
-  if (!process.env.SOCKS_PROXY) {
-    let proxyUrl = fixieEnvVar
-    // The global-socks library expects SOCKS_PROXY format: socks://[user:password@]host:port
-    // The fixie URL is `fixie:USER:PASSWORD@HOST:PORT`. We must convert it.
-    if (proxyUrl.startsWith("fixie:")) {
-      proxyUrl = "socks://" + proxyUrl.substring(6)
-    }
-    process.env.SOCKS_PROXY = proxyUrl
-    console.log("✅ global-socks proxy configured using Fixie environment variable.")
-    console.log("Formatted SOCKS_PROXY URL (masked):", proxyUrl.replace(/:.*@/, ":********@"))
-  }
-} else {
-  console.warn("⚠️ No Fixie proxy URL (FIXIE_SOCKS_HOST or FIXIE_URL) is set. Direct connection will be attempted.")
-}
+import type net from "net"
+import tls from "tls"
+import { SocksClient } from "socks"
 
 let pool: sql.ConnectionPool | null = null
 
-function getConfig(): sql.config {
+// Custom connector function for Fixie SOCKS proxy
+function createFixieConnector(config: sql.config) {
+  return new Promise<net.Socket>((resolve, reject) => {
+    if (!process.env.FIXIE_SOCKS_HOST) {
+      return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
+    }
+
+    const fixieUrl = process.env.FIXIE_SOCKS_HOST
+    const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
+
+    if (!match) {
+      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
+    }
+
+    const [, userId, password, host, port] = match
+
+    console.log(`Attempting SOCKS connection via ${host}:${port}`)
+
+    SocksClient.createConnection(
+      {
+        proxy: {
+          host: host,
+          port: Number.parseInt(port, 10),
+          type: 5, // SOCKS5
+          userId: userId,
+          password: password,
+        },
+        destination: {
+          host: config.server,
+          port: config.port || 1433,
+        },
+        command: "connect",
+      },
+      (err, info) => {
+        if (err) {
+          console.error("SOCKS connection error:", err)
+          return reject(err)
+        }
+
+        console.log("SOCKS connection established. Initiating TLS handshake...")
+        if (!info) {
+          return reject(new Error("SOCKS connection info is undefined."))
+        }
+
+        const tlsSocket = tls.connect(
+          {
+            socket: info.socket,
+            servername: config.server,
+            rejectUnauthorized: true, // Enforce certificate validation
+          },
+          () => {
+            if (tlsSocket.authorized) {
+              console.log("TLS handshake successful. Socket is authorized.")
+              resolve(tlsSocket)
+            } else {
+              const tlsError = tlsSocket.authorizationError || new Error("TLS authorization failed")
+              console.error("TLS authorization failed:", tlsError)
+              reject(tlsError)
+            }
+          },
+        )
+
+        tlsSocket.on("error", (error) => {
+          console.error("TLS socket error:", error)
+          reject(error)
+        })
+      },
+    )
+  })
+}
+
+export async function getConnection(): Promise<sql.ConnectionPool> {
+  if (pool && pool.connected) {
+    return pool
+  }
+
+  if (pool) {
+    await pool.close().catch((err) => console.error("Error closing stale pool:", err))
+  }
+
   const config: sql.config = {
-    server: "refugehouse-bifrost-server.database.windows.net",
-    database: "RadiusBifrost",
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
+    database: "RadiusBifrost",
+    server: "refugehouse-bifrost-server.database.windows.net",
+    port: 1433,
     pool: {
       max: 10,
       min: 0,
@@ -44,25 +103,16 @@ function getConfig(): sql.config {
       requestTimeout: 60000,
     },
   }
-  // No more agent configuration needed here.
-  // global-socks patches the underlying 'net' module.
-  return config
-}
 
-export async function getConnection(): Promise<sql.ConnectionPool> {
-  if (pool && pool.connected) {
-    return pool
-  }
-
-  if (pool) {
-    await pool.close().catch((err) => console.error("Error closing stale pool:", err))
-    pool = null
+  if (process.env.FIXIE_SOCKS_HOST) {
+    console.log("Using Fixie SOCKS proxy for connection.")
+    config.options.connector = () => createFixieConnector(config)
+  } else {
+    console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
   }
 
   try {
-    const config = getConfig()
-    console.log(`🔌 Attempting new connection to ${config.server} via global SOCKS proxy...`)
-
+    console.log(`🔌 Attempting new connection to ${config.server}...`)
     pool = new sql.ConnectionPool(config)
 
     pool.on("error", (err) => {
@@ -108,10 +158,15 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
 
 export async function testConnection(): Promise<{ success: boolean; message: string; data?: any[] }> {
   try {
-    const result = await query("SELECT 1 as test, GETDATE() as current_time")
+    const result = await query(`
+      SELECT 
+        SUSER_SNAME() as login_name, 
+        DB_NAME() as db_name,
+        CONNECTIONPROPERTY('client_net_address') as client_ip
+    `)
     return {
       success: true,
-      message: "Database connection successful via SOCKS proxy.",
+      message: "Database connection successful.",
       data: result,
     }
   } catch (error) {

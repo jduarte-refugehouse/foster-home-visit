@@ -1,63 +1,41 @@
 import { NextResponse } from "next/server"
+import { testConnection } from "@/lib/db"
 
-// Force Node.js runtime (not Edge)
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET() {
-  try {
-    console.log("=== 🔍 Running connection diagnostics ===")
+  console.log("=== 🔍 Running connection diagnostics via custom connector ===")
 
-    // Get our current IP address
-    let currentIP = "Unknown"
-    try {
-      const ipResponse = await fetch("https://api.ipify.org?format=json")
-      const ipData = await ipResponse.json()
-      currentIP = ipData.ip
-      console.log("Current Vercel function IP:", currentIP)
-    } catch (error) {
-      console.error("Failed to get current IP:", error)
-    }
+  const fixieUrl = process.env.FIXIE_SOCKS_HOST || process.env.FIXIE_URL
+  const fixieStaticIPs = ["3.224.144.155", "3.223.196.67"] // Your known Fixie IPs
 
-    // Get Vercel deployment info
-    const deploymentInfo = {
-      region: process.env.VERCEL_REGION || "Unknown",
-      url: process.env.VERCEL_URL || "Unknown",
-      environment: process.env.VERCEL_ENV || "Unknown",
-      runtime: "nodejs",
-    }
+  const dbConnectionTest = await testConnection()
 
-    // Check environment variables
-    const envCheck = {
-      hasAzureTenantId: !!process.env.AZURE_TENANT_ID,
-      hasAzureClientId: !!process.env.AZURE_CLIENT_ID,
-      hasAzureClientSecret: !!process.env.AZURE_CLIENT_SECRET,
-      hasKeyVaultName: !!process.env.AZURE_KEY_VAULT_NAME,
-      hasFixieUrl: !!process.env.FIXIE_URL,
-      hasQuotaguardUrl: !!process.env.QUOTAGUARD_URL,
-      hasProxyUrl: !!process.env.PROXY_URL,
-    }
-
-    console.log("Deployment info:", deploymentInfo)
-    console.log("Environment variables check:", envCheck)
-
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      currentIP,
-      deploymentInfo,
-      envCheck,
-      message: "Diagnostics completed successfully",
-    })
-  } catch (error) {
-    console.error("Diagnostics failed:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-        runtime: "nodejs",
-      },
-      { status: 500 },
-    )
+  let analysis = ""
+  let clientIP = ""
+  if (dbConnectionTest.data && dbConnectionTest.data.length > 0) {
+    clientIP = dbConnectionTest.data[0].client_ip
   }
+
+  if (dbConnectionTest.success && clientIP) {
+    if (fixieStaticIPs.includes(clientIP)) {
+      analysis = "✅ Success! The database connection is correctly routed through the Fixie SOCKS proxy."
+    } else {
+      analysis = `⚠️ Connection successful, but from an unexpected IP (${clientIP}). The connection is NOT using the Fixie proxy.`
+      dbConnectionTest.success = false // Mark as failure for UI purposes
+    }
+  } else {
+    analysis =
+      "❌ Connection Failed. This could be due to incorrect proxy credentials in FIXIE_SOCKS_HOST, or the Fixie static IPs not being whitelisted in your Azure SQL firewall."
+  }
+
+  return NextResponse.json({
+    success: dbConnectionTest.success,
+    timestamp: new Date().toISOString(),
+    usingProxy: !!fixieUrl,
+    fixieUrlMasked: fixieUrl ? fixieUrl.replace(/:.*@/, ":********@") : "Not set",
+    dbConnectionTest,
+    analysis,
+  })
 }
