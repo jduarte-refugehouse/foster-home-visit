@@ -5,37 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Database,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Info,
-  Globe,
-  Key,
-  AlertTriangle,
-  Lightbulb,
-  Settings,
-} from "lucide-react"
+import { Database, RefreshCw, CheckCircle, XCircle, ArrowLeft, Globe, Lightbulb, Settings } from "lucide-react"
 import Link from "next/link"
 
 interface DiagnosticResult {
   success: boolean
   timestamp: string
-  currentIP: string
-  vercelRegion?: string
-  keyVaultTest: {
-    success: boolean
-    error?: string
-  }
+  outboundIP: string
+  isUsingFixieIP: boolean
   dbConnectionTest: {
     success: boolean
-    error?: string
-    details?: string
+    message: string
   }
-  errorAnalysis?: string
-  recommendations?: string[]
+  analysis: string
   error?: string
 }
 
@@ -46,19 +28,17 @@ export default function Diagnostics() {
   const runDiagnostics = async () => {
     setLoading(true)
     try {
-      console.log("Running connection diagnostics...")
       const response = await fetch("/api/connection-debug")
       const data = await response.json()
-      console.log("Diagnostic result:", data)
       setResult(data)
     } catch (error) {
-      console.error("Diagnostic error:", error)
       setResult({
         success: false,
         timestamp: new Date().toISOString(),
-        currentIP: "Unknown",
-        keyVaultTest: { success: false, error: "Failed to run diagnostics" },
-        dbConnectionTest: { success: false, error: "Failed to run diagnostics" },
+        outboundIP: "Unknown",
+        isUsingFixieIP: false,
+        dbConnectionTest: { success: false, message: "Failed to run diagnostics" },
+        analysis: "The diagnostics API failed to respond. This indicates a server-side error.",
         error: error instanceof Error ? error.message : "Unknown error",
       })
     } finally {
@@ -69,6 +49,38 @@ export default function Diagnostics() {
   useEffect(() => {
     runDiagnostics()
   }, [])
+
+  const getStatusCard = () => {
+    if (!result) return null
+    const isSuccess = result.success
+
+    return (
+      <Card className={isSuccess ? "border-green-200" : "border-red-200"}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              {isSuccess ? (
+                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-500 mr-2" />
+              )}
+              Overall Status
+            </CardTitle>
+            <Badge variant={isSuccess ? "default" : "destructive"}>{isSuccess ? "Success" : "Issues Detected"}</Badge>
+          </div>
+          <CardDescription>Diagnostic completed at {new Date(result.timestamp).toLocaleString()}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant={isSuccess ? "default" : "destructive"}>
+            {isSuccess ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            <AlertDescription>
+              <strong>Analysis:</strong> {result.analysis}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -84,22 +96,14 @@ export default function Diagnostics() {
                 </Button>
               </Link>
               <div className="flex items-center space-x-2">
-                <Database className="w-6 h-6 text-blue-600" />
+                <Settings className="w-6 h-6 text-blue-600" />
                 <span className="text-lg font-semibold text-gray-900">Connection Diagnostics</span>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Link href="/ip-management">
-                <Button variant="outline">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Fix IP Issue
-                </Button>
-              </Link>
-              <Button onClick={runDiagnostics} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                {loading ? "Running..." : "Run Diagnostics"}
-              </Button>
-            </div>
+            <Button onClick={runDiagnostics} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              {loading ? "Running..." : "Run Diagnostics"}
+            </Button>
           </div>
         </div>
       </nav>
@@ -109,7 +113,7 @@ export default function Diagnostics() {
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900">Connection Diagnostics</h1>
-            <p className="text-gray-600">Comprehensive analysis of Azure SQL connection issues</p>
+            <p className="text-gray-600">Analysis of the Fixie SOCKS proxy and Azure SQL connection</p>
           </div>
 
           {loading && (
@@ -117,8 +121,7 @@ export default function Diagnostics() {
               <CardContent className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Running comprehensive diagnostics...</p>
-                  <p className="text-sm text-gray-500 mt-2">Checking IP, Key Vault, and database connection...</p>
+                  <p className="text-gray-600">Running diagnostics...</p>
                 </div>
               </CardContent>
             </Card>
@@ -126,29 +129,9 @@ export default function Diagnostics() {
 
           {result && !loading && (
             <div className="space-y-6">
-              {/* Overall Status */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      {result.success ? (
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-500 mr-2" />
-                      )}
-                      Overall Status
-                    </CardTitle>
-                    <Badge variant={result.success ? "default" : "destructive"}>
-                      {result.success ? "All Systems Operational" : "Issues Detected"}
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    Diagnostic completed at {new Date(result.timestamp).toLocaleString()}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              {getStatusCard()}
 
-              {/* IP Information */}
+              {/* Network Information */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -159,58 +142,21 @@ export default function Diagnostics() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Current IP Address</p>
-                      <p className="text-lg font-mono bg-gray-100 p-2 rounded">{result.currentIP}</p>
+                      <p className="text-sm font-medium text-gray-700">Outbound IP Address</p>
+                      <p className="text-lg font-mono bg-gray-100 p-2 rounded">{result.outboundIP}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Vercel Region</p>
-                      <p className="text-lg">{result.vercelRegion || "Unknown"}</p>
+                      <p className="text-sm font-medium text-gray-700">Using Fixie Static IP?</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        {result.isUsingFixieIP ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        )}
+                        <span className="text-lg">{result.isUsingFixieIP ? "Yes" : "No"}</span>
+                      </div>
                     </div>
                   </div>
-                  <Alert className="mt-4">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Important:</strong> Vercel functions run on rotating IP addresses. Your Azure SQL firewall
-                      must allow this IP address: <code className="bg-gray-100 px-1 rounded">{result.currentIP}</code>
-                    </AlertDescription>
-                  </Alert>
-                  {!result.success && (
-                    <div className="mt-4">
-                      <Link href="/ip-management">
-                        <Button>
-                          <Settings className="w-4 h-4 mr-2" />
-                          Fix IP Address Issue
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Key Vault Test */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <Key className="w-5 h-5 mr-2" />
-                      Azure Key Vault Access
-                    </CardTitle>
-                    <Badge variant={result.keyVaultTest.success ? "default" : "destructive"}>
-                      {result.keyVaultTest.success ? "Success" : "Failed"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {result.keyVaultTest.success ? (
-                    <p className="text-green-600">✅ Successfully retrieved connection string from Key Vault</p>
-                  ) : (
-                    <Alert>
-                      <XCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Key Vault Error:</strong> {result.keyVaultTest.error}
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </CardContent>
               </Card>
 
@@ -228,61 +174,37 @@ export default function Diagnostics() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {result.dbConnectionTest.success ? (
-                    <div>
-                      <p className="text-green-600 mb-2">✅ Database connection successful</p>
-                      <p className="text-sm text-gray-600">{result.dbConnectionTest.details}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <Alert>
-                        <XCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Connection Error:</strong> {result.dbConnectionTest.error}
-                        </AlertDescription>
-                      </Alert>
-
-                      {result.errorAnalysis && (
-                        <Alert>
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertDescription>
-                            <strong>Analysis:</strong> {result.errorAnalysis}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                  )}
+                  <Alert variant={result.dbConnectionTest.success ? "default" : "destructive"}>
+                    {result.dbConnectionTest.success ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    <AlertDescription>{result.dbConnectionTest.message}</AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
 
               {/* Recommendations */}
-              {result.recommendations && result.recommendations.length > 0 && (
+              {!result.success && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Lightbulb className="w-5 h-5 mr-2" />
-                      Recommendations
+                      Troubleshooting Steps
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-2">
-                      {result.recommendations.map((rec, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-blue-500 mr-2">•</span>
-                          <span className="text-sm">{rec}</span>
-                        </li>
-                      ))}
+                    <ul className="space-y-2 list-disc list-inside">
+                      <li className="text-sm">
+                        Ensure the `FIXIE_URL` environment variable in Vercel is set to your **SOCKS** proxy URL.
+                      </li>
+                      <li className="text-sm">
+                        Verify both Fixie outbound IPs (`3.224.144.155`, `3.223.196.67`) are added to your Azure SQL
+                        firewall rules.
+                      </li>
+                      <li className="text-sm">Check your Fixie dashboard for any service alerts or issues.</li>
                     </ul>
-
-                    {!result.success && (
-                      <Alert className="mt-4">
-                        <Lightbulb className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Quick Fix:</strong> Use our IP Management tool to automatically add the current IP
-                          address to your Azure SQL firewall rules.
-                        </AlertDescription>
-                      </Alert>
-                    )}
                   </CardContent>
                 </Card>
               )}
