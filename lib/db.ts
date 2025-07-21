@@ -5,6 +5,11 @@ import { SocksClient } from "socks"
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
 
+// 🔒🔒🔒 THIS FILE IS LOCKED - DO NOT MODIFY WITHOUT USER PERMISSION 🔒🔒🔒
+// See lib/db-connection-lock.ts for details
+// Last modified: Working version restored after connection issues
+// Status: WORKING - DO NOT CHANGE
+
 let pool: sql.ConnectionPool | null = null
 
 // ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
