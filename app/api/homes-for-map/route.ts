@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { fetchHomesForMap, getUniqueCaseManagers } from "@/lib/db-extensions"
+import { fetchHomesForMap } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -12,26 +12,16 @@ export async function GET(request: NextRequest) {
     const unit = searchParams.get("unit") || undefined
     const caseManager = searchParams.get("caseManager") || undefined
 
-    console.log("🔍 [API] Filters applied:", { unit, caseManager })
+    console.log("🔍 [API] Filters:", { unit, caseManager })
 
-    const [homes, caseManagers] = await Promise.all([fetchHomesForMap({ unit, caseManager }), getUniqueCaseManagers()])
+    const homes = await fetchHomesForMap({ unit, caseManager })
 
-    console.log(`✅ [API] Successfully processed ${homes.length} homes for map`)
+    console.log(`✅ [API] Successfully fetched ${homes.length} homes for map`)
 
     return NextResponse.json({
       success: true,
       homes,
-      caseManagers,
-      summary: {
-        total: homes.length,
-        byUnit: homes.reduce(
-          (acc, home) => {
-            acc[home.Unit] = (acc[home.Unit] || 0) + 1
-            return acc
-          },
-          {} as Record<string, number>,
-        ),
-      },
+      count: homes.length,
     })
   } catch (error) {
     console.error("❌ [API] Error in homes-for-map:", error)

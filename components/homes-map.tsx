@@ -1,10 +1,17 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import L from "leaflet"
+import { useState, useEffect, useCallback } from "react"
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { RefreshCw, MapPin, Phone, Mail, User, X, Search } from "lucide-react"
 import "leaflet/dist/leaflet.css"
+import L from "leaflet"
 
-// Fix for default markers in Next.js
+// Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -12,7 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 })
 
-interface MapHome {
+interface Home {
   id: string
   name: string
   address: string
@@ -28,286 +35,323 @@ interface MapHome {
   contactPhone: string
 }
 
-interface HomesMapProps {
-  homes: MapHome[]
-  onHomeSelect?: (home: MapHome) => void
-  selectedHome?: MapHome | null
-}
+export default function HomesMap() {
+  const [homes, setHomes] = useState<Home[]>([])
+  const [filteredHomes, setFilteredHomes] = useState<Home[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedHome, setSelectedHome] = useState<Home | null>(null)
 
-export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
-  const mapRef = useRef<L.Map | null>(null)
-  const mapContainerRef = useRef<HTMLDivElement>(null)
-  const markersRef = useRef<Map<string, L.Marker>>(new Map())
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedUnit, setSelectedUnit] = useState<string>("ALL")
+  const [selectedCaseManager, setSelectedCaseManager] = useState<string>("ALL")
+  const [caseManagers, setCaseManagers] = useState<string[]>([])
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return
+  const fetchHomes = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    // Initialize map
-    if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current).setView([32.7767, -96.797], 7) // Texas center
+      const params = new URLSearchParams()
+      if (selectedUnit !== "ALL") params.append("unit", selectedUnit)
+      if (selectedCaseManager !== "ALL") params.append("caseManager", selectedCaseManager)
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(mapRef.current)
-    }
+      const response = await fetch(`/api/homes-for-map?${params}`)
+      const data = await response.json()
 
-    const map = mapRef.current
-
-    // Clear existing markers
-    markersRef.current.forEach((marker) => {
-      map.removeLayer(marker)
-    })
-    markersRef.current.clear()
-
-    if (homes.length === 0) return
-
-    // Create custom icon for selected home
-    const selectedIcon = L.divIcon({
-      html: `
-        <div style="
-          background: linear-gradient(45deg, #3b82f6, #1d4ed8);
-          color: white;
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 14px;
-          border: 3px solid white;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-          position: relative;
-        ">
-          📍
-        </div>
-      `,
-      className: "custom-selected-icon",
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-    })
-
-    // Create default icon
-    const defaultIcon = L.divIcon({
-      html: `
-        <div style="
-          background: linear-gradient(45deg, #6b7280, #4b5563);
-          color: white;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 12px;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        ">
-          📍
-        </div>
-      `,
-      className: "custom-default-icon",
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    })
-
-    // Add markers for each home
-    homes.forEach((home) => {
-      const isSelected = selectedHome?.id === home.id
-      const icon = isSelected ? selectedIcon : defaultIcon
-
-      // Create detailed popup content
-      const popupContent = `
-        <div style="min-width: 280px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
-          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: bold; color: #1f2937; line-height: 1.3;">
-            ${home.name}
-          </h3>
-          <div style="display: grid; gap: 8px;">
-            <div style="display: flex; align-items: flex-start; gap: 8px;">
-              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Address:</span>
-              <span style="color: #374151;">${home.address}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Location:</span>
-              <span style="color: #374151;">${home.City || "N/A"}, ${home.State || "N/A"} ${home.zipCode}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Unit:</span>
-              <span style="
-                background-color: ${home.Unit === "DAL" ? "#dbeafe" : "#fecaca"}; 
-                color: ${home.Unit === "DAL" ? "#1d4ed8" : "#dc2626"}; 
-                padding: 4px 12px; 
-                border-radius: 16px; 
-                font-size: 14px; 
-                font-weight: 600;
-              ">
-                ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-              </span>
-            </div>
-            ${
-              home.phoneNumber
-                ? `
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Phone:</span>
-                <span style="color: #374151;">${home.phoneNumber}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              home.contactPersonName && home.contactPersonName !== "~unassigned~"
-                ? `
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Contact:</span>
-                <span style="color: #374151;">${home.contactPersonName}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              home.contactPhone && home.contactPhone !== home.phoneNumber
-                ? `
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Contact Phone:</span>
-                <span style="color: #374151;">${home.contactPhone}</span>
-              </div>
-            `
-                : ""
-            }
-            ${
-              home.email
-                ? `
-              <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Email:</span>
-                <span style="color: #374151; word-break: break-word;">${home.email}</span>
-              </div>
-            `
-                : ""
-            }
-          </div>
-          <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
-            Coordinates: ${home.latitude.toFixed(6)}, ${home.longitude.toFixed(6)}
-          </div>
-        </div>
-      `
-
-      const marker = L.marker([home.latitude, home.longitude], { icon })
-        .bindPopup(popupContent, {
-          maxWidth: 350,
-          className: "custom-popup",
-        })
-        .on("click", () => {
-          console.log(`🎯 Home selected on map: ${home.name}`)
-          onHomeSelect?.(home)
-        })
-        .addTo(map)
-
-      markersRef.current.set(home.id, marker)
-    })
-
-    // Fit map to show all markers
-    if (homes.length > 0) {
-      const coordinates = homes.map((home) => [home.latitude, home.longitude] as [number, number])
-      const bounds = L.latLngBounds(coordinates)
-      map.fitBounds(bounds.pad(0.1))
-    }
-
-    return () => {
-      // Cleanup function - markers will be cleared in the next render
-    }
-  }, [homes, selectedHome, onHomeSelect])
-
-  // Update marker styles when selection changes
-  useEffect(() => {
-    if (!selectedHome) return
-
-    // Update all markers to show selection state
-    markersRef.current.forEach((marker, homeId) => {
-      const isSelected = homeId === selectedHome.id
-
-      // Create appropriate icon
-      const icon = isSelected
-        ? L.divIcon({
-            html: `
-              <div style="
-                background: linear-gradient(45deg, #3b82f6, #1d4ed8);
-                color: white;
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: 14px;
-                border: 3px solid white;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                position: relative;
-                animation: pulse 2s infinite;
-              ">
-                📍
-              </div>
-            `,
-            className: "custom-selected-icon",
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-          })
-        : L.divIcon({
-            html: `
-              <div style="
-                background: linear-gradient(45deg, #6b7280, #4b5563);
-                color: white;
-                width: 24px;
-                height: 24px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: 12px;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-              ">
-                📍
-              </div>
-            `,
-            className: "custom-default-icon",
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          })
-
-      marker.setIcon(icon)
-    })
-  }, [selectedHome])
-
-  useEffect(() => {
-    return () => {
-      // Cleanup map on unmount
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
+      if (data.success) {
+        setHomes(data.homes)
+      } else {
+        setError(data.error || "Failed to fetch homes")
       }
-      markersRef.current.clear()
+    } catch (err) {
+      setError("Network error occurred")
+      console.error("Error fetching homes:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedUnit, selectedCaseManager])
+
+  const fetchCaseManagers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/homes-list")
+      const data = await response.json()
+
+      if (data.success) {
+        const uniqueManagers = [...new Set(data.homes.map((h: Home) => h.contactPersonName))].filter(Boolean).sort()
+        setCaseManagers(uniqueManagers)
+      }
+    } catch (err) {
+      console.error("Error fetching case managers:", err)
     }
   }, [])
 
+  useEffect(() => {
+    fetchHomes()
+    fetchCaseManagers()
+  }, [fetchHomes, fetchCaseManagers])
+
+  useEffect(() => {
+    let filtered = homes
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (home) =>
+          home.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          home.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          home.contactPersonName.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    setFilteredHomes(filtered)
+  }, [homes, searchTerm])
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setSelectedUnit("ALL")
+    setSelectedCaseManager("ALL")
+  }
+
+  const activeFiltersCount = [
+    searchTerm,
+    selectedUnit !== "ALL" ? selectedUnit : null,
+    selectedCaseManager !== "ALL" ? selectedCaseManager : null,
+  ].filter(Boolean).length
+
+  const handleHomeClick = (home: Home) => {
+    setSelectedHome(home)
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[600px]">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>Loading homes...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error: {error}</p>
+              <Button onClick={fetchHomes} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="relative w-full h-full">
-      <div ref={mapContainerRef} className="w-full h-full rounded-lg" style={{ minHeight: "400px" }} />
-      <style jsx>{`
-        @keyframes pulse {
-          0% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-      `}</style>
+    <div className="container mx-auto p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Homes Map</h1>
+          <p className="text-gray-600">
+            Interactive map showing {filteredHomes.length} of {homes.length} homes
+          </p>
+        </div>
+        <Button onClick={fetchHomes} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              <span className="text-sm font-medium">Filters</span>
+              {activeFiltersCount > 0 && <Badge variant="secondary">{activeFiltersCount} active</Badge>}
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <Input placeholder="Search homes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+
+            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+              <SelectTrigger className="w-[140px]" style={{ zIndex: 1000 }}>
+                <SelectValue placeholder="All Units" />
+              </SelectTrigger>
+              <SelectContent style={{ zIndex: 1001 }}>
+                <SelectItem value="ALL">All Units</SelectItem>
+                <SelectItem value="DAL">Dallas</SelectItem>
+                <SelectItem value="SAN">San Antonio</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedCaseManager} onValueChange={setSelectedCaseManager}>
+              <SelectTrigger className="w-[180px]" style={{ zIndex: 1000 }}>
+                <SelectValue placeholder="All Case Managers" />
+              </SelectTrigger>
+              <SelectContent style={{ zIndex: 1001 }}>
+                <SelectItem value="ALL">All Case Managers</SelectItem>
+                {caseManagers.map((manager) => (
+                  <SelectItem key={manager} value={manager}>
+                    {manager}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {activeFiltersCount > 0 && (
+              <Button onClick={clearFilters} variant="ghost" size="sm">
+                <X className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Map and List Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Map - 2/3 width */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Interactive Map
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-[600px] relative">
+                <MapContainer
+                  center={[32.7767, -96.797]} // Dallas center
+                  zoom={7}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {filteredHomes.map((home) => (
+                    <Marker
+                      key={home.id}
+                      position={[home.latitude, home.longitude]}
+                      eventHandlers={{
+                        click: () => handleHomeClick(home),
+                      }}
+                    >
+                      <Popup>
+                        <div className="p-2 min-w-[250px]">
+                          <h3 className="font-semibold text-lg mb-2">{home.name}</h3>
+
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 mt-0.5 text-gray-500" />
+                              <div>
+                                <div>{home.address}</div>
+                                <div className="text-gray-600">
+                                  {home.City}, {home.State} {home.zipCode}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Badge variant={home.Unit === "DAL" ? "default" : "secondary"}>{home.Unit}</Badge>
+                            </div>
+
+                            {home.phoneNumber && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-gray-500" />
+                                <span>{home.phoneNumber}</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-gray-500" />
+                              <span>{home.contactPersonName}</span>
+                            </div>
+
+                            {home.email && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-gray-500" />
+                                <span className="text-xs">{home.email}</span>
+                              </div>
+                            )}
+
+                            {home.contactPhone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-gray-500" />
+                                <span>Contact: {home.contactPhone}</span>
+                              </div>
+                            )}
+
+                            <div className="text-xs text-gray-500 pt-2 border-t">
+                              Coordinates: {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
+                            </div>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Homes List - 1/3 width */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                  Homes List ({filteredHomes.length})
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[600px] overflow-y-auto">
+                {filteredHomes.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>No homes found matching your filters</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {filteredHomes.map((home) => (
+                      <div
+                        key={home.id}
+                        className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                          selectedHome?.id === home.id ? "bg-blue-50 border-l-4 border-l-blue-600" : ""
+                        }`}
+                        onClick={() => handleHomeClick(home)}
+                      >
+                        <div className="space-y-2">
+                          <div className="font-medium text-sm">{home.name}</div>
+                          <div className="text-xs text-gray-600 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {home.address}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

@@ -8,11 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw, Search, MapPin, List, X } from "lucide-react"
 import dynamic from "next/dynamic"
+import { Suspense } from "react"
 
 // Dynamically import the map component to prevent SSR issues
 const HomesMap = dynamic(() => import("@/components/homes-map"), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>,
+  loading: () => (
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-center min-h-[600px]">
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span>Loading interactive map...</span>
+        </div>
+      </div>
+    </div>
+  ),
 })
 
 interface MapHome {
@@ -241,7 +251,20 @@ export default function HomesMapPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2 h-[520px]">
-            <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
+            <Suspense
+              fallback={
+                <div className="container mx-auto p-6">
+                  <div className="flex items-center justify-center min-h-[600px]">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span>Loading map...</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
+            </Suspense>
           </CardContent>
         </Card>
 
