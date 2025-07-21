@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     console.log(`🏢 Unit filter: ${unitFilter || "ALL"}`)
 
     let whereClause = `
-      WHERE IsActive = 1 
+      WHERE HomeName IS NOT NULL
       AND Latitude IS NOT NULL 
       AND Longitude IS NOT NULL
       AND CAST([Latitude] AS FLOAT) != 0
@@ -24,48 +24,40 @@ export async function GET(request: Request) {
 
     const homes = await query(`
       SELECT 
-        Id,
-        Name,
-        Address,
+        Guid as id,
+        HomeName as name,
+        Street as address,
         City,
         State,
-        ZipCode,
+        Zip as zipCode,
         Unit,
-        CAST([Latitude] AS FLOAT) AS Latitude,
-        CAST([Longitude] AS FLOAT) AS Longitude,
-        PhoneNumber,
-        Email,
-        Website,
-        Description,
-        Capacity,
-        ServicesOffered,
-        ContactPersonName,
-        ContactPersonTitle,
-        IsActive,
-        CreatedDate,
-        ModifiedDate
-      FROM Homes 
+        CAST([Latitude] AS FLOAT) AS latitude,
+        CAST([Longitude] AS FLOAT) AS longitude,
+        HomePhone as phoneNumber,
+        CaseManager as contactPersonName,
+        CaseManagerEmail as email,
+        Xref
+      FROM SyncActiveHomes 
       ${whereClause}
-      ORDER BY Unit, Name
+      ORDER BY Unit, HomeName
     `)
 
     console.log(`📊 Raw query returned ${homes.length} homes`)
 
     // Additional validation and type checking
     const validHomes = homes.filter((home: any) => {
-      const lat = Number(home.Latitude)
-      const lng = Number(home.Longitude)
+      const lat = Number(home.latitude)
+      const lng = Number(home.longitude)
 
       console.log(
-        `🏠 ${home.Name} (${home.Unit}): Lat=${home.Latitude} (${typeof home.Latitude}), Lng=${home.Longitude} (${typeof home.Longitude})`,
+        `🏠 ${home.name} (${home.Unit}): Lat=${home.latitude} (${typeof home.latitude}), Lng=${home.longitude} (${typeof home.longitude})`,
       )
-      console.log(`🔢 Converted: Lat=${lat} (${typeof lat}), Lng=${lng} (${typeof lng})`)
 
       const isValidLat = !isNaN(lat) && lat !== 0 && lat >= -90 && lat <= 90
       const isValidLng = !isNaN(lng) && lng !== 0 && lng >= -180 && lng <= 180
 
       if (!isValidLat || !isValidLng) {
-        console.warn(`❌ Invalid coordinates for ${home.Name}: lat=${lat}, lng=${lng}`)
+        console.warn(`❌ Invalid coordinates for ${home.name}: lat=${lat}, lng=${lng}`)
         return false
       }
 
