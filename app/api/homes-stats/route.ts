@@ -5,14 +5,17 @@ export async function GET() {
   try {
     console.log("📊 [API] Homes statistics endpoint called")
 
+    // Use extension functions instead of directly calling the locked db
     const stats = await getHomesStatistics()
 
-    console.log(`✅ [API] Statistics calculated:`, stats)
+    console.log(`✅ [API] Successfully retrieved statistics:`, stats)
 
     return NextResponse.json({
       success: true,
-      statistics: stats,
-      timestamp: new Date().toISOString(),
+      stats,
+      debug: {
+        timestamp: new Date().toISOString(),
+      },
     })
   } catch (error: any) {
     console.error("❌ [API] Error in homes-stats:", error)
@@ -20,7 +23,7 @@ export async function GET() {
       {
         success: false,
         error: error.message,
-        statistics: {},
+        stats: {},
       },
       { status: 500 },
     )

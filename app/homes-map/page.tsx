@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Filter, RotateCcw, Users, Building } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { MapPin, Filter, RotateCcw, Users, Building, Search, Phone, Mail, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import dynamic from "next/dynamic"
 
 // Dynamically import the map component to avoid SSR issues
@@ -33,8 +35,10 @@ export default function HomesMapPage() {
   const [error, setError] = useState<string | null>(null)
   const [unitFilter, setUnitFilter] = useState<string>("ALL")
   const [caseManagerFilter, setCaseManagerFilter] = useState<string>("ALL")
+  const [searchFilter, setSearchFilter] = useState<string>("")
   const [caseManagers, setCaseManagers] = useState<string[]>([])
   const [unitSummary, setUnitSummary] = useState<Record<string, number>>({})
+  const [selectedHome, setSelectedHome] = useState<MapHome | null>(null)
 
   const fetchHomes = async () => {
     try {
@@ -71,9 +75,36 @@ export default function HomesMapPage() {
   const clearFilters = () => {
     setUnitFilter("ALL")
     setCaseManagerFilter("ALL")
+    setSearchFilter("")
+    setSelectedHome(null)
   }
 
-  const hasActiveFilters = unitFilter !== "ALL" || caseManagerFilter !== "ALL"
+  // Filter homes based on search
+  const filteredHomes = homes.filter((home) => {
+    if (!searchFilter) return true
+    const searchLower = searchFilter.toLowerCase()
+    return (
+      home.name.toLowerCase().includes(searchLower) ||
+      home.address.toLowerCase().includes(searchLower) ||
+      home.City?.toLowerCase().includes(searchLower) ||
+      home.contactPersonName?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  const hasActiveFilters = unitFilter !== "ALL" || caseManagerFilter !== "ALL" || searchFilter !== ""
+
+  const handleHomeSelect = (home: MapHome) => {
+    setSelectedHome(home)
+    // Scroll to the selected home in the list
+    const element = document.getElementById(`home-${home.id}`)
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+  }
+
+  const handleHomeClick = (home: MapHome) => {
+    setSelectedHome(home)
+  }
 
   if (loading) {
     return (
@@ -108,162 +139,226 @@ export default function HomesMapPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Homes Map</h1>
-          <p className="text-gray-600 mt-1">Interactive map showing {homes.length} foster homes with coordinates</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Homes Map</h1>
+              <p className="text-gray-600 mt-1">
+                Interactive map showing {filteredHomes.length} foster homes
+                {filteredHomes.length !== homes.length && ` (filtered from ${homes.length})`}
+              </p>
+            </div>
+          </div>
+          <Button onClick={fetchHomes} variant="outline" size="sm">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button onClick={fetchHomes} variant="outline" size="sm">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filters</span>
-            {hasActiveFilters && (
-              <Badge variant="secondary" className="ml-2">
-                Active
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Unit</label>
-              <Select value={unitFilter} onValueChange={setUnitFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Units</SelectItem>
-                  <SelectItem value="DAL">Dallas (DAL)</SelectItem>
-                  <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Case Manager</label>
-              <Select value={caseManagerFilter} onValueChange={setCaseManagerFilter}>
-                <SelectTrigger className="w-60">
-                  <SelectValue placeholder="Select case manager" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Case Managers</SelectItem>
-                  {caseManagers.map((manager) => (
-                    <SelectItem key={manager} value={manager}>
-                      {manager}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {hasActiveFilters && (
-              <Button onClick={clearFilters} variant="outline" size="sm">
-                Clear Filters
-              </Button>
-            )}
-          </div>
-
-          {/* Filter Summary */}
-          {hasActiveFilters && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {unitFilter !== "ALL" && (
-                <Badge variant="outline">
-                  <Building className="h-3 w-3 mr-1" />
-                  Unit: {unitFilter}
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Filter className="h-5 w-5" />
+              <span>Filters</span>
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2">
+                  Active
                 </Badge>
               )}
-              {caseManagerFilter !== "ALL" && (
-                <Badge variant="outline">
-                  <Users className="h-3 w-3 mr-1" />
-                  Case Manager: {caseManagerFilter}
-                </Badge>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Search</label>
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search homes, addresses, contacts..."
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-gray-600">Total Homes</p>
-                <p className="text-2xl font-bold">{homes.length}</p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Unit</label>
+                <Select value={unitFilter} onValueChange={setUnitFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Units</SelectItem>
+                    <SelectItem value="DAL">Dallas (DAL)</SelectItem>
+                    <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Case Manager</label>
+                <Select value={caseManagerFilter} onValueChange={setCaseManagerFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select case manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Case Managers</SelectItem>
+                    {caseManagers.map((manager) => (
+                      <SelectItem key={manager} value={manager}>
+                        {manager}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                {hasActiveFilters && (
+                  <Button onClick={clearFilters} variant="outline" size="sm" className="w-full bg-transparent">
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             </div>
+
+            {/* Active Filters Display */}
+            {hasActiveFilters && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {unitFilter !== "ALL" && (
+                  <Badge variant="outline">
+                    <Building className="h-3 w-3 mr-1" />
+                    Unit: {unitFilter}
+                  </Badge>
+                )}
+                {caseManagerFilter !== "ALL" && (
+                  <Badge variant="outline">
+                    <Users className="h-3 w-3 mr-1" />
+                    Case Manager: {caseManagerFilter}
+                  </Badge>
+                )}
+                {searchFilter && (
+                  <Badge variant="outline">
+                    <Search className="h-3 w-3 mr-1" />
+                    Search: "{searchFilter}"
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Building className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600">Dallas (DAL)</p>
-                <p className="text-2xl font-bold">{unitSummary.DAL || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Main Content: Map and List Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[700px]">
+          {/* Map */}
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Interactive Map
+                </span>
+                <Badge variant="outline">{filteredHomes.length} homes</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 h-[calc(100%-80px)]">
+              <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Building className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-sm text-gray-600">San Antonio (SAN)</p>
-                <p className="text-2xl font-bold">{unitSummary.SAN || 0}</p>
+          {/* Homes List */}
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between">
+                <span>Homes List</span>
+                <div className="flex gap-2">
+                  <Badge variant="secondary">{unitSummary.DAL || 0} Dallas</Badge>
+                  <Badge variant="secondary">{unitSummary.SAN || 0} San Antonio</Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 h-[calc(100%-80px)] overflow-y-auto">
+              <div className="space-y-2 p-4">
+                {filteredHomes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No homes found with current filters</p>
+                    {hasActiveFilters && (
+                      <Button onClick={clearFilters} variant="outline" size="sm" className="mt-2 bg-transparent">
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  filteredHomes.map((home) => (
+                    <div
+                      key={home.id}
+                      id={`home-${home.id}`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                        selectedHome?.id === home.id
+                          ? "border-blue-500 bg-blue-50 shadow-md"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      onClick={() => handleHomeClick(home)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-lg text-gray-900 leading-tight">{home.name}</h3>
+                        <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="ml-2 flex-shrink-0">
+                          {home.Unit}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span>
+                            {home.address}
+                            {home.City && `, ${home.City}`}
+                            {home.State && `, ${home.State}`} {home.zipCode}
+                          </span>
+                        </div>
+
+                        {home.phoneNumber && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span>{home.phoneNumber}</span>
+                          </div>
+                        )}
+
+                        {home.contactPersonName && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span>{home.contactPersonName}</span>
+                          </div>
+                        )}
+
+                        {home.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span className="truncate">{home.email}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-xs text-gray-400">
+                        Coordinates: {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* Map */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="h-[600px] w-full">
-            <HomesMap homes={homes} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Map Legend */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Map Legend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                D
-              </div>
-              <span className="text-sm">Dallas (DAL) Homes</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                S
-              </div>
-              <span className="text-sm">San Antonio (SAN) Homes</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
