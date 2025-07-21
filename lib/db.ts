@@ -39,13 +39,11 @@ async function getPasswordFromKeyVault(): Promise<{ password: string; source: st
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     console.error("❌ Failed to retrieve password from Key Vault:", errorMessage)
-    console.log("🔄 Falling back to hardcoded password")
+    console.error("❌ CRITICAL: No fallback password available. Key Vault must be configured correctly.")
 
-    return {
-      password: "M7w!vZ4#t8LcQb1R",
-      source: "Fallback (hardcoded)",
-      error: errorMessage,
-    }
+    throw new Error(
+      `Key Vault authentication failed: ${errorMessage}. Please check your Azure Key Vault configuration.`,
+    )
   }
 }
 
@@ -127,41 +125,42 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
 
-  // Get password from Azure Key Vault
-  const passwordResult = await getPasswordFromKeyVault()
-  lastPasswordSource = passwordResult.source
-  lastPasswordError = passwordResult.error || ""
-
-  // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
-  // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
-  // THESE PARAMETERS WORK AND ARE STABLE
-  const config: sql.config = {
-    user: "v0_app_user",
-    password: passwordResult.password, // Now retrieved securely from Key Vault
-    database: "RadiusBifrost",
-    server: "refugehouse-bifrost-server.database.windows.net",
-    port: 1433,
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000,
-    },
-    options: {
-      encrypt: true,
-      trustServerCertificate: false,
-      connectTimeout: 60000,
-      requestTimeout: 60000,
-    },
-  }
-  // ⚠️⚠️⚠️ END LOCKED PARAMETERS ⚠️⚠️⚠️
-
-  if (process.env.FIXIE_SOCKS_HOST) {
-    console.log("Using Fixie SOCKS proxy for connection.")
-    config.options.connector = () => createFixieConnector(config)
-  } else {
-    console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
-  }
+  // Get password from Azure Key Vault (no fallback - Key Vault is required)
   try {
+    const passwordResult = await getPasswordFromKeyVault()
+    lastPasswordSource = passwordResult.source
+    lastPasswordError = passwordResult.error || ""
+
+    // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
+    // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
+    // THESE PARAMETERS WORK AND ARE STABLE
+    const config: sql.config = {
+      user: "v0_app_user",
+      password: passwordResult.password, // Retrieved securely from Key Vault only
+      database: "RadiusBifrost",
+      server: "refugehouse-bifrost-server.database.windows.net",
+      port: 1433,
+      pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000,
+      },
+      options: {
+        encrypt: true,
+        trustServerCertificate: false,
+        connectTimeout: 60000,
+        requestTimeout: 60000,
+      },
+    }
+    // ⚠️⚠️⚠️ END LOCKED PARAMETERS ⚠️⚠️⚠️
+
+    if (process.env.FIXIE_SOCKS_HOST) {
+      console.log("Using Fixie SOCKS proxy for connection.")
+      config.options.connector = () => createFixieConnector(config)
+    } else {
+      console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
+    }
+
     console.log(`🔌 Attempting new connection to ${config.server}...`)
     console.log(`🔑 Password source: ${lastPasswordSource}`)
     pool = new sql.ConnectionPool(config)
@@ -177,6 +176,8 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     return pool
   } catch (error) {
     console.error("❌ Failed to establish database connection:", error)
+    lastPasswordSource = "Key Vault (Failed)"
+    lastPasswordError = error instanceof Error ? error.message : "Unknown error"
     pool = null
     throw error
   }
