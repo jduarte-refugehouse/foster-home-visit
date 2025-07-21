@@ -123,6 +123,14 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 }
 
+export async function closeConnection() {
+  if (pool && pool.connected) {
+    await pool.close()
+    pool = null
+    console.log("Database connection closed.")
+  }
+}
+
 export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   try {
     const connection = await getConnection()

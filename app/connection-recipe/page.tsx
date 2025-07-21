@@ -8,7 +8,8 @@ import { ArrowLeft, CheckCircle, Copy, FileCode, Terminal } from "lucide-react"
 import Link from "next/link"
 
 export default function ConnectionRecipe() {
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedEnv, setCopiedEnv] = useState(false)
 
   // This code snippet now accurately reflects the lib/db.ts content, using environment variables
   const dbLibCode = `
@@ -89,7 +90,6 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool && pool.connected) {
     return pool
   }
-
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
@@ -98,13 +98,9 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DATABASE,
-    server: process.env.POSTGRES_HOST || "localhost",
+    server: process.env.POSTGRES_HOST || "",
     port: 1433,
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000,
-    },
+    pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
     options: {
       encrypt: true,
       trustServerCertificate: false,
@@ -113,28 +109,20 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     },
   }
 
+  if (!config.server || !config.user || !config.password || !config.database) {
+    throw new Error("Database environment variables are not fully configured.")
+  }
+
   if (process.env.FIXIE_SOCKS_HOST) {
     console.log("Using Fixie SOCKS proxy for connection.")
     config.options.connector = () => createFixieConnector(config)
-  } else {
-    console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
   }
 
   try {
-    console.log(\`🔌 Attempting new connection to \${config.server}...\`)
     pool = new sql.ConnectionPool(config)
-    pool.on("error", (err) => {
-      console.error("❌ Database Pool Error:", err)
-      if (pool) {
-        pool.close()
-        pool = null
-      }
-    })
     await pool.connect()
-    console.log("✅ Database connection successful.")
     return pool
   } catch (error) {
-    console.error("❌ Failed to establish database connection:", error)
     pool = null
     throw error
   }
@@ -143,18 +131,29 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 // The query, testConnection, healthCheck, and forceReconnect functions would follow here.
 // For brevity in the recipe, we focus on the core connection setup.
 `
-  const envConfig = `
-POSTGRES_USER=your_db_username
-POSTGRES_PASSWORD=your_db_password
+
+  const envFileContent = `
+# Vercel Environment Variables
+
+# Database Credentials
 POSTGRES_HOST=your_db_server.database.windows.net
 POSTGRES_DATABASE=your_db_name
+POSTGRES_USER=your_db_username
+POSTGRES_PASSWORD=your_db_password
+
+# Fixie Proxy URL
 FIXIE_SOCKS_HOST=socks://fixie:YOUR_FIXIE_KEY@socks.fixie.ai:5183
 `
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, type: "code" | "env") => {
     navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (type === "code") {
+      setCopiedCode(true)
+      setTimeout(() => setCopiedCode(false), 2000)
+    } else {
+      setCopiedEnv(true)
+      setTimeout(() => setCopiedEnv(false), 2000)
+    }
   }
 
   return (
@@ -193,7 +192,27 @@ FIXIE_SOCKS_HOST=socks://fixie:YOUR_FIXIE_KEY@socks.fixie.ai:5183
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>The Code: lib/db.ts</CardTitle>
+                <CardTitle>1. Environment Variables</CardTitle>
+                <CardDescription>Set these variables in your Vercel project settings.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm relative font-mono">
+                  <pre className="whitespace-pre-wrap break-all">{envFileContent}</pre>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-2 right-2 bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    onClick={() => copyToClipboard(envFileContent, "env")}
+                  >
+                    <Copy className="w-4 h-4" />
+                    {copiedEnv ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>2. The Code: lib/db.ts</CardTitle>
                 <CardDescription>This is the exact code that creates the SOCKS proxy connection.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -203,76 +222,31 @@ FIXIE_SOCKS_HOST=socks://fixie:YOUR_FIXIE_KEY@socks.fixie.ai:5183
                     variant="outline"
                     size="sm"
                     className="absolute top-2 right-2 bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => copyToClipboard(dbLibCode)}
+                    onClick={() => copyToClipboard(dbLibCode, "code")}
                   >
                     <Copy className="w-4 h-4" />
-                    {copied ? "Copied!" : "Copy"}
+                    {copiedCode ? "Copied!" : "Copy"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Configuration Checklist</CardTitle>
-                <CardDescription>Ensure these three components are correctly configured.</CardDescription>
+                <CardTitle>3. Azure SQL Firewall Rules</CardTitle>
+                <CardDescription>
+                  Whitelist both of your Fixie static IP addresses in the Azure SQL Server firewall.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Vercel Environment Variable: `FIXIE_SOCKS_HOST`</h4>
-                    <p className="text-sm text-gray-600">
-                      This variable must be set in your Vercel project with the full URL from your Fixie dashboard,
-                      including the `socks://` protocol.
-                    </p>
-                    <code className="text-xs bg-gray-100 p-1 rounded mt-1 inline-block">
-                      socks://fixie:YOUR_FIXIE_KEY@socks.fixie.ai:5183
-                    </code>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Azure SQL Firewall Rules</h4>
-                    <p className="text-sm text-gray-600">
-                      Both of your Fixie static IP addresses must be whitelisted in the Azure SQL Server firewall.
-                    </p>
-                    <div className="text-xs mt-1 space-y-1">
-                      <code className="bg-gray-100 p-1 rounded block">3.224.144.155</code>
-                      <code className="bg-gray-100 p-1 rounded block">3.223.196.67</code>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Package Dependencies</h4>
-                    <p className="text-sm text-gray-600">Your `package.json` must include `mssql` and `socks`.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    4
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Vercel Environment Variables for Database Credentials</h4>
-                    <p className="text-sm text-gray-600">
-                      Ensure these are set for your Azure SQL Database: `POSTGRES_USER`, `POSTGRES_PASSWORD`,
-                      `POSTGRES_HOST`, `POSTGRES_DATABASE`.
-                    </p>
-                  </div>
+              <CardContent>
+                <div className="text-sm mt-1 space-y-1">
+                  <code className="bg-gray-100 p-1 rounded block">3.224.144.155</code>
+                  <code className="bg-gray-100 p-1 rounded block">3.223.196.67</code>
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Verify Connection</CardTitle>
+                <CardTitle>4. Verify Connection</CardTitle>
                 <CardDescription>
                   You can run the connection diagnostics at any time to confirm the proxy is working correctly.
                 </CardDescription>
