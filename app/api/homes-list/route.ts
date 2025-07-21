@@ -1,30 +1,24 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { getConnection } from "@/lib/db"
 
 export async function GET() {
   try {
-    // This query assumes your 'Homes' table has 'HomeID', 'Address', 'City', 'State', 'ZipCode' columns.
-    // Adjust the table and column names as per your actual schema.
-    const result = await query(`
+    const pool = await getConnection()
+    const result = await pool.request().query(`
       SELECT
-        HomeID as id,
-        Address as address,
-        City as city,
-        State as state,
-        ZipCode as zipCode
-      FROM Homes;
+        Guid,
+        HomeName,
+        Street,
+        City,
+        State,
+        Zip,
+        Unit,
+        CaseManager
+      FROM Homes
     `)
-
-    if (result.success) {
-      return NextResponse.json({ success: true, data: result.data })
-    } else {
-      return NextResponse.json({ success: false, message: result.message }, { status: 500 })
-    }
+    return NextResponse.json({ success: true, homes: result.recordset })
   } catch (error: any) {
-    console.error("API Homes List Error:", error)
-    return NextResponse.json(
-      { success: false, message: error.message || "An unknown error occurred." },
-      { status: 500 },
-    )
+    console.error("Error fetching homes list:", error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

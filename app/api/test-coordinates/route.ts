@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { query, healthCheck } from "@/lib/db"
+import { getConnection } from "@/lib/db"
 
 export const runtime = "nodejs"
 
@@ -7,21 +7,38 @@ export async function GET() {
   try {
     console.log("=== 🧪 Testing coordinate column access ===")
 
-    const isHealthy = await healthCheck()
-    if (!isHealthy) {
-      return NextResponse.json({ success: false, error: "Database unhealthy" }, { status: 503 })
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT TOP 10
+        Guid,
+        HomeName,
+        Street,
+        City,
+        State,
+        Zip,
+        Unit,
+        CaseManager,
+        Latitude,
+        Longitude
+      FROM Homes
+      WHERE Latitude IS NOT NULL AND Longitude IS NOT NULL
+    `)
+
+    if (result.recordset.length === 0) {
+      return NextResponse.json({ success: true, message: "No homes with coordinates found.", homes: [] })
     }
 
     const results: any = {
       success: true,
       timestamp: new Date().toISOString(),
       tests: {},
+      homes: result.recordset,
     }
 
     // Test 1: Check what columns we can actually see
     try {
       console.log("Test 1: Checking available columns...")
-      const columnInfo = await query(`
+      const columnInfo = await pool.request().query(`
         SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
         FROM INFORMATION_SCHEMA.COLUMNS 
         WHERE TABLE_NAME = 'SyncActiveHomes' 
@@ -29,10 +46,10 @@ export async function GET() {
       `)
       results.tests.availableColumns = {
         success: true,
-        data: columnInfo,
-        count: columnInfo.length,
+        data: columnInfo.recordset,
+        count: columnInfo.recordset.length,
       }
-      console.log(`Found ${columnInfo.length} columns`)
+      console.log(`Found ${columnInfo.recordset.length} columns`)
     } catch (error) {
       results.tests.availableColumns = {
         success: false,
@@ -43,16 +60,16 @@ export async function GET() {
     // Test 2: Try to select ONLY the coordinate columns
     try {
       console.log("Test 2: Selecting only coordinate columns...")
-      const coordOnly = await query(`
+      const coordOnly = await pool.request().query(`
         SELECT TOP 3 [Latitude], [Longitude] 
         FROM SyncActiveHomes
       `)
       results.tests.coordinatesOnly = {
         success: true,
-        data: coordOnly,
-        count: coordOnly.length,
+        data: coordOnly.recordset,
+        count: coordOnly.recordset.length,
       }
-      console.log("Coordinate-only query result:", coordOnly)
+      console.log("Coordinate-only query result:", coordOnly.recordset)
     } catch (error) {
       results.tests.coordinatesOnly = {
         success: false,
@@ -64,14 +81,14 @@ export async function GET() {
     // Test 3: Try with explicit schema
     try {
       console.log("Test 3: Using explicit schema...")
-      const schemaQuery = await query(`
+      const schemaQuery = await pool.request().query(`
         SELECT TOP 3 dbo.SyncActiveHomes.[Latitude], dbo.SyncActiveHomes.[Longitude]
         FROM dbo.SyncActiveHomes
       `)
       results.tests.explicitSchema = {
         success: true,
-        data: schemaQuery,
-        count: schemaQuery.length,
+        data: schemaQuery.recordset,
+        count: schemaQuery.recordset.length,
       }
     } catch (error) {
       results.tests.explicitSchema = {
@@ -83,7 +100,7 @@ export async function GET() {
     // Test 4: Check user permissions on the table
     try {
       console.log("Test 4: Checking user permissions...")
-      const permissions = await query(`
+      const permissions = await pool.request().query(`
         SELECT 
           p.permission_name,
           p.state_desc,
@@ -95,8 +112,8 @@ export async function GET() {
       `)
       results.tests.permissions = {
         success: true,
-        data: permissions,
-        count: permissions.length,
+        data: permissions.recordset,
+        count: permissions.recordset.length,
       }
     } catch (error) {
       results.tests.permissions = {
@@ -108,7 +125,7 @@ export async function GET() {
     // Test 5: Try a basic select with HomeName and coordinates
     try {
       console.log("Test 5: Basic select with HomeName and coordinates...")
-      const basicSelect = await query(`
+      const basicSelect = await pool.request().query(`
         SELECT TOP 3 
           [HomeName],
           [Latitude],
@@ -118,10 +135,10 @@ export async function GET() {
       `)
       results.tests.basicSelect = {
         success: true,
-        data: basicSelect,
-        count: basicSelect.length,
+        data: basicSelect.recordset,
+        count: basicSelect.recordset.length,
       }
-      console.log("Basic select result:", basicSelect)
+      console.log("Basic select result:", basicSelect.recordset)
     } catch (error) {
       results.tests.basicSelect = {
         success: false,
@@ -133,7 +150,7 @@ export async function GET() {
     // Test 6: Check current user and database context
     try {
       console.log("Test 6: Checking user context...")
-      const userContext = await query(`
+      const userContext = await pool.request().query(`
         SELECT 
           SUSER_SNAME() as login_name,
           USER_NAME() as user_name,
@@ -142,7 +159,7 @@ export async function GET() {
       `)
       results.tests.userContext = {
         success: true,
-        data: userContext,
+        data: userContext.recordset,
       }
     } catch (error) {
       results.tests.userContext = {
@@ -151,50 +168,9 @@ export async function GET() {
       }
     }
 
-    // Attempt to select latitude and longitude from a dummy table or a known table
-    // Replace 'YourHomesTable' and 'home_id' with your actual table and column names
-    const queryString = `SELECT TOP 5 id, address, latitude, longitude FROM Homes;` // Assuming a 'Homes' table with these columns
-    const result = await query(queryString)
-
-    if (result.success && result.data && result.data.length > 0) {
-      // Check if latitude and longitude columns exist and have values
-      const hasCoordinates = result.data.every(
-        (row: any) => typeof row.latitude === "number" && typeof row.longitude === "number",
-      )
-
-      if (hasCoordinates) {
-        results.tests.homesCoordinates = {
-          success: true,
-          message: "Successfully accessed latitude and longitude columns. Data includes coordinates.",
-          data: result.data,
-        }
-      } else {
-        results.tests.homesCoordinates = {
-          success: false,
-          message: "Successfully queried data, but latitude or longitude columns are missing or not numbers.",
-          data: result.data,
-        }
-      }
-    } else if (result.success && result.data && result.data.length === 0) {
-      results.tests.homesCoordinates = {
-        success: true,
-        message: "Query successful, but no data found in the Homes table.",
-        data: [],
-      }
-    } else {
-      results.tests.homesCoordinates = result // Pass through the error message from the query function
-    }
-
     return NextResponse.json(results)
-  } catch (error) {
+  } catch (error: any) {
     console.error("Coordinate test failed:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

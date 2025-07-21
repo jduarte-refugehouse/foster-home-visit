@@ -1,146 +1,195 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
+import { useEffect } from "react"
 
 import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, XCircle, RefreshCw, ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
-
-const LOGO_SRC = "/images/web logo with name.png"
-
-interface TestResult {
-  success: boolean
-  message: string
-  data?: any
-  error?: string
-}
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { RefreshCw, CheckCircle, XCircle } from "lucide-react"
 
 export default function TestDbPage() {
-  const [result, setResult] = useState<TestResult | null>(null)
+  const [testResult, setTestResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
-  const runTest = async () => {
+  const handleTestDb = async () => {
     setLoading(true)
-    setResult(null) // Clear previous results
+    setTestResult(null)
     try {
       const response = await fetch("/api/test-db")
       const data = await response.json()
-      setResult(data)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error"
-      setResult({
-        success: false,
-        message: `Failed to connect to the test endpoint: ${errorMessage}`,
-        error: errorMessage,
-      })
+      setTestResult(data)
+    } catch (error: any) {
+      setTestResult({ success: false, error: error.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReconnectDb = async () => {
+    setLoading(true)
+    setTestResult(null) // Clear previous test result
+    try {
+      const response = await fetch("/api/reconnect")
+      const data = await response.json()
+      setTestResult(data) // Show reconnection result
+      if (data.success) {
+        // If reconnection is successful, immediately test the DB again
+        await handleTestDb()
+      }
+    } catch (error: any) {
+      setTestResult({ success: false, error: error.message })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <Image
-                  src={LOGO_SRC || "/placeholder.svg"}
-                  alt="Family Visits Pro Logo"
-                  width={180}
-                  height={36}
-                  className="h-auto"
-                />
-                <span className="text-lg font-semibold text-gray-900">Database Connection Test</span>
-              </div>
-            </div>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8">Database Connection Test</h1>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Test Database Connectivity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            Click the button below to test the connection to your configured database.
+          </p>
+          <div className="flex space-x-4">
+            <Button onClick={handleTestDb} disabled={loading}>
+              {loading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Testing...
+                </>
+              ) : (
+                "Test Database Connection"
+              )}
+            </Button>
+            <Button onClick={handleReconnectDb} disabled={loading} variant="outline">
+              Reconnect Database
+            </Button>
           </div>
-        </div>
-      </nav>
+        </CardContent>
+      </Card>
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Test Database Connection</h1>
-            <p className="text-gray-600">Click the button below to test the connection to your Azure SQL database.</p>
-          </div>
+      {testResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Test Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {testResult.success ? (
+              <Alert className="bg-green-50 border-green-200 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Success!</AlertTitle>
+                <AlertDescription>
+                  <p>Database connection successful.</p>
+                  {testResult.currentTime && <p>Current Database Time: {testResult.currentTime}</p>}
+                  {testResult.message && <p>{testResult.message}</p>}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="bg-red-50 border-red-200 text-red-800">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Error!</AlertTitle>
+                <AlertDescription>
+                  <p>Database connection failed.</p>
+                  <p>Error: {testResult.error}</p>
+                  <p>Please check your database credentials and network configuration.</p>
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Run Connection Test</CardTitle>
-              <CardDescription>This will attempt to connect to the database and fetch a simple query.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={runTest} disabled={loading} className="w-full">
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Test Connection
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Connection Debug Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">
+            Retrieve detailed information about the current database connection.
+          </p>
+          <ConnectionDebugInfo />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
-          {result && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Test Result</CardTitle>
-                  <Badge variant={result.success ? "default" : "destructive"}>
-                    {result.success ? "Success" : "Failed"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Alert variant={result.success ? "default" : "destructive"}>
-                  {result.success ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                  <AlertDescription>{result.message}</AlertDescription>
-                </Alert>
-                {result.data && (
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg text-sm overflow-x-auto">
-                    <h4 className="font-semibold mb-2">Response Data:</h4>
-                    <pre className="whitespace-pre-wrap break-all">{JSON.stringify(result.data, null, 2)}</pre>
-                  </div>
-                )}
-                {result.error && (
-                  <div className="mt-4 p-4 bg-red-50 rounded-lg text-sm overflow-x-auto">
-                    <h4 className="font-semibold mb-2 text-red-800">Error Details:</h4>
-                    <pre className="whitespace-pre-wrap break-all text-red-700">{result.error}</pre>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+function ConnectionDebugInfo() {
+  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [loadingDebug, setLoadingDebug] = useState(false)
+  const [errorDebug, setErrorDebug] = useState<string | null>(null)
+
+  const fetchDebugInfo = async () => {
+    setLoadingDebug(true)
+    setErrorDebug(null)
+    try {
+      const response = await fetch("/api/connection-debug")
+      const data = await response.json()
+      if (data.success) {
+        setDebugInfo(data)
+      } else {
+        setErrorDebug(data.error || "Failed to fetch debug info.")
+      }
+    } catch (error: any) {
+      setErrorDebug(error.message)
+    } finally {
+      setLoadingDebug(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDebugInfo()
+  }, [])
+
+  return (
+    <div>
+      <Button onClick={fetchDebugInfo} disabled={loadingDebug} size="sm" className="mb-4">
+        {loadingDebug ? (
+          <>
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Loading...
+          </>
+        ) : (
+          "Get Debug Info"
+        )}
+      </Button>
+      {errorDebug && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{errorDebug}</AlertDescription>
+        </Alert>
+      )}
+      {debugInfo && debugInfo.success && (
+        <div className="space-y-2 text-sm">
+          <p>
+            <strong>Database:</strong> {debugInfo.database}
+          </p>
+          <p>
+            <strong>Server:</strong> {debugInfo.server}
+          </p>
+          <p>
+            <strong>Client IP (as seen by DB):</strong> {debugInfo.clientIp}
+          </p>
+          <p>
+            <strong>SQL Version:</strong> {debugInfo.sqlVersion}
+          </p>
+          {debugInfo.connectionDetails && (
+            <>
+              <p>
+                <strong>Net Transport:</strong> {debugInfo.connectionDetails.net_transport}
+              </p>
+              <p>
+                <strong>Encrypt Option:</strong> {debugInfo.connectionDetails.encrypt_option}
+              </p>
+            </>
           )}
-
-          <div className="mt-8 text-center">
-            <Link href="/diagnostics">
-              <Button variant="outline">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Run Full Diagnostics
-              </Button>
-            </Link>
-          </div>
         </div>
-      </main>
+      )}
     </div>
   )
 }

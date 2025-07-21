@@ -1,69 +1,88 @@
 "use client"
-
-import type React from "react"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Home, Map, Database, Users, CalendarDays, Info } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
-
-const LOGO_SRC = "/images/web logo with name.png" // Ensure this path is correct and the image exists
+import { Home, Map, List, Settings, Database, Network, Info, LocateFixed, CalendarDays, Users } from "lucide-react"
 
 export default function HomePage() {
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm py-4 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image
-            src={LOGO_SRC || "/placeholder.svg"}
-            alt="Application Logo"
-            width={150}
-            height={40}
-            priority // Helps with initial loading and LCP
-          />
-        </div>
-        <nav className="hidden md:flex items-center gap-6">
-          <Link
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
-            href="/dashboard"
-          >
-            Dashboard
-          </Link>
-          <Link
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
-            href="/homes-list"
-          >
-            Homes
-          </Link>
-          <Link
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
-            href="/features"
-          >
-            Features
-          </Link>
-          <Link
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
-            href="/contact"
-          >
-            Contact
-          </Link>
-          <Link
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
-            href="/admin"
-          >
-            Admin
-          </Link>
-        </nav>
-        <Button className="md:hidden bg-transparent" size="icon" variant="outline">
-          <MenuIcon className="h-6 w-6" />
-          <span className="sr-only">Toggle navigation</span>
-        </Button>
-      </header>
+  const quickLinks = [
+    {
+      title: "Dashboard",
+      description: "Get an overview of your family visits and key metrics.",
+      href: "/dashboard",
+      icon: Home,
+      color: "text-refuge-purple",
+    },
+    {
+      title: "Homes List",
+      description: "View and manage a comprehensive list of all homes.",
+      href: "/homes-list",
+      icon: List,
+      color: "text-refuge-magenta",
+    },
+    {
+      title: "Homes Map",
+      description: "Explore homes visually on an interactive map.",
+      href: "/homes-map",
+      icon: Map,
+      color: "text-refuge-light-purple",
+    },
+    {
+      title: "Admin Panel",
+      description: "Access administrative tools and settings.",
+      href: "/admin",
+      icon: Settings,
+      color: "text-refuge-dark-blue",
+    },
+    {
+      title: "Visit Scheduling",
+      description: "Efficiently schedule and track upcoming home visits.",
+      href: "/schedule", // Assuming a new schedule page
+      icon: CalendarDays,
+      color: "text-refuge-purple",
+    },
+    {
+      title: "User Management",
+      description: "Administer user accounts, roles, and permissions.",
+      href: "/users", // Assuming a new users page
+      icon: Users,
+      color: "text-refuge-magenta",
+    },
+    {
+      title: "Database Diagnostics",
+      description: "Test and monitor your database connection and proxy setup.",
+      href: "/diagnostics",
+      icon: Database,
+      color: "text-refuge-light-purple",
+    },
+    {
+      title: "Proxy Setup",
+      description: "Configure and verify your static IP proxy settings.",
+      href: "/proxy-setup",
+      icon: Network,
+      color: "text-refuge-dark-blue",
+    },
+    {
+      title: "Connection Recipe",
+      description: "View the code and configuration for database connection.",
+      href: "/connection-recipe",
+      icon: Info,
+      color: "text-refuge-purple",
+    },
+    {
+      title: "Coordinate Test",
+      description: "Test access to coordinate data for homes.",
+      href: "/coordinate-test",
+      icon: LocateFixed,
+      color: "text-refuge-magenta",
+    },
+  ]
 
+  return (
+    <div className="min-h-screen bg-refuge-gray text-gray-900 dark:bg-gray-900 dark:text-gray-50 flex flex-col">
       <main className="flex-1 py-12 px-4 md:px-6 lg:py-24">
         <section className="container mx-auto text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-5xl md:text-6xl">
+          <h1 className="text-4xl font-bold tracking-tight text-refuge-purple dark:text-gray-50 sm:text-5xl md:text-6xl">
             Welcome to the Home Visits Application
           </h1>
           <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
@@ -72,122 +91,31 @@ export default function HomePage() {
         </section>
 
         <section className="container mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="flex flex-col items-center p-6 text-center">
-            <Home className="h-12 w-12 text-blue-500 mb-4" />
-            <CardHeader>
-              <CardTitle>Manage Homes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                View and manage all registered homes, including details and visit history.
-              </p>
-              <Link href="/homes-list">
-                <Button variant="outline">View Homes</Button>
+          {quickLinks.map((link) => {
+            const Icon = link.icon
+            return (
+              <Link href={link.href} key={link.title}>
+                <Card className="flex flex-col items-center p-6 text-center h-full hover:shadow-lg transition-shadow duration-200">
+                  <CardHeader>
+                    <Icon className={`h-12 w-12 ${link.color} mb-4`} />
+                    <CardTitle className="text-xl font-semibold">{link.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">{link.description}</p>
+                    <Button variant="outline" className={`border-2 ${link.color} hover:bg-opacity-10`}>
+                      Go to {link.title.split(" ")[0]}
+                    </Button>
+                  </CardContent>
+                </Card>
               </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col items-center p-6 text-center">
-            <Map className="h-12 w-12 text-green-500 mb-4" />
-            <CardHeader>
-              <CardTitle>Interactive Map</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Explore homes on an interactive map to visualize locations and plan routes.
-              </p>
-              <Link href="/homes-map">
-                <Button variant="outline">Open Map</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col items-center p-6 text-center">
-            <CalendarDays className="h-12 w-12 text-purple-500 mb-4" />
-            <CardHeader>
-              <CardTitle>Schedule Visits</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Efficiently schedule and track upcoming home visits for your team.
-              </p>
-              <Link href="/schedule">
-                <Button variant="outline">Go to Schedule</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col items-center p-6 text-center">
-            <Users className="h-12 w-12 text-yellow-500 mb-4" />
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Administer user accounts, roles, and permissions within the application.
-              </p>
-              <Link href="/admin/users">
-                <Button variant="outline">Manage Users</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col items-center p-6 text-center">
-            <Database className="h-12 w-12 text-red-500 mb-4" />
-            <CardHeader>
-              <CardTitle>Database Diagnostics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Test and monitor your database connection and proxy setup.
-              </p>
-              <Link href="/diagnostics">
-                <Button variant="outline">Run Diagnostics</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col items-center p-6 text-center">
-            <Info className="h-12 w-12 text-indigo-500 mb-4" />
-            <CardHeader>
-              <CardTitle>Proxy Setup</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Configure and verify your static IP proxy settings for secure connections.
-              </p>
-              <Link href="/proxy-setup">
-                <Button variant="outline">Configure Proxy</Button>
-              </Link>
-            </CardContent>
-          </Card>
+            )
+          })}
         </section>
       </main>
 
-      <footer className="bg-gray-100 dark:bg-gray-800 py-6 px-4 md:px-6 text-center text-gray-600 dark:text-gray-400">
-        <p>&copy; 2024 Home Visits Application. All rights reserved.</p>
+      <footer className="bg-white dark:bg-gray-800 py-6 px-4 md:px-6 text-center text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+        <p>&copy; {new Date().getFullYear()} Home Visits Application. All rights reserved.</p>
       </footer>
     </div>
-  )
-}
-
-function MenuIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" x2="20" y1="12" y2="12" />
-      <line x1="4" x2="20" y1="6" y2="6" />
-      <line x1="4" x2="20" y1="18" y2="18" />
-    </svg>
   )
 }

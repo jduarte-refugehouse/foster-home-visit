@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { query, testConnection, healthCheck, forceReconnect } from "@/lib/db"
+import { getConnection } from "@/lib/db"
 
 // Force Node.js runtime (not Edge)
 export const runtime = "nodejs"
@@ -8,49 +8,16 @@ export async function GET() {
   try {
     console.log("=== 🚀 Starting database connection test ===")
 
-    // First do a health check
-    console.log("🏥 Running health check...")
-    const isHealthy = await healthCheck()
-    console.log("Health check result:", isHealthy)
+    const pool = await getConnection()
+    const result = await pool.request().query("SELECT GETDATE() AS CurrentDateTime")
+    const currentTime = result.recordset[0].CurrentDateTime
+    console.log("Database connection test result:", currentTime)
 
-    if (!isHealthy) {
-      console.log("🔄 Health check failed, trying force reconnect...")
-      await forceReconnect()
-
-      // Try health check again after force reconnect
-      const isHealthyAfterReconnect = await healthCheck()
-      if (!isHealthyAfterReconnect) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Database health check failed even after reconnection attempt",
-            error: "Unable to establish database connection",
-          },
-          { status: 503 },
-        )
-      }
-    }
-
-    // Test basic connection
-    console.log("🔍 Running basic connection test...")
-    const connectionTest = await testConnection()
-
-    if (!connectionTest.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Database connection test failed",
-          error: connectionTest.message,
-        },
-        { status: 500 },
-      )
-    }
-
-    console.log("✅ Basic connection test passed")
+    console.log("✅ Database connection test passed")
 
     // Get database information
     console.log("📊 Fetching database information...")
-    const dbInfo = await query(`
+    const dbInfo = await pool.request().query(`
       SELECT 
         DB_NAME() as database_name,
         @@VERSION as sql_version,
@@ -65,8 +32,8 @@ export async function GET() {
     let syncHomesError = null
 
     try {
-      syncHomesData = await query("SELECT TOP 10 * FROM dbo.SyncActiveHomesDisplay")
-      console.log(`✅ Successfully retrieved ${syncHomesData.length} records from SyncActiveHomesDisplay`)
+      syncHomesData = await pool.request().query("SELECT TOP 10 * FROM dbo.SyncActiveHomesDisplay")
+      console.log(`✅ Successfully retrieved ${syncHomesData.recordset.length} records from SyncActiveHomesDisplay`)
     } catch (error) {
       console.error("❌ Error querying SyncActiveHomesDisplay:", error)
       syncHomesError = error instanceof Error ? error.message : "Unknown error querying SyncActiveHomesDisplay"
@@ -78,8 +45,8 @@ export async function GET() {
     let syncActiveHomesError = null
 
     try {
-      syncActiveHomesData = await query("SELECT TOP 5 * FROM dbo.SyncActiveHomes")
-      console.log(`✅ Successfully retrieved ${syncActiveHomesData.length} records from SyncActiveHomes`)
+      syncActiveHomesData = await pool.request().query("SELECT TOP 5 * FROM dbo.SyncActiveHomes")
+      console.log(`✅ Successfully retrieved ${syncActiveHomesData.recordset.length} records from SyncActiveHomes`)
     } catch (error) {
       console.error("❌ Error querying SyncActiveHomes:", error)
       syncActiveHomesError = error instanceof Error ? error.message : "Unknown error querying SyncActiveHomes"
@@ -91,22 +58,22 @@ export async function GET() {
       success: true,
       message: "Database connection and queries successful",
       timestamp: new Date().toISOString(),
-      connectionTest: connectionTest.data,
-      databaseInfo: dbInfo,
+      connectionTest: currentTime.toISOString(),
+      databaseInfo: dbInfo.recordset,
       syncActiveHomesDisplay: {
         success: !syncHomesError,
         error: syncHomesError,
-        data: syncHomesData,
-        count: syncHomesData.length,
+        data: syncHomesData.recordset,
+        count: syncHomesData.recordset.length,
       },
       syncActiveHomes: {
         success: !syncActiveHomesError,
         error: syncActiveHomesError,
-        data: syncActiveHomesData,
-        count: syncActiveHomesData.length,
+        data: syncActiveHomesData.recordset,
+        count: syncActiveHomesData.recordset.length,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("=== ❌ Database test failed ===", error)
     return NextResponse.json(
       {

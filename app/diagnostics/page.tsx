@@ -1,209 +1,179 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect } from "react"
-import { Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react"
-import Link from "next/link"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Terminal, RefreshCw, CheckCircle, XCircle } from "lucide-react"
 
-interface DiagnosticsResult {
-  success: boolean
-  message?: string
-  databaseConnection?: {
-    success: boolean
-    message: string
-    data?: any[]
-  }
-  databaseHealth?: {
-    success: boolean
-    message: string
-  }
-  proxyConfiguration?: string
-  environmentVariables?: {
-    FIXIE_SOCKS_HOST: string
-    QUOTAGUARD_URL: string
-    POSTGRES_HOST: string
-    POSTGRES_USER: string
-    POSTGRES_DATABASE: string
-  }
+interface DiagnosticResult {
+  dbConnectionStatus: string
+  dbConnectionError: string
+  proxyConnectionStatus: string
+  proxyConnectionError: string
+  proxyIp: string
+  currentClientIp: string
+  fixieSocksHost: string
+  databaseUrl: string
+  postgresUser: string
+  postgresHost: string
+  postgresDatabase: string
 }
 
 export default function DiagnosticsPage() {
-  const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [results, setResults] = useState<DiagnosticResult | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const fetchDiagnostics = async () => {
+  const runDiagnostics = async () => {
     setLoading(true)
-    setError(null)
+    setResults(null)
     try {
       const response = await fetch("/api/diagnostics")
-      const data: DiagnosticsResult = await response.json()
-      setDiagnostics(data)
-      if (!data.success) {
-        setError(data.message || "Failed to run diagnostics.")
-      }
-    } catch (err) {
-      console.error("Error fetching diagnostics:", err)
-      setError((err as any).message || "An unexpected error occurred.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleForceReconnect = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch("/api/reconnect")
       const data = await response.json()
-      if (data.success) {
-        alert("Database connection forcefully reconnected. Running diagnostics again...")
-        await fetchDiagnostics() // Re-run diagnostics after reconnect
-      } else {
-        setError(data.message || "Failed to forcefully reconnect.")
-      }
-    } catch (err) {
-      console.error("Error fetching diagnostics:", err)
-      setError((err as any).message || "An unexpected error occurred.")
+      setResults(data)
+    } catch (error: any) {
+      setResults({
+        dbConnectionStatus: "Failed",
+        dbConnectionError: error.message,
+        proxyConnectionStatus: "Failed",
+        proxyConnectionError: error.message,
+        proxyIp: "N/A",
+        currentClientIp: "N/A",
+        fixieSocksHost: "N/A",
+        databaseUrl: "N/A",
+        postgresUser: "N/A",
+        postgresHost: "N/A",
+        postgresDatabase: "N/A",
+      })
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchDiagnostics()
+    runDiagnostics()
   }, [])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-4xl shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-50">Application Diagnostics</CardTitle>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8">Application Diagnostics</h1>
+
+      <Card className="mb-8">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-2xl font-bold">Connection Status</CardTitle>
+          <Button onClick={runDiagnostics} disabled={loading} size="sm">
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Run Diagnostics
+          </Button>
         </CardHeader>
-        <CardContent className="space-y-6 text-gray-700 dark:text-gray-300">
-          <p className="text-lg">
-            This page provides a comprehensive overview of the application's connectivity and configuration status,
-            helping you diagnose potential issues with the database or proxy.
-          </p>
+        <CardContent>
+          {loading && <div className="text-center py-4">Running tests...</div>}
+          {results && (
+            <div className="space-y-4">
+              <Alert variant={results.dbConnectionStatus.includes("Success") ? "default" : "destructive"}>
+                {results.dbConnectionStatus.includes("Success") ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                <AlertTitle>Database Connection: {results.dbConnectionStatus}</AlertTitle>
+                {results.dbConnectionError && <AlertDescription>{results.dbConnectionError}</AlertDescription>}
+              </Alert>
 
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-              <p className="mt-4 text-xl font-medium">Running diagnostics...</p>
+              <Alert variant={results.proxyConnectionStatus.includes("Success") ? "default" : "destructive"}>
+                {results.proxyConnectionStatus.includes("Success") ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                <AlertTitle>Proxy Connection: {results.proxyConnectionStatus}</AlertTitle>
+                {results.proxyConnectionError && <AlertDescription>{results.proxyConnectionError}</AlertDescription>}
+              </Alert>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Proxy Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p>
+                      <strong>Proxy IP (External):</strong> {results.proxyIp}
+                    </p>
+                    <p>
+                      <strong>Fixie SOCKS Host Env:</strong> {results.fixieSocksHost}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Database Config</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p>
+                      <strong>Database URL Env:</strong> {results.databaseUrl}
+                    </p>
+                    <p>
+                      <strong>Postgres User Env:</strong> {results.postgresUser}
+                    </p>
+                    <p>
+                      <strong>Postgres Host Env:</strong> {results.postgresHost}
+                    </p>
+                    <p>
+                      <strong>Postgres Database Env:</strong> {results.postgresDatabase}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Alert>
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Your Current Client IP</AlertTitle>
+                <AlertDescription>
+                  This is the IP address from which your browser is accessing this page.
+                  <p className="font-mono mt-2">{results.currentClientIp}</p>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {error && (
-            <div
-              className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded relative"
-              role="alert"
-            >
-              <strong className="font-bold">Error:</strong>
-              <span className="block sm:inline"> {error}</span>
-            </div>
-          )}
-
-          {diagnostics && !loading && (
-            <div className="space-y-6">
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                  Database Connection Status
-                </h2>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    {diagnostics.databaseConnection?.success ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                    <p className="font-medium">Connection Test:</p>
-                    <p>{diagnostics.databaseConnection?.message}</p>
-                  </div>
-                  {diagnostics.databaseConnection?.data && diagnostics.databaseConnection.data.length > 0 && (
-                    <div className="ml-7 text-sm">
-                      <p>Login Name: {diagnostics.databaseConnection.data[0].login_name}</p>
-                      <p>Database Name: {diagnostics.databaseConnection.data[0].db_name}</p>
-                      <p>Client IP: {diagnostics.databaseConnection.data[0].client_ip}</p>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    {diagnostics.databaseHealth?.success ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                    <p className="font-medium">Health Check:</p>
-                    <p>{diagnostics.databaseHealth?.message}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-3">Proxy Configuration</h2>
-                <div className="flex items-center gap-2">
-                  {diagnostics.proxyConfiguration?.includes("Configured") ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  )}
-                  <p className="font-medium">Status:</p>
-                  <p>{diagnostics.proxyConfiguration}</p>
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mb-3">Environment Variables</h2>
-                <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>
-                    <span className="font-medium">FIXIE_SOCKS_HOST:</span>{" "}
-                    {diagnostics.environmentVariables?.FIXIE_SOCKS_HOST}
-                  </li>
-                  <li>
-                    <span className="font-medium">QUOTAGUARD_URL:</span>{" "}
-                    {diagnostics.environmentVariables?.QUOTAGUARD_URL}
-                  </li>
-                  <li>
-                    <span className="font-medium">POSTGRES_HOST:</span>{" "}
-                    {diagnostics.environmentVariables?.POSTGRES_HOST}
-                  </li>
-                  <li>
-                    <span className="font-medium">POSTGRES_USER:</span>{" "}
-                    {diagnostics.environmentVariables?.POSTGRES_USER}
-                  </li>
-                  <li>
-                    <span className="font-medium">POSTGRES_DATABASE:</span>{" "}
-                    {diagnostics.environmentVariables?.POSTGRES_DATABASE}
-                  </li>
-                </ul>
-              </section>
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-            <Button onClick={fetchDiagnostics} disabled={loading} className="w-full sm:w-auto">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Diagnostics
-            </Button>
-            <Button
-              onClick={handleForceReconnect}
-              disabled={loading}
-              className="w-full sm:w-auto bg-transparent"
-              variant="outline"
-            >
-              Force Reconnect DB
-            </Button>
-            <Link href="/proxy-setup">
-              <Button className="w-full sm:w-auto" variant="secondary">
-                Proxy Setup Guide
-              </Button>
-            </Link>
-            <Link href="/">
-              <Button className="w-full sm:w-auto" variant="default">
-                Back to Home
-              </Button>
-            </Link>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Troubleshooting Tips</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+            <li>
+              **Database Connection Failed:**
+              <ul>
+                <li>
+                  Double-check your `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, and `POSTGRES_DATABASE`
+                  environment variables.
+                </li>
+                <li>Ensure your Azure SQL Database firewall allows connections from the Fixie proxy IP addresses.</li>
+                <li>Verify network connectivity from your deployment region to Azure SQL.</li>
+              </ul>
+            </li>
+            <li>
+              **Proxy Connection Failed:**
+              <ul>
+                <li>
+                  Ensure `FIXIE_SOCKS_HOST` is correctly set and formatted (e.g., `socks://user:password@host:port`).
+                </li>
+                <li>Verify your Fixie API key is correct and active.</li>
+                <li>Check Fixie's status page for any service outages.</li>
+              </ul>
+            </li>
+            <li>
+              **Deployment Errors (`ERR_PNPM_OUTDATED_LOCKFILE`):**
+              <ul>
+                <li>Run `pnpm install` locally to update `pnpm-lock.yaml`.</li>
+                <li>Commit both `package.json` and `pnpm-lock.yaml` to your Git repository.</li>
+                <li>Redeploy your application.</li>
+              </ul>
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>

@@ -53,6 +53,12 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom brand colors
+        "refuge-purple": "#5E3989", // A deep purple
+        "refuge-magenta": "#A90533", // A strong red/magenta
+        "refuge-light-purple": "#8A6FAD", // Lighter shade of purple
+        "refuge-dark-blue": "#2C3E50", // Dark blue for text/accents
+        "refuge-gray": "#ECF0F1", // Light gray for backgrounds
       },
       borderRadius: {
         lg: "var(--radius)",

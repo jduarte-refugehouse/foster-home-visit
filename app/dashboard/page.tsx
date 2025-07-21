@@ -1,191 +1,147 @@
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Calendar, Users, MapPin, Clock, CheckCircle } from "lucide-react"
-import Image from "next/image"
+"use client"
 
-const LOGO_SRC = "/images/web logo with name.png"
+import type React from "react"
 
-export default function Dashboard() {
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LineChart, PieChart } from "lucide-react" // Assuming these are for illustrative purposes or custom components
+
+export default function DashboardPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="px-4 lg:px-6 h-14 flex items-center justify-between bg-white border-b border-gray-200">
-        <Link className="flex items-center justify-center" href="/">
-          <Image
-            src={LOGO_SRC || "/placeholder.svg"}
-            alt="Family Visits Pro Logo"
-            width={180}
-            height={36}
-            className="h-auto"
-          />
-          <span className="sr-only">Family Visits Pro</span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4 text-gray-600" href="/features">
-            Features
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4 text-gray-600" href="/solutions">
-            Solutions
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4 text-gray-600" href="/contact">
-            Contact
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4 text-gray-600" href="/admin">
-            Admin
-          </Link>
-        </nav>
-      </header>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8">Dashboard Overview</h1>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Welcome Card */}
-          <Card className="lg:col-span-3 bg-gradient-to-r from-refuge-purple to-refuge-blue text-white">
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold">Welcome to Your Dashboard!</CardTitle>
-              <CardDescription className="text-refuge-purple-100">
-                Quick overview of your family visit management system.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg">
-                Here you can manage upcoming visits, view client information, and access important tools.
-              </p>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Homes</CardTitle>
+            <HomeIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">1,234</div>
+            <p className="text-xs text-muted-foreground">+20 since last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming Visits</CardTitle>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">78</div>
+            <p className="text-xs text-muted-foreground">5 due this week</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Compliance Rate</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">98.5%</div>
+            <p className="text-xs text-muted-foreground">Up from 97% last quarter</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Upcoming Visits */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Upcoming Visits</CardTitle>
-              <Calendar className="w-4 h-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">5</div>
-              <p className="text-xs text-gray-500">+2 scheduled for next week</p>
-              <Button asChild variant="link" className="p-0 h-auto mt-2">
-                <Link href="#">View all visits</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Active Clients */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-              <Users className="w-4 h-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-gray-500">+1 new client this month</p>
-              <Button asChild variant="link" className="p-0 h-auto mt-2">
-                <Link href="#">Manage clients</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Average Visit Duration */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Visit Duration</CardTitle>
-              <Clock className="w-4 h-4 text-gray-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">1h 30m</div>
-              <p className="text-xs text-gray-500">Consistent over last quarter</p>
-              <Button asChild variant="link" className="p-0 h-auto mt-2">
-                <Link href="#">View reports</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="md:col-span-2 lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Perform common tasks quickly.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <Button variant="outline" className="justify-start bg-transparent">
-                <Calendar className="w-4 h-4 mr-2" /> Schedule New Visit
-              </Button>
-              <Button variant="outline" className="justify-start bg-transparent">
-                <Users className="w-4 h-4 mr-2" /> Add New Client
-              </Button>
-              <Button variant="outline" className="justify-start bg-transparent">
-                <MapPin className="w-4 h-4 mr-2" /> View Homes Map
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* System Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>System Status</CardTitle>
-              <CardDescription>Check the health of your connections.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Database Connection</span>
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Connected
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Proxy Status</span>
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="w-3 h-3 mr-1" /> Active
-                </Badge>
-              </div>
-              <Button asChild variant="link" className="p-0 h-auto mt-2">
-                <Link href="/diagnostics">Run Diagnostics</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Important Links */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Important Links</CardTitle>
-              <CardDescription>Access key configuration and data pages.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <Button asChild variant="outline" className="justify-start bg-transparent">
-                <Link href="/proxy-setup">
-                  <MapPin className="w-4 h-4 mr-2" /> Proxy Setup
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start bg-transparent">
-                <Link href="/connection-recipe">
-                  <MapPin className="w-4 h-4 mr-2" /> Connection Recipe
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start bg-transparent">
-                <Link href="/homes-map">
-                  <MapPin className="w-4 h-4 mr-2" /> Homes Map
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start bg-transparent">
-                <Link href="/homes-list">
-                  <MapPin className="w-4 h-4 mr-2" /> Homes List
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start bg-transparent">
-                <Link href="/coordinate-test">
-                  <MapPin className="w-4 h-4 mr-2" /> Coordinate Test
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="px-4 lg:px-6 h-14 flex items-center justify-center bg-white border-t border-gray-200 text-sm text-gray-600">
-        <p>&copy; 2024 Family Visits Pro. All rights reserved.</p>
-      </footer>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Visits Over Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <LineChart className="h-16 w-16" />
+              <p>Placeholder for Line Chart</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Homes by Region</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <PieChart className="h-16 w-16" />
+              <p>Placeholder for Pie Chart</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Recent Activities</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>- Scheduled visit for Smith family on 2024-07-25</li>
+              <li>- Updated contact info for Johnson home</li>
+              <li>- Completed compliance review for Green family</li>
+              <li>- New home added: 123 Oak St, Anytown, TX</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  )
+}
+
+function HomeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  )
+}
+
+function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+      <line x1="16" x2="16" y1="2" y2="6" />
+      <line x1="8" x2="8" y1="2" y2="6" />
+      <line x1="3" x2="21" y1="10" y2="10" />
+    </svg>
+  )
+}
+
+function CheckCircleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
   )
 }

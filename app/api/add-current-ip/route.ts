@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server"
+import { getConnection } from "@/lib/db"
 
 export async function GET() {
   try {
-    const response = await fetch("https://api.ipify.org?format=json")
-    const data = await response.json()
-    const currentIp = data.ip
+    const pool = await getConnection()
+    const result = await pool
+      .request()
+      .query("SELECT CLIENT_NET_ADDRESS FROM SYS.DM_EXEC_CONNECTIONS WHERE SESSION_ID = @@SPID")
+    const clientIp = result.recordset[0].CLIENT_NET_ADDRESS
 
-    // In a real application, you would store this IP in your database
-    // or a configuration service. For this example, we'll just return it.
-    console.log(`Current public IP: ${currentIp}`)
+    // In a real application, you would add this IP to your Azure SQL Firewall
+    // This is a placeholder for demonstration purposes.
+    console.log(`Current client IP address: ${clientIp}. You would add this to your Azure SQL firewall.`)
 
     return NextResponse.json({
       success: true,
-      ip: currentIp,
-      message: "Current IP fetched successfully. In a real app, this would be added to your database firewall.",
+      ipAddress: clientIp,
+      message: "IP address retrieved. Add this to your Azure SQL firewall.",
     })
-  } catch (error) {
-    console.error("Failed to fetch current IP:", error)
-    return NextResponse.json({ success: false, message: "Failed to fetch current IP." }, { status: 500 })
+  } catch (error: any) {
+    console.error("Error getting client IP:", error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
 
@@ -28,9 +31,11 @@ export async function POST() {
     // Get current IP
     let currentIP = "Unknown"
     try {
-      const ipResponse = await fetch("https://api.ipify.org?format=json")
-      const ipData = await ipResponse.json()
-      currentIP = ipData.ip
+      const pool = await getConnection()
+      const result = await pool
+        .request()
+        .query("SELECT CLIENT_NET_ADDRESS FROM SYS.DM_EXEC_CONNECTIONS WHERE SESSION_ID = @@SPID")
+      currentIP = result.recordset[0].CLIENT_NET_ADDRESS
       console.log("Current IP detected:", currentIP)
     } catch (error) {
       console.error("Failed to get current IP:", error)
