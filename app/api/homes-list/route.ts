@@ -1,48 +1,15 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { getHomesList, processHomesForDisplay } from "@/lib/db-extensions"
 
 export async function GET() {
   try {
-    console.log("📋 Fetching homes list with coordinate casting...")
+    console.log("📋 [API] Homes list endpoint called")
 
-    const homes = await query(`
-      SELECT 
-        Guid,
-        HomeName,
-        Street,
-        City,
-        State,
-        Zip,
-        Unit,
-        HomePhone,
-        CaseManager,
-        CaseManagerEmail,
-        CaseManagerPhone,
-        CAST([Latitude] AS FLOAT) AS Latitude,
-        CAST([Longitude] AS FLOAT) AS Longitude,
-        LastSync,
-        Xref
-      FROM SyncActiveHomes 
-      WHERE HomeName IS NOT NULL
-      ORDER BY Unit, HomeName
-    `)
+    // Use the extension function instead of directly calling the locked db
+    const homes = await getHomesList()
+    const processedHomes = processHomesForDisplay(homes)
 
-    console.log(`📊 Retrieved ${homes.length} homes from database`)
-
-    // Process homes to add coordinate status
-    const processedHomes = homes.map((home: any) => {
-      const lat = Number(home.Latitude)
-      const lng = Number(home.Longitude)
-
-      const hasValidCoordinates =
-        !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0 && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
-
-      return {
-        ...home,
-        hasCoordinates: hasValidCoordinates,
-        coordinateDisplay: hasValidCoordinates ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "No coordinates",
-      }
-    })
+    console.log(`✅ [API] Successfully processed ${processedHomes.length} homes`)
 
     return NextResponse.json({
       success: true,
@@ -52,7 +19,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
-    console.error("❌ Database error in homes-list:", error)
+    console.error("❌ [API] Error in homes-list:", error)
     return NextResponse.json(
       {
         success: false,

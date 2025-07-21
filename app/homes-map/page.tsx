@@ -3,21 +3,15 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RefreshCw, ArrowLeft, MapPin, Filter } from "lucide-react"
-import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { MapPin, Filter, RotateCcw, Users, Building } from "lucide-react"
 import dynamic from "next/dynamic"
 
 // Dynamically import the map component to avoid SSR issues
-const HomesMap = dynamic(() => import("@/components/homes-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-96 bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">Loading map...</div>
-  ),
-})
+const HomesMap = dynamic(() => import("@/components/homes-map"), { ssr: false })
 
-interface HomeData {
+interface MapHome {
   id: string
   name: string
   address: string
@@ -27,253 +21,249 @@ interface HomeData {
   Unit: string
   latitude: number
   longitude: number
-  phoneNumber?: string
-  email?: string
-  contactPersonName?: string
-  contactPhone?: string
-}
-
-interface ApiResponse {
-  success: boolean
-  homes: HomeData[]
-  total: number
-  unitSummary: Record<string, number>
-  caseManagers: string[]
-  filter: {
-    unit: string
-    caseManager: string
-  }
-  error?: string
+  phoneNumber: string
+  contactPersonName: string
+  email: string
+  contactPhone: string
 }
 
 export default function HomesMapPage() {
-  const [data, setData] = useState<ApiResponse | null>(null)
+  const [homes, setHomes] = useState<MapHome[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [unitFilter, setUnitFilter] = useState<string>("ALL")
   const [caseManagerFilter, setCaseManagerFilter] = useState<string>("ALL")
+  const [caseManagers, setCaseManagers] = useState<string[]>([])
+  const [unitSummary, setUnitSummary] = useState<Record<string, number>>({})
 
-  const fetchHomes = async (unit = "ALL", caseManager = "ALL") => {
-    setLoading(true)
+  const fetchHomes = async () => {
     try {
-      console.log(`🗺️ Fetching homes for map with filters - Unit: ${unit}, Case Manager: ${caseManager}`)
+      setLoading(true)
+      setError(null)
 
       const params = new URLSearchParams()
-      if (unit !== "ALL") params.append("unit", unit)
-      if (caseManager !== "ALL") params.append("caseManager", caseManager)
+      if (unitFilter !== "ALL") params.append("unit", unitFilter)
+      if (caseManagerFilter !== "ALL") params.append("caseManager", caseManagerFilter)
 
-      const url = `/api/homes-for-map${params.toString() ? `?${params.toString()}` : ""}`
-      const response = await fetch(url)
+      const response = await fetch(`/api/homes-for-map?${params}`)
+      const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (data.success) {
+        setHomes(data.homes)
+        setCaseManagers(data.caseManagers || [])
+        setUnitSummary(data.unitSummary || {})
+        console.log(`📍 Loaded ${data.homes.length} homes for map`)
+      } else {
+        setError(data.error || "Failed to fetch homes")
       }
-
-      const result = await response.json()
-      console.log("✅ Map data received:", result)
-      setData(result)
-    } catch (error: any) {
-      console.error("❌ Error fetching homes for map:", error)
-      setData({
-        success: false,
-        homes: [],
-        total: 0,
-        unitSummary: {},
-        caseManagers: [],
-        filter: { unit, caseManager },
-        error: error.message,
-      })
+    } catch (err) {
+      console.error("Error fetching homes:", err)
+      setError("Failed to fetch homes data")
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchHomes(unitFilter, caseManagerFilter)
+    fetchHomes()
   }, [unitFilter, caseManagerFilter])
-
-  const handleUnitChange = (value: string) => {
-    setUnitFilter(value)
-  }
-
-  const handleCaseManagerChange = (value: string) => {
-    setCaseManagerFilter(value)
-  }
-
-  const handleRefresh = () => {
-    fetchHomes(unitFilter, caseManagerFilter)
-  }
 
   const clearFilters = () => {
     setUnitFilter("ALL")
     setCaseManagerFilter("ALL")
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Homes Map</h1>
-          </div>
+  const hasActiveFilters = unitFilter !== "ALL" || caseManagerFilter !== "ALL"
 
-          <div className="flex items-center gap-4">
-            {data && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-sm">
-                  {data.total} homes found
-                </Badge>
-                {data.unitSummary && Object.keys(data.unitSummary).length > 0 && (
-                  <div className="flex gap-1">
-                    {Object.entries(data.unitSummary).map(([unit, count]) => (
-                      <Badge key={unit} variant="secondary" className="text-xs">
-                        {unit}: {count}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Button onClick={handleRefresh} disabled={loading} size="sm">
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading homes map...</p>
           </div>
         </div>
+      </div>
+    )
+  }
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-5 w-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Unit:</label>
-                <Select value={unitFilter} onValueChange={handleUnitChange}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Units</SelectItem>
-                    <SelectItem value="DAL">Dallas (DAL)</SelectItem>
-                    <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <MapPin className="h-5 w-5" />
+              <span className="font-medium">Error loading map</span>
+            </div>
+            <p className="text-red-600 mt-2">{error}</p>
+            <Button onClick={fetchHomes} className="mt-4 bg-transparent" variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Case Manager:</label>
-                <Select value={caseManagerFilter} onValueChange={handleCaseManagerChange}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select case manager" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Case Managers</SelectItem>
-                    {data?.caseManagers?.map((manager) => (
-                      <SelectItem key={manager} value={manager}>
-                        {manager}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Homes Map</h1>
+          <p className="text-gray-600 mt-1">Interactive map showing {homes.length} foster homes with coordinates</p>
+        </div>
+        <Button onClick={fetchHomes} variant="outline" size="sm">
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
 
-              {(unitFilter !== "ALL" || caseManagerFilter !== "ALL") && (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-              )}
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Filter className="h-5 w-5" />
+            <span>Filters</span>
+            {hasActiveFilters && (
+              <Badge variant="secondary" className="ml-2">
+                Active
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Unit</label>
+              <Select value={unitFilter} onValueChange={setUnitFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Units</SelectItem>
+                  <SelectItem value="DAL">Dallas (DAL)</SelectItem>
+                  <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {data?.filter && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {data.filter.unit !== "ALL" && (
-                  <Badge variant="outline">
-                    Unit:{" "}
-                    {data.filter.unit === "DAL"
-                      ? "Dallas"
-                      : data.filter.unit === "SAN"
-                        ? "San Antonio"
-                        : data.filter.unit}
-                  </Badge>
-                )}
-                {data.filter.caseManager !== "ALL" && (
-                  <Badge variant="outline">Case Manager: {data.filter.caseManager}</Badge>
-                )}
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Case Manager</label>
+              <Select value={caseManagerFilter} onValueChange={setCaseManagerFilter}>
+                <SelectTrigger className="w-60">
+                  <SelectValue placeholder="Select case manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Case Managers</SelectItem>
+                  {caseManagers.map((manager) => (
+                    <SelectItem key={manager} value={manager}>
+                      {manager}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveFilters && (
+              <Button onClick={clearFilters} variant="outline" size="sm">
+                Clear Filters
+              </Button>
             )}
+          </div>
+
+          {/* Filter Summary */}
+          {hasActiveFilters && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {unitFilter !== "ALL" && (
+                <Badge variant="outline">
+                  <Building className="h-3 w-3 mr-1" />
+                  Unit: {unitFilter}
+                </Badge>
+              )}
+              {caseManagerFilter !== "ALL" && (
+                <Badge variant="outline">
+                  <Users className="h-3 w-3 mr-1" />
+                  Case Manager: {caseManagerFilter}
+                </Badge>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-600">Total Homes</p>
+                <p className="text-2xl font-bold">{homes.length}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Foster Homes Map
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading && (
-              <div className="text-center py-8">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading map data...</p>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Building className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-sm text-gray-600">Dallas (DAL)</p>
+                <p className="text-2xl font-bold">{unitSummary.DAL || 0}</p>
               </div>
-            )}
+            </div>
+          </CardContent>
+        </Card>
 
-            {!loading && data && !data.success && (
-              <div className="text-center py-8">
-                <div className="text-red-600 mb-4">
-                  <strong>Error:</strong> {data.error}
-                </div>
-                <Button onClick={handleRefresh}>Try Again</Button>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Building className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm text-gray-600">San Antonio (SAN)</p>
+                <p className="text-2xl font-bold">{unitSummary.SAN || 0}</p>
               </div>
-            )}
-
-            {!loading && data && data.success && data.homes.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">No homes found with the current filters.</p>
-                <div className="space-x-2">
-                  <Button onClick={handleRefresh}>Refresh</Button>
-                  <Button variant="outline" onClick={clearFilters}>
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {!loading && data && data.success && data.homes.length > 0 && (
-              <div className="space-y-4">
-                {/* Map Legend */}
-                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium">Legend:</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
-                    <span className="text-sm">Dallas (DAL)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-600 rounded-full"></div>
-                    <span className="text-sm">San Antonio (SAN)</span>
-                  </div>
-                </div>
-
-                {/* Map Component */}
-                <div className="h-96 rounded-lg overflow-hidden border">
-                  <HomesMap homes={data.homes} />
-                </div>
-              </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Map */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="h-[600px] w-full">
+            <HomesMap homes={homes} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Map Legend */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Map Legend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                D
+              </div>
+              <span className="text-sm">Dallas (DAL) Homes</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                S
+              </div>
+              <span className="text-sm">San Antonio (SAN) Homes</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
