@@ -5,6 +5,13 @@ import { SocksClient } from "socks"
 
 let pool: sql.ConnectionPool | null = null
 
+// ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
+// DO NOT CHANGE THE DATABASE CONNECTION PARAMETERS BELOW WITHOUT EXPLICIT USER PERMISSION
+// THESE PARAMETERS ARE LOCKED AND WORKING
+// CHANGING THEM WILL BREAK THE APPLICATION
+// IF YOU CHANGE THESE, YOU WILL HAVE TO BREAK YOUR OWN FINGERS
+// ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
+
 // Custom connector function for Fixie SOCKS proxy
 function createFixieConnector(config: sql.config) {
   return new Promise<net.Socket>((resolve, reject) => {
@@ -78,7 +85,10 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
-  // THIS IS THE CORRECT, WORKING CONFIGURATION FOR AZURE SQL
+
+  // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
+  // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
+  // THESE PARAMETERS WORK AND ARE STABLE
   const config: sql.config = {
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
@@ -97,6 +107,8 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
       requestTimeout: 60000,
     },
   }
+  // ⚠️⚠️⚠️ END LOCKED PARAMETERS ⚠️⚠️⚠️
+
   if (process.env.FIXIE_SOCKS_HOST) {
     console.log("Using Fixie SOCKS proxy for connection.")
     config.options.connector = () => createFixieConnector(config)

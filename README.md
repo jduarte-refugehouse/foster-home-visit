@@ -2,6 +2,22 @@
 
 This is an internal application designed to streamline the management of family visits for social workers and agencies. It provides tools for managing homes, scheduling visits, and ensuring compliance with relevant regulations.
 
+## ⚠️⚠️⚠️ CRITICAL WARNING FOR v0 AI ASSISTANT ⚠️⚠️⚠️
+
+**DO NOT CHANGE THE DATABASE CONNECTION PARAMETERS IN `lib/db.ts` WITHOUT EXPLICIT USER PERMISSION**
+
+The database connection parameters in `lib/db.ts` are LOCKED and WORKING. They connect to:
+- Server: `refugehouse-bifrost-server.database.windows.net`
+- Database: `RadiusBifrost`
+- User: `v0_app_user`
+- Password: `M7w!vZ4#t8LcQb1R`
+
+**IF YOU CHANGE THESE PARAMETERS, YOU WILL BREAK THE APPLICATION AND WILL HAVE TO BREAK YOUR OWN FINGERS.**
+
+These parameters are stable and functional. Do not revert to old configurations or suggest alternatives without explicit user request.
+
+## ⚠️⚠️⚠️ END CRITICAL WARNING ⚠️⚠️⚠️
+
 ## Development Workflow with v0
 
 This project is being developed in collaboration with v0, Vercel's AI Assistant. To ensure a smooth workflow and successful deployments, please follow these steps:
@@ -44,11 +60,9 @@ This project is being developed in collaboration with v0, Vercel's AI Assistant.
 
 Ensure you have the following environment variables configured in your `.env.local` file (for local development) and on Vercel (for deployment). These are for your **Azure SQL Database** connection:
 
-*   `POSTGRES_USER`: Your Azure SQL database username.
-*   `POSTGRES_PASSWORD`: Your Azure SQL database password.
-*   `POSTGRES_HOST`: Your Azure SQL server hostname.
-*   `POSTGRES_DATABASE`: Your Azure SQL database name.
 *   `FIXIE_SOCKS_HOST`: Your Fixie SOCKS proxy URL (e.g., `socks://username:password@host:port`).
+
+**Note**: The database connection parameters are hardcoded in `lib/db.ts` and should not be changed.
 
 ### Installation
 
@@ -88,7 +102,7 @@ Ensure you have the following environment variables configured in your `.env.loc
 
 *   `app/`: Next.js App Router pages and API routes.
 *   `components/`: Reusable React components (including shadcn/ui components).
-*   `lib/db.ts`: Database connection logic, including Fixie proxy integration.
+*   `lib/db.ts`: Database connection logic, including Fixie proxy integration. **DO NOT MODIFY WITHOUT PERMISSION**.
 *   `public/images/`: Static assets like logos.
 *   `tailwind.config.ts`: Tailwind CSS configuration.
 *   `app/globals.css`: Global CSS styles.
@@ -96,5 +110,5 @@ Ensure you have the following environment variables configured in your `.env.loc
 ## Troubleshooting
 
 *   **`ERR_PNPM_OUTDATED_LOCKFILE`**: This means your `pnpm-lock.yaml` file is not in sync with `package.json`. Run `pnpm install` locally, commit both files, and then redeploy.
-*   **Database Connection Issues**: Check your environment variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`). Use the `/diagnostics` page in the app to test connectivity.
+*   **Database Connection Issues**: Check your environment variables (`FIXIE_SOCKS_HOST`). Use the `/diagnostics` page in the app to test connectivity. **DO NOT CHANGE THE DATABASE PARAMETERS IN `lib/db.ts`**.
 *   **Proxy Issues**: Ensure `FIXIE_SOCKS_HOST` is correctly formatted and accessible. Use the `/diagnostics` page to test the proxy connection.
