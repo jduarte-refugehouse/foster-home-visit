@@ -7,7 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCw, Search, MapPin, List, X } from "lucide-react"
-import HomesMap from "@/components/homes-map"
+import dynamic from "next/dynamic"
+
+// Dynamically import the map component to prevent SSR issues
+const HomesMap = dynamic(() => import("@/components/homes-map"), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>,
+})
 
 interface MapHome {
   id: string
@@ -188,10 +194,10 @@ export default function HomesMapPage() {
 
             {/* Unit Filter */}
             <Select value={unitFilter} onValueChange={setUnitFilter}>
-              <SelectTrigger style={{ zIndex: 1000 }}>
+              <SelectTrigger>
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>
-              <SelectContent style={{ zIndex: 1001 }}>
+              <SelectContent className="z-50">
                 <SelectItem value="ALL">All Units</SelectItem>
                 <SelectItem value="DAL">Dallas</SelectItem>
                 <SelectItem value="SAN">San Antonio</SelectItem>
@@ -200,10 +206,10 @@ export default function HomesMapPage() {
 
             {/* Case Manager Filter */}
             <Select value={caseManagerFilter} onValueChange={setCaseManagerFilter}>
-              <SelectTrigger style={{ zIndex: 1000 }}>
+              <SelectTrigger>
                 <SelectValue placeholder="Select case manager" />
               </SelectTrigger>
-              <SelectContent style={{ zIndex: 1001 }}>
+              <SelectContent className="z-50 max-h-60 overflow-y-auto">
                 <SelectItem value="ALL">All Case Managers</SelectItem>
                 {caseManagers.map((manager) => (
                   <SelectItem key={manager} value={manager}>

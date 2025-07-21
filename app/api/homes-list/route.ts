@@ -1,28 +1,28 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { fetchHomesList } from "@/lib/db-extensions"
+import { NextResponse } from "next/server"
+import { fetchHomesForList, getUniqueCaseManagers } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   console.log("📋 [API] Homes list endpoint called")
 
   try {
     const { searchParams } = new URL(request.url)
     const unit = searchParams.get("unit") || undefined
     const caseManager = searchParams.get("caseManager") || undefined
-    const search = searchParams.get("search") || undefined
 
-    console.log("🔍 [API] Filters applied:", { unit, caseManager, search })
+    console.log("🔍 [API] Filters applied:", { unit, caseManager })
 
-    const homes = await fetchHomesList({ unit, caseManager, search })
+    const [homes, caseManagers] = await Promise.all([fetchHomesForList({ unit, caseManager }), getUniqueCaseManagers()])
 
     console.log(`✅ [API] Successfully processed ${homes.length} homes for list`)
 
     return NextResponse.json({
       success: true,
       homes,
-      count: homes.length,
+      caseManagers,
+      total: homes.length,
     })
   } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)

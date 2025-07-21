@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { calculateHomesStats } from "@/lib/db-extensions"
+import { getHomesStatistics } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,7 +8,7 @@ export async function GET() {
   console.log("📈 [API] Homes stats endpoint called")
 
   try {
-    const stats = await calculateHomesStats()
+    const stats = await getHomesStatistics()
 
     console.log("✅ [API] Successfully calculated statistics")
 
