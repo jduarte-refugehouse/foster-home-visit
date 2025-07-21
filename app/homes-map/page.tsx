@@ -205,7 +205,7 @@ export default function HomesMapPage() {
               <SelectTrigger>
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>
-              <SelectContent className="z-50">
+              <SelectContent className="z-[9999]">
                 <SelectItem value="ALL">All Units</SelectItem>
                 <SelectItem value="DAL">Dallas</SelectItem>
                 <SelectItem value="SAN">San Antonio</SelectItem>
@@ -217,7 +217,7 @@ export default function HomesMapPage() {
               <SelectTrigger>
                 <SelectValue placeholder="Select case manager" />
               </SelectTrigger>
-              <SelectContent className="z-50 max-h-60 overflow-y-auto">
+              <SelectContent className="z-[9999] max-h-60 overflow-y-auto">
                 <SelectItem value="ALL">All Case Managers</SelectItem>
                 {caseManagers.map((manager) => (
                   <SelectItem key={manager} value={manager}>
