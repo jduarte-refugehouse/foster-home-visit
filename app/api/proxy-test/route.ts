@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { SocksProxyAgent } from "socks-proxy-agent"
+import { SocksProxyAgent } from "socks-proxy-agent" // Keeping this for now as it's a more standard way, but will revert if needed
 import https from "https"
 
 export async function GET() {
-  const fixieUrl = process.env.FIXIE_SOCKS_HOST
+  let fixieUrl = process.env.FIXIE_SOCKS_HOST
 
   if (!fixieUrl) {
     return NextResponse.json(
@@ -12,7 +12,16 @@ export async function GET() {
     )
   }
 
+  // Ensure the Fixie URL has a protocol
+  if (!fixieUrl.startsWith("socks://") && !fixieUrl.startsWith("socks5://") && !fixieUrl.startsWith("socks4://")) {
+    fixieUrl = `socks://${fixieUrl}`
+  }
+
   try {
+    // Note: The SocksProxyAgent is from the 'socks-proxy-agent' package.
+    // If the original 'socks' package's custom connector was preferred for proxy-test,
+    // this part would need to be adjusted to use that. For now, keeping SocksProxyAgent
+    // for external HTTP requests via proxy.
     const agent = new SocksProxyAgent(fixieUrl)
 
     const options = {

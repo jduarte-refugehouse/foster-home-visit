@@ -21,7 +21,10 @@ export async function GET() {
 
   // Test Proxy Connection
   try {
-    const proxyResponse = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"}/api/proxy-test`)
+    const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
+    const proxyResponse = await fetch(
+      `${vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`}/api/proxy-test`,
+    )
     const proxyData = await proxyResponse.json()
     if (proxyData.success) {
       proxyConnectionStatus = `Success: Connected via ${proxyData.proxyIp}`
@@ -37,8 +40,9 @@ export async function GET() {
 
   // Get Current Client IP (as seen by Vercel/external)
   try {
+    const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"
     const ipResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"}/api/add-current-ip`,
+      `${vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`}/api/add-current-ip`,
     )
     const ipData = await ipResponse.json()
     if (ipData.success) {
@@ -59,8 +63,8 @@ export async function GET() {
     currentClientIp,
     fixieSocksHost: process.env.FIXIE_SOCKS_HOST ? "Configured" : "Not Configured",
     databaseUrl: process.env.DATABASE_URL ? "Configured" : "Not Configured",
-    postgresUser: process.env.POSTGRES_USER ? "Configured" : "Not Configured",
-    postgresHost: process.env.POSTGRES_HOST ? "Configured" : "Not Configured",
-    postgresDatabase: process.env.POSTGRES_DATABASE ? "Configured" : "Not Configured",
+    dbUser: process.env.POSTGRES_USER ? "Configured" : "Not Configured", // Changed from postgresUser
+    dbHost: process.env.POSTGRES_HOST ? "Configured" : "Not Configured", // Changed from postgresHost
+    dbName: process.env.POSTGRES_DATABASE ? "Configured" : "Not Configured", // Changed from postgresDatabase
   })
 }

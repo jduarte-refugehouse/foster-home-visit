@@ -26,7 +26,7 @@ This is an internal application designed to streamline the management of family 
 
 ### Environment Variables
 
-Ensure you have the following environment variables configured in your `.env.local` file (for local development) and on Vercel (for deployment):
+Ensure you have the following environment variables configured in your `.env.local` file (for local development) and on Vercel (for deployment). These are for your **Azure SQL Database** connection:
 
 *   `POSTGRES_USER`: Your Azure SQL database username.
 *   `POSTGRES_PASSWORD`: Your Azure SQL database password.
@@ -82,3 +82,6 @@ Ensure you have the following environment variables configured in your `.env.loc
 *   **`ERR_PNPM_OUTDATED_LOCKFILE`**: This means your `pnpm-lock.yaml` file is not in sync with `package.json`. Run `pnpm install` locally, commit both files, and then redeploy.
 *   **Database Connection Issues**: Check your environment variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`). Use the `/diagnostics` page in the app to test connectivity.
 *   **Proxy Issues**: Ensure `FIXIE_SOCKS_HOST` is correctly formatted and accessible. Use the `/diagnostics` page to test the proxy connection.
+\`\`\`
+
+Finally, I've updated `app/connection-recipe/page.tsx` to accurately reflect the `lib/db.ts` code (using environment variables for credentials) and corrected the `FIXIE_SOCKS_HOST` example format.
