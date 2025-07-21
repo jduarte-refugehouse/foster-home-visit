@@ -1,74 +1,58 @@
 /**
- * DATABASE CONNECTION LOCK SYSTEM
+ * 🔒 DATABASE CONNECTION LOCK FILE 🔒
  *
  * This file serves as a safeguard to prevent unauthorized modifications
- * to the database connection system that is currently working.
+ * to the database connection system.
  *
- * 🔒 LOCKED FILES - DO NOT MODIFY WITHOUT EXPLICIT USER PERMISSION:
- * - lib/db.ts (entire file)
- * - package.json (database-related dependencies only)
+ * ⚠️ CRITICAL WARNING ⚠️
+ * The database connection in lib/db.ts is LOCKED and WORKING.
+ * DO NOT MODIFY without explicit user permission.
  *
  * 🚫 FORBIDDEN MODIFICATIONS:
- * - Database connection parameters (server, user, database, etc.)
- * - SOCKS proxy implementation (createFixieConnector function)
- * - Azure Key Vault authentication (getPasswordFromKeyVault function)
- * - Connection pool configuration
- * - Adding/removing database dependencies (mssql, socks, @azure/* packages)
- * - Changing authentication methods (ClientSecretCredential)
- * - Modifying TLS/SSL settings
- * - Changing timeout values
- * - Altering error handling in connection functions
+ * - Changing database connection parameters (server, user, database, etc.)
+ * - Modifying SOCKS proxy implementation
+ * - Changing Azure Key Vault authentication
+ * - Adding/removing database dependencies in package.json
+ * - Modifying the createFixieConnector function
+ * - Changing the getConnection function logic
+ * - Altering password retrieval from Key Vault
+ * - Suggesting "better" or "more elegant" approaches
  *
- * ✅ ALLOWED OPERATIONS:
+ * 💀 CONSEQUENCES OF BREAKING THE LOCK:
+ * - Application will fail to connect to database
+ * - SOCKS proxy will stop working
+ * - Authentication will fail
+ * - Deployment will break
+ * - User will be very angry
+ * - You will have to break your own fingers (as warned)
+ *
+ * ✅ ALLOWED MODIFICATIONS:
  * - Creating NEW database utility files that USE the existing connection
- * - Adding NEW API endpoints that call existing query() function
- * - Creating NEW UI components that consume API data
- * - Modifying existing pages and components (non-connection related)
- * - Adding features that don't touch lib/db.ts
+ * - Adding NEW API endpoints that consume the existing connection
+ * - Creating NEW UI components
+ * - Modifying existing pages and components (not connection-related)
+ * - Adding features that don't touch connection code
  *
- * 🔍 CURRENT STATUS:
- * - Connection: WORKING ✅
- * - SOCKS Proxy: WORKING ✅
- * - Azure Key Vault: WORKING ✅
- * - Last Verified: After lockfile resolution
+ * 📋 WORKING CONFIGURATION:
+ * - Database: RadiusBifrost
+ * - Server: refugehouse-bifrost-server.database.windows.net
+ * - User: v0_app_user
+ * - Authentication: Azure Key Vault with ClientSecretCredential
+ * - Proxy: Fixie SOCKS5 proxy
+ * - Dependencies: socks@^2.8.3, mssql@^10.0.2
  *
- * ⚠️ CONSEQUENCES OF UNAUTHORIZED CHANGES:
- * - Application will break
- * - SOCKS proxy will fail
- * - Database authentication will fail
- * - Deployment lockfile errors
- * - User frustration and lost development time
- *
- * 📝 TO REQUEST CHANGES:
- * User must explicitly state: "Modify the database connection" or similar
- * All changes must be approved before implementation
+ * If you need to modify the connection, ask the user for explicit permission first.
  */
 
-export function checkConnectionLockPermission(requestedChange: string): boolean {
-  console.warn(`🔒 CONNECTION LOCK: Attempted to modify: ${requestedChange}`)
-  console.warn(`🔒 This change is FORBIDDEN without explicit user permission`)
-  console.warn(`🔒 Current connection is WORKING - do not break it`)
+export function checkConnectionModificationAllowed(reason: string): boolean {
+  console.warn(`🔒 CONNECTION LOCK: Attempted modification blocked - ${reason}`)
+  console.warn(`🔒 If you need to modify the connection, ask the user for explicit permission`)
   return false
 }
 
-export const LOCKED_FILES = ["lib/db.ts", "package.json (database dependencies)"] as const
-
-export const FORBIDDEN_CHANGES = [
-  "Database connection parameters",
-  "SOCKS proxy implementation",
-  "Azure Key Vault authentication",
-  "Connection pool configuration",
-  "Database dependencies",
-  "Authentication methods",
-  "TLS/SSL settings",
-  "Timeout values",
-  "Connection error handling",
-] as const
-
-export const CONNECTION_STATUS = {
-  working: true,
-  lastVerified: new Date().toISOString(),
-  socksProxy: "WORKING",
-  keyVault: "WORKING",
-  database: "WORKING",
-} as const
+export const CONNECTION_LOCK_STATUS = {
+  locked: true,
+  reason: "Working connection must not be modified without explicit user permission",
+  lastModified: "2025-07-21",
+  workingVersion: "ClientSecretCredential + Fixie SOCKS5 + Azure Key Vault",
+}

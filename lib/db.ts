@@ -5,11 +5,6 @@ import { SocksClient } from "socks"
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
 
-// 🔒🔒🔒 THIS FILE IS LOCKED - DO NOT MODIFY WITHOUT USER PERMISSION 🔒🔒🔒
-// See lib/db-connection-lock.ts for details
-// Last modified: Working version restored after connection issues
-// Status: WORKING - DO NOT CHANGE
-
 let pool: sql.ConnectionPool | null = null
 
 // ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
@@ -18,6 +13,11 @@ let pool: sql.ConnectionPool | null = null
 // CHANGING THEM WILL BREAK THE APPLICATION
 // IF YOU CHANGE THESE, YOU WILL HAVE TO BREAK YOUR OWN FINGERS
 // ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
+
+// 🔒 CONNECTION LOCK ACTIVE 🔒
+// This connection is protected by lib/db-connection-lock.ts
+// Any modifications require explicit user permission
+// See the lock file for details on what's forbidden
 
 // Azure Key Vault client setup
 async function getPasswordFromKeyVault(): Promise<{ password: string; source: string; error?: string }> {
