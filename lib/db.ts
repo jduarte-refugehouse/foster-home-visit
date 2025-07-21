@@ -48,16 +48,19 @@ function createFixieConnector(config: sql.config) {
     if (!process.env.FIXIE_SOCKS_HOST) {
       return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
     }
-    const fixieUrl = process.env.FIXIE_SOCKS_HOST
 
+    const fixieUrl = process.env.FIXIE_SOCKS_HOST
     // This regex is designed for the format: socks://user:password@host:port
     const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
+
     if (!match) {
       return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
     }
+
     const [, userId, password, host, port] = match
 
     console.log(`Attempting SOCKS connection via ${host}:${port}`)
+
     SocksClient.createConnection(
       {
         proxy: {
@@ -78,10 +81,13 @@ function createFixieConnector(config: sql.config) {
           console.error("SOCKS connection error:", err)
           return reject(err)
         }
+
         console.log("SOCKS connection established. Initiating TLS handshake...")
+
         if (!info) {
           return reject(new Error("SOCKS connection info is undefined."))
         }
+
         const tlsSocket = tls.connect(
           {
             socket: info.socket,
@@ -99,6 +105,7 @@ function createFixieConnector(config: sql.config) {
             }
           },
         )
+
         tlsSocket.on("error", (error) => {
           console.error("TLS socket error:", error)
           reject(error)
@@ -116,6 +123,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool && pool.connected) {
     return pool
   }
+
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
@@ -158,7 +166,9 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 
     console.log(`🔌 Attempting new connection to ${config.server}...`)
     console.log(`🔑 Password source: ${lastPasswordSource}`)
+
     pool = new sql.ConnectionPool(config)
+
     pool.on("error", (err) => {
       console.error("❌ Database Pool Error:", err)
       if (pool) {
@@ -166,6 +176,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
         pool = null
       }
     })
+
     await pool.connect()
     console.log("✅ Database connection successful.")
     return pool
@@ -190,11 +201,13 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
   try {
     const connection = await getConnection()
     const request = connection.request()
+
     if (params) {
       params.forEach((param, index) => {
         request.input(`param${index}`, param)
       })
     }
+
     const result = await request.query(queryText)
     return result.recordset
   } catch (error) {
@@ -221,6 +234,7 @@ export async function testConnection(): Promise<{
         DB_NAME() as db_name,
         CONNECTIONPROPERTY('client_net_address') as client_ip
     `)
+
     return {
       success: true,
       message: "Database connection successful.",
