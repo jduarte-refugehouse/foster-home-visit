@@ -12,14 +12,17 @@ function createFixieConnector(config: sql.config) {
       return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
     }
     const fixieUrl = process.env.FIXIE_SOCKS_HOST
-    const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
+
+    // This regex is designed for the format: fixie:API_KEY@host:port
+    // It will now correctly handle the format you provided.
+    const match = fixieUrl.match(/(?:fixie:)?([^@]+)@([^:]+):(\d+)/)
     if (!match) {
-      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
+      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: fixie:API_KEY@host:port"))
     }
-    const [, userId, password, host, port] = match
+    const [, password, host, port] = match
+    const userId = "fixie" // Fixie uses the API key as the password
 
     console.log(`Attempting SOCKS connection via ${host}:${port}`)
-
     SocksClient.createConnection(
       {
         proxy: {
@@ -74,16 +77,14 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool && pool.connected) {
     return pool
   }
-
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
-
   const config: sql.config = {
-    user: process.env.POSTGRES_USER, // Use environment variable
-    password: process.env.POSTGRES_PASSWORD, // Use environment variable
-    database: process.env.POSTGRES_DATABASE, // Use environment variable
-    server: process.env.POSTGRES_HOST || "localhost", // Use environment variable
+    user: "v0_app_user",
+    password: "M7w!vZ4#t8LcQb1R",
+    database: "RadiusBifrost",
+    server: "refugehouse-bifrost-server.database.windows.net",
     port: 1433,
     pool: {
       max: 10,
@@ -97,14 +98,12 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
       requestTimeout: 60000,
     },
   }
-
   if (process.env.FIXIE_SOCKS_HOST) {
     console.log("Using Fixie SOCKS proxy for connection.")
     config.options.connector = () => createFixieConnector(config)
   } else {
     console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
   }
-
   try {
     console.log(`🔌 Attempting new connection to ${config.server}...`)
     pool = new sql.ConnectionPool(config)
@@ -128,6 +127,62 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
 export async function closeConnection() {
   if (pool && pool.connected) {
     await pool.close()
+    pool = null
     console.log("Database connection closed.")
   }
+}
+
+export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+  try {
+    const connection = await getConnection()
+    const request = connection.request()
+    if (params) {
+      params.forEach((param, index) => {
+        request.input(`param${index}`, param)
+      })
+    }
+    const result = await request.query(queryText)
+    return result.recordset
+  } catch (error) {
+    console.error("❌ Query execution failed:", error)
+    if (pool) {
+      await pool.close()
+      pool = null
+    }
+    throw error
+  }
+}
+
+export async function testConnection(): Promise<{ success: boolean; message: string; data?: any[] }> {
+  try {
+    const result = await query(`
+      SELECT
+        SUSER_SNAME() as login_name,
+        DB_NAME() as db_name,
+        CONNECTIONPROPERTY('client_net_address') as client_ip
+    `)
+    return {
+      success: true,
+      message: "Database connection successful.",
+      data: result,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error during connection test.",
+    }
+  }
+}
+
+export async function healthCheck(): Promise<boolean> {
+  const result = await testConnection()
+  return result.success
+}
+
+export async function forceReconnect(): Promise<void> {
+  if (pool) {
+    await pool.close()
+    pool = null
+  }
+  console.log("🔄 Connection pool has been forcefully closed.")
 }
