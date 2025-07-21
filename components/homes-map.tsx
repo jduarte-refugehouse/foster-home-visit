@@ -17,13 +17,25 @@ L.Icon.Default.mergeOptions({
 })
 
 interface HomeData {
-  id: number
-  address: string
-  city: string
-  state: string
-  zip: string
-  latitude: number
-  longitude: number
+  Id: number
+  Name: string
+  Address: string
+  City: string
+  State: string
+  ZipCode: string
+  Latitude: number
+  Longitude: number
+  PhoneNumber?: string
+  Email?: string
+  Website?: string
+  Description?: string
+  Capacity?: number
+  ServicesOffered?: string
+  ContactPersonName?: string
+  ContactPersonTitle?: string
+  IsActive: boolean
+  CreatedDate: string
+  ModifiedDate: string
 }
 
 export default function HomesMap() {
@@ -61,8 +73,8 @@ export default function HomesMap() {
   if (homes.length === 0) return <div className="text-center py-8">No homes data available.</div>
 
   // Calculate center of all homes for initial map view
-  const centerLat = homes.reduce((sum, h) => sum + h.latitude, 0) / homes.length
-  const centerLng = homes.reduce((sum, h) => sum + h.longitude, 0) / homes.length
+  const centerLat = homes.reduce((sum, h) => sum + h.Latitude, 0) / homes.length
+  const centerLng = homes.reduce((sum, h) => sum + h.Longitude, 0) / homes.length
   const initialCenter: [number, number] = [centerLat, centerLng]
 
   return (
@@ -81,11 +93,19 @@ export default function HomesMap() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {homes.map((home) => (
-            <Marker key={home.id} position={[home.latitude, home.longitude]}>
+            <Marker key={home.Id} position={[home.Latitude, home.Longitude]}>
               <Popup>
-                <strong>{home.address}</strong>
+                <strong>{home.Name}</strong>
                 <br />
-                {home.city}, {home.state} {home.zip}
+                {home.Address}
+                <br />
+                {home.City}, {home.State} {home.ZipCode}
+                {home.PhoneNumber && (
+                  <>
+                    <br />
+                    Phone: {home.PhoneNumber}
+                  </>
+                )}
               </Popup>
             </Marker>
           ))}

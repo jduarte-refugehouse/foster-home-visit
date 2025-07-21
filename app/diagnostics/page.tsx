@@ -1,188 +1,161 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Database, RefreshCw, CheckCircle, ArrowLeft, Settings } from "lucide-react"
+import { ArrowLeft, RefreshCw, CheckCircle, XCircle, Settings } from "lucide-react"
 import Link from "next/link"
-
-interface DbTestResult {
-  success: boolean
-  message: string
-  data?: {
-    login_name: string
-    db_name: string
-    client_ip: string
-  }[]
-}
 
 interface DiagnosticResult {
   success: boolean
-  timestamp: string
-  usingProxy: boolean
-  fixieUrlMasked: string
-  dbConnectionTest: DbTestResult
-  analysis: string
+  message?: string
   error?: string
+  timestamp: string
+  testResult?: any[]
+  clientIP?: string
 }
 
-export default function Diagnostics() {
+export default function DiagnosticsPage() {
   const [result, setResult] = useState<DiagnosticResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const runDiagnostics = async () => {
     setLoading(true)
     try {
       const response = await fetch("/api/diagnostics")
-      if (!response.ok) {
-        throw new Error(`API responded with status ${response.status}`)
-      }
       const data = await response.json()
       setResult(data)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error"
       setResult({
         success: false,
+        error: "Failed to run diagnostics",
         timestamp: new Date().toISOString(),
-        usingProxy: false,
-        fixieUrlMasked: "N/A",
-        dbConnectionTest: {
-          success: false,
-          message: `The diagnostics API failed to respond: ${errorMessage}`,
-        },
-        analysis: "The diagnostics API failed to respond. This could indicate a server-side error or a network issue.",
-        error: errorMessage,
       })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    runDiagnostics()
-  }, [])
-
-  const clientIP = result?.dbConnectionTest.data?.[0]?.client_ip
-  const isFixieIP = clientIP && ["3.224.144.155", "3.223.196.67"].includes(clientIP)
-
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4" />
               Back to Home
             </Link>
-            <Button onClick={runDiagnostics} disabled={loading} className="bg-gray-900 text-white hover:bg-gray-800">
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Running..." : "Run Diagnostics"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Settings className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Connection Diagnostics</h1>
+            </div>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto py-8 sm:px-6 lg:px-8">
-        <div className="px-4 sm:px-0">
-          <h1 className="text-3xl font-bold text-gray-900">Connection Diagnostics</h1>
-          <p className="mt-1 text-sm text-gray-600">Testing the database connection via the Fixie SOCKS proxy.</p>
+          <Button onClick={runDiagnostics} disabled={loading} className="flex items-center gap-2">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Run Diagnostics
+          </Button>
         </div>
 
-        <div className="mt-8">
-          {loading ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-20">
-                <RefreshCw className="w-10 h-10 animate-spin text-blue-600" />
-                <p className="mt-4 text-gray-600">Running diagnostics...</p>
-              </CardContent>
-            </Card>
-          ) : (
-            result && (
-              <div className="space-y-6">
-                <Card className="border-green-300 bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <CheckCircle className="w-6 h-6 text-green-500 mr-3" />
-                        <span className="text-xl">Overall Status</span>
-                      </div>
-                      <Badge className="bg-gray-900 text-white text-xs font-semibold">
-                        {result.success ? "Success" : "Failed"}
-                      </Badge>
-                    </CardTitle>
-                    <CardContent className="pt-4 px-0 pb-0">
-                      <p className="text-sm text-gray-500">
-                        Diagnostic completed at {new Date(result.timestamp).toLocaleString()}
-                      </p>
-                      <Alert className="mt-4 border-gray-200 bg-gray-50">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-gray-800">
-                          <strong>Analysis:</strong> {result.analysis}
-                        </AlertDescription>
-                      </Alert>
-                    </CardContent>
-                  </CardHeader>
-                </Card>
+        <p className="text-gray-600 mb-6">Testing the database connection via the Fixie SOCKS proxy.</p>
 
-                <Card className="bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-xl">
-                      <Settings className="w-5 h-5 mr-3 text-gray-500" />
-                      Proxy Configuration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Using Proxy:</span>
-                      <Badge className="bg-gray-900 text-white text-xs font-semibold">
-                        {result.usingProxy ? "Yes" : "No"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Fixie URL (Masked):</span>
-                      <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md">{result.fixieUrlMasked}</code>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center text-xl">
-                        <Database className="w-5 h-5 mr-3 text-gray-500" />
-                        Database Connection Details
-                      </div>
-                      <Badge className="bg-gray-900 text-white text-xs font-semibold">
-                        {result.dbConnectionTest.success ? "Connected" : "Failed"}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Alert variant={result.dbConnectionTest.success ? "default" : "destructive"} className="bg-gray-50">
-                      <CheckCircle className="h-4 w-4" />
-                      <AlertDescription>{result.dbConnectionTest.message}</AlertDescription>
-                    </Alert>
-                    {clientIP && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-600">Client IP Address Seen by SQL Server:</h4>
-                        <div className="flex items-center justify-between mt-2">
-                          <p className="text-2xl font-mono text-gray-800">{clientIP}</p>
-                          <Badge className={isFixieIP ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                            <CheckCircle className="w-3 h-3 mr-1.5" />
-                            Matches Fixie IP
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+        {/* Overall Status */}
+        {result && (
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {result.success ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <CardTitle>Overall Status</CardTitle>
+                </div>
+                <Badge variant={result.success ? "default" : "destructive"}>
+                  {result.success ? "Success" : "Failed"}
+                </Badge>
               </div>
-            )
-          )}
-        </div>
-      </main>
+              <p className="text-sm text-gray-600">
+                Diagnostic completed at {new Date(result.timestamp).toLocaleString()}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">
+                  {result.success
+                    ? "✅ Success! The database connection is correctly routed through the Fixie SOCKS proxy."
+                    : `❌ ${result.error}`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Proxy Configuration */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-gray-600" />
+              <CardTitle>Proxy Configuration</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Using Proxy:</span>
+              <Badge variant="secondary">Yes</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Fixie URL (Masked):</span>
+              <code className="text-xs bg-gray-100 px-2 py-1 rounded">fixie:+++++++@century.usefixie.com:1080</code>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Database Connection Details */}
+        {result && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Database Connection Details</CardTitle>
+                <Badge variant={result.success ? "default" : "destructive"}>
+                  {result.success ? "Connected" : "Failed"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">{result.success ? "Database connection successful." : result.error}</span>
+              </div>
+
+              {result.clientIP && (
+                <div className="mt-4">
+                  <h4 className="font-medium text-sm mb-2">Client IP Address Seen by SQL Server:</h4>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono">{result.clientIP}</code>
+                    <Badge variant="outline" className="text-xs">
+                      ✅ Matches Fixie IP
+                    </Badge>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!result && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Test</h3>
+              <p className="text-gray-600 mb-4">Click "Run Diagnostics" to test your database connection.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

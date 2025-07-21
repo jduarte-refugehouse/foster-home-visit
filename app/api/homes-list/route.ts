@@ -1,24 +1,42 @@
 import { NextResponse } from "next/server"
-import { getConnection } from "@/lib/db"
+import { query } from "@/lib/db"
 
 export async function GET() {
   try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT
-        Guid,
-        HomeName,
-        Street,
+    const homes = await query(`
+      SELECT 
+        Id,
+        Name,
+        Address,
         City,
         State,
-        Zip,
-        Unit,
-        CaseManager
-      FROM Homes
+        ZipCode,
+        Latitude,
+        Longitude,
+        PhoneNumber,
+        Email,
+        Website,
+        Description,
+        Capacity,
+        ServicesOffered,
+        ContactPersonName,
+        ContactPersonTitle,
+        IsActive,
+        CreatedDate,
+        ModifiedDate
+      FROM Homes 
+      WHERE IsActive = 1
+      ORDER BY Name
     `)
-    return NextResponse.json({ success: true, homes: result.recordset })
+
+    return NextResponse.json(homes)
   } catch (error: any) {
-    console.error("Error fetching homes list:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    console.error("Database error:", error)
+    return NextResponse.json(
+      {
+        error: error.message,
+      },
+      { status: 500 },
+    )
   }
 }
