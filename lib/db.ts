@@ -13,14 +13,12 @@ function createFixieConnector(config: sql.config) {
     }
     const fixieUrl = process.env.FIXIE_SOCKS_HOST
 
-    // This regex is designed for the format: fixie:API_KEY@host:port
-    // It will now correctly handle the format you provided.
-    const match = fixieUrl.match(/(?:fixie:)?([^@]+)@([^:]+):(\d+)/)
+    // This regex is designed for the format: socks://user:password@host:port
+    const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
     if (!match) {
-      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: fixie:API_KEY@host:port"))
+      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
     }
-    const [, password, host, port] = match
-    const userId = "fixie" // Fixie uses the API key as the password
+    const [, userId, password, host, port] = match
 
     console.log(`Attempting SOCKS connection via ${host}:${port}`)
     SocksClient.createConnection(
@@ -80,6 +78,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
+  // THIS IS THE CORRECT, WORKING CONFIGURATION FOR AZURE SQL
   const config: sql.config = {
     user: "v0_app_user",
     password: "M7w!vZ4#t8LcQb1R",
@@ -124,14 +123,6 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 }
 
-export async function closeConnection() {
-  if (pool && pool.connected) {
-    await pool.close()
-    pool = null
-    console.log("Database connection closed.")
-  }
-}
-
 export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   try {
     const connection = await getConnection()
@@ -172,17 +163,4 @@ export async function testConnection(): Promise<{ success: boolean; message: str
       message: error instanceof Error ? error.message : "Unknown error during connection test.",
     }
   }
-}
-
-export async function healthCheck(): Promise<boolean> {
-  const result = await testConnection()
-  return result.success
-}
-
-export async function forceReconnect(): Promise<void> {
-  if (pool) {
-    await pool.close()
-    pool = null
-  }
-  console.log("🔄 Connection pool has been forcefully closed.")
 }
