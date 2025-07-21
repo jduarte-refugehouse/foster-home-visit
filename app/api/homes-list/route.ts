@@ -1,32 +1,36 @@
-import { NextResponse } from "next/server"
-import { getHomesList, processHomesForDisplay } from "@/lib/db-extensions"
+import { type NextRequest, NextResponse } from "next/server"
+import { fetchHomesList } from "@/lib/db-extensions"
 
-export async function GET() {
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
+export async function GET(request: NextRequest) {
+  console.log("📋 [API] Homes list endpoint called")
+
   try {
-    console.log("📋 [API] Homes list endpoint called")
+    const { searchParams } = new URL(request.url)
+    const unit = searchParams.get("unit") || undefined
+    const caseManager = searchParams.get("caseManager") || undefined
+    const search = searchParams.get("search") || undefined
 
-    // Use extension functions instead of directly calling the locked db
-    const rawHomes = await getHomesList()
-    const homes = processHomesForDisplay(rawHomes)
+    console.log("🔍 [API] Filters applied:", { unit, caseManager, search })
+
+    const homes = await fetchHomesList({ unit, caseManager, search })
 
     console.log(`✅ [API] Successfully processed ${homes.length} homes for list`)
 
     return NextResponse.json({
       success: true,
       homes,
-      total: homes.length,
-      debug: {
-        timestamp: new Date().toISOString(),
-      },
+      count: homes.length,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        homes: [],
-        total: 0,
+        error: "Failed to fetch homes list",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )

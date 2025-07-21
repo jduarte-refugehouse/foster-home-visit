@@ -117,86 +117,86 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
       const isSelected = selectedHome?.id === home.id
       const icon = isSelected ? selectedIcon : defaultIcon
 
-      const marker = L.marker([home.latitude, home.longitude], { icon })
-        .bindPopup(
-          `
-          <div style="min-width: 280px; max-width: 320px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: bold; color: #1f2937; line-height: 1.3;">
-              ${home.name}
-            </h3>
-            <div style="display: grid; gap: 8px;">
+      // Create detailed popup content
+      const popupContent = `
+        <div style="min-width: 280px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
+          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: bold; color: #1f2937; line-height: 1.3;">
+            ${home.name}
+          </h3>
+          <div style="display: grid; gap: 8px;">
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Address:</span>
+              <span style="color: #374151;">${home.address}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Location:</span>
+              <span style="color: #374151;">${home.City || "N/A"}, ${home.State || "N/A"} ${home.zipCode}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Unit:</span>
+              <span style="
+                background-color: ${home.Unit === "DAL" ? "#dbeafe" : "#fecaca"}; 
+                color: ${home.Unit === "DAL" ? "#1d4ed8" : "#dc2626"}; 
+                padding: 4px 12px; 
+                border-radius: 16px; 
+                font-size: 14px; 
+                font-weight: 600;
+              ">
+                ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
+              </span>
+            </div>
+            ${
+              home.phoneNumber
+                ? `
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Phone:</span>
+                <span style="color: #374151;">${home.phoneNumber}</span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              home.contactPersonName && home.contactPersonName !== "~unassigned~"
+                ? `
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Contact:</span>
+                <span style="color: #374151;">${home.contactPersonName}</span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              home.contactPhone && home.contactPhone !== home.phoneNumber
+                ? `
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Contact Phone:</span>
+                <span style="color: #374151;">${home.contactPhone}</span>
+              </div>
+            `
+                : ""
+            }
+            ${
+              home.email
+                ? `
               <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Address:</span>
-                <span style="color: #374151;">${home.address}</span>
+                <span style="color: #6b7280; font-weight: 500; min-width: 70px;">Email:</span>
+                <span style="color: #374151; word-break: break-word;">${home.email}</span>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Location:</span>
-                <span style="color: #374151;">${home.City || "N/A"}, ${home.State || "N/A"} ${home.zipCode}</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Unit:</span>
-                <span style="
-                  background-color: ${home.Unit === "DAL" ? "#dbeafe" : "#fecaca"}; 
-                  color: ${home.Unit === "DAL" ? "#1d4ed8" : "#dc2626"}; 
-                  padding: 4px 12px; 
-                  border-radius: 16px; 
-                  font-size: 14px; 
-                  font-weight: 600;
-                ">
-                  ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-                </span>
-              </div>
-              ${
-                home.phoneNumber
-                  ? `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Phone:</span>
-                  <span style="color: #374151;">${home.phoneNumber}</span>
-                </div>
-              `
-                  : ""
-              }
-              ${
-                home.contactPersonName
-                  ? `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Contact:</span>
-                  <span style="color: #374151;">${home.contactPersonName}</span>
-                </div>
-              `
-                  : ""
-              }
-              ${
-                home.contactPhone && home.contactPhone !== home.phoneNumber
-                  ? `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Contact Phone:</span>
-                  <span style="color: #374151;">${home.contactPhone}</span>
-                </div>
-              `
-                  : ""
-              }
-              ${
-                home.email
-                  ? `
-                <div style="display: flex; align-items: flex-start; gap: 8px;">
-                  <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Email:</span>
-                  <span style="color: #374151; word-break: break-word;">${home.email}</span>
-                </div>
-              `
-                  : ""
-              }
-            </div>
-            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
-              ${home.latitude.toFixed(6)}, ${home.longitude.toFixed(6)}
-            </div>
+            `
+                : ""
+            }
           </div>
-        `,
-          {
-            maxWidth: 350,
-            className: "custom-popup",
-          },
-        )
+          <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
+            Coordinates: ${home.latitude.toFixed(6)}, ${home.longitude.toFixed(6)}
+          </div>
+        </div>
+      `
+
+      const marker = L.marker([home.latitude, home.longitude], { icon })
+        .bindPopup(popupContent, {
+          maxWidth: 350,
+          className: "custom-popup",
+        })
         .on("click", () => {
           console.log(`🎯 Home selected on map: ${home.name}`)
           onHomeSelect?.(home)
