@@ -2,6 +2,8 @@ import sql from "mssql"
 import type net from "net"
 import tls from "tls"
 import { SocksClient } from "socks"
+import { SecretClient } from "@azure/keyvault-secrets"
+import { ClientSecretCredential } from "@azure/identity"
 
 let pool: sql.ConnectionPool | null = null
 
@@ -11,6 +13,27 @@ let pool: sql.ConnectionPool | null = null
 // CHANGING THEM WILL BREAK THE APPLICATION
 // IF YOU CHANGE THESE, YOU WILL HAVE TO BREAK YOUR OWN FINGERS
 // ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
+
+// Azure Key Vault client setup
+async function getPasswordFromKeyVault(): Promise<string> {
+  try {
+    const credential = new ClientSecretCredential(
+      process.env.AZURE_TENANT_ID!,
+      process.env.AZURE_CLIENT_ID!,
+      process.env.AZURE_CLIENT_SECRET!,
+    )
+
+    const keyVaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net/`
+    const client = new SecretClient(keyVaultUrl, credential)
+
+    const secret = await client.getSecret("database-password")
+    return secret.value!
+  } catch (error) {
+    console.error("Failed to retrieve password from Key Vault:", error)
+    // Fallback to hardcoded password if Key Vault fails
+    return "M7w!vZ4#t8LcQb1R"
+  }
+}
 
 // Custom connector function for Fixie SOCKS proxy
 function createFixieConnector(config: sql.config) {
@@ -86,12 +109,15 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
 
+  // Get password from Azure Key Vault
+  const password = await getPasswordFromKeyVault()
+
   // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
   // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
   // THESE PARAMETERS WORK AND ARE STABLE
   const config: sql.config = {
     user: "v0_app_user",
-    password: "M7w!vZ4#t8LcQb1R",
+    password: password, // Now retrieved securely from Key Vault
     database: "RadiusBifrost",
     server: "refugehouse-bifrost-server.database.windows.net",
     port: 1433,

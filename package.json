@@ -9,8 +9,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@azure/identity": "^4.0.1",
-    "@azure/keyvault-secrets": "^4.7.0",
+    "@azure/identity": "latest",
+    "@azure/keyvault-secrets": "latest",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
