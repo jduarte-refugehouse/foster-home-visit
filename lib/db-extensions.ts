@@ -1,19 +1,7 @@
-/**
- * DATABASE EXTENSIONS
- *
- * This file extends the functionality of the locked database connection
- * WITHOUT modifying the core db.ts file.
- *
- * ✅ SAFE TO MODIFY - This file can be changed without breaking the connection
- * 🔒 IMPORTS FROM LOCKED FILES - Uses the protected connection from lib/db.ts
- *
- * Purpose: Provide additional database utilities while keeping core connection untouched
- */
-
 import { query } from "./db"
 
-// Type definitions for our data structures
-export interface HomeRecord {
+// Types for database extensions
+export interface RawHomeData {
   Guid: string
   HomeName: string
   Street: string
@@ -31,6 +19,11 @@ export interface HomeRecord {
   Xref: string
 }
 
+export interface ProcessedHomeData extends RawHomeData {
+  hasCoordinates: boolean
+  coordinateDisplay: string
+}
+
 export interface MapHome {
   id: string
   name: string
@@ -45,22 +38,18 @@ export interface MapHome {
   contactPersonName: string
   email: string
   contactPhone: string
-  Xref: string
 }
 
-export interface FilterOptions {
+export interface HomesForMapFilters {
   unit?: string
   caseManager?: string
 }
 
-/**
- * Get all homes for the list view
- * Uses the locked connection from lib/db.ts
- */
-export async function getHomesList(): Promise<HomeRecord[]> {
-  console.log("📋 [DB-EXT] Fetching homes list...")
+// Extension functions that use the locked database connection
+export async function getHomesList(): Promise<RawHomeData[]> {
+  console.log("🏠 [Extension] Fetching homes list from database...")
 
-  const homes = await query<HomeRecord>(`
+  const homes = await query(`
     SELECT 
       Guid,
       HomeName,
@@ -82,17 +71,30 @@ export async function getHomesList(): Promise<HomeRecord[]> {
     ORDER BY Unit, HomeName
   `)
 
-  console.log(`📊 [DB-EXT] Retrieved ${homes.length} homes`)
+  console.log(`✅ [Extension] Retrieved ${homes.length} homes from database`)
   return homes
 }
 
-/**
- * Get homes for map display with filtering
- * Uses the locked connection from lib/db.ts
- */
-export async function getHomesForMap(filters: FilterOptions = {}): Promise<MapHome[]> {
-  console.log("🗺️ [DB-EXT] Fetching homes for map...")
-  console.log(`🔍 [DB-EXT] Filters:`, filters)
+export function processHomesForDisplay(homes: RawHomeData[]): ProcessedHomeData[] {
+  console.log("🔄 [Extension] Processing homes for display...")
+
+  return homes.map((home) => {
+    const lat = Number(home.Latitude)
+    const lng = Number(home.Longitude)
+
+    const hasValidCoordinates =
+      !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0 && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+
+    return {
+      ...home,
+      hasCoordinates: hasValidCoordinates,
+      coordinateDisplay: hasValidCoordinates ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "No coordinates",
+    }
+  })
+}
+
+export async function getHomesForMap(filters: HomesForMapFilters = {}): Promise<MapHome[]> {
+  console.log("🗺️ [Extension] Fetching homes for map with filters:", filters)
 
   let whereClause = `
     WHERE HomeName IS NOT NULL
@@ -108,11 +110,11 @@ export async function getHomesForMap(filters: FilterOptions = {}): Promise<MapHo
   }
 
   // Add case manager filtering if specified
-  if (filters.caseManager && filters.caseManager !== "ALL") {
-    whereClause += ` AND CaseManager = '${filters.caseManager.replace("'", "''")}'`
+  if (filters.caseManager) {
+    whereClause += ` AND CaseManager = '${filters.caseManager.replace("'", "''")}'` // Escape single quotes
   }
 
-  const homes = await query<any>(`
+  const homes = await query(`
     SELECT 
       Guid as id,
       HomeName as name,
@@ -133,8 +135,6 @@ export async function getHomesForMap(filters: FilterOptions = {}): Promise<MapHo
     ORDER BY Unit, HomeName
   `)
 
-  console.log(`📊 [DB-EXT] Raw query returned ${homes.length} homes`)
-
   // Validate coordinates
   const validHomes = homes.filter((home: any) => {
     const lat = Number(home.latitude)
@@ -144,25 +144,21 @@ export async function getHomesForMap(filters: FilterOptions = {}): Promise<MapHo
     const isValidLng = !isNaN(lng) && lng !== 0 && lng >= -180 && lng <= 180
 
     if (!isValidLat || !isValidLng) {
-      console.warn(`❌ [DB-EXT] Invalid coordinates for ${home.name}: lat=${lat}, lng=${lng}`)
+      console.warn(`❌ [Extension] Invalid coordinates for ${home.name}: lat=${lat}, lng=${lng}`)
       return false
     }
 
     return true
   })
 
-  console.log(`✅ [DB-EXT] Filtered to ${validHomes.length} homes with valid coordinates`)
+  console.log(`✅ [Extension] Processed ${validHomes.length} valid homes for map`)
   return validHomes
 }
 
-/**
- * Get unique case managers for filter dropdown
- * Uses the locked connection from lib/db.ts
- */
 export async function getCaseManagers(): Promise<string[]> {
-  console.log("👤 [DB-EXT] Fetching case managers...")
+  console.log("👤 [Extension] Fetching case managers...")
 
-  const result = await query<{ CaseManager: string }>(`
+  const result = await query(`
     SELECT DISTINCT CaseManager
     FROM SyncActiveHomes 
     WHERE CaseManager IS NOT NULL 
@@ -171,60 +167,50 @@ export async function getCaseManagers(): Promise<string[]> {
     ORDER BY CaseManager
   `)
 
-  const caseManagers = result.map((r) => r.CaseManager).filter(Boolean)
-  console.log(`👥 [DB-EXT] Found ${caseManagers.length} case managers`)
+  const caseManagers = result.map((row: any) => row.CaseManager).filter(Boolean)
+  console.log(`✅ [Extension] Found ${caseManagers.length} case managers`)
   return caseManagers
 }
 
-/**
- * Get summary statistics
- * Uses the locked connection from lib/db.ts
- */
-export async function getHomesStatistics() {
-  console.log("📊 [DB-EXT] Calculating statistics...")
+export function groupHomesByUnit(homes: MapHome[]): Record<string, number> {
+  console.log("📊 [Extension] Grouping homes by unit...")
 
-  const stats = await query<any>(`
-    SELECT 
-      COUNT(*) as totalHomes,
-      COUNT(CASE WHEN Unit = 'DAL' THEN 1 END) as dalHomes,
-      COUNT(CASE WHEN Unit = 'SAN' THEN 1 END) as sanHomes,
-      COUNT(CASE WHEN Latitude IS NOT NULL AND Longitude IS NOT NULL 
-                 AND CAST([Latitude] AS FLOAT) != 0 
-                 AND CAST([Longitude] AS FLOAT) != 0 THEN 1 END) as homesWithCoordinates,
-      COUNT(DISTINCT CaseManager) as uniqueCaseManagers
-    FROM SyncActiveHomes 
-    WHERE HomeName IS NOT NULL
-  `)
-
-  return stats[0] || {}
-}
-
-/**
- * Utility function to process homes for display
- */
-export function processHomesForDisplay(homes: HomeRecord[]) {
-  return homes.map((home) => {
-    const lat = Number(home.Latitude)
-    const lng = Number(home.Longitude)
-
-    const hasValidCoordinates =
-      !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0 && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
-
-    return {
-      ...home,
-      hasCoordinates: hasValidCoordinates,
-      coordinateDisplay: hasValidCoordinates ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : "No coordinates",
-    }
-  })
-}
-
-/**
- * Utility function to group homes by unit
- */
-export function groupHomesByUnit(homes: MapHome[]) {
-  return homes.reduce((acc: Record<string, number>, home) => {
+  const summary = homes.reduce((acc: Record<string, number>, home) => {
     const unit = home.Unit || "UNKNOWN"
     acc[unit] = (acc[unit] || 0) + 1
     return acc
   }, {})
+
+  console.log("✅ [Extension] Unit summary:", summary)
+  return summary
+}
+
+export async function getHomesStats(): Promise<{
+  total: number
+  withCoordinates: number
+  byUnit: Record<string, number>
+  byCaseManager: Record<string, number>
+}> {
+  console.log("📈 [Extension] Calculating homes statistics...")
+
+  const homes = await getHomesList()
+  const processedHomes = processHomesForDisplay(homes)
+
+  const stats = {
+    total: homes.length,
+    withCoordinates: processedHomes.filter((h) => h.hasCoordinates).length,
+    byUnit: homes.reduce((acc: Record<string, number>, home) => {
+      const unit = home.Unit || "UNKNOWN"
+      acc[unit] = (acc[unit] || 0) + 1
+      return acc
+    }, {}),
+    byCaseManager: homes.reduce((acc: Record<string, number>, home) => {
+      const manager = home.CaseManager || "Unassigned"
+      acc[manager] = (acc[manager] || 0) + 1
+      return acc
+    }, {}),
+  }
+
+  console.log("✅ [Extension] Statistics calculated:", stats)
+  return stats
 }

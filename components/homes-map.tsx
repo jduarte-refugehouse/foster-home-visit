@@ -167,6 +167,16 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
                   : ""
               }
               ${
+                home.contactPhone && home.contactPhone !== home.phoneNumber
+                  ? `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: #6b7280; font-weight: 500; min-width: 60px;">Contact Phone:</span>
+                  <span style="color: #374151;">${home.contactPhone}</span>
+                </div>
+              `
+                  : ""
+              }
+              ${
                 home.email
                   ? `
                 <div style="display: flex; align-items: flex-start; gap: 8px;">

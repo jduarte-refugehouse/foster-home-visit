@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { MapPin, Filter, RotateCcw, Users, Building, Search, Phone, Mail, ArrowLeft } from "lucide-react"
+import { MapPin, Filter, RotateCcw, Users, Building, Search, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
@@ -257,9 +257,9 @@ export default function HomesMapPage() {
         </Card>
 
         {/* Main Content: Map and List Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[700px]">
-          {/* Map */}
-          <Card className="h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
+          {/* Map - Takes up 2/3 of the space */}
+          <Card className="h-full lg:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -274,23 +274,27 @@ export default function HomesMapPage() {
             </CardContent>
           </Card>
 
-          {/* Homes List */}
+          {/* Homes List - Takes up 1/3 of the space */}
           <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between">
                 <span>Homes List</span>
-                <div className="flex gap-2">
-                  <Badge variant="secondary">{unitSummary.DAL || 0} Dallas</Badge>
-                  <Badge variant="secondary">{unitSummary.SAN || 0} San Antonio</Badge>
+                <div className="flex gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {unitSummary.DAL || 0} DAL
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {unitSummary.SAN || 0} SAN
+                  </Badge>
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 h-[calc(100%-80px)] overflow-y-auto">
-              <div className="space-y-2 p-4">
+              <div className="space-y-1 p-3">
                 {filteredHomes.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No homes found with current filters</p>
+                    <MapPin className="h-8 w-8 mx-auto mb-3 text-gray-300" />
+                    <p className="text-sm">No homes found</p>
                     {hasActiveFilters && (
                       <Button onClick={clearFilters} variant="outline" size="sm" className="mt-2 bg-transparent">
                         Clear Filters
@@ -302,54 +306,27 @@ export default function HomesMapPage() {
                     <div
                       key={home.id}
                       id={`home-${home.id}`}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                      className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-sm ${
                         selectedHome?.id === home.id
-                          ? "border-blue-500 bg-blue-50 shadow-md"
+                          ? "border-blue-500 bg-blue-50 shadow-sm"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                       onClick={() => handleHomeClick(home)}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg text-gray-900 leading-tight">{home.name}</h3>
-                        <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="ml-2 flex-shrink-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="font-semibold text-gray-900 text-sm leading-tight pr-2">{home.name}</div>
+                        <Badge
+                          variant={home.Unit === "DAL" ? "default" : "destructive"}
+                          className="text-xs flex-shrink-0"
+                        >
                           {home.Unit}
                         </Badge>
                       </div>
 
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <span>
-                            {home.address}
-                            {home.City && `, ${home.City}`}
-                            {home.State && `, ${home.State}`} {home.zipCode}
-                          </span>
-                        </div>
-
-                        {home.phoneNumber && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span>{home.phoneNumber}</span>
-                          </div>
-                        )}
-
-                        {home.contactPersonName && (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span>{home.contactPersonName}</span>
-                          </div>
-                        )}
-
-                        {home.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                            <span className="truncate">{home.email}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-2 text-xs text-gray-400">
-                        Coordinates: {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
+                      <div className="text-xs text-gray-600">
+                        {home.address}
+                        {home.City && `, ${home.City}`}
+                        {home.State && `, ${home.State}`} {home.zipCode}
                       </div>
                     </div>
                   ))

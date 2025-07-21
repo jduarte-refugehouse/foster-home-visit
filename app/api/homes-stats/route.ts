@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server"
-import { getHomesStatistics } from "@/lib/db-extensions"
+import { getHomesStats } from "@/lib/db-extensions"
 
 export async function GET() {
   try {
-    console.log("📊 [API] Homes statistics endpoint called")
+    console.log("📈 [API] Homes stats endpoint called")
 
-    // Use extension functions instead of directly calling the locked db
-    const stats = await getHomesStatistics()
+    const stats = await getHomesStats()
 
-    console.log(`✅ [API] Successfully retrieved statistics:`, stats)
+    console.log(`✅ [API] Successfully calculated statistics`)
 
     return NextResponse.json({
       success: true,
       stats,
-      debug: {
-        timestamp: new Date().toISOString(),
-      },
+      timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
     console.error("❌ [API] Error in homes-stats:", error)
@@ -23,7 +20,7 @@ export async function GET() {
       {
         success: false,
         error: error.message,
-        stats: {},
+        stats: null,
       },
       { status: 500 },
     )
