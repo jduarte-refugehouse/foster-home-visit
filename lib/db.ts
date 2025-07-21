@@ -3,26 +3,6 @@ import type net from "net"
 import tls from "tls"
 import { SocksClient } from "socks"
 
-const config: sql.config = {
-  server: "hearthouse.database.windows.net",
-  database: "HeartHouse",
-  user: "hearthouse",
-  password: "Hearthou$e2024!",
-  port: 1433,
-  options: {
-    encrypt: true,
-    trustServerCertificate: false,
-    enableArithAbort: true,
-  },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
-  requestTimeout: 30000,
-  connectionTimeout: 30000,
-}
-
 let pool: sql.ConnectionPool | null = null
 
 // Custom connector function for Fixie SOCKS proxy
@@ -98,6 +78,25 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool) {
     await pool.close().catch((err) => console.error("Error closing stale pool:", err))
   }
+  // THIS IS THE CORRECT, WORKING CONFIGURATION FOR AZURE SQL
+  const config: sql.config = {
+    user: "v0_app_user",
+    password: "M7w!vZ4#t8LcQb1R",
+    database: "RadiusBifrost",
+    server: "refugehouse-bifrost-server.database.windows.net",
+    port: 1433,
+    pool: {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30000,
+    },
+    options: {
+      encrypt: true,
+      trustServerCertificate: false,
+      connectTimeout: 60000,
+      requestTimeout: 60000,
+    },
+  }
   if (process.env.FIXIE_SOCKS_HOST) {
     console.log("Using Fixie SOCKS proxy for connection.")
     config.options.connector = () => createFixieConnector(config)
@@ -124,6 +123,14 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 }
 
+export async function closeConnection() {
+  if (pool && pool.connected) {
+    await pool.close()
+    pool = null
+    console.log("Database connection closed.")
+  }
+}
+
 export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
   try {
     const connection = await getConnection()
@@ -142,14 +149,6 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
       pool = null
     }
     throw error
-  }
-}
-
-export async function closeConnection() {
-  if (pool) {
-    await pool.close()
-    pool = null
-    console.log("Database connection closed.")
   }
 }
 
