@@ -1,78 +1,63 @@
-/**
- * DATABASE CONNECTION LOCK SYSTEM
- *
- * This file serves as a safeguard to prevent modifications to the working database connection.
- *
- * 🔒 LOCKED COMPONENTS:
- * - lib/db.ts (entire file)
- * - Database connection parameters
- * - SOCKS proxy configuration
- * - Azure Key Vault authentication
- * - Package dependencies related to database connection
- *
- * 🚫 FORBIDDEN ACTIONS:
- * - Modifying connection strings, usernames, passwords
- * - Changing SOCKS proxy implementation
- * - Altering Azure Key Vault configuration
- * - Adding/removing database-related dependencies
- * - Suggesting "better" or "more elegant" approaches
- * - Refactoring the connection logic
- *
- * ✅ ALLOWED ACTIONS:
- * - Creating NEW files that USE the existing connection
- * - Adding NEW API endpoints that consume the connection
- * - Creating NEW utility functions that call existing query functions
- * - Modifying UI components and pages
- * - Adding features that don't touch connection code
- *
- * ⚠️ CONSEQUENCES OF VIOLATION:
- * - Application will break
- * - User will be frustrated
- * - Development time will be wasted
- * - Trust will be damaged
- *
- * 📋 CHANGE APPROVAL PROCESS:
- * 1. User must explicitly request connection changes
- * 2. User must provide specific permission
- * 3. Changes must be documented with reason
- * 4. Rollback plan must be prepared
- *
- * 🔍 VERIFICATION FUNCTION:
- */
-export function canModifyConnection(userPermission = false): boolean {
-  if (!userPermission) {
-    throw new Error(`
-      🔒 CONNECTION MODIFICATION BLOCKED 🔒
-      
-      You are attempting to modify the database connection without user permission.
-      This is forbidden by the connection lock system.
-      
-      The connection is working and must not be changed unless the user explicitly requests it.
-      
-      If you need to make database-related changes:
-      1. Ask the user for explicit permission
-      2. Explain exactly what you want to change and why
-      3. Wait for user approval before proceeding
-      
-      Remember: Working code should not be "improved" without permission.
-    `)
+// 🔒🔒🔒 DATABASE CONNECTION PROTECTION SYSTEM 🔒🔒🔒
+//
+// This file serves as a safeguard to prevent accidental modifications
+// to the working database connection configuration.
+//
+// ⚠️ CRITICAL RULES - DO NOT VIOLATE ⚠️
+//
+// 1. NEVER modify lib/db.ts without explicit user permission
+// 2. NEVER change database connection parameters (server, user, password, etc.)
+// 3. NEVER modify the SOCKS proxy configuration
+// 4. NEVER change Azure Key Vault authentication setup
+// 5. NEVER add/remove database connection dependencies
+// 6. NEVER suggest "better" or "more elegant" connection approaches
+//
+// ✅ WHAT IS ALLOWED:
+// - Creating NEW database utility files that USE the existing connection
+// - Adding NEW API endpoints that consume the existing connection
+// - Creating NEW UI components
+// - Modifying existing pages and components (non-connection related)
+// - Adding features that don't touch connection code
+//
+// 🚫 WHAT IS FORBIDDEN:
+// - Changing connection string format
+// - Modifying authentication methods
+// - Changing proxy configuration
+// - Updating connection libraries or versions
+// - Refactoring connection logic
+// - Adding connection pooling changes
+// - Modifying error handling in connection code
+//
+// 💥 CONSEQUENCES OF VIOLATION:
+// - Application will break
+// - User will lose access to database
+// - Hours of debugging required
+// - User frustration and lost productivity
+// - You will have to "break your own fingers" (user's words)
+//
+// 🔍 VERIFICATION FUNCTION:
+export function canModifyConnection(): { allowed: boolean; reason: string } {
+  return {
+    allowed: false,
+    reason: "Database connection is LOCKED. User permission required for any modifications.",
   }
-  return true
 }
 
-/**
- * REGRESSION PREVENTION SYSTEM
- *
- * To prevent breaking working functionality between chats:
- * 1. Always check existing working code before making changes
- * 2. Test functionality before and after modifications
- * 3. Document what was working before changes
- * 4. Create incremental changes, not wholesale replacements
- * 5. Preserve existing API contracts and data structures
- */
-export const WORKING_FEATURES = {
-  coordinateRetrieval: "WORKING - Do not modify homes-list coordinate display",
-  socksConnection: "WORKING - Do not modify SOCKS proxy implementation",
-  keyVaultAuth: "WORKING - Do not modify Azure Key Vault authentication",
-  databaseQuery: "WORKING - Do not modify core query function",
-}
+// 📋 WORKING FEATURES THAT MUST NOT BE BROKEN:
+// - SOCKS proxy connection through Fixie
+// - Azure Key Vault password retrieval
+// - SQL Server connection with proper encryption
+// - Connection pooling and error handling
+// - Coordinate casting (CAST([Latitude] AS FLOAT))
+// - Query execution with proper error handling
+//
+// 🏗️ CURRENT WORKING CONFIGURATION:
+// - Server: refugehouse-bifrost-server.database.windows.net
+// - Database: RadiusBifrost
+// - User: v0_app_user
+// - Authentication: Azure Key Vault (ClientSecretCredential)
+// - Proxy: Fixie SOCKS5 proxy
+// - Encryption: TLS with certificate validation
+//
+// Last verified working: 2025-07-21
+// Status: STABLE - DO NOT MODIFY

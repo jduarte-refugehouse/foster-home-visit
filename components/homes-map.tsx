@@ -16,8 +16,8 @@ interface HomeData {
   id: string
   name: string
   address: string
-  city: string
-  state: string
+  City: string
+  State: string
   zipCode: string
   Unit: string
   latitude: number
@@ -25,6 +25,7 @@ interface HomeData {
   phoneNumber?: string
   email?: string
   contactPersonName?: string
+  contactPhone?: string
 }
 
 interface HomesMapProps {
@@ -74,17 +75,23 @@ export default function HomesMap({ homes }: HomesMapProps) {
     homes.forEach((home) => {
       const icon = home.Unit === "DAL" ? dalIcon : sanIcon
 
+      // Format city and state display
+      const cityState =
+        home.City && home.State ? `${home.City}, ${home.State}` : home.City || home.State || "Location not specified"
+
       const marker = L.marker([home.latitude, home.longitude], { icon })
         .bindPopup(`
-          <div class="p-2">
+          <div class="p-3 min-w-[250px]">
             <h3 class="font-bold text-lg mb-2">${home.name}</h3>
-            <div class="space-y-1 text-sm">
+            <div class="space-y-2 text-sm">
               <p><strong>Address:</strong> ${home.address}</p>
-              <p><strong>City:</strong> ${home.city}, ${home.state} ${home.zipCode}</p>
+              <p><strong>City:</strong> ${cityState} ${home.zipCode || ""}</p>
               <p><strong>Unit:</strong> <span class="inline-block px-2 py-1 text-xs font-semibold rounded ${home.Unit === "DAL" ? "bg-blue-100 text-blue-800" : "bg-red-100 text-red-800"}">${home.Unit}</span></p>
               ${home.phoneNumber ? `<p><strong>Phone:</strong> ${home.phoneNumber}</p>` : ""}
               ${home.contactPersonName ? `<p><strong>Contact:</strong> ${home.contactPersonName}</p>` : ""}
+              ${home.contactPhone ? `<p><strong>Contact Phone:</strong> ${home.contactPhone}</p>` : ""}
               ${home.email ? `<p><strong>Email:</strong> ${home.email}</p>` : ""}
+              <p class="text-xs text-gray-500 mt-2">Coordinates: ${home.latitude.toFixed(6)}, ${home.longitude.toFixed(6)}</p>
             </div>
           </div>
         `)

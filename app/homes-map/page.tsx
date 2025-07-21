@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RefreshCw, ArrowLeft, MapPin } from "lucide-react"
+import { RefreshCw, ArrowLeft, MapPin, Filter } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
@@ -21,8 +21,8 @@ interface HomeData {
   id: string
   name: string
   address: string
-  city: string
-  state: string
+  City: string
+  State: string
   zipCode: string
   Unit: string
   latitude: number
@@ -30,6 +30,7 @@ interface HomeData {
   phoneNumber?: string
   email?: string
   contactPersonName?: string
+  contactPhone?: string
 }
 
 interface ApiResponse {
@@ -37,7 +38,11 @@ interface ApiResponse {
   homes: HomeData[]
   total: number
   unitSummary: Record<string, number>
-  filter: string
+  caseManagers: string[]
+  filter: {
+    unit: string
+    caseManager: string
+  }
   error?: string
 }
 
@@ -45,12 +50,18 @@ export default function HomesMapPage() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [unitFilter, setUnitFilter] = useState<string>("ALL")
+  const [caseManagerFilter, setCaseManagerFilter] = useState<string>("ALL")
 
-  const fetchHomes = async (unit = "ALL") => {
+  const fetchHomes = async (unit = "ALL", caseManager = "ALL") => {
     setLoading(true)
     try {
-      console.log(`🗺️ Fetching homes for map with unit filter: ${unit}`)
-      const url = unit === "ALL" ? "/api/homes-for-map" : `/api/homes-for-map?unit=${unit}`
+      console.log(`🗺️ Fetching homes for map with filters - Unit: ${unit}, Case Manager: ${caseManager}`)
+
+      const params = new URLSearchParams()
+      if (unit !== "ALL") params.append("unit", unit)
+      if (caseManager !== "ALL") params.append("caseManager", caseManager)
+
+      const url = `/api/homes-for-map${params.toString() ? `?${params.toString()}` : ""}`
       const response = await fetch(url)
 
       if (!response.ok) {
@@ -67,7 +78,8 @@ export default function HomesMapPage() {
         homes: [],
         total: 0,
         unitSummary: {},
-        filter: unit,
+        caseManagers: [],
+        filter: { unit, caseManager },
         error: error.message,
       })
     } finally {
@@ -76,15 +88,24 @@ export default function HomesMapPage() {
   }
 
   useEffect(() => {
-    fetchHomes(unitFilter)
-  }, [unitFilter])
+    fetchHomes(unitFilter, caseManagerFilter)
+  }, [unitFilter, caseManagerFilter])
 
   const handleUnitChange = (value: string) => {
     setUnitFilter(value)
   }
 
+  const handleCaseManagerChange = (value: string) => {
+    setCaseManagerFilter(value)
+  }
+
   const handleRefresh = () => {
-    fetchHomes(unitFilter)
+    fetchHomes(unitFilter, caseManagerFilter)
+  }
+
+  const clearFilters = () => {
+    setUnitFilter("ALL")
+    setCaseManagerFilter("ALL")
   }
 
   return (
@@ -118,17 +139,6 @@ export default function HomesMapPage() {
               </div>
             )}
 
-            <Select value={unitFilter} onValueChange={handleUnitChange}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Filter by unit" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Units</SelectItem>
-                <SelectItem value="DAL">Dallas (DAL)</SelectItem>
-                <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
-              </SelectContent>
-            </Select>
-
             <Button onClick={handleRefresh} disabled={loading} size="sm">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
@@ -136,16 +146,79 @@ export default function HomesMapPage() {
           </div>
         </div>
 
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-5 w-5" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Unit:</label>
+                <Select value={unitFilter} onValueChange={handleUnitChange}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Units</SelectItem>
+                    <SelectItem value="DAL">Dallas (DAL)</SelectItem>
+                    <SelectItem value="SAN">San Antonio (SAN)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Case Manager:</label>
+                <Select value={caseManagerFilter} onValueChange={handleCaseManagerChange}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select case manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Case Managers</SelectItem>
+                    {data?.caseManagers?.map((manager) => (
+                      <SelectItem key={manager} value={manager}>
+                        {manager}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(unitFilter !== "ALL" || caseManagerFilter !== "ALL") && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+
+            {data?.filter && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {data.filter.unit !== "ALL" && (
+                  <Badge variant="outline">
+                    Unit:{" "}
+                    {data.filter.unit === "DAL"
+                      ? "Dallas"
+                      : data.filter.unit === "SAN"
+                        ? "San Antonio"
+                        : data.filter.unit}
+                  </Badge>
+                )}
+                {data.filter.caseManager !== "ALL" && (
+                  <Badge variant="outline">Case Manager: {data.filter.caseManager}</Badge>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" />
               Foster Homes Map
-              {data?.filter && data.filter !== "ALL" && (
-                <Badge variant="outline">
-                  Filtered by: {data.filter === "DAL" ? "Dallas" : data.filter === "SAN" ? "San Antonio" : data.filter}
-                </Badge>
-              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -167,10 +240,13 @@ export default function HomesMapPage() {
 
             {!loading && data && data.success && data.homes.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">
-                  No homes found{data.filter !== "ALL" ? ` for ${data.filter}` : ""}.
-                </p>
-                <Button onClick={handleRefresh}>Refresh</Button>
+                <p className="text-gray-600 mb-4">No homes found with the current filters.</p>
+                <div className="space-x-2">
+                  <Button onClick={handleRefresh}>Refresh</Button>
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                </div>
               </div>
             )}
 

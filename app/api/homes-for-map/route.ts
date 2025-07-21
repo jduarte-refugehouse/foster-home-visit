@@ -5,9 +5,11 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const unitFilter = searchParams.get("unit")?.toUpperCase()
+    const caseManagerFilter = searchParams.get("caseManager")
 
     console.log("🗺️ Fetching homes for map with explicit coordinate casting...")
     console.log(`🏢 Unit filter: ${unitFilter || "ALL"}`)
+    console.log(`👤 Case Manager filter: ${caseManagerFilter || "ALL"}`)
 
     let whereClause = `
       WHERE HomeName IS NOT NULL
@@ -20,6 +22,11 @@ export async function GET(request: Request) {
     // Add unit filtering if specified
     if (unitFilter && (unitFilter === "DAL" || unitFilter === "SAN")) {
       whereClause += ` AND Unit = '${unitFilter}'`
+    }
+
+    // Add case manager filtering if specified
+    if (caseManagerFilter && caseManagerFilter !== "ALL") {
+      whereClause += ` AND CaseManager = '${caseManagerFilter.replace("'", "''")}'` // Escape single quotes
     }
 
     const homes = await query(`
@@ -36,6 +43,7 @@ export async function GET(request: Request) {
         HomePhone as phoneNumber,
         CaseManager as contactPersonName,
         CaseManagerEmail as email,
+        CaseManagerPhone as contactPhone,
         Xref
       FROM SyncActiveHomes 
       ${whereClause}
@@ -52,6 +60,7 @@ export async function GET(request: Request) {
       console.log(
         `🏠 ${home.name} (${home.Unit}): Lat=${home.latitude} (${typeof home.latitude}), Lng=${home.longitude} (${typeof home.longitude})`,
       )
+      console.log(`📍 City: ${home.City}, State: ${home.State}`)
 
       const isValidLat = !isNaN(lat) && lat !== 0 && lat >= -90 && lat <= 90
       const isValidLng = !isNaN(lng) && lng !== 0 && lng >= -180 && lng <= 180
@@ -73,12 +82,19 @@ export async function GET(request: Request) {
       return acc
     }, {})
 
+    // Get unique case managers for filter options
+    const caseManagers = [...new Set(validHomes.map((home: any) => home.contactPersonName).filter(Boolean))].sort()
+
     return NextResponse.json({
       success: true,
       homes: validHomes,
       total: validHomes.length,
       unitSummary,
-      filter: unitFilter || "ALL",
+      caseManagers,
+      filter: {
+        unit: unitFilter || "ALL",
+        caseManager: caseManagerFilter || "ALL",
+      },
       debug: {
         rawCount: homes.length,
         validCount: validHomes.length,
