@@ -1,230 +1,312 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, ArrowLeft, RefreshCw, Key, Shield, Globe } from "lucide-react"
+import {
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Settings,
+  Database,
+  Shield,
+  Globe,
+} from "lucide-react"
 import Link from "next/link"
 
-interface DiagnosticResult {
-  success: boolean
-  message: string
-  data?: any[]
-  passwordSource?: string
-  passwordError?: string
-  keyVaultConfig?: {
-    tenantId: string
-    clientId: string
-    clientSecret: string
-    keyVaultName: string
-  }
-  proxyConfig?: {
-    usingProxy: boolean
-    fixieUrl: string
-  }
+interface DiagnosticData {
   timestamp: string
+  overall: {
+    status: string
+    message: string
+  }
+  proxy: {
+    enabled: boolean
+    url: string
+    masked: string
+    clientIp: string
+  }
+  database: {
+    connected: boolean
+    error: string
+    clientIp: string
+  }
+  keyVault: {
+    configured: boolean
+    passwordSource: string
+    error: string
+    config: {
+      tenantId: string
+      clientId: string
+      clientSecret: string
+      keyVaultName: string
+    }
+  }
 }
 
 export default function DiagnosticsPage() {
-  const [result, setResult] = useState<DiagnosticResult | null>(null)
+  const [data, setData] = useState<DiagnosticData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const runDiagnostics = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/diagnostics")
-      const data = await response.json()
-      setResult(data)
-    } catch (error) {
-      setResult({
-        success: false,
-        message: "Failed to run diagnostics",
-        timestamp: new Date().toISOString(),
-      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setData(result)
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusIcon = (success: boolean) => {
-    return success ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />
+  useEffect(() => {
+    runDiagnostics()
+  }, [])
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "success":
+        return <CheckCircle className="h-5 w-5 text-green-600" />
+      case "error":
+        return <XCircle className="h-5 w-5 text-red-600" />
+      case "warning":
+        return <AlertTriangle className="h-5 w-5 text-yellow-600" />
+      default:
+        return <AlertTriangle className="h-5 w-5 text-gray-400" />
+    }
   }
 
-  const getPasswordSourceBadge = (source?: string) => {
-    if (source === "Azure Key Vault") {
-      return (
-        <Badge variant="default" className="bg-green-600">
-          Azure Key Vault
-        </Badge>
-      )
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "success":
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Success</Badge>
+      case "error":
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Failed</Badge>
+      case "warning":
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Warning</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
     }
-    if (source?.includes("Failed")) {
-      return <Badge variant="destructive">Key Vault Failed</Badge>
-    }
-    return <Badge variant="secondary">Unknown</Badge>
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4" />
               Back to Home
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-bold">Connection Diagnostics</h1>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Settings className="h-6 w-6 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Connection Diagnostics</h1>
+            </div>
           </div>
-          <Button onClick={runDiagnostics} disabled={loading} className="ml-auto">
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          <Button onClick={runDiagnostics} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Run Diagnostics
           </Button>
         </div>
 
-        <p className="text-gray-600 mb-6">Testing the database connection via the Fixie SOCKS proxy.</p>
+        <p className="text-gray-600 mb-8">Testing the database connection via the Fixie SOCKS proxy.</p>
 
-        {result && (
+        {loading && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600">Running diagnostics...</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-2 text-red-800">
+                <XCircle className="h-5 w-5" />
+                <span className="font-medium">Diagnostic Error: {error}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data && (
           <div className="space-y-6">
             {/* Overall Status */}
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(result.success)}
-                    <CardTitle>Overall Status</CardTitle>
-                  </div>
-                  <Badge variant={result.success ? "default" : "destructive"}>
-                    {result.success ? "Success" : "Failed"}
-                  </Badge>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(data.overall.status)}
+                  <CardTitle className="text-xl">Overall Status</CardTitle>
                 </div>
-                <CardDescription>Diagnostic completed at {new Date(result.timestamp).toLocaleString()}</CardDescription>
+                {getStatusBadge(data.overall.status)}
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="font-medium">Analysis:</span>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Success! The database connection is correctly routed through the Fixie SOCKS proxy.</span>
+                <p className="text-gray-600 mb-2">
+                  Diagnostic completed at {new Date(data.timestamp).toLocaleString()}
+                </p>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">Analysis: </span>
+                    <span className="text-green-700">{data.overall.message}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Password Security Status */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-blue-600" />
-                  <CardTitle>Password Security Status</CardTitle>
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <CardTitle className="text-xl">Password Security Status</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Password Source:</span>
-                  {getPasswordSourceBadge(result.passwordSource)}
+                  <div className="flex items-center gap-2">
+                    {data.keyVault.configured ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <Badge className="bg-blue-100 text-blue-800 border-blue-200">Azure Key Vault</Badge>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Fallback</Badge>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-green-700 font-medium">
-                    Excellent! Password is being securely retrieved from Azure Key Vault.
-                  </span>
-                </div>
-
-                {result.keyVaultConfig && (
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-medium mb-2">Key Vault Configuration:</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex justify-between">
-                        <span>Tenant ID:</span>
-                        <Badge variant="outline">{result.keyVaultConfig.tenantId}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Client ID:</span>
-                        <Badge variant="outline">{result.keyVaultConfig.clientId}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Client Secret:</span>
-                        <Badge variant="outline">{result.keyVaultConfig.clientSecret}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Key Vault Name:</span>
-                        <Badge variant="outline">{result.keyVaultConfig.keyVaultName}</Badge>
-                      </div>
+                    {data.keyVault.configured ? (
+                      <span className="text-green-700">
+                        ✅ Excellent! Password is being securely retrieved from Azure Key Vault.
+                      </span>
+                    ) : (
+                      <span className="text-yellow-700">
+                        ⚠️ Using fallback password. Key Vault error: {data.keyVault.error}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-2">Key Vault Configuration:</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span>Tenant ID:</span>
+                      <span className="font-mono">{data.keyVault.config.tenantId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Client ID:</span>
+                      <span className="font-mono">{data.keyVault.config.clientId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Client Secret:</span>
+                      <span className="font-mono">{data.keyVault.config.clientSecret}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Key Vault Name:</span>
+                      <span className="font-mono">{data.keyVault.config.keyVaultName}</span>
                     </div>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
 
             {/* Proxy Configuration */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-blue-600" />
-                  <CardTitle>Proxy Configuration</CardTitle>
+                  <Globe className="h-5 w-5 text-purple-600" />
+                  <CardTitle className="text-xl">Proxy Configuration</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Using Proxy:</span>
-                  <Badge variant={result.proxyConfig?.usingProxy ? "default" : "secondary"}>
-                    {result.proxyConfig?.usingProxy ? "Yes" : "No"}
+                  <Badge variant={data.proxy.enabled ? "default" : "outline"}>
+                    {data.proxy.enabled ? "Yes" : "No"}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Fixie URL (Masked):</span>
-                  <code className="text-sm bg-gray-100 px-2 py-1 rounded">{result.proxyConfig?.fixieUrl}</code>
-                </div>
+                {data.proxy.enabled && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Fixie URL (Masked):</span>
+                    <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{data.proxy.masked}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Database Connection Details */}
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Database Connection Details</CardTitle>
-                  <Badge variant={result.success ? "default" : "destructive"}>
-                    {result.success ? "Connected" : "Failed"}
-                  </Badge>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-green-600" />
+                  <CardTitle className="text-xl">Database Connection Details</CardTitle>
                 </div>
+                <Badge
+                  className={
+                    data.database.connected
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : "bg-red-100 text-red-800 border-red-200"
+                  }
+                >
+                  {data.database.connected ? "Connected" : "Failed"}
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Database connection successful.</span>
+                <div className="flex items-start gap-2">
+                  {data.database.connected ? (
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  )}
+                  <div>
+                    {data.database.connected ? (
+                      <span className="text-green-700">Database connection successful.</span>
+                    ) : (
+                      <span className="text-red-700">Database connection failed: {data.database.error}</span>
+                    )}
+                  </div>
                 </div>
 
-                {result.data && result.data[0] && (
-                  <div>
+                {data.database.connected && data.database.clientIp && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Client IP Address Seen by SQL Server:</h4>
                     <div className="flex items-center gap-2">
-                      <code className="text-lg font-mono bg-gray-100 px-3 py-2 rounded">
-                        {result.data[0].client_ip}
-                      </code>
-                      <Badge variant="default" className="bg-green-600">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Matches Fixie IP
-                      </Badge>
+                      <span className="font-mono text-lg bg-white px-3 py-2 rounded border">
+                        {data.database.clientIp}
+                      </span>
+                      {data.proxy.enabled && data.database.clientIp.startsWith("3.") && (
+                        <Badge className="bg-green-100 text-green-800 border-green-200">✓ Matches Fixie IP</Badge>
+                      )}
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
-        )}
-
-        {!result && !loading && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">Click "Run Diagnostics" to test your connection</p>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>
