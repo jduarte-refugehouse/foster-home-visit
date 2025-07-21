@@ -1,46 +1,71 @@
 import { NextResponse } from "next/server"
 import { getConnection } from "@/lib/db"
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 export async function GET() {
+  console.log("📊 Fetching database information...")
+
+  const debugInfo = {
+    timestamp: new Date().toISOString(),
+    connection: {
+      status: "unknown",
+      server: "",
+      database: "",
+      user: "",
+      clientIp: "",
+    },
+    tables: {
+      syncActiveHomes: { exists: false, count: 0 },
+    },
+    errors: [] as string[],
+  }
+
   try {
     const pool = await getConnection()
-    const request = pool.request()
 
-    // Get current database name
-    const dbNameResult = await request.query("SELECT DB_NAME() AS CurrentDatabase")
-    const currentDatabase = dbNameResult.recordset[0].CurrentDatabase
+    // Test basic connection info
+    try {
+      const connectionInfo = await pool.request().query(`
+        SELECT 
+          @@SERVERNAME as server_name,
+          DB_NAME() as database_name,
+          SUSER_SNAME() as login_name,
+          CONNECTIONPROPERTY('client_net_address') as client_ip
+      `)
 
-    // Get server name
-    const serverNameResult = await request.query("SELECT @@SERVERNAME AS ServerName")
-    const serverName = serverNameResult.recordset[0].ServerName
+      if (connectionInfo.recordset.length > 0) {
+        const info = connectionInfo.recordset[0]
+        debugInfo.connection.status = "connected"
+        debugInfo.connection.server = info.server_name || "Unknown"
+        debugInfo.connection.database = info.database_name || "Unknown"
+        debugInfo.connection.user = info.login_name || "Unknown"
+        debugInfo.connection.clientIp = info.client_ip || "Unknown"
+      }
+    } catch (error) {
+      debugInfo.errors.push(`Connection info error: ${error instanceof Error ? error.message : "Unknown"}`)
+    }
 
-    // Get client IP address (as seen by the SQL Server)
-    const clientIpResult = await request.query(
-      "SELECT CLIENT_NET_ADDRESS FROM SYS.DM_EXEC_CONNECTIONS WHERE SESSION_ID = @@SPID",
-    )
-    const clientIp = clientIpResult.recordset[0].CLIENT_NET_ADDRESS
+    // Test SyncActiveHomes table
+    try {
+      const tableTest = await pool.request().query(`
+        SELECT COUNT(*) as total_count
+        FROM SyncActiveHomes
+      `)
 
-    // Get SQL Server version
-    const versionResult = await request.query("SELECT @@VERSION AS SqlVersion")
-    const sqlVersion = versionResult.recordset[0].SqlVersion
+      if (tableTest.recordset.length > 0) {
+        debugInfo.tables.syncActiveHomes.exists = true
+        debugInfo.tables.syncActiveHomes.count = tableTest.recordset[0].total_count || 0
+      }
+    } catch (error) {
+      debugInfo.errors.push(`SyncActiveHomes table error: ${error instanceof Error ? error.message : "Unknown"}`)
+    }
 
-    // Check connection properties (e.g., encryption)
-    const encryptionResult = await request.query(
-      "SELECT net_transport, encrypt_option FROM sys.dm_exec_connections WHERE session_id = @@SPID",
-    )
-    const connectionDetails = encryptionResult.recordset[0]
-
-    return NextResponse.json({
-      success: true,
-      database: currentDatabase,
-      server: serverName,
-      clientIp: clientIp,
-      sqlVersion: sqlVersion,
-      connectionDetails: connectionDetails,
-      message: "Database connection details retrieved successfully.",
-    })
-  } catch (error: any) {
+    return NextResponse.json(debugInfo)
+  } catch (error) {
     console.error("Error debugging connection:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    debugInfo.errors.push(`General error: ${error instanceof Error ? error.message : "Unknown"}`)
+    return NextResponse.json(debugInfo, { status: 500 })
   }
 }

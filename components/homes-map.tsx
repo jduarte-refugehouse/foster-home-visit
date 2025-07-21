@@ -1,12 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { RefreshCw, MapPin, X, Search } from "lucide-react"
+import { useEffect, useRef } from "react"
 
 // Define interfaces
 interface MapHome {
@@ -33,11 +27,6 @@ interface HomesMapProps {
 }
 
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
-  const [filteredHomes, setFilteredHomes] = useState<MapHome[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedUnit, setSelectedUnit] = useState<string>("ALL")
-  const [selectedCaseManager, setSelectedCaseManager] = useState<string>("ALL")
-  const [caseManagers, setCaseManagers] = useState<string[]>([])
   const mapRef = useRef<any>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
@@ -343,169 +332,9 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     }
   }, [])
 
-  useEffect(() => {
-    let filtered = homes
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (home) =>
-          home.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          home.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          home.contactPersonName.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    if (selectedUnit !== "ALL") {
-      filtered = filtered.filter((home) => home.Unit === selectedUnit)
-    }
-
-    if (selectedCaseManager !== "ALL") {
-      filtered = filtered.filter((home) => home.contactPersonName === selectedCaseManager)
-    }
-
-    setFilteredHomes(filtered)
-  }, [homes, searchTerm, selectedUnit, selectedCaseManager])
-
-  const clearFilters = () => {
-    setSearchTerm("")
-    setSelectedUnit("ALL")
-    setSelectedCaseManager("ALL")
-  }
-
-  const activeFiltersCount = [
-    searchTerm,
-    selectedUnit !== "ALL" ? selectedUnit : null,
-    selectedCaseManager !== "ALL" ? selectedCaseManager : null,
-  ].filter(Boolean).length
-
   return (
-    <div className="container mx-auto p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Homes Map</h1>
-          <p className="text-gray-600">
-            Interactive map showing {filteredHomes.length} of {homes.length} homes
-          </p>
-        </div>
-        <Button onClick={() => onHomeSelect?.(null)} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              <span className="text-sm font-medium">Filters</span>
-              {activeFiltersCount > 0 && <Badge variant="secondary">{activeFiltersCount} active</Badge>}
-            </div>
-
-            <div className="flex-1 min-w-[200px]">
-              <Input placeholder="Search homes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-
-            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-              <SelectTrigger className="w-[140px]" style={{ zIndex: 1000 }}>
-                <SelectValue placeholder="All Units" />
-              </SelectTrigger>
-              <SelectContent style={{ zIndex: 1001 }}>
-                <SelectItem value="ALL">All Units</SelectItem>
-                <SelectItem value="DAL">Dallas</SelectItem>
-                <SelectItem value="SAN">San Antonio</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedCaseManager} onValueChange={setSelectedCaseManager}>
-              <SelectTrigger className="w-[180px]" style={{ zIndex: 1000 }}>
-                <SelectValue placeholder="All Case Managers" />
-              </SelectTrigger>
-              <SelectContent style={{ zIndex: 1001 }}>
-                <SelectItem value="ALL">All Case Managers</SelectItem>
-                {caseManagers.map((manager) => (
-                  <SelectItem key={manager} value={manager}>
-                    {manager}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {activeFiltersCount > 0 && (
-              <Button onClick={clearFilters} variant="ghost" size="sm">
-                <X className="h-4 w-4 mr-2" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Map and List Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map - 2/3 width */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Interactive Map
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="h-[600px] relative">
-                <div ref={mapContainerRef} className="w-full h-full rounded-lg" style={{ minHeight: "400px" }} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Homes List - 1/3 width */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
-                  Homes List ({filteredHomes.length})
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[600px] overflow-y-auto">
-                {filteredHomes.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p>No homes found matching your filters</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {filteredHomes.map((home) => (
-                      <div
-                        key={home.id}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                          selectedHome?.id === home.id ? "bg-blue-50 border-l-4 border-l-blue-600" : ""
-                        }`}
-                        onClick={() => onHomeSelect?.(home)}
-                      >
-                        <div className="space-y-2">
-                          <div className="font-medium text-sm">{home.name}</div>
-                          <div className="text-xs text-gray-600 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {home.address}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="w-full h-full">
+      <div ref={mapContainerRef} className="w-full h-full rounded-lg" style={{ minHeight: "400px" }} />
       <style jsx>{`
         @keyframes pulse {
           0% {
