@@ -2,6 +2,22 @@
 
 This is an internal application designed to streamline the management of family visits for social workers and agencies. It provides tools for managing homes, scheduling visits, and ensuring compliance with relevant regulations.
 
+## Development Workflow with v0
+
+This project is being developed in collaboration with v0, Vercel's AI Assistant. To ensure a smooth workflow and successful deployments, please follow these steps:
+
+1.  **Receiving Code from v0**: v0 will provide code changes and new files within the chat interface.
+2.  **Applying Changes to GitHub**: These changes must be **manually applied** to your GitHub repository. Vercel builds directly from GitHub, so changes in the v0 chat are not automatically synced.
+3.  **How to Apply Changes**:
+    *   Navigate to the specific file in your GitHub repository (e.g., `package.json`).
+    *   Click the "Edit" (pencil) icon.
+    *   Replace the entire content of the file with the code provided by v0.
+    *   Commit the changes directly to the `main` branch.
+4.  **Triggering a Deployment**: Committing changes to the `main` branch on GitHub will automatically trigger a new deployment on Vercel.
+5.  **Troubleshooting Build Errors**: If a deployment fails, provide the full build log from Vercel to v0. We will use the logs to diagnose and fix the issue by repeating this process.
+
+**Important**: Always ensure the files in your GitHub repository match the latest working code provided by v0 to avoid deployment errors.
+
 ## Features
 
 *   **Dashboard**: Overview of key metrics and quick access to main modules.
@@ -82,6 +98,3 @@ Ensure you have the following environment variables configured in your `.env.loc
 *   **`ERR_PNPM_OUTDATED_LOCKFILE`**: This means your `pnpm-lock.yaml` file is not in sync with `package.json`. Run `pnpm install` locally, commit both files, and then redeploy.
 *   **Database Connection Issues**: Check your environment variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`). Use the `/diagnostics` page in the app to test connectivity.
 *   **Proxy Issues**: Ensure `FIXIE_SOCKS_HOST` is correctly formatted and accessible. Use the `/diagnostics` page to test the proxy connection.
-\`\`\`
-
-Finally, I've updated `app/connection-recipe/page.tsx` to accurately reflect the `lib/db.ts` code (using environment variables for credentials) and corrected the `FIXIE_SOCKS_HOST` example format.
