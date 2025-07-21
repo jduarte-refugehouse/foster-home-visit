@@ -37,5 +37,13 @@ export async function GET() {
     fixieUrlMasked: fixieUrl.replace(/:([^:@]+)@/, ":********@"),
     dbConnectionTest,
     analysis,
+    passwordSource: dbConnectionTest.passwordSource,
+    passwordError: dbConnectionTest.passwordError,
+    keyVaultConfig: {
+      tenantId: process.env.AZURE_TENANT_ID ? "Set" : "Not Set",
+      clientId: process.env.AZURE_CLIENT_ID ? "Set" : "Not Set",
+      clientSecret: process.env.AZURE_CLIENT_SECRET ? "Set" : "Not Set",
+      keyVaultName: process.env.AZURE_KEY_VAULT_NAME || "Not Set",
+    },
   })
 }

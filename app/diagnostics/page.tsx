@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, RefreshCw, Settings, CheckCircle, XCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, RefreshCw, Settings, CheckCircle, XCircle, Key, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
 interface DiagnosticResult {
@@ -22,6 +23,14 @@ interface DiagnosticResult {
     }>
   }
   analysis: string
+  passwordSource?: string
+  passwordError?: string
+  keyVaultConfig?: {
+    tenantId: string
+    clientId: string
+    clientSecret: string
+    keyVaultName: string
+  }
 }
 
 export default function DiagnosticsPage() {
@@ -40,6 +49,9 @@ export default function DiagnosticsPage() {
       setLoading(false)
     }
   }
+
+  const isUsingKeyVault = result?.passwordSource === "Azure Key Vault"
+  const isUsingFallback = result?.passwordSource === "Fallback (hardcoded)"
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -96,6 +108,76 @@ export default function DiagnosticsPage() {
                       <p className="text-gray-700">{result.analysis}</p>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Password Source Status */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Password Security Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Password Source:</span>
+                    <div className="flex items-center gap-2">
+                      {isUsingKeyVault ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      )}
+                      <Badge variant={isUsingKeyVault ? "default" : "secondary"}>
+                        {result.passwordSource || "Unknown"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {isUsingKeyVault && (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        ✅ Excellent! Password is being securely retrieved from Azure Key Vault.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {isUsingFallback && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        ⚠️ Warning: Using fallback hardcoded password. Key Vault retrieval failed.
+                        {result.passwordError && (
+                          <div className="mt-2">
+                            <strong>Error:</strong> {result.passwordError}
+                          </div>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {result.keyVaultConfig && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Key Vault Configuration:</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          Tenant ID: <Badge variant="outline">{result.keyVaultConfig.tenantId}</Badge>
+                        </div>
+                        <div>
+                          Client ID: <Badge variant="outline">{result.keyVaultConfig.clientId}</Badge>
+                        </div>
+                        <div>
+                          Client Secret: <Badge variant="outline">{result.keyVaultConfig.clientSecret}</Badge>
+                        </div>
+                        <div>
+                          Key Vault Name: <Badge variant="outline">{result.keyVaultConfig.keyVaultName}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

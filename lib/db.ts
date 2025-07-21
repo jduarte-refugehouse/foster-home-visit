@@ -15,8 +15,10 @@ let pool: sql.ConnectionPool | null = null
 // ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
 
 // Azure Key Vault client setup
-async function getPasswordFromKeyVault(): Promise<string> {
+async function getPasswordFromKeyVault(): Promise<{ password: string; source: string; error?: string }> {
   try {
+    console.log("🔑 Attempting to retrieve password from Azure Key Vault...")
+
     const credential = new ClientSecretCredential(
       process.env.AZURE_TENANT_ID!,
       process.env.AZURE_CLIENT_ID!,
@@ -24,14 +26,26 @@ async function getPasswordFromKeyVault(): Promise<string> {
     )
 
     const keyVaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net/`
-    const client = new SecretClient(keyVaultUrl, credential)
+    console.log(`🔑 Key Vault URL: ${keyVaultUrl}`)
 
+    const client = new SecretClient(keyVaultUrl, credential)
     const secret = await client.getSecret("database-password")
-    return secret.value!
+
+    console.log("✅ Successfully retrieved password from Key Vault")
+    return {
+      password: secret.value!,
+      source: "Azure Key Vault",
+    }
   } catch (error) {
-    console.error("Failed to retrieve password from Key Vault:", error)
-    // Fallback to hardcoded password if Key Vault fails
-    return "M7w!vZ4#t8LcQb1R"
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    console.error("❌ Failed to retrieve password from Key Vault:", errorMessage)
+    console.log("🔄 Falling back to hardcoded password")
+
+    return {
+      password: "M7w!vZ4#t8LcQb1R",
+      source: "Fallback (hardcoded)",
+      error: errorMessage,
+    }
   }
 }
 
@@ -101,6 +115,10 @@ function createFixieConnector(config: sql.config) {
   })
 }
 
+// Store password source for diagnostics
+let lastPasswordSource = ""
+let lastPasswordError = ""
+
 export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool && pool.connected) {
     return pool
@@ -110,14 +128,16 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 
   // Get password from Azure Key Vault
-  const password = await getPasswordFromKeyVault()
+  const passwordResult = await getPasswordFromKeyVault()
+  lastPasswordSource = passwordResult.source
+  lastPasswordError = passwordResult.error || ""
 
   // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
   // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
   // THESE PARAMETERS WORK AND ARE STABLE
   const config: sql.config = {
     user: "v0_app_user",
-    password: password, // Now retrieved securely from Key Vault
+    password: passwordResult.password, // Now retrieved securely from Key Vault
     database: "RadiusBifrost",
     server: "refugehouse-bifrost-server.database.windows.net",
     port: 1433,
@@ -143,6 +163,7 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
   try {
     console.log(`🔌 Attempting new connection to ${config.server}...`)
+    console.log(`🔑 Password source: ${lastPasswordSource}`)
     pool = new sql.ConnectionPool(config)
     pool.on("error", (err) => {
       console.error("❌ Database Pool Error:", err)
@@ -190,7 +211,13 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
   }
 }
 
-export async function testConnection(): Promise<{ success: boolean; message: string; data?: any[] }> {
+export async function testConnection(): Promise<{
+  success: boolean
+  message: string
+  data?: any[]
+  passwordSource?: string
+  passwordError?: string
+}> {
   try {
     const result = await query(`
       SELECT
@@ -202,11 +229,15 @@ export async function testConnection(): Promise<{ success: boolean; message: str
       success: true,
       message: "Database connection successful.",
       data: result,
+      passwordSource: lastPasswordSource,
+      passwordError: lastPasswordError,
     }
   } catch (error) {
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unknown error during connection test.",
+      passwordSource: lastPasswordSource,
+      passwordError: lastPasswordError,
     }
   }
 }
