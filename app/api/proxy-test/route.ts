@@ -1,75 +1,29 @@
 import { NextResponse } from "next/server"
 
-// Force Node.js runtime (not Edge)
-export const runtime = "nodejs"
-
 export async function GET() {
   try {
-    console.log("=== 🔍 Testing proxy configuration ===")
+    const proxyHost = process.env.FIXIE_SOCKS_HOST
+    const proxyUrl = process.env.QUOTAGUARD_URL // This should be removed if not used
 
-    // Check environment variables
-    const fixieUrl = process.env.FIXIE_URL
-    const quotaguardUrl = process.env.QUOTAGUARD_URL
-    const proxyUrl = process.env.PROXY_URL
+    let message = "Proxy environment variables status:\n"
 
-    console.log("Environment variables:")
-    console.log("FIXIE_URL exists:", !!fixieUrl)
-    console.log("QUOTAGUARD_URL exists:", !!quotaguardUrl)
-    console.log("PROXY_URL exists:", !!proxyUrl)
-
-    const activeProxyUrl = fixieUrl || quotaguardUrl || proxyUrl
-
-    if (activeProxyUrl) {
-      console.log("Active proxy URL (masked):", activeProxyUrl.replace(/\/\/.*@/, "//***:***@"))
+    if (proxyHost) {
+      message += `Fixie SOCKS Host: Configured (first 10 chars): ${proxyHost.substring(0, 10)}...\n`
+    } else {
+      message += "Fixie SOCKS Host: NOT configured.\n"
     }
 
-    // Test the proxy by making a request through it
-    let proxyTestResult = null
-    if (activeProxyUrl) {
-      try {
-        console.log("Testing proxy connection...")
-
-        // Get current IP without proxy
-        const directResponse = await fetch("https://api.ipify.org?format=json")
-        const directIP = await directResponse.json()
-
-        proxyTestResult = {
-          success: true,
-          directIP: directIP.ip,
-          message: "IP check successful (direct connection - proxy test limited in serverless)",
-          note: "Proxy will be used for database connections, not HTTP requests",
-        }
-      } catch (error) {
-        proxyTestResult = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        }
-      }
+    if (proxyUrl) {
+      message += `QuotaGuard URL: Configured (first 10 chars): ${proxyUrl.substring(0, 10)}...\n`
+    } else {
+      message += "QuotaGuard URL: NOT configured.\n"
     }
 
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      runtime: "nodejs",
-      environmentVariables: {
-        FIXIE_URL: !!fixieUrl,
-        QUOTAGUARD_URL: !!quotaguardUrl,
-        PROXY_URL: !!proxyUrl,
-        activeProxyMasked: activeProxyUrl ? activeProxyUrl.replace(/\/\/.*@/, "//***:***@") : null,
-        proxyType: activeProxyUrl ? (activeProxyUrl.startsWith("http:") ? "HTTP" : "HTTPS") : null,
-      },
-      proxyTestResult,
-      message: "Proxy configuration check completed",
-    })
-  } catch (error) {
-    console.error("Proxy test failed:", error)
+    return NextResponse.json({ success: true, message: message })
+  } catch (error: any) {
+    console.error("API Proxy Test Error:", error)
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-        runtime: "nodejs",
-      },
+      { success: false, message: error.message || "An unknown error occurred during proxy test." },
       { status: 500 },
     )
   }

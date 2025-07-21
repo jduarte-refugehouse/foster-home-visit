@@ -86,10 +86,10 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 
   const config: sql.config = {
-    user: "v0_app_user",
-    password: "M7w!vZ4#t8LcQb1R",
-    database: "RadiusBifrost",
-    server: "refugehouse-bifrost-server.database.windows.net",
+    user: process.env.POSTGRES_USER || "v0_app_user",
+    password: process.env.POSTGRES_PASSWORD || "M7w!vZ4#t8LcQb1R",
+    database: process.env.POSTGRES_DATABASE || "RadiusBifrost",
+    server: process.env.POSTGRES_HOST || "refugehouse-bifrost-server.database.windows.net",
     port: 1433,
     pool: {
       max: 10,
@@ -133,59 +133,55 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 }
 
-export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+export async function query(queryString: string) {
+  let pool: sql.ConnectionPool | null = null
   try {
-    const connection = await getConnection()
-    const request = connection.request()
-
-    if (params) {
-      params.forEach((param, index) => {
-        request.input(`param${index}`, param)
-      })
-    }
-
-    const result = await request.query(queryText)
-    return result.recordset
-  } catch (error) {
-    console.error("❌ Query execution failed:", error)
-    if (pool) {
-      await pool.close()
-      pool = null
-    }
-    throw error
+    pool = await getConnection()
+    const result = await pool.request().query(queryString)
+    return { success: true, data: result.recordset }
+  } catch (error: any) {
+    console.error("Database query failed:", error)
+    return { success: false, message: error.message || "Database query failed." }
   }
 }
 
-export async function testConnection(): Promise<{ success: boolean; message: string; data?: any[] }> {
+export async function testConnection() {
   try {
-    const result = await query(`
-      SELECT 
-        SUSER_SNAME() as login_name, 
-        DB_NAME() as db_name,
-        CONNECTIONPROPERTY('client_net_address') as client_ip
-    `)
-    return {
-      success: true,
-      message: "Database connection successful.",
-      data: result,
+    const pool = await getConnection()
+    if (pool.connected) {
+      const result = await pool
+        .request()
+        .query(
+          "SELECT SUSER_SNAME() AS login_name, DB_NAME() AS db_name, CONNECTIONPROPERTY('client_net_address') AS client_ip;",
+        )
+      return { success: true, message: "Successfully connected to the database.", data: result.recordset }
+    } else {
+      return { success: false, message: "Failed to connect to the database pool." }
     }
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error during connection test.",
-    }
+  } catch (error: any) {
+    console.error("Database connection test failed:", error)
+    return { success: false, message: error.message || "Database connection test failed." }
   }
 }
 
-export async function healthCheck(): Promise<boolean> {
-  const result = await testConnection()
-  return result.success
+export async function healthCheck() {
+  try {
+    const pool = await getConnection()
+    if (pool.connected) {
+      return { success: true, message: "Database is healthy." }
+    } else {
+      return { success: false, message: "Database pool is not connected." }
+    }
+  } catch (error: any) {
+    return { success: false, message: `Database health check failed: ${error.message}` }
+  }
 }
 
-export async function forceReconnect(): Promise<void> {
-  if (pool) {
-    await pool.close()
+export async function forceReconnect() {
+  if (pool && pool.connected) {
+    console.log("Closing existing database pool for forced reconnect.")
+    await pool.close().catch((err) => console.error("Error closing pool during force reconnect:", err))
     pool = null
   }
-  console.log("🔄 Connection pool has been forcefully closed.")
+  return getConnection()
 }

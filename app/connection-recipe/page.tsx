@@ -1,16 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, CheckCircle, Copy, FileCode, Terminal } from "lucide-react"
 import Link from "next/link"
+import { Copy } from "lucide-react"
 
-export default function ConnectionRecipe() {
-  const [copied, setCopied] = useState(false)
-
-  const dbLibCode = `
+export default function ConnectionRecipePage() {
+  const connectionCode = `
 import sql from "mssql"
 import type net from "net"
 import tls from "tls"
@@ -24,167 +20,265 @@ function createFixieConnector(config: sql.config) {
     if (!process.env.FIXIE_SOCKS_HOST) {
       return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
     }
+
     const fixieUrl = process.env.FIXIE_SOCKS_HOST
     const match = fixieUrl.match(/(?:socks:\\/\\/)?([^:]+):([^@]+)@([^:]+):(\\d+)/)
+
     if (!match) {
       return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
     }
+
     const [, userId, password, host, port] = match
+
+    console.log(\`Attempting SOCKS connection via \${host}:\${port}\`)
+
     SocksClient.createConnection(
       {
-        proxy: { host, port: Number.parseInt(port, 10), type: 5, userId, password },
-        destination: { host: config.server, port: config.port || 1433 },
+        proxy: {
+          host: host,
+          port: Number.parseInt(port, 10),
+          type: 5, // SOCKS5
+          userId: userId,
+          password: password,
+        },
+        destination: {
+          host: config.server,
+          port: config.port || 1433,
+        },
         command: "connect",
       },
       (err, info) => {
-        if (err) return reject(err)
-        if (!info) return reject(new Error("SOCKS connection info is undefined."))
-        const tlsSocket = tls.connect({ socket: info.socket, servername: config.server, rejectUnauthorized: true }, () => {
-          if (tlsSocket.authorized) resolve(tlsSocket)
-          else reject(tlsSocket.authorizationError || new Error("TLS authorization failed"))
+        if (err) {
+          console.error("SOCKS connection error:", err)
+          return reject(err)
+        }
+
+        console.log("SOCKS connection established. Initiating TLS handshake...")
+        if (!info) {
+          return reject(new Error("SOCKS connection info is undefined."))
+        }
+
+        const tlsSocket = tls.connect(
+          {
+            socket: info.socket,
+            servername: config.server,
+            rejectUnauthorized: true, // Enforce certificate validation
+          },
+          () => {
+            if (tlsSocket.authorized) {
+              console.log("TLS handshake successful. Socket is authorized.")
+              resolve(tlsSocket)
+            } else {
+              const tlsError = tlsSocket.authorizationError || new Error("TLS authorization failed")
+              console.error("TLS authorization failed:", tlsError)
+              reject(tlsError)
+            }
+          },
+        )
+
+        tlsSocket.on("error", (error) => {
+          console.error("TLS socket error:", error)
+          reject(error)
         })
-        tlsSocket.on("error", (error) => reject(error))
       },
     )
   })
 }
 
-// ... (getConnection, query, etc. functions remain the same)
+export async function getConnection(): Promise<sql.ConnectionPool> {
+  if (pool && pool.connected) {
+    return pool
+  }
+
+  if (pool) {
+    await pool.close().catch((err) => console.error("Error closing stale pool:", err))
+  }
+
+  const config: sql.config = {
+    user: process.env.POSTGRES_USER || "v0_app_user",
+    password: process.env.POSTGRES_PASSWORD || "M7w!vZ4#t8LcQb1R",
+    database: process.env.POSTGRES_DATABASE || "RadiusBifrost",
+    server: process.env.POSTGRES_HOST || "refugehouse-bifrost-server.database.windows.net",
+    port: 1433,
+    pool: {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30000,
+    },
+    options: {
+      encrypt: true,
+      trustServerCertificate: false,
+      connectTimeout: 60000,
+      requestTimeout: 60000,
+    },
+  }
+
+  if (process.env.FIXIE_SOCKS_HOST) {
+    console.log("Using Fixie SOCKS proxy for connection.")
+    config.options.connector = () => createFixieConnector(config)
+  } else {
+    console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
+  }
+
+  try {
+    console.log(\`🔌 Attempting new connection to \${config.server}...\`)
+    pool = new sql.ConnectionPool(config)
+
+    pool.on("error", (err) => {
+      console.error("❌ Database Pool Error:", err)
+      if (pool) {
+        pool.close()
+        pool = null
+      }
+    })
+
+    await pool.connect()
+    console.log("✅ Database connection successful.")
+    return pool
+  } catch (error) {
+    console.error("❌ Failed to establish database connection:", error)
+    pool = null
+    throw error
+  }
+}
+
+export async function query(queryString: string) {
+  let pool: sql.ConnectionPool | null = null
+  try {
+    pool = await getConnection()
+    const result = await pool.request().query(queryString)
+    return { success: true, data: result.recordset }
+  } catch (error: any) {
+    console.error("Database query failed:", error)
+    return { success: false, message: error.message || "Database query failed." }
+  }
+}
+
+export async function testConnection() {
+  try {
+    const pool = await getConnection()
+    if (pool.connected) {
+      const result = await pool
+        .request()
+        .query(
+          "SELECT SUSER_SNAME() AS login_name, DB_NAME() AS db_name, CONNECTIONPROPERTY('client_net_address') AS client_ip;",
+        )
+      return { success: true, message: "Successfully connected to the database.", data: result.recordset }
+    } else {
+      return { success: false, message: "Failed to connect to the database pool." }
+    }
+  } catch (error: any) {
+    console.error("Database connection test failed:", error)
+    return { success: false, message: error.message || "Database connection test failed." }
+  }
+}
+
+export async function healthCheck() {
+  try {
+    const pool = await getConnection()
+    if (pool.connected) {
+      return { success: true, message: "Database is healthy." }
+    } else {
+      return { success: false, message: "Database pool is not connected." }
+    }
+  } catch (error: any) {
+    return { success: false, message: \`Database health check failed: \${error.message}\` }
+  }
+}
+
+export async function forceReconnect() {
+  if (pool && pool.connected) {
+    console.log("Closing existing database pool for forced reconnect.")
+    await pool.close().catch((err) => console.error("Error closing pool during force reconnect:", err))
+    pool = null
+  }
+  return getConnection()
+}
 `
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    navigator.clipboard
+      .writeText(text)
+      .then(() => alert("Connection recipe copied to clipboard!"))
+      .catch((err) => console.error("Failed to copy:", err))
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <FileCode className="w-6 h-6 text-green-600" />
-                <span className="text-lg font-semibold text-gray-900">Connection Recipe</span>
-              </div>
-            </div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-4xl shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+            Database Connection Recipe
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6 text-gray-700 dark:text-gray-300">
+          <p className="text-lg">
+            This page provides the full code for connecting to your Azure SQL database via the Fixie SOCKS proxy. This
+            setup ensures that your database connections originate from a static IP address, simplifying firewall
+            management.
+          </p>
+
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">`lib/db.ts` Content</h2>
+          <p>
+            The following code snippet from `lib/db.ts` demonstrates how the MSSQL connection is established,
+            incorporating the custom connector for Fixie.
+          </p>
+          <div className="relative bg-gray-100 dark:bg-gray-800 p-4 rounded-md font-mono text-sm overflow-x-auto">
+            <pre className="whitespace-pre-wrap break-all">
+              <code>{connectionCode}</code>
+            </pre>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="absolute top-2 right-2"
+              onClick={() => copyToClipboard(connectionCode)}
+              aria-label="Copy connection code to clipboard"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-      </nav>
 
-      <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Azure SQL + Fixie Proxy: The Connection Recipe</h1>
-            <p className="text-gray-600">The proven, working configuration for connecting to Azure SQL from Vercel.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-50 mt-8">Key Configuration Details</h2>
+          <ul className="list-disc list-inside space-y-2">
+            <li>
+              <span className="font-medium">Environment Variable:</span> The connection relies on the `FIXIE_SOCKS_HOST`
+              environment variable, which should contain your Fixie proxy URL (e.g., `socks://user:password@host:port`).
+            </li>
+            <li>
+              <span className="font-medium">Custom Connector:</span> The `createFixieConnector` function intercepts the
+              connection request and routes it through the Fixie SOCKS5 proxy before establishing a TLS connection to
+              your database.
+            </li>
+            <li>
+              <span className="font-medium">Database Credentials:</span> Database user, password, database name, and
+              server are configured using environment variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`,
+              `POSTGRES_DATABASE`, `POSTGRES_HOST`) or default values.
+            </li>
+            <li>
+              <span className="font-medium">TLS/SSL:</span> `encrypt: true` and `trustServerCertificate: false` are set
+              to enforce secure, encrypted connections and validate the server's certificate.
+            </li>
+          </ul>
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+            <Link href="/proxy-setup">
+              <Button className="w-full sm:w-auto bg-transparent" variant="outline">
+                Proxy Setup Guide
+              </Button>
+            </Link>
+            <Link href="/diagnostics">
+              <Button className="w-full sm:w-auto" variant="secondary">
+                Run Diagnostics
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button className="w-full sm:w-auto" variant="default">
+                Back to Home
+              </Button>
+            </Link>
           </div>
-
-          <Alert className="mb-8 bg-green-50 border-green-200 text-green-800">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription>
-              <strong>This is the successful connection strategy.</strong> Follow these steps to ensure a reliable
-              database connection.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>The Code: lib/db.ts</CardTitle>
-                <CardDescription>This is the exact code that creates the SOCKS proxy connection.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm relative font-mono">
-                  <pre className="whitespace-pre-wrap break-all">{dbLibCode}</pre>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => copyToClipboard(dbLibCode)}
-                  >
-                    <Copy className="w-4 h-4" />
-                    {copied ? "Copied!" : "Copy"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration Checklist</CardTitle>
-                <CardDescription>Ensure these three components are correctly configured.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Vercel Environment Variable</h4>
-                    <p className="text-sm text-gray-600">
-                      The `FIXIE_SOCKS_HOST` variable must be set in your Vercel project with the full URL from your
-                      Fixie dashboard.
-                    </p>
-                    <code className="text-xs bg-gray-100 p-1 rounded mt-1 inline-block">
-                      fixie:username:password@host.usefixie.com:1080
-                    </code>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Azure SQL Firewall Rules</h4>
-                    <p className="text-sm text-gray-600">
-                      Both of your Fixie static IP addresses must be whitelisted in the Azure SQL Server firewall.
-                    </p>
-                    <div className="text-xs mt-1 space-y-1">
-                      <code className="bg-gray-100 p-1 rounded block">3.224.144.155</code>
-                      <code className="bg-gray-100 p-1 rounded block">3.223.196.67</code>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Package Dependencies</h4>
-                    <p className="text-sm text-gray-600">Your `package.json` must include `mssql` and `socks`.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Verify Connection</CardTitle>
-                <CardDescription>
-                  You can run the connection diagnostics at any time to confirm the proxy is working correctly.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/diagnostics">
-                  <Button>
-                    <Terminal className="w-4 h-4 mr-2" />
-                    Run Connection Diagnostics
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
+        </CardContent>
+      </Card>
     </div>
   )
 }

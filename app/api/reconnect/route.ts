@@ -1,33 +1,14 @@
 import { NextResponse } from "next/server"
-import { forceReconnect, testConnection } from "@/lib/db"
+import { forceReconnect } from "@/lib/db"
 
-// Force Node.js runtime (not Edge)
-export const runtime = "nodejs"
-
-export async function POST() {
+export async function GET() {
   try {
-    console.log("=== 🔄 Force reconnect requested ===")
-
     await forceReconnect()
-
-    // Test the new connection
-    const testResult = await testConnection()
-
-    return NextResponse.json({
-      success: testResult.success,
-      message: testResult.success ? "Force reconnect successful" : "Force reconnect failed",
-      testResult,
-      timestamp: new Date().toISOString(),
-    })
-  } catch (error) {
-    console.error("Force reconnect failed:", error)
+    return NextResponse.json({ success: true, message: "Database connection forcefully reconnected." })
+  } catch (error: any) {
+    console.error("API Reconnect Error:", error)
     return NextResponse.json(
-      {
-        success: false,
-        message: "Force reconnect failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-      },
+      { success: false, message: error.message || "Failed to forcefully reconnect database." },
       { status: 500 },
     )
   }

@@ -1,160 +1,128 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Database, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react"
+import { Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
-interface TestResult {
-  success: boolean
-  data?: any[]
-  count?: number
-  error?: string
-}
-
-interface CoordinateTestData {
-  success: boolean
-  timestamp: string
-  tests: {
-    availableColumns?: TestResult
-    coordinatesOnly?: TestResult
-    explicitSchema?: TestResult
-    permissions?: TestResult
-    basicSelect?: TestResult
-    userContext?: TestResult
-  }
-  error?: string
+interface HomeCoordinateData {
+  HomeID: number
+  Address: string
+  Latitude: number
+  Longitude: number
 }
 
 export default function CoordinateTestPage() {
-  const [result, setResult] = useState<CoordinateTestData | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [homes, setHomes] = useState<HomeCoordinateData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const runTest = async () => {
+  const fetchHomesWithCoordinates = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/test-coordinates")
       const data = await response.json()
-      setResult(data)
-    } catch (error) {
-      setResult({
-        success: false,
-        timestamp: new Date().toISOString(),
-        tests: {},
-        error: error instanceof Error ? error.message : "Unknown error",
-      })
+      if (data.success) {
+        setHomes(data.data)
+      } else {
+        setError(data.message || "Failed to fetch homes with coordinates.")
+      }
+    } catch (err: any) {
+      console.error("Error fetching homes with coordinates:", err)
+      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    runTest()
+    fetchHomesWithCoordinates()
   }, [])
 
-  const renderTestResult = (testName: string, test: TestResult | undefined) => {
-    if (!test) return null
-
-    return (
-      <Card key={testName} className={test.success ? "border-green-200" : "border-red-200"}>
-        <CardHeader>
-          <CardTitle className="flex items-center text-sm">
-            {test.success ? (
-              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-            ) : (
-              <XCircle className="w-4 h-4 text-red-500 mr-2" />
-            )}
-            {testName}
-            {test.count !== undefined && <Badge className="ml-2">{test.count} records</Badge>}
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-4xl shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+            Coordinate Column Access Test
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {test.success ? (
-            <div className="space-y-2">
-              {test.data && test.data.length > 0 && (
-                <div className="bg-gray-50 p-3 rounded text-xs font-mono max-h-40 overflow-y-auto">
-                  <pre>{JSON.stringify(test.data, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription className="text-sm">{test.error}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <Database className="w-6 h-6 text-blue-600" />
-                <span className="text-lg font-semibold text-gray-900">Coordinate Column Test</span>
-              </div>
-            </div>
-            <Button onClick={runTest} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Testing..." : "Run Test"}
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Coordinate Column Access Test</h1>
-            <p className="text-gray-600">Testing if we can access the Latitude and Longitude columns</p>
-          </div>
+        <CardContent className="space-y-6">
+          <p className="text-lg text-gray-700 dark:text-gray-300 text-center">
+            This page tests the application's ability to retrieve `Latitude` and `Longitude` data from your database. It
+            displays the first 5 homes that have coordinate data.
+          </p>
 
           {loading && (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Running coordinate access tests...</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {result && !loading && (
-            <div className="space-y-6">
-              {result.error && (
-                <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertDescription>{result.error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {renderTestResult("Available Columns", result.tests.availableColumns)}
-                {renderTestResult("Coordinates Only", result.tests.coordinatesOnly)}
-                {renderTestResult("Explicit Schema", result.tests.explicitSchema)}
-                {renderTestResult("User Permissions", result.tests.permissions)}
-                {renderTestResult("Basic Select", result.tests.basicSelect)}
-                {renderTestResult("User Context", result.tests.userContext)}
-              </div>
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+              <p className="mt-4 text-xl font-medium">Loading coordinate data...</p>
             </div>
           )}
-        </div>
-      </main>
+
+          {error && (
+            <div
+              className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            (homes.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Home ID</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Latitude</TableHead>
+                      <TableHead>Longitude</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {homes.map((home) => (
+                      <TableRow key={home.HomeID}>
+                        <TableCell className="font-medium">{home.HomeID}</TableCell>
+                        <TableCell>{home.Address}</TableCell>
+                        <TableCell>{home.Latitude}</TableCell>
+                        <TableCell>{home.Longitude}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                <p>No homes with Latitude and Longitude data found in the database.</p>
+                <p>Please ensure your `Homes` table has `Latitude` and `Longitude` columns with data.</p>
+              </div>
+            ))}
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+            <Button onClick={fetchHomesWithCoordinates} disabled={loading} className="w-full sm:w-auto">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
+            <Link href="/homes-map">
+              <Button className="w-full sm:w-auto bg-transparent" variant="outline">
+                View Homes Map
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button className="w-full sm:w-auto" variant="default">
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -151,6 +151,40 @@ export async function GET() {
       }
     }
 
+    // Attempt to select latitude and longitude from a dummy table or a known table
+    // Replace 'YourHomesTable' and 'home_id' with your actual table and column names
+    const queryString = `SELECT TOP 5 id, address, latitude, longitude FROM Homes;` // Assuming a 'Homes' table with these columns
+    const result = await query(queryString)
+
+    if (result.success && result.data && result.data.length > 0) {
+      // Check if latitude and longitude columns exist and have values
+      const hasCoordinates = result.data.every(
+        (row: any) => typeof row.latitude === "number" && typeof row.longitude === "number",
+      )
+
+      if (hasCoordinates) {
+        results.tests.homesCoordinates = {
+          success: true,
+          message: "Successfully accessed latitude and longitude columns. Data includes coordinates.",
+          data: result.data,
+        }
+      } else {
+        results.tests.homesCoordinates = {
+          success: false,
+          message: "Successfully queried data, but latitude or longitude columns are missing or not numbers.",
+          data: result.data,
+        }
+      }
+    } else if (result.success && result.data && result.data.length === 0) {
+      results.tests.homesCoordinates = {
+        success: true,
+        message: "Query successful, but no data found in the Homes table.",
+        data: [],
+      }
+    } else {
+      results.tests.homesCoordinates = result // Pass through the error message from the query function
+    }
+
     return NextResponse.json(results)
   } catch (error) {
     console.error("Coordinate test failed:", error)

@@ -1,5 +1,26 @@
 import { NextResponse } from "next/server"
 
+export async function GET() {
+  try {
+    const response = await fetch("https://api.ipify.org?format=json")
+    const data = await response.json()
+    const currentIp = data.ip
+
+    // In a real application, you would store this IP in your database
+    // or a configuration service. For this example, we'll just return it.
+    console.log(`Current public IP: ${currentIp}`)
+
+    return NextResponse.json({
+      success: true,
+      ip: currentIp,
+      message: "Current IP fetched successfully. In a real app, this would be added to your database firewall.",
+    })
+  } catch (error) {
+    console.error("Failed to fetch current IP:", error)
+    return NextResponse.json({ success: false, message: "Failed to fetch current IP." }, { status: 500 })
+  }
+}
+
 export async function POST() {
   try {
     console.log("=== 🔧 Adding current IP to firewall recommendations ===")

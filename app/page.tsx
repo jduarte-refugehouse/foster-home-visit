@@ -1,251 +1,193 @@
-import Link from "next/link"
+"use client"
+
+import type React from "react"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  Shield,
-  Calendar,
-  FileText,
-  Upload,
-  Users,
-  CheckCircle,
-  Clock,
-  Database,
-  Lock,
-  Award,
-  ArrowRight,
-  Home,
-  Info,
-  MapPin,
-} from "lucide-react"
+import { Home, Map, Database, Users, CalendarDays, Info } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
+
+const LOGO_SRC = "/images/web logo with name.png" // Ensure this path is correct and the image exists
 
 export default function HomePage() {
-  const features = [
-    {
-      icon: Shield,
-      title: "TAC Chapter 749 Compliant",
-      description: "Built-in compliance tracking for Texas minimum standards with automated prompts and validation.",
-      highlight: true,
-    },
-    {
-      icon: Calendar,
-      title: "Smart Visit Scheduling",
-      description: "Intuitive calendar management with automated reminders and compliance deadline tracking.",
-    },
-    {
-      icon: FileText,
-      title: "Comprehensive Documentation",
-      description: "Detailed visit forms with TAC/RCC compliance prompts, digital signatures, and PDF export.",
-    },
-    {
-      icon: Upload,
-      title: "Radius Integration",
-      description: "Seamless XML data import from Radius system for families, placements, and case information.",
-    },
-    {
-      icon: Users,
-      title: "Family Management",
-      description: "Complete family and placement tracking with visit history and compliance status monitoring.",
-    },
-    {
-      icon: Database,
-      title: "Secure Azure Integration",
-      description: "Enterprise-grade security with Azure SQL, Key Vault, and encrypted data storage.",
-    },
-  ]
-
-  const benefits = [
-    {
-      icon: Clock,
-      title: "Save 3+ Hours Weekly",
-      description: "Automated compliance tracking and streamlined documentation reduce administrative overhead.",
-    },
-    {
-      icon: CheckCircle,
-      title: "100% Compliance Ready",
-      description: "Never miss a compliance requirement with built-in TAC Chapter 749 and RCC contract prompts.",
-    },
-    {
-      icon: Lock,
-      title: "Enterprise Security",
-      description: "HIPAA-compliant data handling with Azure security and role-based access controls.",
-    },
-    {
-      icon: Award,
-      title: "Audit-Ready Reports",
-      description: "Generate comprehensive reports for state inspections and contract compliance reviews.",
-    },
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <Shield className="w-8 h-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/homes-map">
-                <Button variant="ghost">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  View Homes Map
-                </Button>
-              </Link>
-              <Link href="/homes-list">
-                <Button variant="ghost">
-                  <Home className="w-4 h-4 mr-2" />
-                  View Homes List
-                </Button>
-              </Link>
-              <Link href="/admin">
-                <Button variant="ghost">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Admin
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="ghost">Demo</Button>
-              </Link>
-              <Link href="/features">
-                <Button>Features</Button>
-              </Link>
-            </div>
-          </div>
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm py-4 px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Image
+            src={LOGO_SRC || "/placeholder.svg"}
+            alt="Application Logo"
+            width={150}
+            height={40}
+            priority // Helps with initial loading and LCP
+          />
         </div>
-      </nav>
+        <nav className="hidden md:flex items-center gap-6">
+          <Link
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
+            href="/dashboard"
+          >
+            Dashboard
+          </Link>
+          <Link
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
+            href="/homes-list"
+          >
+            Homes
+          </Link>
+          <Link
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
+            href="/features"
+          >
+            Features
+          </Link>
+          <Link
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
+            href="/contact"
+          >
+            Contact
+          </Link>
+          <Link
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50"
+            href="/admin"
+          >
+            Admin
+          </Link>
+        </nav>
+        <Button className="md:hidden bg-transparent" size="icon" variant="outline">
+          <MenuIcon className="h-6 w-6" />
+          <span className="sr-only">Toggle navigation</span>
+        </Button>
+      </header>
 
-      {/* Hero Section */}
-      <section className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <Badge className="mb-4 bg-blue-100 text-blue-800 hover:bg-blue-100">TAC Chapter 749 Certified</Badge>
-            <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl">
-              Family Visit Management
-              <span className="block text-blue-600">Made Simple & Compliant</span>
-            </h1>
-            <p className="mt-6 max-w-3xl mx-auto text-xl text-gray-600">
-              The only case management system built specifically for Texas child welfare requirements. Streamline your
-              family visits while ensuring 100% TAC Chapter 749 and RCC contract compliance.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/homes-map">
-                <Button size="lg" className="w-full sm:w-auto">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  View Homes Map
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
-                  <Database className="w-4 h-4 mr-2" />
-                  Try Demo Dashboard
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-gray-500">
-              Interactive map showing all active homes with Dallas and San Antonio unit filtering
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything You Need for Compliance</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Built by child welfare professionals, for child welfare professionals. Every feature designed with TAC
-              Chapter 749 requirements in mind.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <Card
-                  key={feature.title}
-                  className={`hover:shadow-lg transition-shadow ${
-                    feature.highlight ? "ring-2 ring-blue-500 ring-opacity-50" : ""
-                  }`}
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${feature.highlight ? "bg-blue-100" : "bg-gray-100"}`}>
-                        <Icon className={`w-6 h-6 ${feature.highlight ? "text-blue-600" : "text-gray-600"}`} />
-                      </div>
-                      <CardTitle className="text-lg">{feature.title}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-base leading-relaxed">{feature.description}</CardDescription>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Caseworkers Choose Family Visits Pro</h2>
-            <p className="text-xl text-gray-600">
-              Join hundreds of Texas caseworkers who've streamlined their workflow
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {benefits.map((benefit) => {
-              const Icon = benefit.icon
-              return (
-                <div key={benefit.title} className="text-center">
-                  <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Icon className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{benefit.title}</h3>
-                  <p className="text-gray-600">{benefit.description}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-700">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Explore your homes on an interactive map and see how Family Visits Pro can streamline your workflow.
+      <main className="flex-1 py-12 px-4 md:px-6 lg:py-24">
+        <section className="container mx-auto text-center mb-12">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-5xl md:text-6xl">
+            Welcome to the Home Visits Application
+          </h1>
+          <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+            Your central hub for managing home visits, data, and administrative tasks.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/homes-map">
-              <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                <MapPin className="w-4 h-4 mr-2" />
-                View Homes Map
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/features">
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full sm:w-auto bg-transparent border-white text-white hover:bg-white hover:text-blue-600"
-              >
-                <Info className="w-4 h-4 mr-2" />
-                Explore Features
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="container mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="flex flex-col items-center p-6 text-center">
+            <Home className="h-12 w-12 text-blue-500 mb-4" />
+            <CardHeader>
+              <CardTitle>Manage Homes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                View and manage all registered homes, including details and visit history.
+              </p>
+              <Link href="/homes-list">
+                <Button variant="outline">View Homes</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col items-center p-6 text-center">
+            <Map className="h-12 w-12 text-green-500 mb-4" />
+            <CardHeader>
+              <CardTitle>Interactive Map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Explore homes on an interactive map to visualize locations and plan routes.
+              </p>
+              <Link href="/homes-map">
+                <Button variant="outline">Open Map</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col items-center p-6 text-center">
+            <CalendarDays className="h-12 w-12 text-purple-500 mb-4" />
+            <CardHeader>
+              <CardTitle>Schedule Visits</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Efficiently schedule and track upcoming home visits for your team.
+              </p>
+              <Link href="/schedule">
+                <Button variant="outline">Go to Schedule</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col items-center p-6 text-center">
+            <Users className="h-12 w-12 text-yellow-500 mb-4" />
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Administer user accounts, roles, and permissions within the application.
+              </p>
+              <Link href="/admin/users">
+                <Button variant="outline">Manage Users</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col items-center p-6 text-center">
+            <Database className="h-12 w-12 text-red-500 mb-4" />
+            <CardHeader>
+              <CardTitle>Database Diagnostics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Test and monitor your database connection and proxy setup.
+              </p>
+              <Link href="/diagnostics">
+                <Button variant="outline">Run Diagnostics</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col items-center p-6 text-center">
+            <Info className="h-12 w-12 text-indigo-500 mb-4" />
+            <CardHeader>
+              <CardTitle>Proxy Setup</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Configure and verify your static IP proxy settings for secure connections.
+              </p>
+              <Link href="/proxy-setup">
+                <Button variant="outline">Configure Proxy</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </section>
+      </main>
+
+      <footer className="bg-gray-100 dark:bg-gray-800 py-6 px-4 md:px-6 text-center text-gray-600 dark:text-gray-400">
+        <p>&copy; 2024 Home Visits Application. All rights reserved.</p>
+      </footer>
     </div>
+  )
+}
+
+function MenuIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" x2="20" y1="12" y2="12" />
+      <line x1="4" x2="20" y1="6" y2="6" />
+      <line x1="4" x2="20" y1="18" y2="18" />
+    </svg>
   )
 }

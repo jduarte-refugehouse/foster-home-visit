@@ -1,57 +1,39 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RefreshCw, CheckCircle, XCircle, ArrowLeft, Shield, MapPin } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react"
+import { Loader2, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
-interface Home {
-  Guid: string
-  HomeName: string
-  Street: string
-  City: string
-  State: string
-  Zip: string
-  HomePhone: string
-  CaseManager: string
-  Unit: string
-  Latitude?: number
-  Longitude?: number
-  Xref?: string
-  CaseManagerEmail?: string
-  CaseManagerPhone?: string
-  CaregiverEmail?: string
-  LastSync?: string
-}
-
-interface HomesData {
-  success: boolean
-  homes?: Home[]
-  count?: number
-  error?: string
-  message?: string
+interface HomeData {
+  id: number
+  address: string
+  city: string
+  state: string
+  zipCode: string
 }
 
 export default function HomesListPage() {
-  const [data, setData] = useState<HomesData | null>(null)
+  const [homes, setHomes] = useState<HomeData[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchHomes = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch("/api/homes-list")
-      const result = await response.json()
-      console.log("Homes list API response:", result)
-      setData(result)
-    } catch (error) {
-      setData({
-        success: false,
-        error: "Failed to connect to the API.",
-        message: error instanceof Error ? error.message : "An unknown error occurred.",
-      })
+      const data = await response.json()
+      if (data.success) {
+        setHomes(data.data)
+      } else {
+        setError(data.message || "Failed to fetch homes data.")
+      }
+    } catch (err: any) {
+      console.error("Error fetching homes list:", err)
+      setError(err.message || "An unexpected error occurred.")
     } finally {
       setLoading(false)
     }
@@ -61,161 +43,85 @@ export default function HomesListPage() {
     fetchHomes()
   }, [])
 
-  const formatCoordinate = (coord: number | undefined | null): string => {
-    if (coord === null || coord === undefined) return "N/A"
-    return coord.toFixed(6)
-  }
-
-  const hasValidCoordinates = (home: Home): boolean => {
-    return home.Latitude != null && home.Longitude != null && home.Latitude !== 0 && home.Longitude !== 0
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <Shield className="w-8 h-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Family Visits Pro</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <Button onClick={fetchHomes} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                {loading ? "Loading..." : "Refresh"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Active Homes List</h1>
-            <p className="text-gray-600">Displaying data with coordinates from the SyncActiveHomes table.</p>
-          </div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-4xl shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-50">Registered Homes List</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-lg text-gray-700 dark:text-gray-300 text-center">
+            A comprehensive list of all homes registered in the system.
+          </p>
 
           {loading && (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Loading homes data...</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {data && !loading && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      {data.success ? (
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-500 mr-2" />
-                      )}
-                      Query Status
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={data.success ? "default" : "destructive"}>
-                        {data.success ? `${data.count || 0} records found` : "Failed"}
-                      </Badge>
-                      {data.success && data.homes && (
-                        <Badge variant="outline">
-                          {data.homes.filter(hasValidCoordinates).length} with coordinates
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                {data.error && (
-                  <CardContent>
-                    <Alert variant="destructive">
-                      <XCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Error:</strong> {data.error}
-                        {data.message && <p className="text-xs mt-2">{data.message}</p>}
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                )}
-              </Card>
-
-              {data.success && data.homes && data.homes.length > 0 && (
-                <div className="space-y-4">
-                  {data.homes.map((home) => (
-                    <Card
-                      key={home.Guid}
-                      className={hasValidCoordinates(home) ? "border-green-200" : "border-gray-200"}
-                    >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="flex items-center gap-2">
-                              {home.HomeName}
-                              {hasValidCoordinates(home) && (
-                                <Badge variant="outline" className="text-green-700 border-green-300">
-                                  <MapPin className="w-3 h-3 mr-1" />
-                                  Has Coordinates
-                                </Badge>
-                              )}
-                            </CardTitle>
-                            <CardDescription>
-                              Case Manager: {home.CaseManager || "N/A"} | Unit: {home.Unit || "N/A"}
-                            </CardDescription>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <div className="text-sm">
-                              <strong>Address:</strong>
-                              <br />
-                              {home.Street}
-                              <br />
-                              {home.City}, {home.State} {home.Zip}
-                            </div>
-                            <div className="text-sm">
-                              <strong>Phone:</strong> {home.HomePhone || "N/A"}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="text-sm">
-                              <strong>Coordinates:</strong>
-                              <br />
-                              <span className="font-mono text-xs">
-                                Lat: {formatCoordinate(home.Latitude)}
-                                <br />
-                                Lng: {formatCoordinate(home.Longitude)}
-                              </span>
-                            </div>
-                            {hasValidCoordinates(home) && (
-                              <Badge variant="outline" className="text-green-700">
-                                ✓ Map Ready
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+              <p className="mt-4 text-xl font-medium">Loading homes data...</p>
             </div>
           )}
-        </div>
-      </main>
+
+          {error && (
+            <div
+              className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            (homes.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>State</TableHead>
+                      <TableHead>Zip Code</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {homes.map((home) => (
+                      <TableRow key={home.id}>
+                        <TableCell className="font-medium">{home.id}</TableCell>
+                        <TableCell>{home.address}</TableCell>
+                        <TableCell>{home.city}</TableCell>
+                        <TableCell>{home.state}</TableCell>
+                        <TableCell>{home.zipCode}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                <p>No homes found in the database.</p>
+              </div>
+            ))}
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+            <Button onClick={fetchHomes} disabled={loading} className="w-full sm:w-auto">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh List
+            </Button>
+            <Link href="/homes-map">
+              <Button className="w-full sm:w-auto bg-transparent" variant="outline">
+                View Homes Map
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button className="w-full sm:w-auto" variant="default">
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

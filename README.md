@@ -1,30 +1,80 @@
 # Home Visits Application
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+This is an internal application designed to manage home visits and related data. It provides functionalities for viewing homes, scheduling visits, and administrative tasks.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/refuge-house-all-deployments/v0-home-visits-application)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/xTGNgjInHzf)
+## Features
 
-## Overview
+- **Dashboard**: A central hub for quick access to key application modules.
+- **Homes Management**: View and manage details of registered homes.
+- **Interactive Map**: Visualize home locations and plan routes.
+- **Visit Scheduling**: Efficiently schedule and track home visits.
+- **User Management**: Administer user accounts, roles, and permissions (Admin only).
+- **Database Diagnostics**: Test and monitor database connection and proxy setup.
+- **Static IP Proxy Setup**: Configure and verify proxy settings for secure database connections.
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Technical Stack
 
-## Deployment
+- **Next.js**: React framework for building the web application.
+- **React**: Frontend library for building user interfaces.
+- **Tailwind CSS**: Utility-first CSS framework for styling.
+- **shadcn/ui**: Reusable UI components built with Tailwind CSS.
+- **MSSQL**: Database for storing application data.
+- **Fixie**: Static IP SOCKS5 proxy for secure database connections.
+- **Leaflet**: JavaScript library for interactive maps.
+- **mssql**: Node.js driver for Microsoft SQL Server.
+- **socks**: SOCKS proxy client for Node.js.
 
-Your project is live at:
+## Getting Started
 
-**[https://vercel.com/refuge-house-all-deployments/v0-home-visits-application](https://vercel.com/refuge-house-all-deployments/v0-home-visits-application)**
+### 1. Environment Variables
 
-## Build your app
+Ensure you have the following environment variables configured in your Vercel project or `.env.local` file:
 
-Continue building your app on:
+- `POSTGRES_USER`: Your database username.
+- `POSTGRES_PASSWORD`: Your database password.
+- `POSTGRES_DATABASE`: Your database name.
+- `POSTGRES_HOST`: Your database host.
+- `FIXIE_SOCKS_HOST`: Your Fixie SOCKS proxy URL (e.g., `socks://user:password@host:port`).
 
-**[https://v0.dev/chat/projects/xTGNgjInHzf](https://v0.dev/chat/projects/xTGNgjInHzf)**
+### 2. Database Setup
 
-## How It Works
+This application connects to an MSSQL database. Ensure your database is accessible and its firewall rules are configured to allow connections from your Fixie static IP.
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+The `lib/db.ts` file contains the connection logic, including a custom connector for the Fixie SOCKS proxy.
+
+### 3. Running Locally
+
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 4. Deployment
+
+This application is designed for deployment on Vercel. Ensure your environment variables are correctly configured in your Vercel project settings.
+
+## Project Structure
+
+- `app/`: Next.js App Router pages and API routes.
+- `components/`: Reusable React components.
+- `lib/`: Utility functions, including database connection logic (`db.ts`).
+- `public/`: Static assets like images.
+
+## Troubleshooting
+
+- **Database Connection Issues**:
+  - Check your `POSTGRES_*` environment variables.
+  - Verify your database firewall rules allow connections from Fixie's static IP.
+  - Use the `/diagnostics` page in the application to test the database connection and proxy configuration.
+- **Proxy Issues**:
+  - Ensure `FIXIE_SOCKS_HOST` is correctly set in your environment variables.
+  - Double-check the Fixie proxy URL format (`socks://user:password@host:port`).
+  - Refer to the `/proxy-setup` and `/fixie-setup` pages for guidance.
+- **Image Loading Errors**:
+  - Ensure the `LOGO_SRC` path in `app/page.tsx` is correct and the image file exists in `public/images/`.
+
+## Contributing
+
+Feel free to contribute to this project by submitting issues or pull requests.

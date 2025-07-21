@@ -111,8 +111,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        message: "Database test failed",
-        error: error instanceof Error ? error.message : "Unknown error",
+        message: error.message || "An unknown error occurred during database test.",
         timestamp: new Date().toISOString(),
       },
       { status: 500 },
