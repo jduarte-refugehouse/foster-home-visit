@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
     const caseManager = searchParams.get("caseManager") || undefined
     const search = searchParams.get("search") || undefined
 
-    console.log("🔍 [API] Filters:", { unit, caseManager, search })
+    console.log("🔍 [API] Filters applied:", { unit, caseManager, search })
 
     const homes = await fetchHomesList({ unit, caseManager, search })
 
-    console.log(`✅ [API] Successfully fetched ${homes.length} homes for list`)
+    console.log(`✅ [API] Successfully processed ${homes.length} homes for list`)
 
     return NextResponse.json({
       success: true,

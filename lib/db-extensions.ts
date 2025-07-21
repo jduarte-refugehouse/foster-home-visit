@@ -17,6 +17,7 @@ export interface ListHome {
   contactPersonName: string
   email: string
   contactPhone: string
+  lastSync: string // Added lastSync field
 }
 
 export interface MapHome extends ListHome {
@@ -31,7 +32,7 @@ export interface HomeStats {
 }
 
 /**
- * Fetch homes list with proper coordinate casting
+ * Fetch homes list with proper coordinate casting and LastSync data
  * Uses the locked database connection safely
  */
 export async function fetchHomesList(filters?: {
@@ -73,28 +74,33 @@ export async function fetchHomesList(filters?: {
      [HomePhone] as phoneNumber,
      [CaseManager] as contactPersonName,
      [CaseManagerEmail] as email,
-     [CaseManagerPhone] as contactPhone
+     [CaseManagerPhone] as contactPhone,
+     [LastSync] as lastSync
    FROM SyncActiveHomes 
    ${whereClause}
    ORDER BY [HomeName]
  `
 
   try {
-    const results = await query<ListHome>(queryText, params)
+    const results = await query<any>(queryText, params)
     console.log(`✅ [Extension] Retrieved ${results.length} homes from database`)
 
     // Process and validate results
-    const processedHomes = results.map((home) => ({
-      ...home,
-      latitude: typeof home.latitude === "number" && !isNaN(home.latitude) ? home.latitude : 0,
-      longitude: typeof home.longitude === "number" && !isNaN(home.longitude) ? home.longitude : 0,
+    const processedHomes: ListHome[] = results.map((home) => ({
+      id: home.id || "",
+      name: home.name || "",
+      address: home.address || "",
       City: home.City || "",
       State: home.State || "",
       zipCode: home.zipCode || "",
+      Unit: home.Unit || "",
+      latitude: typeof home.latitude === "number" && !isNaN(home.latitude) ? home.latitude : 0,
+      longitude: typeof home.longitude === "number" && !isNaN(home.longitude) ? home.longitude : 0,
       phoneNumber: home.phoneNumber || "",
       contactPersonName: home.contactPersonName || "~unassigned~",
       email: home.email || "",
       contactPhone: home.contactPhone || "",
+      lastSync: home.lastSync || "",
     }))
 
     console.log("🔄 [Extension] Processing homes for display...")
@@ -142,14 +148,15 @@ export async function fetchHomesForMap(filters?: {
      [HomePhone] as phoneNumber,
      [CaseManager] as contactPersonName,
      [CaseManagerEmail] as email,
-     [CaseManagerPhone] as contactPhone
+     [CaseManagerPhone] as contactPhone,
+     [LastSync] as lastSync
    FROM SyncActiveHomes 
    ${whereClause}
    ORDER BY [HomeName]
  `
 
   try {
-    const results = await query<MapHome>(queryText, params)
+    const results = await query<any>(queryText, params)
     console.log(`✅ [Extension] Retrieved ${results.length} homes for map`)
 
     // Filter out homes with invalid coordinates
@@ -169,16 +176,20 @@ export async function fetchHomesForMap(filters?: {
         return true
       })
       .map((home) => ({
-        ...home,
-        latitude: typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude)),
-        longitude: typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude)),
+        id: home.id || "",
+        name: home.name || "",
+        address: home.address || "",
         City: home.City || "",
         State: home.State || "",
         zipCode: home.zipCode || "",
+        Unit: home.Unit || "",
+        latitude: typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude)),
+        longitude: typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude)),
         phoneNumber: home.phoneNumber || "",
         contactPersonName: home.contactPersonName || "~unassigned~",
         email: home.email || "",
         contactPhone: home.contactPhone || "",
+        lastSync: home.lastSync || "",
       }))
 
     console.log(`🔄 [Extension] Processed ${validHomes.length} valid homes for map`)
