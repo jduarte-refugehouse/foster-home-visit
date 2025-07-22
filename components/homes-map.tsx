@@ -56,7 +56,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
 
   // Initialize Google Maps
   useEffect(() => {
-    const initializeMap = () => {
+    const initializeMap = async () => {
       if (typeof window !== "undefined" && window.google && homes.length > 0) {
         try {
           // Calculate center point
@@ -67,6 +67,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
             center: { lat: avgLat, lng: avgLng },
             zoom: 10,
             mapTypeId: "roadmap",
+            mapId: "DEMO_MAP_ID", // Required for AdvancedMarkerElement
             styles: [
               {
                 featureType: "poi",
@@ -78,19 +79,37 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
 
           setMap(mapInstance)
 
-          // Create markers
+          // Import AdvancedMarkerElement (new recommended approach)
+          const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker")
+
+          // Create markers using the new AdvancedMarkerElement
           const newMarkers = homes.map((home) => {
-            const marker = new window.google.maps.Marker({
-              position: { lat: home.latitude, lng: home.longitude },
+            // Create custom marker content
+            const markerContent = document.createElement("div")
+            markerContent.innerHTML = `
+              <div style="
+                width: 24px; 
+                height: 24px; 
+                background-color: ${home.Unit === "DAL" ? "#22c55e" : "#ef4444"}; 
+                border: 2px solid white; 
+                border-radius: 50%; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: white;
+                font-weight: bold;
+              ">
+                🏠
+              </div>
+            `
+
+            const marker = new AdvancedMarkerElement({
               map: mapInstance,
+              position: { lat: home.latitude, lng: home.longitude },
+              content: markerContent,
               title: home.name,
-              icon: {
-                url:
-                  home.Unit === "DAL"
-                    ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                    : "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
-                scaledSize: new window.google.maps.Size(32, 32),
-              },
             })
 
             const infoWindow = new window.google.maps.InfoWindow({
@@ -152,21 +171,22 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
           }
 
           setIsLoaded(true)
+          console.log("✅ Google Maps initialized successfully with AdvancedMarkerElement")
         } catch (error) {
           console.error("Error initializing Google Maps:", error)
-          setMapError("Failed to initialize map")
+          setMapError("Failed to initialize map: " + (error instanceof Error ? error.message : "Unknown error"))
         }
       }
     }
 
-    // Load Google Maps API
+    // Load Google Maps API with async loading
     if (typeof window !== "undefined" && !window.google) {
       const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dO_X0Q_MplT9So&libraries=places`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCx6DSV5XxD5D0VAuODGakQrhejpR6062M&libraries=marker&loading=async`
       script.async = true
       script.defer = true
       script.onload = initializeMap
-      script.onerror = () => setMapError("Failed to load Google Maps")
+      script.onerror = () => setMapError("Failed to load Google Maps API")
       document.head.appendChild(script)
     } else if (window.google && homes.length > 0) {
       initializeMap()
