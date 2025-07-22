@@ -1,22 +1,12 @@
 import { SignUp } from "@clerk/nextjs"
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Join the Foster Home Visits application</p>
-        </div>
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: "mx-auto",
-              card: "shadow-lg",
-            },
-          }}
-        />
-      </div>
+    <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+      <SignUp />
     </div>
   )
 }

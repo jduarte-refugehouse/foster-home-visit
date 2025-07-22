@@ -12,12 +12,9 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['mssql', 'socks', '@azure/keyvault-secrets', '@azure/identity'],
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('mssql', 'socks', '@azure/keyvault-secrets', '@azure/identity')
-    }
-    return config
-  },
+  // Force dynamic rendering for all pages
+  output: 'standalone',
+  trailingSlash: false,
 }
 
 export default nextConfig

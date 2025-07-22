@@ -4,206 +4,237 @@ import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Users, UserPlus, Settings, Database, Shield, Activity, AlertCircle } from "lucide-react"
+import { Users, Settings, Shield, Database, Activity, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export default function AdminPage() {
-  const { isSignedIn, isLoaded, user } = useUser()
+  const { isSignedIn, isLoaded } = useUser()
 
   if (!isLoaded) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-4 w-48" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-10 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   if (!isSignedIn) {
     return (
-      <div className="container mx-auto px-4 py-12">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              Authentication Required
-            </CardTitle>
-            <CardDescription>You need to be signed in to access admin functions.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">Please sign in to access the admin panel.</p>
-            <Link href="/sign-in">
-              <Button className="w-full">Sign In</Button>
-            </Link>
-          </CardContent>
-        </Card>
+      <div className="text-center py-12">
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-muted-foreground">Please sign in to access the admin panel.</p>
       </div>
     )
   }
 
-  const adminSections = [
-    {
-      title: "User Management",
-      description: "Manage user accounts, roles, and permissions",
-      icon: Users,
-      href: "/admin/users",
-      status: "Active",
-      actions: ["View Users", "Edit Roles", "Deactivate Accounts"],
-    },
-    {
-      title: "Invitations",
-      description: "Send invitations and manage user access",
-      icon: UserPlus,
-      href: "/admin/invitations",
-      status: "Active",
-      actions: ["Send Invites", "View Pending", "Manage Access"],
-    },
-    {
-      title: "System Settings",
-      description: "Configure application settings and preferences",
-      icon: Settings,
-      href: "/admin/settings",
-      status: "Active",
-      actions: ["App Config", "Notifications", "Integrations"],
-    },
-    {
-      title: "Database Management",
-      description: "Monitor database health and perform maintenance",
-      icon: Database,
-      href: "/admin/database",
-      status: "Active",
-      actions: ["View Stats", "Run Maintenance", "Backup Data"],
-    },
-    {
-      title: "Security & Audit",
-      description: "Review security logs and audit trails",
-      icon: Shield,
-      href: "/admin/security",
-      status: "Active",
-      actions: ["View Logs", "Security Reports", "Access Control"],
-    },
-    {
-      title: "System Monitoring",
-      description: "Monitor system performance and health",
-      icon: Activity,
-      href: "/admin/monitoring",
-      status: "Active",
-      actions: ["Performance", "Error Logs", "Health Checks"],
-    },
-  ]
-
-  const quickStats = [
-    { label: "Total Users", value: "24", change: "+3 this month" },
-    { label: "Active Sessions", value: "8", change: "Currently online" },
-    { label: "System Health", value: "98%", change: "All systems operational" },
-    { label: "Data Backup", value: "2h ago", change: "Last successful backup" },
-  ]
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
-        <p className="text-gray-600">System administration and management tools</p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <p className="text-muted-foreground">System administration and management tools</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {quickStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-              <p className="text-xs text-gray-500 mt-1">{stat.change}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Admin Sections */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {adminSections.map((section, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <section.icon className="h-8 w-8 text-blue-600" />
-                <Badge variant="default">{section.status}</Badge>
-              </div>
-              <CardTitle className="text-xl">{section.title}</CardTitle>
-              <CardDescription>{section.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  <strong>Available Actions:</strong>
-                  <ul className="mt-1 space-y-1">
-                    {section.actions.map((action, actionIndex) => (
-                      <li key={actionIndex} className="flex items-center">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2" />
-                        {action}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <Button className="w-full" asChild>
-                  <Link href={section.href} prefetch={false}>
-                    Access {section.title}
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Recent Activity */}
-      <div className="mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Admin Activity</CardTitle>
-            <CardDescription>Latest administrative actions and system events</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <UserPlus className="h-5 w-5 text-green-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New user invitation sent</p>
-                  <p className="text-xs text-gray-500">2 hours ago</p>
-                </div>
-                <Badge variant="outline">User Management</Badge>
+            <div className="text-2xl font-bold">24</div>
+            <p className="text-xs text-muted-foreground">Active system users</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Health</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">99.9%</div>
+            <p className="text-xs text-muted-foreground">Uptime this month</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Database Size</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">2.4 GB</div>
+            <p className="text-xs text-muted-foreground">Storage used</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">3</div>
+            <p className="text-xs text-muted-foreground">Require attention</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Admin Tools */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="w-5 h-5 mr-2 text-blue-600" />
+              User Management
+            </CardTitle>
+            <CardDescription>Manage user accounts, roles, and permissions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Active Users</span>
+                <Badge variant="default">24</Badge>
               </div>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <Database className="h-5 w-5 text-blue-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Database backup completed</p>
-                  <p className="text-xs text-gray-500">4 hours ago</p>
-                </div>
-                <Badge variant="outline">System</Badge>
-              </div>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <Shield className="h-5 w-5 text-purple-600" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Security audit completed</p>
-                  <p className="text-xs text-gray-500">1 day ago</p>
-                </div>
-                <Badge variant="outline">Security</Badge>
+              <div className="flex justify-between text-sm">
+                <span>Pending Invitations</span>
+                <Badge variant="secondary">3</Badge>
               </div>
             </div>
+            <Link href="/admin/users">
+              <Button className="w-full">Manage Users</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Settings className="w-5 h-5 mr-2 text-green-600" />
+              System Settings
+            </CardTitle>
+            <CardDescription>Configure system-wide settings and preferences</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Configuration</span>
+                <Badge variant="outline">Updated</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Maintenance Mode</span>
+                <Badge variant="secondary">Off</Badge>
+              </div>
+            </div>
+            <Button className="w-full bg-transparent" variant="outline">
+              System Settings
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Shield className="w-5 h-5 mr-2 text-red-600" />
+              Security & Audit
+            </CardTitle>
+            <CardDescription>Monitor security events and audit logs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Failed Logins</span>
+                <Badge variant="destructive">2</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Security Score</span>
+                <Badge variant="default">A+</Badge>
+              </div>
+            </div>
+            <Button className="w-full bg-transparent" variant="outline">
+              Security Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Database className="w-5 h-5 mr-2 text-purple-600" />
+              Database Management
+            </CardTitle>
+            <CardDescription>Monitor and manage database operations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Connection Status</span>
+                <Badge variant="default">Connected</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Last Backup</span>
+                <Badge variant="secondary">2h ago</Badge>
+              </div>
+            </div>
+            <Link href="/diagnostics">
+              <Button className="w-full bg-transparent" variant="outline">
+                Database Tools
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="w-5 h-5 mr-2 text-orange-600" />
+              System Monitoring
+            </CardTitle>
+            <CardDescription>View system performance and health metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>CPU Usage</span>
+                <Badge variant="default">23%</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Memory Usage</span>
+                <Badge variant="secondary">45%</Badge>
+              </div>
+            </div>
+            <Button className="w-full bg-transparent" variant="outline">
+              View Metrics
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2 text-yellow-600" />
+              Alerts & Notifications
+            </CardTitle>
+            <CardDescription>Manage system alerts and notification settings</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span>Active Alerts</span>
+                <Badge variant="destructive">3</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Email Notifications</span>
+                <Badge variant="default">On</Badge>
+              </div>
+            </div>
+            <Button className="w-full bg-transparent" variant="outline">
+              Manage Alerts
+            </Button>
           </CardContent>
         </Card>
       </div>

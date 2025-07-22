@@ -2,270 +2,134 @@
 
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Map,
-  Calendar,
-  FileText,
-  Users,
-  Shield,
-  Bell,
-  BarChart3,
-  Search,
-  Download,
-  Settings,
-  ArrowLeft,
-  Lock,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-} from "lucide-react"
-import Link from "next/link"
+import { MapPin, List, BarChart3, Users, Shield, Clock, CheckCircle, Calendar, FileText } from "lucide-react"
+
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
 
 export default function FeaturesPage() {
-  const { isSignedIn, isLoaded } = useUser()
+  const { isLoaded } = useUser()
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <Card className="w-full max-w-md">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Lock className="h-12 w-12 text-gray-400 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
-              <p className="text-gray-600 text-center mb-6">You need to be signed in to view application features.</p>
-              <Link href="/">
-                <Button>Go to Home</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   const features = [
     {
-      icon: Map,
-      title: "Interactive Home Map",
+      icon: MapPin,
+      title: "Interactive Mapping",
       description:
-        "View all foster homes on an interactive map with detailed location information, visit history, and status indicators.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: [
-        "Real-time location data",
-        "Visit history tracking",
-        "Route optimization",
-        "Mobile-friendly interface",
-      ],
+        "View all foster homes on an interactive map with detailed location information and status indicators.",
+      benefits: ["Real-time location tracking", "Geographic analytics", "Route optimization", "Proximity search"],
     },
     {
-      icon: Calendar,
-      title: "Visit Scheduling",
-      description: "Schedule, track, and manage home visits with automated reminders and calendar integration.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: ["Automated scheduling", "Email reminders", "Calendar sync", "Conflict detection"],
-    },
-    {
-      icon: FileText,
-      title: "Report Management",
+      icon: List,
+      title: "Comprehensive Listings",
       description:
-        "Generate, store, and manage visit reports, assessments, and documentation with templates and workflows.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: ["Custom templates", "Digital signatures", "Version control", "Export options"],
-    },
-    {
-      icon: Users,
-      title: "Family Profiles",
-      description: "Comprehensive family profiles with contact information, history, notes, and relationship tracking.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: ["Complete family history", "Contact management", "Notes and alerts", "Relationship mapping"],
+        "Browse detailed lists of all foster homes with comprehensive information and advanced filtering options.",
+      benefits: ["Advanced search filters", "Sortable columns", "Export capabilities", "Bulk operations"],
     },
     {
       icon: BarChart3,
       title: "Analytics Dashboard",
-      description: "Track performance metrics, visit statistics, and generate insights for program improvement.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: ["Performance metrics", "Custom reports", "Trend analysis", "Data visualization"],
+      description: "Access powerful analytics, reports, and key metrics for your foster home program.",
+      benefits: ["Real-time metrics", "Custom reports", "Data visualization", "Performance tracking"],
+    },
+    {
+      icon: Users,
+      title: "User Management",
+      description: "Manage user accounts, roles, and permissions for your team members with granular control.",
+      benefits: ["Role-based access", "Permission management", "User activity logs", "Team collaboration"],
     },
     {
       icon: Shield,
-      title: "Security & Access Control",
-      description: "Role-based access control with audit trails and secure data handling for sensitive information.",
-      status: "Available",
-      statusColor: "bg-green-100 text-green-800",
-      benefits: ["Role-based access", "Audit logging", "Data encryption", "Compliance ready"],
+      title: "Security & Compliance",
+      description: "Enterprise-grade security features to protect sensitive information and ensure compliance.",
+      benefits: ["Data encryption", "Audit trails", "Compliance reporting", "Access controls"],
     },
     {
-      icon: Bell,
-      title: "Notification System",
-      description: "Automated notifications for upcoming visits, overdue reports, and important updates.",
-      status: "In Development",
-      statusColor: "bg-yellow-100 text-yellow-800",
-      benefits: ["Email notifications", "SMS alerts", "In-app notifications", "Custom triggers"],
+      icon: Calendar,
+      title: "Visit Scheduling",
+      description: "Schedule and track home visits with automated reminders and calendar integration.",
+      benefits: ["Calendar sync", "Automated reminders", "Visit history", "Scheduling conflicts"],
     },
     {
-      icon: Search,
-      title: "Advanced Search",
-      description: "Powerful search capabilities across all data with filters, saved searches, and quick access.",
-      status: "In Development",
-      statusColor: "bg-yellow-100 text-yellow-800",
-      benefits: ["Full-text search", "Advanced filters", "Saved searches", "Quick access"],
+      icon: FileText,
+      title: "Document Management",
+      description: "Store, organize, and manage all documents related to foster homes and visits.",
+      benefits: ["Document storage", "Version control", "Digital signatures", "Template library"],
     },
     {
-      icon: Download,
-      title: "Data Export",
-      description: "Export data in various formats for reporting, analysis, and integration with other systems.",
-      status: "Planned",
-      statusColor: "bg-blue-100 text-blue-800",
-      benefits: ["Multiple formats", "Scheduled exports", "API integration", "Custom fields"],
+      icon: CheckCircle,
+      title: "Compliance Tracking",
+      description: "Track compliance requirements and ensure all homes meet necessary standards.",
+      benefits: ["Compliance checklists", "Automated alerts", "Status tracking", "Reporting tools"],
     },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-8 px-4">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-          <div className="flex items-center gap-2">
-            <Settings className="h-6 w-6 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Application Features</h1>
-          </div>
-        </div>
-
-        <p className="text-lg text-gray-600 mb-12 max-w-3xl">
-          Comprehensive tools for managing foster home visits, assessments, and family support services. Our application
-          provides everything you need to streamline your workflow and improve outcomes.
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="text-center space-y-4">
+        <Badge variant="secondary" className="px-4 py-2">
+          Platform Features
+        </Badge>
+        <h1 className="text-4xl font-bold">Everything you need to manage foster homes</h1>
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          Our comprehensive platform provides all the tools and features you need to effectively manage foster home
+          visits, track compliance, and support families.
         </p>
+      </div>
 
-        {/* Feature Grid */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-12">
-          {features.map((feature, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <feature.icon className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">{feature.title}</CardTitle>
-                      <Badge className={feature.statusColor}>{feature.status}</Badge>
-                    </div>
-                  </div>
+      <div className="grid md:grid-cols-2 gap-8">
+        {features.map((feature, index) => (
+          <Card key={index} className="h-full">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <feature.icon className="h-6 w-6 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base mb-4">{feature.description}</CardDescription>
+                <CardTitle>{feature.title}</CardTitle>
+              </div>
+              <CardDescription className="text-base">{feature.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {feature.benefits.map((benefit, benefitIndex) => (
+                  <li key={benefitIndex} className="flex items-center space-x-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">Key Benefits:</h4>
-                  <ul className="space-y-1">
-                    {feature.benefits.map((benefit, benefitIndex) => (
-                      <li key={benefitIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        {benefit}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="bg-muted/50 rounded-lg p-8 text-center">
+        <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
+        <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+          Join thousands of organizations already using our platform to improve their foster home management processes.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Badge variant="outline" className="px-4 py-2">
+            <Clock className="w-4 h-4 mr-2" />
+            24/7 Support
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2">
+            <Shield className="w-4 h-4 mr-2" />
+            Enterprise Security
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2">
+            <CheckCircle className="w-4 h-4 mr-2" />
+            99.9% Uptime
+          </Badge>
         </div>
-
-        {/* Status Legend */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Feature Status Legend</CardTitle>
-            <CardDescription>Understanding the development status of each feature</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium">Available</p>
-                  <p className="text-sm text-gray-600">Feature is fully implemented and ready to use</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-yellow-600" />
-                <div>
-                  <p className="font-medium">In Development</p>
-                  <p className="text-sm text-gray-600">Feature is currently being developed</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="font-medium">Planned</p>
-                  <p className="text-sm text-gray-600">Feature is planned for future development</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Get Started</CardTitle>
-            <CardDescription>Jump into the application and start using these features</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              <Link href="/dashboard" prefetch={false}>
-                <Button>
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  View Dashboard
-                </Button>
-              </Link>
-              <Link href="/homes-map" prefetch={false}>
-                <Button variant="outline">
-                  <Map className="mr-2 h-4 w-4" />
-                  Explore Map
-                </Button>
-              </Link>
-              <Link href="/homes-list" prefetch={false}>
-                <Button variant="outline">
-                  <Users className="mr-2 h-4 w-4" />
-                  Browse Homes
-                </Button>
-              </Link>
-              <Link href="/admin" prefetch={false}>
-                <Button variant="outline">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin Panel
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

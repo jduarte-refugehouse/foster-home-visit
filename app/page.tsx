@@ -1,11 +1,13 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, List, BarChart3, Users, Shield, Clock } from "lucide-react"
 import Link from "next/link"
+
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
 
 export default function HomePage() {
   const { isSignedIn, isLoaded } = useUser()
@@ -13,7 +15,6 @@ export default function HomePage() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navigation />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -26,8 +27,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
-
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="text-center mb-12">
