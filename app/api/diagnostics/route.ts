@@ -1,49 +1,64 @@
-import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
-import { getDbConnection } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
+import { headers } from "next/headers"
+import { testConnection, getConnection } from "@/lib/db"
 
-export async function GET() {
+export const dynamic = "force-dynamic"
+
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const headersList = await headers()
+    const userAgent = headersList.get("user-agent") || "Unknown"
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    console.log("Diagnostics endpoint called")
+
+    // Test database connection
+    const isConnected = await testConnection()
+
+    let connectionDetails = null
+    if (isConnected) {
+      try {
+        const pool = await getConnection()
+        const result = await pool.request().query(`
+          SELECT 
+            SUSER_SNAME() as login_name,
+            DB_NAME() as database_name,
+            @@VERSION as sql_version,
+            GETDATE() as current_time
+        `)
+        connectionDetails = result.recordset[0]
+      } catch (error) {
+        console.error("Error getting connection details:", error)
+      }
     }
 
     const diagnostics = {
       timestamp: new Date().toISOString(),
-      database: { status: "unknown", message: "", responseTime: 0 },
-      authentication: { status: "connected", userId },
-      environment: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        uptime: process.uptime(),
+      database: {
+        connected: isConnected,
+        details: connectionDetails,
       },
-    }
-
-    // Test database connection
-    try {
-      const startTime = Date.now()
-      const pool = await getDbConnection()
-      await pool.request().query("SELECT 1 as test")
-      const endTime = Date.now()
-
-      diagnostics.database = {
-        status: "connected",
-        message: "Database connection successful",
-        responseTime: endTime - startTime,
-      }
-    } catch (dbError) {
-      diagnostics.database = {
-        status: "error",
-        message: dbError instanceof Error ? dbError.message : "Database connection failed",
-        responseTime: 0,
-      }
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        hasKeyVault: !!process.env.AZURE_KEY_VAULT_NAME,
+        hasFixieProxy: !!process.env.FIXIE_SOCKS_HOST,
+        userAgent,
+      },
+      server: {
+        platform: process.platform,
+        nodeVersion: process.version,
+      },
     }
 
     return NextResponse.json(diagnostics)
   } catch (error) {
     console.error("Diagnostics error:", error)
-    return NextResponse.json({ error: "Failed to run diagnostics" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Diagnostics failed",
+        message: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    )
   }
 }

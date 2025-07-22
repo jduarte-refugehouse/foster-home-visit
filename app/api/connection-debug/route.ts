@@ -1,51 +1,64 @@
-import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
-import { getDbConnection } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
+import { headers } from "next/headers"
+import { getConnection, testConnection } from "@/lib/db"
 
-export async function GET() {
+export const dynamic = "force-dynamic"
+
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const headersList = await headers()
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    console.log("Connection debug endpoint called")
 
-    const debug = {
+    const debugInfo = {
       timestamp: new Date().toISOString(),
-      userId,
-      connectionTest: { status: "unknown", details: "" },
-      environmentCheck: {
-        hasAzureClientId: !!process.env.AZURE_CLIENT_ID,
-        hasAzureClientSecret: !!process.env.AZURE_CLIENT_SECRET,
-        hasAzureTenantId: !!process.env.AZURE_TENANT_ID,
-        hasKeyVaultName: !!process.env.AZURE_KEY_VAULT_NAME,
-        nodeEnv: process.env.NODE_ENV,
+      environment: {
+        NODE_ENV: process.env.NODE_ENV,
+        DATABASE_SERVER: process.env.DATABASE_SERVER,
+        DATABASE_NAME: process.env.DATABASE_NAME,
+        DATABASE_USER: process.env.DATABASE_USER,
+        DATABASE_PORT: process.env.DATABASE_PORT,
+        AZURE_KEY_VAULT_NAME: process.env.AZURE_KEY_VAULT_NAME,
+        FIXIE_SOCKS_HOST: process.env.FIXIE_SOCKS_HOST ? "SET" : "NOT_SET",
+        hasPassword: !!process.env.DATABASE_PASSWORD,
+      },
+      connection: {
+        tested: false,
+        successful: false,
+        error: null,
+        details: null,
       },
     }
 
+    // Test connection
     try {
-      const pool = await getDbConnection()
-      const result = await pool.request().query(`
-        SELECT 
-          COUNT(*) as home_count,
-          @@VERSION as sql_version,
-          DB_NAME() as database_name
-      `)
+      debugInfo.connection.tested = true
+      debugInfo.connection.successful = await testConnection()
 
-      debug.connectionTest = {
-        status: "success",
-        details: `Connected to ${result.recordset[0].database_name}, found ${result.recordset[0].home_count} homes`,
+      if (debugInfo.connection.successful) {
+        const pool = await getConnection()
+        const result = await pool.request().query(`
+          SELECT 
+            SUSER_SNAME() as login_name,
+            DB_NAME() as database_name,
+            GETDATE() as current_time,
+            @@VERSION as version
+        `)
+        debugInfo.connection.details = result.recordset[0]
       }
-    } catch (dbError) {
-      debug.connectionTest = {
-        status: "error",
-        details: dbError instanceof Error ? dbError.message : "Unknown database error",
-      }
+    } catch (error) {
+      debugInfo.connection.error = error instanceof Error ? error.message : "Unknown error"
     }
 
-    return NextResponse.json(debug)
+    return NextResponse.json(debugInfo)
   } catch (error) {
     console.error("Connection debug error:", error)
-    return NextResponse.json({ error: "Failed to run connection debug" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Debug failed",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

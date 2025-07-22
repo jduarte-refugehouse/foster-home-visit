@@ -124,6 +124,37 @@ export async function getHomesForMap(): Promise<MapHomeData[]> {
   }
 }
 
+export async function getAllHomes(): Promise<HomeData[]> {
+  try {
+    const queryText = `
+      SELECT 
+        ID as id,
+        Name as name,
+        Address as address,
+        City as city,
+        State as state,
+        ZipCode as zipCode,
+        Phone as phone,
+        Email as email,
+        ContactPerson as contactPerson,
+        CAST(Latitude AS FLOAT) as latitude,
+        CAST(Longitude AS FLOAT) as longitude,
+        LastSync as lastSync,
+        Unit as unit,
+        CaseManager as caseManager,
+        Status as status
+      FROM SyncActiveHomes 
+      ORDER BY Name
+    `
+
+    const results = await query<HomeData>(queryText)
+    return results
+  } catch (error) {
+    console.error("Error fetching all homes:", error)
+    throw error
+  }
+}
+
 export async function getHomeStats(): Promise<{
   totalHomes: number
   activeHomes: number

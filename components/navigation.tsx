@@ -1,161 +1,181 @@
 "use client"
 
 import Link from "next/link"
-import { useUser, SignInButton, SignOutButton } from "@clerk/nextjs"
+import { usePathname } from "next/navigation"
+import { useAuth, UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Home, Map, Users, Settings } from "lucide-react"
-import Image from "next/image"
+import { Home, Map, List, Settings, Users, BarChart3, Menu, X } from "lucide-react"
+import { useState } from "react"
+import { cn } from "@/lib/utils"
+
+const navigationItems = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: Home,
+    description: "Overview and statistics",
+  },
+  {
+    name: "Homes Map",
+    href: "/homes-map",
+    icon: Map,
+    description: "Interactive map view",
+  },
+  {
+    name: "Homes List",
+    href: "/homes-list",
+    icon: List,
+    description: "Detailed list view",
+  },
+  {
+    name: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    description: "Analytics and reports",
+  },
+  {
+    name: "Admin",
+    href: "/admin",
+    icon: Settings,
+    description: "System administration",
+  },
+  {
+    name: "Users",
+    href: "/admin/users",
+    icon: Users,
+    description: "User management",
+  },
+]
 
 export function Navigation() {
-  const { isSignedIn, user, isLoaded } = useUser()
+  const pathname = usePathname()
+  const { isSignedIn } = useAuth()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  return (
-    <nav className="border-b bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <Image src="/images/House Only.png" alt="Home Visits" width={32} height={32} className="h-8 w-8" />
-              <span className="font-bold text-xl text-gray-900">Home Visits</span>
-            </Link>
-
-            {isSignedIn && (
-              <NavigationMenu className="ml-8">
-                <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <Link href="/dashboard" legacyBehavior passHref>
-                      <NavigationMenuLink className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
-                        <Home className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                      <Map className="mr-2 h-4 w-4" />
-                      Homes
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <div className="grid gap-3 p-4 w-[400px]">
-                        <Link
-                          href="/homes-map"
-                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                          prefetch={false}
-                        >
-                          <div className="text-sm font-medium leading-none">Map View</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            View foster homes on an interactive map
-                          </p>
-                        </Link>
-                        <Link
-                          href="/homes-list"
-                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                          prefetch={false}
-                        >
-                          <div className="text-sm font-medium leading-none">List View</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Browse homes in a detailed list format
-                          </p>
-                        </Link>
-                      </div>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
-
-                  <NavigationMenuItem>
-                    <Link href="/admin" legacyBehavior passHref>
-                      <NavigationMenuLink className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
-                        <Users className="mr-2 h-4 w-4" />
-                        Admin
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Tools
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <div className="grid gap-3 p-4 w-[300px]">
-                        <Link
-                          href="/diagnostics"
-                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                          prefetch={false}
-                        >
-                          <div className="text-sm font-medium leading-none">Diagnostics</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            System health and connection status
-                          </p>
-                        </Link>
-                        <Link
-                          href="/coordinate-test"
-                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                          prefetch={false}
-                        >
-                          <div className="text-sm font-medium leading-none">Coordinate Test</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Test coordinate geocoding functionality
-                          </p>
-                        </Link>
-                      </div>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {!isLoaded ? (
-              <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
-            ) : isSignedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.imageUrl || "/placeholder.svg"} alt={user.fullName || ""} />
-                      <AvatarFallback>
-                        {user.firstName?.[0]}
-                        {user.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuItem className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.fullName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.primaryEmailAddress?.emailAddress}
-                      </p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <SignOutButton>
-                      <button className="w-full text-left">Sign out</button>
-                    </SignOutButton>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <SignInButton mode="modal">
-                <Button>Sign In</Button>
-              </SignInButton>
-            )}
+  if (!isSignedIn) {
+    return (
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Home className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-semibold text-gray-900">Home Visits</span>
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/features">
+                <Button variant="ghost">Features</Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="ghost">Contact</Button>
+              </Link>
+              <Link href="/sign-in">
+                <Button variant="outline">Sign In</Button>
+              </Link>
+              <Link href="/sign-up">
+                <Button>Get Started</Button>
+              </Link>
+            </div>
           </div>
         </div>
+      </nav>
+    )
+  }
+
+  return (
+    <nav className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          {/* Logo and brand */}
+          <div className="flex items-center">
+            <Link href="/dashboard" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Home className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-semibold text-gray-900">Home Visits</span>
+            </Link>
+          </div>
+
+          {/* Desktop navigation */}
+          <div className="hidden md:flex items-center space-x-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+
+              return (
+                <Link key={item.name} href={item.href}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "flex items-center space-x-2",
+                      isActive && "bg-blue-600 text-white hover:bg-blue-700",
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </Button>
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* User menu and mobile toggle */}
+          <div className="flex items-center space-x-4">
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8",
+                },
+              }}
+            />
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button variant="ghost" size="sm" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile navigation menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t bg-white">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {navigationItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+
+                return (
+                  <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
+                    <div
+                      className={cn(
+                        "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                        isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100",
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <div>
+                        <div>{item.name}</div>
+                        <div className={cn("text-xs", isActive ? "text-blue-100" : "text-gray-500")}>
+                          {item.description}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )
 }
+
+export default Navigation

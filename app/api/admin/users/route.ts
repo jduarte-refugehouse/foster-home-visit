@@ -1,50 +1,57 @@
-import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
-import { getDbConnection } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
+import { headers } from "next/headers"
+import { query } from "@/lib/db"
 
-export async function GET() {
+export const dynamic = "force-dynamic"
+
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const headersList = await headers()
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const pool = await getDbConnection()
-
-    const result = await pool.request().query(`
+    // Get all users from database
+    const users = await query(`
       SELECT 
         id,
-        clerk_user_id,
         email,
         first_name,
         last_name,
         role,
         status,
-        last_login,
         created_at,
-        updated_at
-      FROM users 
-      ORDER BY created_at DESC
+        last_login
+      FROM Users 
+      ORDER BY last_name, first_name
     `)
 
-    const users = result.recordset.map((user) => ({
-      id: user.id,
-      clerk_user_id: user.clerk_user_id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      full_name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-      role: user.role,
-      status: user.status,
-      last_login: user.last_login,
-      created_at: user.created_at,
-      updated_at: user.updated_at,
-    }))
-
-    return NextResponse.json(users)
+    return NextResponse.json({ users })
   } catch (error) {
     console.error("Error fetching users:", error)
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { email, firstName, lastName, role = "user" } = body
+
+    if (!email || !firstName || !lastName) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Create new user
+    const result = await query(
+      `
+      INSERT INTO Users (email, first_name, last_name, role, status, created_at)
+      OUTPUT INSERTED.*
+      VALUES (@param0, @param1, @param2, @param3, 'active', GETDATE())
+    `,
+      [email, firstName, lastName, role],
+    )
+
+    return NextResponse.json({ user: result[0] }, { status: 201 })
+  } catch (error) {
+    console.error("Error creating user:", error)
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
   }
 }
