@@ -1,25 +1,38 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
+import { useState, useEffect } from "react"
 
-// Safe wrapper for useUser that handles cases where Clerk is disabled
+interface MockUser {
+  id: string
+  firstName: string
+  lastName: string
+  emailAddresses: Array<{ emailAddress: string }>
+  imageUrl: string
+}
+
 export function useSafeUser() {
-  const user = useUser() // Ensure useUser is called at the top level
-  try {
-    // Try to use Clerk's useUser hook
-    return user
-  } catch (error) {
-    // If Clerk is not available or disabled, return mock user data
-    console.warn("Clerk authentication is disabled or not available, using mock user")
-    return {
-      isLoaded: true,
-      isSignedIn: true,
-      user: {
-        id: "mock-user-id",
-        emailAddresses: [{ emailAddress: "mock@example.com" }],
-        firstName: "Mock",
-        lastName: "User",
-      },
+  const [user, setUser] = useState<MockUser | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isSignedIn, setIsSignedIn] = useState(false)
+
+  useEffect(() => {
+    // Mock user for development without Clerk
+    const mockUser: MockUser = {
+      id: "mock-user-id",
+      firstName: "Demo",
+      lastName: "User",
+      emailAddresses: [{ emailAddress: "demo@example.com" }],
+      imageUrl: "/placeholder-user.jpg",
     }
+
+    setUser(mockUser)
+    setIsLoaded(true)
+    setIsSignedIn(true)
+  }, [])
+
+  return {
+    user,
+    isLoaded,
+    isSignedIn,
   }
 }
