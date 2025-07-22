@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-// Completely disabled middleware - no Clerk protection at all
-// This stays the same until you're ready to enable authentication
-export default function middleware() {
+// This function can be marked `async` if using `await` inside
+export function middleware(request: NextRequest) {
+  // This middleware is currently passive and does nothing.
+  // The security check is handled by the layout file in `app/(protected)/layout.tsx`.
   return NextResponse.next()
 }
 
+// See "Matching Paths" below to learn more
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 }

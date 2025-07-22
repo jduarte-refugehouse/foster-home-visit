@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Mail, Phone, User, AlertCircle } from "lucide-react"
 
-export function ExternalUserDashboard() {
+export default function ExternalUserDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}

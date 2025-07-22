@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Calendar, AlertCircle } from "lucide-react"
 
-export function CaseManagerDashboard() {
+export default function CaseManagerDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}

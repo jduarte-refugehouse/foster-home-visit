@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Home, Plus, AlertCircle } from "lucide-react"
 
-export function SchedulingAdminDashboard() {
+export default function SchedulingAdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}

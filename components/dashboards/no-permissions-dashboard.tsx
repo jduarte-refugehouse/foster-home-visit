@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Mail, AlertTriangle, User, Lock } from "lucide-react"
 
-export function NoPermissionsDashboard() {
+export default function NoPermissionsDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}

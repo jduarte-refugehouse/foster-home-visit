@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Home, MapPin, Users, Calendar, CheckCircle, Clock } from "lucide-react"
 import Link from "next/link"
 
-export function StaffDashboard() {
+export default function StaffDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Clock, FileText, Car } from "lucide-react"
 
-export function HomeVisitLiaisonDashboard() {
+export default function HomeVisitLiaisonDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}

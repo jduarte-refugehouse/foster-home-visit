@@ -614,3 +614,126 @@ export async function deactivateUser(userId: string): Promise<void> {
     .input("id", userId)
     .query("UPDATE users SET status = 'inactive', updated_at = GETDATE() WHERE id = @id")
 }
+
+// New functions for Admin UI
+
+export async function getAllDefinedRoles(microserviceCode: string = CURRENT_MICROSERVICE): Promise<any[]> {
+  try {
+    const result = await query(
+      `
+      SELECT 
+        rd.id,
+        rd.role_name,
+        rd.role_display_name,
+        rd.role_level,
+        rd.description,
+        ma.app_code as microservice_code,
+        STRING_AGG(p.permission_code, ', ') as permissions
+      FROM role_definitions rd
+      INNER JOIN microservice_apps ma ON rd.microservice_id = ma.id
+      LEFT JOIN role_permissions rp ON rd.id = rp.role_definition_id
+      LEFT JOIN permissions p ON rp.permission_id = p.id
+      WHERE ma.app_code = @param0
+      GROUP BY rd.id, rd.role_name, rd.role_display_name, rd.role_level, rd.description, ma.app_code
+      ORDER BY rd.role_level DESC, rd.role_name ASC
+    `,
+      [microserviceCode],
+    )
+    return result
+  } catch (error) {
+    console.error("Error fetching defined roles:", error)
+    return []
+  }
+}
+
+export async function getAllDefinedPermissions(microserviceCode: string = CURRENT_MICROSERVICE): Promise<Permission[]> {
+  try {
+    const result = await query<Permission>(
+      `
+      SELECT p.* 
+      FROM permissions p
+      INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+      WHERE ma.app_code = @param0
+      ORDER BY p.category, p.permission_name
+    `,
+      [microserviceCode],
+    )
+    return result
+  } catch (error) {
+    console.error("Error fetching defined permissions:", error)
+    return []
+  }
+}
+
+export async function updateUserRoles(
+  userId: string,
+  roleNames: string[],
+  microserviceCode: string = CURRENT_MICROSERVICE,
+  grantedBy: string,
+): Promise<void> {
+  const microservice = await query<{ id: string }>("SELECT id FROM microservice_apps WHERE app_code = @param0", [
+    microserviceCode,
+  ])
+  if (microservice.length === 0) throw new Error(`Microservice ${microserviceCode} not found`)
+  const microserviceId = microservice[0].id
+
+  // Start a transaction
+  const pool = await getDbConnection()
+  const transaction = pool.transaction()
+  await transaction.begin()
+
+  try {
+    // Deactivate all existing roles for this user in this microservice
+    await transaction
+      .request()
+      .input("user_id", userId)
+      .input("microservice_id", microserviceId)
+      .query("UPDATE user_roles SET is_active = 0 WHERE user_id = @user_id AND microservice_id = @microservice_id")
+
+    // Grant new roles
+    for (const roleName of roleNames) {
+      const roleDef = await query<{ id: string; role_display_name: string; role_level: number }>(
+        "SELECT id, role_display_name, role_level FROM role_definitions WHERE role_name = @param0 AND microservice_id = @param1",
+        [roleName, microserviceId],
+      )
+
+      if (roleDef.length > 0) {
+        // Check if role assignment already exists but is inactive
+        const existingRole = await transaction
+          .request()
+          .input("user_id", userId)
+          .input("role_definition_id", roleDef[0].id)
+          .query("SELECT id FROM user_roles WHERE user_id = @user_id AND role_definition_id = @role_definition_id")
+
+        if (existingRole.recordset.length > 0) {
+          // Reactivate it
+          await transaction
+            .request()
+            .input("id", existingRole.recordset[0].id)
+            .input("granted_by", grantedBy)
+            .query(
+              "UPDATE user_roles SET is_active = 1, granted_by = @granted_by, granted_at = GETDATE() WHERE id = @id",
+            )
+        } else {
+          // Insert new role assignment
+          await transaction
+            .request()
+            .input("user_id", userId)
+            .input("microservice_id", microserviceId)
+            .input("role_definition_id", roleDef[0].id)
+            .input("role_name", roleName)
+            .input("role_display_name", roleDef[0].role_display_name)
+            .input("role_level", roleDef[0].role_level)
+            .input("granted_by", grantedBy)
+            .query(`INSERT INTO user_roles (user_id, microservice_id, role_definition_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active) 
+                                VALUES (@user_id, @microservice_id, @role_definition_id, @role_name, @role_display_name, @role_level, @granted_by, GETDATE(), 1)`)
+        }
+      }
+    }
+    await transaction.commit()
+  } catch (error) {
+    await transaction.rollback()
+    console.error("Error updating user roles:", error)
+    throw error
+  }
+}

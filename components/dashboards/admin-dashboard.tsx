@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Settings, Users, Home, Database, Shield, Activity } from "lucide-react"
 import Link from "next/link"
 
-export function AdminDashboard() {
+export default function AdminDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}

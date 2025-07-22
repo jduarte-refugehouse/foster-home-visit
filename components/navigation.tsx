@@ -1,269 +1,134 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Home, Users, Settings, PanelLeft, Package2, ShieldCheck, LayoutDashboard } from "lucide-react"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { Home, Calendar, FileText, Users, Settings, TestTube, MapPin, ClipboardList } from "lucide-react"
-import { usePermissions, setTestUser, TEST_USERS, getCurrentTestUser } from "@/hooks/use-permissions"
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { usePathname } from "next/navigation"
+import { usePermissions } from "@/hooks/use-permissions"
+import { UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
 
 export function Navigation() {
   const pathname = usePathname()
-  const permissions = usePermissions()
+  const { hasPermission, isSystemAdmin } = usePermissions()
 
-  // Safe access to permissions data with fallbacks
-  const {
-    isLoaded = false,
-    roles = [],
-    permissions: userPermissions = [],
-    isSystemAdmin = false,
-    isAgencyAdmin = false,
-    hasPermission = () => false,
-  } = permissions || {}
+  const getBreadcrumbs = () => {
+    const segments = pathname.split("/").filter(Boolean)
+    return (
+      <Breadcrumb className="hidden md:flex">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/dashboard">Dashboard</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          {segments.map((segment, index) => {
+            const href = "/" + segments.slice(0, index + 1).join("/")
+            const isLast = index === segments.length - 1
+            const name = segment.charAt(0).toUpperCase() + segment.slice(1)
+            return (
+              <BreadcrumbSeparator key={href}>
+                <BreadcrumbItem>
+                  {isLast ? (
+                    <BreadcrumbPage>{name}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link href={href}>{name}</Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </BreadcrumbSeparator>
+            )
+          })}
+        </BreadcrumbList>
+      </Breadcrumb>
+    )
+  }
 
-  const navItems = [
+  const navLinks = [
     {
       href: "/dashboard",
+      icon: LayoutDashboard,
       label: "Dashboard",
-      icon: Home,
-      requiredPermissions: ["dashboard_view"],
-      description: "Main dashboard",
+      permission: "dashboard_view",
     },
+    { href: "/homes-list", icon: Home, label: "Homes", permission: "home_view" },
     {
-      href: "/homes-list",
-      label: "Homes",
-      icon: Home,
-      requiredPermissions: ["home_view"],
-      description: "Foster & adoptive homes",
-    },
-    {
-      href: "/homes-map",
-      label: "Map",
-      icon: MapPin,
-      requiredPermissions: ["home_view"],
-      description: "Geographic view",
-    },
-    {
-      href: "/scheduling",
-      label: "Scheduling",
-      icon: Calendar,
-      requiredPermissions: ["schedule_create", "schedule_view_all"],
-      description: "Visit scheduling",
-      requiresAny: true, // User needs ANY of the permissions, not all
-    },
-    {
-      href: "/visits",
-      label: "Visits",
-      icon: ClipboardList,
-      requiredPermissions: ["visit_conduct", "visit_report_view"],
-      description: "Home visits & reports",
-      requiresAny: true,
-    },
-    {
-      href: "/cases",
-      label: "Cases",
-      icon: FileText,
-      requiredPermissions: ["case_view_assigned", "case_view_all"],
-      description: "Case management",
-      requiresAny: true,
-    },
-    {
-      href: "/quality-assurance",
-      label: "QA",
-      icon: Settings,
-      requiredPermissions: ["qa_review_all"],
-      description: "Quality assurance",
-    },
-    {
-      href: "/admin",
-      label: "Admin",
+      href: "/admin/users",
       icon: Users,
-      requiredPermissions: ["user_manage"],
-      description: "User management",
+      label: "User Management",
+      permission: "user_manage",
+    },
+    {
+      href: "/admin/roles",
+      icon: ShieldCheck,
+      label: "Role Management",
+      permission: "system_config",
+    },
+    {
+      href: "/diagnostics",
+      icon: Settings,
+      label: "Diagnostics",
+      permission: "system_config",
     },
   ]
 
-  const canAccessNavItem = (item: (typeof navItems)[0]): boolean => {
-    if (!isLoaded) return false
-
-    if (isSystemAdmin) return true
-
-    if (item.requiresAny) {
-      return item.requiredPermissions.some((perm) => hasPermission(perm))
-    }
-
-    return item.requiredPermissions.every((perm) => hasPermission(perm))
-  }
-
-  const getUserDisplayInfo = () => {
-    try {
-      const currentTestUser = getCurrentTestUser()
-      const userData = TEST_USERS[currentTestUser]
-      const primaryRole = userData?.roles?.[0]?.roleDisplayName || "No Role"
-
-      return {
-        name: userData?.email?.split("@")[0] || "Unknown",
-        email: userData?.email || "unknown@example.com",
-        role: primaryRole,
-        roleLevel: userData?.roles?.[0]?.roleLevel || 0,
-      }
-    } catch (error) {
-      console.error("Error getting user display info:", error)
-      return {
-        name: "Unknown",
-        email: "unknown@example.com",
-        role: "No Role",
-        roleLevel: 0,
-      }
-    }
-  }
-
-  const userInfo = getUserDisplayInfo()
-
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <Image src="/images/House Only.png" alt="Refuge House" width={32} height={32} className="h-8 w-8" />
-            <span className="font-bold text-xl">Home Visits</span>
-          </Link>
-
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const hasAccess = canAccessNavItem(item)
-
-              if (!hasAccess) return null
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === item.href
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
-                  title={item.description}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
-
-            {/* Always show auth test */}
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button size="icon" variant="outline" className="sm:hidden bg-transparent">
+            <PanelLeft className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="sm:max-w-xs">
+          <nav className="grid gap-6 text-lg font-medium">
             <Link
-              href="/auth-test"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                pathname === "/auth-test"
-                  ? "bg-orange-100 text-orange-700"
-                  : "text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-              }`}
+              href="#"
+              className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
             >
-              <TestTube className="h-4 w-4" />
-              <span>Auth Test</span>
+              <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
+              <span className="sr-only">Refuge House</span>
             </Link>
-          </div>
-
-          {/* User Info and Controls */}
-          <div className="flex items-center space-x-4">
-            {isLoaded && (
-              <div className="flex items-center space-x-3">
-                {/* User Role Badge */}
-                <div className="flex items-center space-x-2">
-                  <Badge variant={isSystemAdmin ? "destructive" : isAgencyAdmin ? "default" : "secondary"}>
-                    {userInfo.role}
-                  </Badge>
-                  {userInfo.roleLevel >= 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      Level {userInfo.roleLevel}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* User Switcher for Testing */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {userInfo.name}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <div className="px-3 py-2 text-sm">
-                      <div className="font-medium">{userInfo.email}</div>
-                      <div className="text-muted-foreground">{userInfo.role}</div>
-                    </div>
-                    <DropdownMenuSeparator />
-
-                    <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Test as different users:</div>
-
-                    <DropdownMenuItem onClick={() => setTestUser("jduarte")}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Jorge Duarte</div>
-                        <div className="text-xs text-muted-foreground">System Admin</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onClick={() => setTestUser("mgorman")}>
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Michele Gorman</div>
-                        <div className="text-xs text-muted-foreground">Scheduling Admin</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onClick={() => setTestUser("ggroman")}>
-                      <ClipboardList className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Gabe Groman</div>
-                        <div className="text-xs text-muted-foreground">Home Visit Liaison</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onClick={() => setTestUser("hsartin")}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Heather Sartin</div>
-                        <div className="text-xs text-muted-foreground">Case Manager</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onClick={() => setTestUser("smathis")}>
-                      <Users className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Sheila Mathis</div>
-                        <div className="text-xs text-muted-foreground">QA Director</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem onClick={() => setTestUser("external")}>
-                      <TestTube className="mr-2 h-4 w-4" />
-                      <div>
-                        <div className="font-medium">External User</div>
-                        <div className="text-xs text-muted-foreground">No Permissions</div>
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+            {navLinks.map(
+              (link) =>
+                (hasPermission(link.permission) || isSystemAdmin) && (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-4 px-2.5 ${
+                      pathname === link.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <link.icon className="h-5 w-5" />
+                    {link.label}
+                  </Link>
+                ),
             )}
-          </div>
-        </div>
+          </nav>
+        </SheetContent>
+      </Sheet>
+      {getBreadcrumbs()}
+      <div className="relative ml-auto flex-1 md:grow-0">{/* Search can go here if needed */}</div>
+      <div className="ml-auto flex items-center gap-4">
+        <SignedIn>
+          <UserButton afterSignOutUrl="/" />
+        </SignedIn>
+        <SignedOut>
+          <Button asChild variant="outline">
+            <Link href="/sign-in">Sign In</Link>
+          </Button>
+        </SignedOut>
       </div>
-    </nav>
+    </header>
   )
 }

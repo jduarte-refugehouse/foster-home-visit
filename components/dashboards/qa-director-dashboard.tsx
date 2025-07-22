@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { CheckCircle, AlertTriangle, FileText, TrendingUp, Home } from "lucide-react"
 
-export function QADirectorDashboard() {
+export default function QADirectorDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
