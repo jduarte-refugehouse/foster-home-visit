@@ -71,12 +71,14 @@ export default function HomesMapPage() {
       if (unitFilter !== "ALL") params.append("unit", unitFilter)
       if (caseManagerFilter !== "ALL") params.append("caseManager", caseManagerFilter)
 
+      console.log("🏠 Fetching homes data...")
       const response = await fetch(`/api/homes-for-map?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data: ApiResponse = await response.json()
+      console.log("✅ Homes data received:", data)
 
       if (data.success) {
         // Filter out homes without valid coordinates
