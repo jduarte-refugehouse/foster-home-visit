@@ -5,16 +5,28 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("📋 Homes list API endpoint called")
+    console.log("🏠 API: Fetching homes list...")
     const homes = await getAllHomes()
-    console.log(`✅ Successfully retrieved ${homes.length} homes`)
-    return NextResponse.json(homes)
+
+    console.log(`✅ API: Successfully retrieved ${homes.length} homes`)
+
+    return NextResponse.json({
+      success: true,
+      homes,
+      count: homes.length,
+      timestamp: new Date().toISOString(),
+    })
   } catch (error) {
-    console.error("❌ Error in homes-list API:", error)
+    console.error("❌ API: Error fetching homes list:", error)
+
     return NextResponse.json(
       {
+        success: false,
         error: "Failed to fetch homes",
         message: error instanceof Error ? error.message : "Unknown error",
+        homes: [],
+        count: 0,
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )

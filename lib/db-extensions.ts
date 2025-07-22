@@ -1,4 +1,4 @@
-import { query } from "./db"
+import { query, getConnection } from "./db"
 
 export interface Home {
   id: number
@@ -43,12 +43,13 @@ export async function getHomesForMap(): Promise<Home[]> {
         created_at,
         updated_at
       FROM homes 
-      WHERE status = 'active' 
-        AND latitude IS NOT NULL 
+      WHERE latitude IS NOT NULL 
         AND longitude IS NOT NULL
+        AND latitude != 0 
+        AND longitude != 0
       ORDER BY name
     `)
-    console.log(`✅ Retrieved ${homes.length} homes for map`)
+    console.log(`✅ Retrieved ${homes.length} homes with coordinates for map`)
     return homes
   } catch (error) {
     console.error("❌ Error fetching homes for map:", error)
@@ -59,37 +60,30 @@ export async function getHomesForMap(): Promise<Home[]> {
 export async function getHomeStats(): Promise<HomeStats> {
   try {
     console.log("📊 Fetching home statistics...")
-    const stats = await query<{
-      total_homes: number
-      active_homes: number
-      total_capacity: number
-      current_residents: number
-    }>(`
+    const connection = await getConnection()
+    const request = connection.request()
+
+    const result = await request.query(`
       SELECT 
-        COUNT(*) as total_homes,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_homes,
-        SUM(ISNULL(capacity, 0)) as total_capacity,
-        SUM(ISNULL(current_residents, 0)) as current_residents
+        COUNT(*) as totalHomes,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as activeHomes,
+        SUM(ISNULL(capacity, 0)) as totalCapacity,
+        SUM(ISNULL(current_residents, 0)) as currentResidents
       FROM homes
     `)
 
-    if (stats.length === 0) {
-      throw new Error("No statistics data returned")
+    const stats = result.recordset[0]
+    console.log("✅ Home statistics retrieved:", stats)
+
+    const occupancyRate = stats.totalCapacity > 0 ? (stats.currentResidents / stats.totalCapacity) * 100 : 0
+
+    return {
+      totalHomes: stats.totalHomes || 0,
+      activeHomes: stats.activeHomes || 0,
+      totalCapacity: stats.totalCapacity || 0,
+      currentResidents: stats.currentResidents || 0,
+      occupancyRate: Math.round(occupancyRate * 100) / 100,
     }
-
-    const result = stats[0]
-    const occupancyRate = result.total_capacity > 0 ? (result.current_residents / result.total_capacity) * 100 : 0
-
-    const homeStats: HomeStats = {
-      totalHomes: result.total_homes,
-      activeHomes: result.active_homes,
-      totalCapacity: result.total_capacity,
-      currentResidents: result.current_residents,
-      occupancyRate: Math.round(occupancyRate * 100) / 100, // Round to 2 decimal places
-    }
-
-    console.log("✅ Home statistics retrieved:", homeStats)
-    return homeStats
   } catch (error) {
     console.error("❌ Error fetching home statistics:", error)
     throw new Error(`Failed to fetch home statistics: ${error instanceof Error ? error.message : "Unknown error"}`)

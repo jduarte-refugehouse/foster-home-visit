@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MapPin, Phone, Mail, Globe, Users, Search, AlertCircle, RefreshCw } from "lucide-react"
+import { Phone, Mail, MapPin, RefreshCw, AlertCircle, Search } from "lucide-react"
 
 interface Home {
   id: number
@@ -19,8 +19,8 @@ interface Home {
   capacity?: number
   current_residents?: number
   status: string
-  created_at: Date
-  updated_at: Date
+  created_at: string
+  updated_at: string
 }
 
 export default function HomesListPage() {
@@ -34,24 +34,18 @@ export default function HomesListPage() {
     try {
       setLoading(true)
       setError(null)
-      console.log("🏠 Fetching homes list...")
-
-      const response = await fetch("/api/homes-list", {
-        method: "GET",
-        cache: "no-store",
-      })
+      const response = await fetch("/api/homes-list")
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        throw new Error(`Failed to fetch homes: ${response.statusText}`)
       }
 
       const data = await response.json()
-      console.log(`✅ Received ${data.length} homes`)
-      setHomes(data)
-      setFilteredHomes(data)
+      setHomes(data.homes || [])
+      setFilteredHomes(data.homes || [])
     } catch (err) {
-      console.error("❌ Error fetching homes:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch homes data")
+      console.error("Error fetching homes:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch homes")
     } finally {
       setLoading(false)
     }
@@ -62,41 +56,23 @@ export default function HomesListPage() {
   }, [])
 
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredHomes(homes)
-    } else {
+    if (searchTerm) {
       const filtered = homes.filter(
         (home) =>
           home.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          home.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          home.status.toLowerCase().includes(searchTerm.toLowerCase()),
+          home.address.toLowerCase().includes(searchTerm.toLowerCase()),
       )
       setFilteredHomes(filtered)
+    } else {
+      setFilteredHomes(homes)
     }
   }, [searchTerm, homes])
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Homes Directory</h1>
-          <p className="text-muted-foreground">Loading homes data...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
       </div>
     )
@@ -104,23 +80,16 @@ export default function HomesListPage() {
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Homes Directory</h1>
-          <p className="text-muted-foreground">Complete directory of all homes</p>
-        </div>
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="text-red-800 flex items-center gap-2">
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
               <AlertCircle className="h-5 w-5" />
-              Error Loading Homes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-700 mb-4">{error}</p>
-            <Button onClick={fetchHomes} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
+              <span>Error: {error}</span>
+            </div>
+            <Button onClick={fetchHomes} className="mt-4 bg-transparent" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
             </Button>
           </CardContent>
         </Card>
@@ -129,113 +98,91 @@ export default function HomesListPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Homes Directory</h1>
-        <p className="text-muted-foreground">
-          Complete directory of all homes ({homes.length} total, {filteredHomes.length} shown)
-        </p>
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Homes List</h1>
+          <p className="text-muted-foreground">
+            Showing {filteredHomes.length} of {homes.length} homes
+          </p>
+        </div>
+        <Button onClick={fetchHomes} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search homes..."
+            placeholder="Search homes by name or address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
-        <Button onClick={fetchHomes} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
       </div>
 
       {filteredHomes.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>No Homes Found</CardTitle>
-            <CardDescription>
-              {searchTerm ? "No homes match your search criteria." : "No homes are currently available."}
-            </CardDescription>
-          </CardHeader>
+          <CardContent className="p-6 text-center">
+            <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">{searchTerm ? "No matching homes found" : "No homes found"}</h3>
+            <p className="text-muted-foreground">
+              {searchTerm ? "Try adjusting your search terms." : "No homes are currently available in the system."}
+            </p>
+          </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHomes.map((home) => (
-            <Card key={home.id} className="hover:shadow-lg transition-shadow">
+            <Card key={home.id}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">{home.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {home.address}
-                    </CardDescription>
+                    <CardDescription>{home.address}</CardDescription>
                   </div>
                   <Badge variant={home.status === "active" ? "default" : "secondary"}>{home.status}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {/* Coordinates (if available) */}
+                <div className="space-y-2">
                   {home.latitude && home.longitude && (
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Location:</strong> {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
-                    </div>
-                  )}
-
-                  {/* Capacity Info */}
-                  {(home.capacity || home.current_residents) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center space-x-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {home.current_residents || 0} / {home.capacity || 0} residents
+                        {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
                       </span>
-                      {home.capacity && (
-                        <Badge variant="outline" className="text-xs">
-                          {Math.round(((home.current_residents || 0) / home.capacity) * 100)}% occupied
-                        </Badge>
-                      )}
                     </div>
                   )}
 
-                  {/* Contact Info */}
-                  <div className="space-y-1">
-                    {home.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <span>{home.phone}</span>
-                      </div>
-                    )}
-                    {home.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-3 w-3" />
-                        <span>{home.email}</span>
-                      </div>
-                    )}
-                    {home.website && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Globe className="h-3 w-3" />
-                        <a
-                          href={home.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Visit Website
-                        </a>
-                      </div>
-                    )}
-                  </div>
+                  {home.phone && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{home.phone}</span>
+                    </div>
+                  )}
 
-                  {/* Timestamps */}
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    <div>Created: {new Date(home.created_at).toLocaleDateString()}</div>
-                    <div>Updated: {new Date(home.updated_at).toLocaleDateString()}</div>
+                  {home.email && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{home.email}</span>
+                    </div>
+                  )}
+
+                  {home.capacity && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Capacity: </span>
+                      <span>
+                        {home.current_residents || 0} / {home.capacity}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground">
+                    Added: {new Date(home.created_at).toLocaleDateString()}
                   </div>
                 </div>
               </CardContent>

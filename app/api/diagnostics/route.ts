@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
             SUSER_SNAME() as login_name,
             DB_NAME() as database_name,
             @@VERSION as sql_version,
-            GETDATE() as current_time
+            GETDATE() as server_time
         `)
         connectionDetails = result.recordset[0]
         console.log("📊 Database details retrieved:", connectionDetails)

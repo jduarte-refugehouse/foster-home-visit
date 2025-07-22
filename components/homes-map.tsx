@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Phone, Mail, Globe, Users, AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { MapPin, Phone, Mail, RefreshCw, AlertCircle } from "lucide-react"
 
 interface Home {
   id: number
@@ -17,8 +18,8 @@ interface Home {
   capacity?: number
   current_residents?: number
   status: string
-  created_at: Date
-  updated_at: Date
+  created_at: string
+  updated_at: string
 }
 
 export default function HomesMap() {
@@ -26,51 +27,35 @@ export default function HomesMap() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchHomes = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch("/api/homes-for-map")
+  const fetchHomes = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch("/api/homes-for-map")
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-        setHomes(data)
-      } catch (err) {
-        console.error("Error fetching homes for map:", err)
-        setError(err instanceof Error ? err.message : "Failed to load homes")
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch homes: ${response.statusText}`)
       }
-    }
 
+      const data = await response.json()
+      setHomes(data.homes || [])
+    } catch (err) {
+      console.error("Error fetching homes:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch homes")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchHomes()
   }, [])
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Homes Map</h1>
-          <p className="text-muted-foreground">Loading homes with location data...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
       </div>
     )
@@ -78,20 +63,17 @@ export default function HomesMap() {
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Homes Map</h1>
-          <p className="text-muted-foreground">Interactive map of all homes with location data</p>
-        </div>
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="text-red-800 flex items-center gap-2">
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
               <AlertCircle className="h-5 w-5" />
-              Error Loading Homes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-700">{error}</p>
+              <span>Error: {error}</span>
+            </div>
+            <Button onClick={fetchHomes} className="mt-4 bg-transparent" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -99,87 +81,72 @@ export default function HomesMap() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Homes Map</h1>
-        <p className="text-muted-foreground">
-          Interactive map of all homes with location data ({homes.length} homes found)
-        </p>
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Homes Map</h1>
+          <p className="text-muted-foreground">Showing {homes.length} homes with location data</p>
+        </div>
+        <Button onClick={fetchHomes} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
       {homes.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>No Homes Found</CardTitle>
-            <CardDescription>No homes with location data are currently available.</CardDescription>
-          </CardHeader>
+          <CardContent className="p-6 text-center">
+            <MapPin className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No homes found</h3>
+            <p className="text-muted-foreground">No homes with location data are currently available.</p>
+          </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {homes.map((home) => (
-            <Card key={home.id} className="hover:shadow-lg transition-shadow">
+            <Card key={home.id}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">{home.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {home.address}
-                    </CardDescription>
+                    <CardDescription>{home.address}</CardDescription>
                   </div>
                   <Badge variant={home.status === "active" ? "default" : "secondary"}>{home.status}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {/* Coordinates */}
-                  <div className="text-sm text-muted-foreground">
-                    <strong>Coordinates:</strong> {home.latitude?.toFixed(6)}, {home.longitude?.toFixed(6)}
-                  </div>
-
-                  {/* Capacity Info */}
-                  {(home.capacity || home.current_residents) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="h-4 w-4 text-muted-foreground" />
+                <div className="space-y-2">
+                  {home.latitude && home.longitude && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {home.current_residents || 0} / {home.capacity || 0} residents
+                        {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
                       </span>
-                      {home.capacity && (
-                        <Badge variant="outline" className="text-xs">
-                          {Math.round(((home.current_residents || 0) / home.capacity) * 100)}% occupied
-                        </Badge>
-                      )}
                     </div>
                   )}
 
-                  {/* Contact Info */}
-                  <div className="space-y-1">
-                    {home.phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <span>{home.phone}</span>
-                      </div>
-                    )}
-                    {home.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-3 w-3" />
-                        <span>{home.email}</span>
-                      </div>
-                    )}
-                    {home.website && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Globe className="h-3 w-3" />
-                        <a
-                          href={home.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Visit Website
-                        </a>
-                      </div>
-                    )}
-                  </div>
+                  {home.phone && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{home.phone}</span>
+                    </div>
+                  )}
+
+                  {home.email && (
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{home.email}</span>
+                    </div>
+                  )}
+
+                  {home.capacity && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Capacity: </span>
+                      <span>
+                        {home.current_residents || 0} / {home.capacity}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
