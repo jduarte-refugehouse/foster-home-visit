@@ -1,57 +1,66 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Eye, EyeOff } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { RefreshCw, Database, Key, Globe, Server, Eye, EyeOff } from "lucide-react"
 
 interface DiagnosticsData {
   timestamp: string
   database: {
     status: string
-    config: {
-      server: string
-      port: number
-      database: string
-      user: string
-      encryption: string
-      trustServerCertificate: string
-      connectTimeout: string
-      requestTimeout: string
-    }
-    test: {
-      success: boolean
-      message: string
-      data?: any[]
-      passwordSource?: string
-      passwordError?: string
-    }
+    message: string
+    data?: any[]
+    passwordSource?: string
+    passwordError?: string
   }
   environment: {
     azureKeyVault: {
       configured: boolean
       keyVaultName: string
+      keyVaultUrl: string
       tenantId: string
       clientId: string
+      secretName: string
     }
     proxy: {
       configured: boolean
       host: string
     }
-    server: {
-      environment: string
-      platform: string
-      nodeVersion: string
+    database: {
+      server: string
+      database: string
+      user: string
+      port: number
+      encryption: string
+      trustServerCertificate: string
+      connectTimeout: string
+      requestTimeout: string
     }
   }
-  systemHealth: {
-    overall: string
-    components: {
-      [key: string]: {
-        status: string
-        message: string
-      }
+  system: {
+    nodeVersion: string
+    platform: string
+    environment: string
+  }
+  components: {
+    databaseConnection: {
+      status: string
+      message: string
+      details?: any
+    }
+    azureKeyVault: {
+      status: string
+      message: string
+    }
+    proxyConnection: {
+      status: string
+      message: string
+    }
+    serverEnvironment: {
+      status: string
+      message: string
     }
   }
 }
@@ -63,22 +72,20 @@ export default function DiagnosticsPage() {
   const [showSensitive, setShowSensitive] = useState(false)
 
   const fetchDiagnostics = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      console.log("🔍 Running diagnostics...")
+    setLoading(true)
+    setError(null)
 
+    try {
       const response = await fetch("/api/diagnostics")
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
       const result = await response.json()
-      console.log("✅ Diagnostics completed:", result)
       setData(result)
     } catch (err) {
-      console.error("❌ Error running diagnostics:", err)
-      setError(err instanceof Error ? err.message : "Failed to run diagnostics")
+      console.error("Error fetching diagnostics:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch diagnostics")
     } finally {
       setLoading(false)
     }
@@ -88,74 +95,50 @@ export default function DiagnosticsPage() {
     fetchDiagnostics()
   }, [])
 
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "healthy":
       case "connected":
+      case "healthy":
       case "active":
-        return <CheckCircle className="h-4 w-4 text-green-600" />
-      case "error":
+        return "bg-green-100 text-green-800"
       case "disconnected":
-        return <XCircle className="h-4 w-4 text-red-600" />
+      case "error":
+        return "bg-red-100 text-red-800"
       case "warning":
-      case "degraded":
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
+        return "bg-yellow-100 text-yellow-800"
       default:
-        return <AlertTriangle className="h-4 w-4 text-gray-400" />
+        return "bg-gray-100 text-gray-800"
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "healthy":
-      case "connected":
-        return "text-green-600"
-      case "error":
-      case "disconnected":
-        return "text-red-600"
-      case "warning":
-      case "degraded":
-        return "text-yellow-600"
-      default:
-        return "text-gray-600"
-    }
+  const maskSensitiveData = (value: string, show: boolean) => {
+    if (show || !value || value === "Not configured") return value
+    return value.replace(/./g, "•")
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">System Diagnostics</h1>
-          <p className="text-muted-foreground">Running system health checks...</p>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center h-32">
-              <RefreshCw className="h-8 w-8 animate-spin" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">System Diagnostics</h1>
-          <p className="text-muted-foreground">Real-time system health and configuration details</p>
-        </div>
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="text-red-800">Diagnostics Failed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-700 mb-4">{error}</p>
-            <Button onClick={fetchDiagnostics} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
-            </Button>
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <p className="font-semibold">Error loading diagnostics</p>
+              <p className="text-sm mt-2">{error}</p>
+              <Button onClick={fetchDiagnostics} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -165,113 +148,131 @@ export default function DiagnosticsPage() {
   if (!data) return null
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">System Diagnostics</h1>
           <p className="text-muted-foreground">Real-time system health and configuration details</p>
         </div>
-        <Button onClick={fetchDiagnostics} variant="outline" disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowSensitive(!showSensitive)} size="sm">
+            {showSensitive ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showSensitive ? "Hide Details" : "Show Details"}
+          </Button>
+          <Button onClick={fetchDiagnostics} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* System Overview */}
+      {/* Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Database Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(data.database.status)}
-              <span className={`font-semibold capitalize ${getStatusColor(data.database.status)}`}>
-                {data.database.status}
-              </span>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              <div>
+                <div
+                  className={`text-lg font-semibold ${data.database.status === "connected" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {data.database.status === "connected" ? "Connected" : "Disconnected"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {data.database.status === "connected" ? "Azure SQL Database" : "RadiusBifrost"}
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{data.database.config.database}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">System Health</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(data.systemHealth.overall)}
-              <span className={`font-semibold capitalize ${getStatusColor(data.systemHealth.overall)}`}>
-                {data.systemHealth.overall}
-              </span>
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              <div>
+                <div
+                  className={`text-lg font-semibold ${data.database.status === "connected" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {data.database.status === "connected" ? "Healthy" : "Degraded"}
+                </div>
+                <div className="text-sm text-muted-foreground">All systems operational</div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Last Check</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="font-semibold">{new Date(data.timestamp).toLocaleTimeString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Real-time monitoring</p>
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              <div>
+                <div className="text-lg font-semibold">{new Date(data.timestamp).toLocaleTimeString()}</div>
+                <div className="text-sm text-muted-foreground">Real-time monitoring</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Database Configuration */}
+      {/* Database Connection Configuration */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Database Connection Configuration</CardTitle>
-              <CardDescription>Current database connection parameters being used</CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSensitive(!showSensitive)}
-              className="flex items-center gap-2"
-            >
+          <CardTitle className="flex items-center justify-between">
+            Database Connection Configuration
+            <Button variant="ghost" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
               {showSensitive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {showSensitive ? "Hide Details" : "Show Details"}
             </Button>
-          </div>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Current database connection parameters being used</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Server</div>
-              <div className="font-mono text-sm">{data.database.config.server}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Server</label>
+                <div className="text-sm">{data.environment.database.server}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Database</label>
+                <div className="text-sm">{data.environment.database.database}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">User</label>
+                <div className="text-sm">{data.environment.database.user}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Encryption</label>
+                <div className="text-sm">{data.environment.database.encryption}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Port</div>
-              <div className="font-mono text-sm">{data.database.config.port}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Database</div>
-              <div className="font-mono text-sm">{data.database.config.database}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">User</div>
-              <div className="font-mono text-sm">{data.database.config.user}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Encryption</div>
-              <div className="font-mono text-sm">{data.database.config.encryption}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Trust Server Certificate</div>
-              <div className="font-mono text-sm">{data.database.config.trustServerCertificate}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Connect Timeout</div>
-              <div className="font-mono text-sm">{data.database.config.connectTimeout}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Request Timeout</div>
-              <div className="font-mono text-sm">{data.database.config.requestTimeout}</div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Port</label>
+                <div className="text-sm">{data.environment.database.port}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Trust Server Certificate</label>
+                <div className="text-sm">{data.environment.database.trustServerCertificate}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Connect Timeout</label>
+                <div className="text-sm">{data.environment.database.connectTimeout}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Request Timeout</label>
+                <div className="text-sm">{data.environment.database.requestTimeout}</div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -281,43 +282,44 @@ export default function DiagnosticsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Azure Key Vault Configuration</CardTitle>
-          <CardDescription>Key Vault settings and authentication details</CardDescription>
+          <p className="text-sm text-muted-foreground">Key Vault settings and authentication details</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Key Vault Name</div>
-              <div className="font-mono text-sm">{data.environment.azureKeyVault.keyVaultName}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Key Vault URL</div>
-              <div className="font-mono text-sm">
-                https://{data.environment.azureKeyVault.keyVaultName}.vault.azure.net/
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Key Vault Name</label>
+                <div className="text-sm">{data.environment.azureKeyVault.keyVaultName}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Key Vault URL</label>
+                <div className="text-sm">{data.environment.azureKeyVault.keyVaultUrl}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Secret Name</label>
+                <div className="text-sm">{data.environment.azureKeyVault.secretName}</div>
               </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Secret Name</div>
-              <div className="font-mono text-sm">database-password</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Tenant ID</div>
-              <div className="font-mono text-sm">
-                {showSensitive ? data.environment.azureKeyVault.tenantId : "••••••••"}
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Tenant ID</label>
+                <div className="text-sm">
+                  {maskSensitiveData(data.environment.azureKeyVault.tenantId, showSensitive)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Client ID</div>
-              <div className="font-mono text-sm">
-                {showSensitive ? data.environment.azureKeyVault.clientId : "••••••••"}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Client ID</label>
+                <div className="text-sm">
+                  {maskSensitiveData(data.environment.azureKeyVault.clientId, showSensitive)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Status</div>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(data.environment.azureKeyVault.configured ? "healthy" : "error")}
-                <span className="text-sm">
-                  {data.environment.azureKeyVault.configured ? "Configured" : "Not Configured"}
-                </span>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(data.components.azureKeyVault.status)}>
+                    {data.environment.azureKeyVault.configured ? "✓ Configured" : "⚠ Not Configured"}
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
@@ -328,19 +330,24 @@ export default function DiagnosticsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Proxy Configuration</CardTitle>
-          <CardDescription>SOCKS proxy settings for database connection</CardDescription>
+          <p className="text-sm text-muted-foreground">SOCKS proxy settings for database connection</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Fixie SOCKS Host</div>
-              <div className="font-mono text-sm">{showSensitive ? data.environment.proxy.host : "••••••••"}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Fixie SOCKS Host</label>
+                <div className="text-sm">{maskSensitiveData(data.environment.proxy.host, showSensitive)}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Status</div>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(data.environment.proxy.configured ? "healthy" : "warning")}
-                <span className="text-sm">{data.environment.proxy.configured ? "Configured" : "Not Configured"}</span>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(data.components.proxyConnection.status)}>
+                    {data.environment.proxy.configured ? "✓ Configured" : "⚠ Not Configured"}
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
@@ -350,47 +357,76 @@ export default function DiagnosticsPage() {
       {/* System Components */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>System Components</CardTitle>
-              <CardDescription>Real-time status of all system components</CardDescription>
-            </div>
-            <Button onClick={fetchDiagnostics} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
+          <CardTitle className="flex items-center justify-between">
+            System Components
+            <Button variant="outline" size="sm" onClick={fetchDiagnostics}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Run Tests
             </Button>
-          </div>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Real-time status of all system components</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {Object.entries(data.systemHealth.components).map(([key, component]) => (
+            {Object.entries(data.components).map(([key, component]) => (
               <div key={key} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  {getStatusIcon(component.status)}
+                <div className="flex items-center gap-3">
+                  {key === "databaseConnection" && <Database className="h-5 w-5 text-muted-foreground" />}
+                  {key === "azureKeyVault" && <Key className="h-5 w-5 text-muted-foreground" />}
+                  {key === "proxyConnection" && <Globe className="h-5 w-5 text-muted-foreground" />}
+                  {key === "serverEnvironment" && <Server className="h-5 w-5 text-muted-foreground" />}
                   <div>
-                    <div className="font-medium capitalize">
-                      {key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}
+                    <div className="font-medium">
+                      {key === "databaseConnection" && "Database Connection"}
+                      {key === "azureKeyVault" && "Azure Key Vault"}
+                      {key === "proxyConnection" && "Proxy Connection"}
+                      {key === "serverEnvironment" && "Server Environment"}
                     </div>
                     <div className="text-sm text-muted-foreground">{component.message}</div>
                   </div>
                 </div>
-                <Badge
-                  variant={
-                    component.status === "healthy"
-                      ? "default"
-                      : component.status === "error"
-                        ? "destructive"
-                        : "secondary"
-                  }
-                  className="capitalize"
-                >
-                  {component.status}
+                <Badge className={getStatusColor(component.status)}>
+                  {component.status === "healthy" && "Healthy"}
+                  {component.status === "error" && "Error"}
+                  {component.status === "warning" && "Warning"}
+                  {component.status === "active" && "Active"}
+                  {component.status === "connected" && "Connected"}
                 </Badge>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Connection Details */}
+      {data.database.data && showSensitive && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Live Connection Details</CardTitle>
+            <p className="text-sm text-muted-foreground">Real-time connection information from database</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.database.data.map((row: any, index: number) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-gray-50 rounded">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Login Name</label>
+                    <div className="text-sm">{row.login_name}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Database</label>
+                    <div className="text-sm">{row.db_name}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Client IP</label>
+                    <div className="text-sm">{row.client_ip}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

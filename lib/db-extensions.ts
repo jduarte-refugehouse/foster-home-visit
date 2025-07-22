@@ -115,7 +115,7 @@ export async function fetchHomesList(filters?: {
  * Fetch homes for map display with coordinate validation
  * Uses the locked database connection safely
  */
-export async function getHomesForMap(filters?: {
+export async function fetchHomesForMap(filters?: {
   unit?: string
   caseManager?: string
 }): Promise<MapHome[]> {
@@ -258,7 +258,7 @@ export async function getUniqueCaseManagers(): Promise<string[]> {
 // Legacy compatibility exports
 export const calculateHomesStats = getHomeStats
 export const getHomesStatistics = getHomeStats
-export const fetchHomesForMap = getHomesForMap
+export const getHomesForMap = fetchHomesForMap
 
 // Original interface exports for backward compatibility
 export interface Home {

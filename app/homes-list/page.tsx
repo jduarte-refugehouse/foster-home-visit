@@ -41,9 +41,11 @@ export default function HomesListPage() {
     try {
       console.log("🏠 Fetching homes data...")
       const response = await fetch("/api/homes-list")
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
+
       const result = await response.json()
       console.log("✅ Homes data received:", result)
       setData(result)

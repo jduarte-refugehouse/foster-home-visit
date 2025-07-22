@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🔍 Running system diagnostics...")
+    console.log("🔍 [Diagnostics] Running system diagnostics...")
 
     // Test database connection
     const dbTest = await testConnection()
@@ -20,74 +20,82 @@ export async function GET() {
           process.env.AZURE_KEY_VAULT_NAME
         ),
         keyVaultName: process.env.AZURE_KEY_VAULT_NAME || "Not configured",
-        tenantId: process.env.AZURE_TENANT_ID ? process.env.AZURE_TENANT_ID.substring(0, 8) + "..." : "Not set",
-        clientId: process.env.AZURE_CLIENT_ID ? process.env.AZURE_CLIENT_ID.substring(0, 8) + "..." : "Not set",
+        keyVaultUrl: process.env.AZURE_KEY_VAULT_NAME
+          ? `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net/`
+          : "Not configured",
+        tenantId: process.env.AZURE_TENANT_ID || "Not configured",
+        clientId: process.env.AZURE_CLIENT_ID || "Not configured",
+        secretName: "database-password",
       },
       proxy: {
         configured: !!process.env.FIXIE_SOCKS_HOST,
         host: process.env.FIXIE_SOCKS_HOST || "Not configured",
       },
-      server: {
-        environment: process.env.NODE_ENV || "unknown",
-        platform: process.platform,
-        nodeVersion: process.version,
+      database: {
+        server: "refugehouse-bifrost-server.database.windows.net",
+        database: "RadiusBifrost",
+        user: "v0_app_user",
+        port: 1433,
+        encryption: "Enabled",
+        trustServerCertificate: "No",
+        connectTimeout: "60000ms",
+        requestTimeout: "60000ms",
       },
-    }
-
-    // Database connection details (from your locked configuration)
-    const dbConfig = {
-      server: "refugehouse-bifrost-server.database.windows.net",
-      port: 1433,
-      database: "RadiusBifrost",
-      user: "v0_app_user",
-      encryption: "Enabled",
-      trustServerCertificate: "No",
-      connectTimeout: "60000ms",
-      requestTimeout: "60000ms",
     }
 
     const diagnostics = {
       timestamp: new Date().toISOString(),
       database: {
         status: dbTest.success ? "connected" : "disconnected",
-        config: dbConfig,
-        test: dbTest,
+        message: dbTest.message,
+        data: dbTest.data,
+        passwordSource: dbTest.passwordSource,
+        passwordError: dbTest.passwordError,
       },
       environment: envChecks,
-      systemHealth: {
-        overall: dbTest.success && envChecks.azureKeyVault.configured ? "healthy" : "degraded",
-        components: {
-          databaseConnection: {
-            status: dbTest.success ? "healthy" : "error",
-            message: dbTest.success ? "Database connection active" : dbTest.message,
-          },
-          azureKeyVault: {
-            status: envChecks.azureKeyVault.configured ? "healthy" : "warning",
-            message: envChecks.azureKeyVault.configured
-              ? "Key Vault configured and accessible"
-              : "Key Vault not properly configured",
-          },
-          proxyConnection: {
-            status: envChecks.proxy.configured ? "healthy" : "warning",
-            message: envChecks.proxy.configured ? "Fixie SOCKS proxy configured" : "No proxy configured",
-          },
-          serverEnvironment: {
-            status: "active",
-            message: `production environment on ${envChecks.server.platform}`,
-          },
+      system: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        environment: process.env.NODE_ENV || "development",
+      },
+      components: {
+        databaseConnection: {
+          status: dbTest.success ? "healthy" : "error",
+          message: dbTest.success ? "Database connection active" : "Database connection failed",
+          details: dbTest.success ? dbTest.data : dbTest.message,
+        },
+        azureKeyVault: {
+          status: envChecks.azureKeyVault.configured ? "healthy" : "warning",
+          message: envChecks.azureKeyVault.configured
+            ? "Key Vault configured and accessible"
+            : "Key Vault not properly configured",
+        },
+        proxyConnection: {
+          status: envChecks.proxy.configured ? "healthy" : "warning",
+          message: envChecks.proxy.configured ? "Fixie SOCKS proxy configured" : "No proxy configured",
+        },
+        serverEnvironment: {
+          status: "active",
+          message: `production environment on ${process.platform}`,
         },
       },
     }
 
-    console.log("✅ Diagnostics completed")
+    console.log("✅ [Diagnostics] System diagnostics completed")
+
     return NextResponse.json(diagnostics)
   } catch (error) {
-    console.error("❌ Error running diagnostics:", error)
+    console.error("❌ [Diagnostics] Error running diagnostics:", error)
+
     return NextResponse.json(
       {
-        error: "Diagnostics failed",
-        message: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
+        error: "Failed to run diagnostics",
+        message: error instanceof Error ? error.message : "Unknown error",
+        database: {
+          status: "error",
+          message: "Failed to test database connection",
+        },
       },
       { status: 500 },
     )
