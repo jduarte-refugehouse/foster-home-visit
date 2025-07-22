@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react"
 
-// Define interfaces
+// ⚠️⚠️⚠️ CRITICAL MAP COMPONENT USAGE WARNING ⚠️⚠️⚠️
+// This component is a PURE MAP COMPONENT - it only renders the map itself
+// DO NOT add headers, filters, or lists to this component
+// It should be used within a page that provides the layout structure
+// The dynamic import in the consuming page is REQUIRED to prevent SSR issues
+// Z-index issues: Leaflet maps have high z-index, ensure dropdowns use z-[9999] or higher
+// ⚠️⚠️⚠️ END MAP COMPONENT WARNING ⚠️⚠️⚠️
+
+// Define interfaces - CRITICAL: These must match db-extensions.ts interfaces
 interface MapHome {
   id: string
   name: string
@@ -17,7 +25,7 @@ interface MapHome {
   contactPersonName: string
   email: string
   contactPhone: string
-  lastSync: string
+  lastSync: string // CRITICAL: Added to fix missing sync data - DO NOT REMOVE
 }
 
 interface HomesMapProps {
@@ -32,16 +40,16 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
   const markersRef = useRef<Map<string, any>>(new Map())
 
   useEffect(() => {
-    // Dynamically import Leaflet only on client side
+    // CRITICAL: Dynamic import is REQUIRED to prevent SSR issues with Leaflet
     const initializeMap = async () => {
       if (typeof window === "undefined" || !mapContainerRef.current) return
 
       try {
-        // Dynamic imports for Leaflet
+        // Dynamic imports for Leaflet - DO NOT change to static imports
         const L = await import("leaflet")
         await import("leaflet/dist/leaflet.css")
 
-        // Fix for default markers in Next.js
+        // CRITICAL: Fix for default markers in Next.js - DO NOT REMOVE
         delete (L.Icon.Default.prototype as any)._getIconUrl
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -124,7 +132,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
           const isSelected = selectedHome?.id === home.id
           const icon = isSelected ? selectedIcon : defaultIcon
 
-          // Format last sync date
+          // CRITICAL: Format last sync date - this was added to fix missing sync data display
           const formatLastSync = (lastSync: string) => {
             if (!lastSync) return "Never"
             try {
@@ -137,7 +145,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
             }
           }
 
-          // Create detailed popup content
+          // CRITICAL: Complete popup content - this was enhanced to show all home data
           const popupContent = `
             <div style="min-width: 280px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
               <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: bold; color: #1f2937; line-height: 1.3;">

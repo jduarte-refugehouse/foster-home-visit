@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { fetchHomesForMap, getUniqueCaseManagers } from "@/lib/db-extensions"
 
+// ⚠️⚠️⚠️ CRITICAL API ENDPOINT STABILITY WARNING ⚠️⚠️⚠️
+// This endpoint is used by the homes-map page and map component
+// DO NOT change the response structure without updating all consuming components
+// The dynamic and runtime exports are REQUIRED for proper Vercel deployment
+// ⚠️⚠️⚠️ END STABILITY WARNING ⚠️⚠️⚠️
+
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
@@ -18,6 +24,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [API] Successfully processed ${homes.length} homes for map`)
 
+    // CRITICAL: This response structure is used by homes-map page
+    // DO NOT modify without updating consuming components
     return NextResponse.json({
       success: true,
       homes,

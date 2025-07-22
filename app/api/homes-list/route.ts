@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { fetchHomesList } from "@/lib/db-extensions"
 
+// ⚠️⚠️⚠️ CRITICAL API ENDPOINT STABILITY WARNING ⚠️⚠️⚠️
+// This endpoint is used by the homes-list page and other components
+// DO NOT change the response structure without updating all consuming components
+// The dynamic and runtime exports are REQUIRED for proper Vercel deployment
+// ⚠️⚠️⚠️ END STABILITY WARNING ⚠️⚠️⚠️
+
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
@@ -19,6 +25,8 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [API] Successfully processed ${homes.length} homes for list`)
 
+    // CRITICAL: This response structure is used by homes-list page
+    // DO NOT modify without updating consuming components
     return NextResponse.json({
       success: true,
       homes,

@@ -3,6 +3,13 @@ import { query } from "./db"
 // ✅ SAFE EXTENSION FUNCTIONS - These extend functionality without modifying core connection
 // These functions use the locked db.ts connection but don't modify it
 
+// ⚠️⚠️⚠️ CRITICAL STABILITY WARNING ⚠️⚠️⚠️
+// DO NOT MODIFY THE INTERFACE STRUCTURES BELOW WITHOUT EXPLICIT USER PERMISSION
+// These interfaces are used across multiple screens and API endpoints
+// Changing them will break the homes list, homes map, and dashboard functionality
+// The lastSync field was added after debugging missing sync data - DO NOT REMOVE
+// ⚠️⚠️⚠️ END STABILITY WARNING ⚠️⚠️⚠️
+
 export interface ListHome {
   id: string
   name: string
@@ -17,11 +24,11 @@ export interface ListHome {
   contactPersonName: string
   email: string
   contactPhone: string
-  lastSync: string // Added lastSync field
+  lastSync: string // CRITICAL: Added to fix missing sync data - DO NOT REMOVE
 }
 
 export interface MapHome extends ListHome {
-  // Same interface for consistency
+  // Same interface for consistency - DO NOT DIVERGE
 }
 
 export interface HomeStats {
@@ -31,9 +38,17 @@ export interface HomeStats {
   byCaseManager: Record<string, number>
 }
 
+// ⚠️⚠️⚠️ CRITICAL DATABASE QUERY WARNING ⚠️⚠️⚠️
+// The SQL queries below use the CORRECT table name: SyncActiveHomes
+// DO NOT change to 'Homes' - that table does not exist and will cause build failures
+// The CAST operations for Latitude/Longitude are REQUIRED for proper coordinate handling
+// The lastSync field inclusion was added to fix missing sync data display
+// ⚠️⚠️⚠️ END DATABASE QUERY WARNING ⚠️⚠️⚠️
+
 /**
  * Fetch homes list with proper coordinate casting and LastSync data
  * Uses the locked database connection safely
+ * STABILITY NOTE: This function is used by homes-list page and API endpoints
  */
 export async function fetchHomesList(filters?: {
   unit?: string
@@ -60,6 +75,8 @@ export async function fetchHomesList(filters?: {
     params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`)
   }
 
+  // CRITICAL: This query structure is STABLE and TESTED
+  // DO NOT modify table name, column names, or CAST operations
   const queryText = `
    SELECT 
      [Xref] as id,
@@ -85,7 +102,7 @@ export async function fetchHomesList(filters?: {
     const results = await query<any>(queryText, params)
     console.log(`✅ [Extension] Retrieved ${results.length} homes from database`)
 
-    // Process and validate results
+    // Process and validate results - CRITICAL data processing
     const processedHomes: ListHome[] = results.map((home) => ({
       id: home.id || "",
       name: home.name || "",
@@ -100,7 +117,7 @@ export async function fetchHomesList(filters?: {
       contactPersonName: home.contactPersonName || "~unassigned~",
       email: home.email || "",
       contactPhone: home.contactPhone || "",
-      lastSync: home.lastSync || "",
+      lastSync: home.lastSync || "", // CRITICAL: Fixed missing sync data
     }))
 
     console.log("🔄 [Extension] Processing homes for display...")
@@ -114,6 +131,7 @@ export async function fetchHomesList(filters?: {
 /**
  * Fetch homes for map display with coordinate validation
  * Uses the locked database connection safely
+ * STABILITY NOTE: This function is used by homes-map page and map component
  */
 export async function fetchHomesForMap(filters?: {
   unit?: string
@@ -134,6 +152,7 @@ export async function fetchHomesForMap(filters?: {
     params.push(filters.caseManager)
   }
 
+  // CRITICAL: Same query structure as fetchHomesList for consistency
   const queryText = `
    SELECT 
      [Xref] as id,
@@ -159,7 +178,7 @@ export async function fetchHomesForMap(filters?: {
     const results = await query<any>(queryText, params)
     console.log(`✅ [Extension] Retrieved ${results.length} homes for map`)
 
-    // Filter out homes with invalid coordinates
+    // Filter out homes with invalid coordinates - CRITICAL for map display
     const validHomes = results
       .filter((home) => {
         const lat = typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude))
@@ -203,6 +222,7 @@ export async function fetchHomesForMap(filters?: {
 /**
  * Calculate statistics about homes
  * Uses the locked database connection safely
+ * STABILITY NOTE: This function is used by dashboard and stats endpoints
  */
 export async function calculateHomesStats(): Promise<HomeStats> {
   console.log("📈 [Extension] Calculating homes statistics...")
@@ -234,6 +254,7 @@ export async function calculateHomesStats(): Promise<HomeStats> {
 /**
  * Get unique case managers for filtering
  * Uses the locked database connection safely
+ * STABILITY NOTE: This function is used by filter dropdowns across the application
  */
 export async function getUniqueCaseManagers(): Promise<string[]> {
   console.log("👥 [Extension] Fetching unique case managers...")
@@ -257,5 +278,5 @@ export async function getUniqueCaseManagers(): Promise<string[]> {
   }
 }
 
-// Export alias for compatibility
+// Export alias for compatibility - DO NOT REMOVE
 export const getHomesStatistics = calculateHomesStats
