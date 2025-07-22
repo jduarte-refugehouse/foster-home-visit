@@ -112,7 +112,7 @@ export default function HomePage() {
                 alt="Refuge House Logo"
                 width={300}
                 height={120}
-                className="object-contain"
+                className="object-contain dark:brightness-0 dark:invert"
               />
             </div>
             <div>
@@ -131,7 +131,9 @@ export default function HomePage() {
             <div className="text-center text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}
               <SignInButton mode="modal">
-                <button className="text-refuge-purple hover:text-refuge-magenta font-medium">Sign up here</button>
+                <button className="text-refuge-purple hover:text-refuge-magenta font-medium dark:text-refuge-light-purple dark:hover:text-refuge-magenta">
+                  Sign up here
+                </button>
               </SignInButton>
             </div>
           </CardContent>
@@ -146,8 +148,8 @@ export default function HomePage() {
         {/* Header */}
         <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <Image
                   src="/images/web logo with name.png"
                   alt="Refuge House Logo"
@@ -164,10 +166,10 @@ export default function HomePage() {
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 {userInfo && !loading && !error && (
-                  <Link href="/dashboard">
-                    <Button className="bg-refuge-purple hover:bg-refuge-light-purple text-white">
+                  <Link href="/dashboard" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto bg-refuge-purple hover:bg-refuge-light-purple text-white">
                       <ArrowRight className="h-4 w-4 mr-2" />
                       Go to Dashboard
                     </Button>
@@ -176,7 +178,7 @@ export default function HomePage() {
                 <SignOutButton>
                   <Button
                     variant="outline"
-                    className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent dark:border-refuge-light-purple dark:text-refuge-light-purple"
+                    className="w-full sm:w-auto border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent dark:border-refuge-light-purple dark:text-refuge-light-purple dark:hover:bg-refuge-light-purple dark:hover:text-gray-900"
                   >
                     Sign Out
                   </Button>
@@ -263,7 +265,10 @@ export default function HomePage() {
                   </div>
                   <div>
                     <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Status:</span>
-                    <Badge variant={userInfo.appUser.is_active ? "default" : "secondary"} className="ml-2">
+                    <Badge
+                      variant={userInfo.appUser.is_active ? "default" : "secondary"}
+                      className="ml-2 dark:bg-green-600 dark:text-white"
+                    >
                       {userInfo.appUser.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
