@@ -1,6 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePermissions } from "@/hooks/use-permissions"
+import { AdminDashboard } from "@/components/dashboards/admin-dashboard"
+import { StaffDashboard } from "@/components/dashboards/staff-dashboard"
+import { ExternalUserDashboard } from "@/components/dashboards/external-user-dashboard"
+import { NoPermissionsDashboard } from "@/components/dashboards/no-permissions-dashboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,6 +50,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const { isLoaded, roles, permissions, isAdmin } = usePermissions()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +86,35 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+  if (!isLoaded) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-pulse text-center">
+            <div className="h-8 bg-gray-200 rounded w-48 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-32 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine which dashboard to show based on roles and permissions
+  if (isAdmin) {
+    return <AdminDashboard />
+  }
+
+  if (permissions.includes("view_homes")) {
+    return <StaffDashboard />
+  }
+
+  if (roles.length > 0 || permissions.length > 0) {
+    return <ExternalUserDashboard />
+  }
+
+  // User has no permissions
+  return <NoPermissionsDashboard />
 
   if (loading) {
     return (
