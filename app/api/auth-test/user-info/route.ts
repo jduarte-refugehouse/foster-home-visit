@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     }>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [clerkUserId])
 
     let appUser
+
     if (existingUser.length > 0) {
       // Update existing user
       await query(

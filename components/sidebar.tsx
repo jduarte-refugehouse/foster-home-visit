@@ -1,77 +1,98 @@
 "use client"
 
+import { Home, Users, Calendar, LogOut, Shield } from "lucide-react"
+import { useUser, useClerk } from "@clerk/nextjs"
+import { usePermissions } from "@/hooks/use-permissions"
+import {
+  Sidebar as SidebarPrimitive,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Home, BookOpen, User, Plus, Shield } from "lucide-react"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Resource Library", href: "/resources", icon: BookOpen },
-  { name: "Profile", href: "/profile", icon: User },
-]
-
-const adminNavigation = [
-  { name: "Admin Dashboard", href: "/admin", icon: Shield },
-  { name: "Create Resource", href: "/admin/create", icon: Plus },
+  { name: "Dashboard", href: "/dashboard", icon: Home, permission: null },
+  { name: "Admin Panel", href: "/admin", icon: Shield, permission: "admin_access" },
+  { name: "Users", href: "/admin/users", icon: Users, permission: "manage_users" },
+  { name: "Invitations", href: "/admin/invitations", icon: Calendar, permission: "manage_invitations" },
 ]
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  const { permissions, loading } = usePermissions()
+
+  const hasPermission = (permission: string | null) => {
+    if (!permission) return true
+    return permissions.some((p) => p.permission_code === permission)
+  }
+
+  const filteredNavigation = navigation.filter((item) => hasPermission(item.permission))
 
   return (
-    <div className="hidden border-r bg-white lg:block dark:bg-gray-900/40">
-      <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-16 items-center border-b px-6">
-          <Link className="flex items-center gap-2 font-semibold" href="/dashboard">
-            <Image src="/images/House Only.png" alt="Refuge House" width={32} height={32} className="h-8 w-8" />
-            <span className="text-lg">REFUGE HOUSE</span>
-          </Link>
+    <SidebarPrimitive>
+      <SidebarHeader className="border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center space-x-3 p-4">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.imageUrl || "/placeholder.svg"} alt={user?.fullName || ""} />
+            <AvatarFallback className="bg-refuge-purple text-white">
+              {user?.firstName?.[0]}
+              {user?.lastName?.[0]}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.fullName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {user?.primaryEmailAddress?.emailAddress}
+            </p>
+          </div>
         </div>
-        <div className="flex-1 overflow-auto py-2">
-          <nav className="grid items-start px-4 text-sm font-medium">
-            <div className="mb-4">
-              <h3 className="mb-2 px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Navigation</h3>
-              {navigation.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-                      pathname === item.href && "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </div>
-            <div>
-              <h3 className="mb-2 px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Administration</h3>
-              {adminNavigation.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-                      pathname === item.href && "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </div>
-          </nav>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredNavigation.map((item) => (
+                <SidebarMenuItem key={item.name}>
+                  <SidebarMenuButton asChild>
+                    <Link href={item.href} className="flex items-center space-x-3">
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-gray-200 dark:border-gray-800">
+        <div className="p-4">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+            onClick={() => signOut()}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
-      </div>
-    </div>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </SidebarPrimitive>
   )
 }

@@ -1,37 +1,10 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { AlertTriangle } from "lucide-react"
-import dynamic from "next/dynamic"
-
-// Dynamically import dashboard components
-const AdminDashboard = dynamic(() => import("@/components/dashboards/admin-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const StaffDashboard = dynamic(() => import("@/components/dashboards/staff-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const ExternalUserDashboard = dynamic(() => import("@/components/dashboards/external-user-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const NoPermissionsDashboard = dynamic(() => import("@/components/dashboards/no-permissions-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const SchedulingAdminDashboard = dynamic(() => import("@/components/dashboards/scheduling-admin-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const QADirectorDashboard = dynamic(() => import("@/components/dashboards/qa-director-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const CaseManagerDashboard = dynamic(() => import("@/components/dashboards/case-manager-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
-const HomeVisitLiaisonDashboard = dynamic(() => import("@/components/dashboards/home-visit-liaison-dashboard"), {
-  loading: () => <DashboardSkeleton />,
-})
+import { Badge } from "@/components/ui/badge"
+import { User, Shield, CheckCircle, AlertCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface AppUser {
   id: string
@@ -55,55 +28,26 @@ interface UserPermission {
   app_name: string
 }
 
-interface DatabaseUserInfo {
+interface UserInfoResponse {
   appUser: AppUser
   roles: UserRole[]
   permissions: UserPermission[]
 }
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg p-6">
-        <Skeleton className="h-8 w-64 mb-2" />
-        <Skeleton className="h-4 w-96" />
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-3 w-32" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function DashboardPage() {
-  const { isLoaded, isSignedIn, user } = useUser()
-  const [dbUserInfo, setDbUserInfo] = useState<DatabaseUserInfo | null>(null)
+  const { user } = useUser()
+  const [userInfo, setUserInfo] = useState<UserInfoResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [requiresInvitation, setRequiresInvitation] = useState(false)
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
+    if (user) {
       fetchUserInfo()
     }
-  }, [isLoaded, isSignedIn, user])
+  }, [user])
 
   const fetchUserInfo = async () => {
     if (!user) return
-
-    setLoading(true)
-    setError(null)
-    setRequiresInvitation(false)
 
     try {
       const response = await fetch("/api/auth-test/user-info", {
@@ -121,125 +65,34 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        if (response.status === 403 && errorData.requiresInvitation) {
-          setRequiresInvitation(true)
-        }
         throw new Error(errorData.error || "Failed to fetch user info")
       }
 
       const data = await response.json()
-      setDbUserInfo(data)
-    } catch (error) {
-      console.error("Error fetching user info:", error)
-      setError(error instanceof Error ? error.message : "Unknown error")
+      setUserInfo(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
     }
   }
 
-  const getDashboardComponent = () => {
-    if (!dbUserInfo) return null
-
-    const { permissions, roles } = dbUserInfo
-    const email = dbUserInfo.appUser.email
-
-    // Check for global admin
-    if (email === "jduarte@refugehouse.org" || roles.some((role) => role.role_name === "global_admin")) {
-      return <AdminDashboard />
-    }
-
-    // Check for specific roles
-    if (roles.some((role) => role.role_name === "scheduling_admin")) {
-      return <SchedulingAdminDashboard />
-    }
-
-    if (roles.some((role) => role.role_name === "qa_director")) {
-      return <QADirectorDashboard />
-    }
-
-    if (roles.some((role) => role.role_name === "case_manager")) {
-      return <CaseManagerDashboard />
-    }
-
-    if (roles.some((role) => role.role_name === "home_visit_liaison")) {
-      return <HomeVisitLiaisonDashboard />
-    }
-
-    // Check for staff with permissions
-    if (email.endsWith("@refugehouse.org") && permissions.length > 0) {
-      return <StaffDashboard />
-    }
-
-    // External users with permissions
-    if (!email.endsWith("@refugehouse.org") && permissions.length > 0) {
-      return <ExternalUserDashboard />
-    }
-
-    // No permissions
-    return <NoPermissionsDashboard />
-  }
-
-  if (!isLoaded || loading) {
-    return <DashboardSkeleton />
-  }
-
-  if (!isSignedIn) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card>
-          <CardContent className="p-6">
-            <p>Please sign in to access the dashboard.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (requiresInvitation) {
-    return (
-      <div className="space-y-6">
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-800">
-              <AlertTriangle className="h-5 w-5" />
-              Invitation Required
-            </CardTitle>
-            <CardDescription className="text-orange-700">
-              External users need an invitation to access the system. Please contact an administrator.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium text-orange-800 mb-2">Contact Information:</h4>
-                <p className="text-sm text-orange-700">Email: jduarte@refugehouse.org</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-refuge-purple"></div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="h-5 w-5" />
-              Error Loading Dashboard
-            </CardTitle>
-            <CardDescription className="text-red-700">
-              There was an error loading your dashboard information.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-red-700">{error}</p>
-              <button onClick={fetchUserInfo} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                Retry
-              </button>
+      <div className="p-6">
+        <Card className="border-red-200">
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Error: {error}</span>
             </div>
           </CardContent>
         </Card>
@@ -247,5 +100,118 @@ export default function DashboardPage() {
     )
   }
 
-  return getDashboardComponent()
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
+          Dashboard
+        </h1>
+        <p className="text-refuge-dark-blue mt-2">Welcome to the Home Visits Service</p>
+      </div>
+
+      {/* User Info Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-refuge-purple">
+            <User className="h-5 w-5" />
+            User Information
+          </CardTitle>
+          <CardDescription>Your account details and status</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <span className="font-medium text-refuge-dark-blue">Name:</span>
+              <p className="text-gray-600">
+                {userInfo?.appUser.first_name} {userInfo?.appUser.last_name}
+              </p>
+            </div>
+            <div>
+              <span className="font-medium text-refuge-dark-blue">Email:</span>
+              <p className="text-gray-600">{userInfo?.appUser.email}</p>
+            </div>
+            <div>
+              <span className="font-medium text-refuge-dark-blue">Status:</span>
+              <Badge variant={userInfo?.appUser.is_active ? "default" : "secondary"} className="ml-2">
+                {userInfo?.appUser.is_active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+            <div>
+              <span className="font-medium text-refuge-dark-blue">Member Since:</span>
+              <p className="text-gray-600">
+                {userInfo?.appUser.created_at ? new Date(userInfo.appUser.created_at).toLocaleDateString() : "N/A"}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Roles Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-refuge-purple">
+            <Shield className="h-5 w-5" />
+            Your Roles ({userInfo?.roles.length || 0})
+          </CardTitle>
+          <CardDescription>Roles assigned to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {userInfo?.roles && userInfo.roles.length > 0 ? (
+            <div className="space-y-2">
+              {userInfo.roles.map((role, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-refuge-gray rounded-lg">
+                  <div>
+                    <span className="font-medium text-refuge-dark-blue">{role.role_name}</span>
+                    <p className="text-sm text-gray-600">in {role.app_name}</p>
+                  </div>
+                  <Badge variant="outline" className="border-refuge-purple text-refuge-purple">
+                    Role
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic">No roles assigned</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Permissions Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-refuge-purple">
+            <CheckCircle className="h-5 w-5" />
+            Your Permissions ({userInfo?.permissions.length || 0})
+          </CardTitle>
+          <CardDescription>What you can access in this application</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {userInfo?.permissions && userInfo.permissions.length > 0 ? (
+            <div className="space-y-2">
+              {userInfo.permissions.map((permission, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-refuge-gray rounded-lg">
+                  <div>
+                    <span className="font-medium text-refuge-dark-blue">{permission.permission_name}</span>
+                    <p className="text-sm text-gray-600">
+                      {permission.permission_code} in {permission.app_name}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="border-refuge-magenta text-refuge-magenta">
+                    Permission
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No permissions assigned</p>
+              <p className="text-sm text-gray-400 mt-1">Contact an administrator to request access</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
