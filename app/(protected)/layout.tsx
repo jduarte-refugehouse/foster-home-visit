@@ -1,26 +1,35 @@
-import type React from "react"
-import { auth } from "@clerk/nextjs/server"
-import { redirect } from "next/navigation"
-import { AppSidebar } from "@/components/sidebar"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+"use client"
 
-export default async function ProtectedLayout({
+import type React from "react"
+import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = await auth()
+  const { isLoaded, isSignedIn } = useUser()
+  const router = useRouter()
 
-  if (!userId) {
-    redirect("/sign-in")
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/")
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-refuge-gray flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-refuge-purple"></div>
+      </div>
+    )
   }
 
-  return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <main className="flex-1 overflow-auto">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
-  )
+  if (!isSignedIn) {
+    return null
+  }
+
+  return <div className="min-h-screen bg-refuge-gray">{children}</div>
 }
