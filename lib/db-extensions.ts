@@ -2,110 +2,125 @@ import { query } from "./db"
 
 export interface Home {
   id: number
+  name: string
   address: string
-  city: string
-  state: string
-  zip_code: string
   latitude?: number
   longitude?: number
+  phone?: string
+  email?: string
+  website?: string
+  capacity?: number
+  current_residents?: number
   status: string
   created_at: Date
   updated_at: Date
 }
 
 export interface HomeStats {
-  total: number
-  active: number
-  inactive: number
-  pending: number
+  totalHomes: number
+  activeHomes: number
+  totalCapacity: number
+  currentResidents: number
+  occupancyRate: number
 }
 
 export async function getHomesForMap(): Promise<Home[]> {
   try {
+    console.log("🗺️ Fetching homes for map display...")
     const homes = await query<Home>(`
       SELECT 
         id,
+        name,
         address,
-        city,
-        state,
-        zip_code,
         latitude,
         longitude,
+        phone,
+        email,
+        website,
+        capacity,
+        current_residents,
         status,
         created_at,
         updated_at
       FROM homes 
-      WHERE latitude IS NOT NULL 
+      WHERE status = 'active' 
+        AND latitude IS NOT NULL 
         AND longitude IS NOT NULL
-        AND status = 'active'
-      ORDER BY created_at DESC
+      ORDER BY name
     `)
+    console.log(`✅ Retrieved ${homes.length} homes for map`)
     return homes
   } catch (error) {
-    console.error("Error fetching homes for map:", error)
-    throw new Error("Failed to fetch homes for map")
-  }
-}
-
-export async function getHomesList(): Promise<Home[]> {
-  try {
-    const homes = await query<Home>(`
-      SELECT 
-        id,
-        address,
-        city,
-        state,
-        zip_code,
-        latitude,
-        longitude,
-        status,
-        created_at,
-        updated_at
-      FROM homes 
-      ORDER BY created_at DESC
-    `)
-    return homes
-  } catch (error) {
-    console.error("Error fetching homes list:", error)
-    throw new Error("Failed to fetch homes list")
+    console.error("❌ Error fetching homes for map:", error)
+    throw new Error(`Failed to fetch homes for map: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
 export async function getHomeStats(): Promise<HomeStats> {
   try {
-    const stats = await query<{ status: string; count: number }>(`
+    console.log("📊 Fetching home statistics...")
+    const stats = await query<{
+      total_homes: number
+      active_homes: number
+      total_capacity: number
+      current_residents: number
+    }>(`
       SELECT 
-        status,
-        COUNT(*) as count
-      FROM homes 
-      GROUP BY status
+        COUNT(*) as total_homes,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_homes,
+        SUM(ISNULL(capacity, 0)) as total_capacity,
+        SUM(ISNULL(current_residents, 0)) as current_residents
+      FROM homes
     `)
 
-    const result: HomeStats = {
-      total: 0,
-      active: 0,
-      inactive: 0,
-      pending: 0,
+    if (stats.length === 0) {
+      throw new Error("No statistics data returned")
     }
 
-    stats.forEach((stat) => {
-      result.total += stat.count
-      switch (stat.status.toLowerCase()) {
-        case "active":
-          result.active = stat.count
-          break
-        case "inactive":
-          result.inactive = stat.count
-          break
-        case "pending":
-          result.pending = stat.count
-          break
-      }
-    })
+    const result = stats[0]
+    const occupancyRate = result.total_capacity > 0 ? (result.current_residents / result.total_capacity) * 100 : 0
 
-    return result
+    const homeStats: HomeStats = {
+      totalHomes: result.total_homes,
+      activeHomes: result.active_homes,
+      totalCapacity: result.total_capacity,
+      currentResidents: result.current_residents,
+      occupancyRate: Math.round(occupancyRate * 100) / 100, // Round to 2 decimal places
+    }
+
+    console.log("✅ Home statistics retrieved:", homeStats)
+    return homeStats
   } catch (error) {
-    console.error("Error fetching home stats:", error)
-    throw new Error("Failed to fetch home stats")
+    console.error("❌ Error fetching home statistics:", error)
+    throw new Error(`Failed to fetch home statistics: ${error instanceof Error ? error.message : "Unknown error"}`)
+  }
+}
+
+export async function getAllHomes(): Promise<Home[]> {
+  try {
+    console.log("🏠 Fetching all homes...")
+    const homes = await query<Home>(`
+      SELECT 
+        id,
+        name,
+        address,
+        latitude,
+        longitude,
+        phone,
+        email,
+        website,
+        capacity,
+        current_residents,
+        status,
+        created_at,
+        updated_at
+      FROM homes 
+      ORDER BY name
+    `)
+    console.log(`✅ Retrieved ${homes.length} homes`)
+    return homes
+  } catch (error) {
+    console.error("❌ Error fetching all homes:", error)
+    throw new Error(`Failed to fetch homes: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }

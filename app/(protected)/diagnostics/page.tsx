@@ -4,18 +4,43 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Database, Activity, AlertCircle, CheckCircle, RefreshCw, XCircle } from "lucide-react"
+import { Database, Activity, AlertCircle, CheckCircle, RefreshCw, XCircle, Eye, EyeOff } from "lucide-react"
 
 interface DiagnosticsData {
   timestamp: string
   database: {
     connected: boolean
+    connectionDetails?: {
+      user: string
+      database: string
+      server: string
+      port: number
+      encrypt: boolean
+      trustServerCertificate: boolean
+      connectTimeout: number
+      requestTimeout: number
+    }
     details?: {
       login_name: string
       database_name: string
       sql_version: string
       current_time: string
     }
+    error?: string
+  }
+  keyVault: {
+    configured: boolean
+    keyVaultName?: string
+    keyVaultUrl?: string
+    secretName: string
+    tenantId?: string
+    clientId?: string
+    error?: string
+  }
+  proxy: {
+    configured: boolean
+    fixieHost?: string
+    error?: string
   }
   environment: {
     nodeEnv: string
@@ -35,6 +60,7 @@ export default function DiagnosticsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [showSensitive, setShowSensitive] = useState(false)
 
   const fetchDiagnostics = async () => {
     setLoading(true)
@@ -92,11 +118,16 @@ export default function DiagnosticsPage() {
     return <Badge variant="destructive">Error</Badge>
   }
 
+  const maskSensitive = (value: string, show: boolean) => {
+    if (show) return value
+    return value.substring(0, 4) + "..." + value.substring(value.length - 4)
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">System Diagnostics</h1>
-        <p className="text-muted-foreground">Real-time system health and performance monitoring</p>
+        <p className="text-muted-foreground">Real-time system health and configuration details</p>
       </div>
 
       {/* System Status Overview */}
@@ -115,7 +146,7 @@ export default function DiagnosticsPage() {
               {loading ? "Checking..." : diagnostics?.database.connected ? "Connected" : "Disconnected"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {diagnostics?.database.details?.database_name || "Azure SQL Database"}
+              {diagnostics?.database.connectionDetails?.database || "Azure SQL Database"}
             </p>
           </CardContent>
         </Card>
@@ -174,7 +205,153 @@ export default function DiagnosticsPage() {
         </Card>
       )}
 
-      {/* Detailed Diagnostics */}
+      {/* Database Connection Configuration */}
+      {diagnostics?.database.connectionDetails && (
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Database Connection Configuration</CardTitle>
+                <CardDescription>Current database connection parameters being used</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
+                {showSensitive ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                {showSensitive ? "Hide" : "Show"} Details
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Server</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.server}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Port</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.port}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Database</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.database}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">User</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.user}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Encryption</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.database.connectionDetails.encrypt ? "Enabled" : "Disabled"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Trust Server Certificate</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.database.connectionDetails.trustServerCertificate ? "Yes" : "No"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Connect Timeout</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.connectTimeout}ms</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Request Timeout</h4>
+                <p className="font-mono text-sm">{diagnostics.database.connectionDetails.requestTimeout}ms</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Azure Key Vault Configuration */}
+      {diagnostics?.keyVault && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Azure Key Vault Configuration</CardTitle>
+            <CardDescription>Key Vault settings and authentication details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Key Vault Name</h4>
+                <p className="font-mono text-sm">{diagnostics.keyVault.keyVaultName || "Not configured"}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Key Vault URL</h4>
+                <p className="font-mono text-sm break-all">{diagnostics.keyVault.keyVaultUrl || "Not configured"}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Secret Name</h4>
+                <p className="font-mono text-sm">{diagnostics.keyVault.secretName}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Tenant ID</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.keyVault.tenantId
+                    ? maskSensitive(diagnostics.keyVault.tenantId, showSensitive)
+                    : "Not configured"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Client ID</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.keyVault.clientId
+                    ? maskSensitive(diagnostics.keyVault.clientId, showSensitive)
+                    : "Not configured"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Status</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.keyVault.configured ? "✅ Configured" : "❌ Not configured"}
+                </p>
+              </div>
+            </div>
+            {diagnostics.keyVault.error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <h4 className="font-medium text-sm text-red-800">Key Vault Error</h4>
+                <p className="text-sm text-red-700 font-mono">{diagnostics.keyVault.error}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Proxy Configuration */}
+      {diagnostics?.proxy && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Proxy Configuration</CardTitle>
+            <CardDescription>SOCKS proxy settings for database connection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Fixie SOCKS Host</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.proxy.fixieHost
+                    ? maskSensitive(diagnostics.proxy.fixieHost, showSensitive)
+                    : "Not configured"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground">Status</h4>
+                <p className="font-mono text-sm">
+                  {diagnostics.proxy.configured ? "✅ Configured" : "❌ Not configured"}
+                </p>
+              </div>
+            </div>
+            {diagnostics.proxy.error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <h4 className="font-medium text-sm text-red-800">Proxy Error</h4>
+                <p className="text-sm text-red-700 font-mono">{diagnostics.proxy.error}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* System Components */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -200,48 +377,48 @@ export default function DiagnosticsPage() {
                     {loading
                       ? "Testing connection..."
                       : diagnostics?.database.connected
-                        ? `Connected to ${diagnostics.database.details?.database_name || "Azure SQL"}`
-                        : "Database connection failed"}
+                        ? `Connected to ${diagnostics.database.connectionDetails?.database || "Azure SQL"}`
+                        : diagnostics?.database.error || "Database connection failed"}
                   </p>
                 </div>
               </div>
               {getStatusBadge(diagnostics?.database.connected || false, loading)}
             </div>
 
-            {/* Environment Info */}
+            {/* Key Vault */}
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
-                {getStatusIcon(diagnostics?.environment.hasKeyVault || false, loading)}
+                {getStatusIcon(diagnostics?.keyVault.configured || false, loading)}
                 <div>
                   <h3 className="font-medium">Azure Key Vault</h3>
                   <p className="text-sm text-muted-foreground">
                     {loading
                       ? "Checking configuration..."
-                      : diagnostics?.environment.hasKeyVault
-                        ? "Key Vault configured and accessible"
-                        : "Key Vault not configured"}
+                      : diagnostics?.keyVault.configured
+                        ? `Key Vault: ${diagnostics.keyVault.keyVaultName}`
+                        : diagnostics?.keyVault.error || "Key Vault not configured"}
                   </p>
                 </div>
               </div>
-              {getStatusBadge(diagnostics?.environment.hasKeyVault || false, loading)}
+              {getStatusBadge(diagnostics?.keyVault.configured || false, loading)}
             </div>
 
             {/* Proxy Connection */}
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
-                {getStatusIcon(diagnostics?.environment.hasFixieProxy || false, loading)}
+                {getStatusIcon(diagnostics?.proxy.configured || false, loading)}
                 <div>
                   <h3 className="font-medium">Proxy Connection</h3>
                   <p className="text-sm text-muted-foreground">
                     {loading
                       ? "Checking proxy..."
-                      : diagnostics?.environment.hasFixieProxy
+                      : diagnostics?.proxy.configured
                         ? "Fixie SOCKS proxy configured"
                         : "No proxy configured"}
                   </p>
                 </div>
               </div>
-              {getStatusBadge(diagnostics?.environment.hasFixieProxy || false, loading)}
+              {getStatusBadge(diagnostics?.proxy.configured || false, loading)}
             </div>
 
             {/* Server Info */}
@@ -263,12 +440,12 @@ export default function DiagnosticsPage() {
         </CardContent>
       </Card>
 
-      {/* Database Details */}
+      {/* Live Database Details */}
       {diagnostics?.database.connected && diagnostics.database.details && (
         <Card>
           <CardHeader>
-            <CardTitle>Database Connection Details</CardTitle>
-            <CardDescription>Live connection information from the database</CardDescription>
+            <CardTitle>Live Database Connection Details</CardTitle>
+            <CardDescription>Real-time information from the connected database</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

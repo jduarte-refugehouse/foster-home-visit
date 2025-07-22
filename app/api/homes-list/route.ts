@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server"
-import { getHomesList } from "@/lib/db-extensions"
+import { getAllHomes } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🏠 Fetching homes list...")
-    const homes = await getHomesList()
-    console.log(`✅ Successfully fetched ${homes.length} homes`)
+    console.log("📋 Homes list API endpoint called")
+    const homes = await getAllHomes()
+    console.log(`✅ Successfully retrieved ${homes.length} homes`)
     return NextResponse.json(homes)
   } catch (error) {
     console.error("❌ Error in homes-list API:", error)
