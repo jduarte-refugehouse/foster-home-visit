@@ -9,7 +9,7 @@ export default function Loading() {
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
               <RefreshCw className="h-6 w-6 animate-spin" />
-              <span>Loading homes map...</span>
+              <span>Loading geographic map...</span>
             </div>
           </CardContent>
         </Card>
@@ -36,7 +36,7 @@ export default function Loading() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle>Loading Map...</CardTitle>
+            <CardTitle>Loading Geographic Map...</CardTitle>
           </CardHeader>
           <CardContent className="p-2 h-[520px]">
             <div className="w-full h-full bg-gray-200 rounded animate-pulse flex items-center justify-center">
