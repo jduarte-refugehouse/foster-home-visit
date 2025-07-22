@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useSafeUser } from "@/hooks/use-safe-user"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,7 +31,7 @@ interface Home {
 }
 
 export default function HomesListPage() {
-  const { isLoaded } = useUser()
+  const { isLoaded } = useSafeUser()
   const [homes, setHomes] = useState<Home[]>([])
   const [filteredHomes, setFilteredHomes] = useState<Home[]>([])
   const [loading, setLoading] = useState(true)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useSafeUser } from "@/hooks/use-safe-user"
 import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +37,7 @@ interface FosterHome {
 }
 
 export default function HomesMapPage() {
-  const { isLoaded } = useUser()
+  const { isLoaded } = useSafeUser()
   const [homes, setHomes] = useState<FosterHome[]>([])
   const [selectedHome, setSelectedHome] = useState<FosterHome | null>(null)
   const [loading, setLoading] = useState(true)
