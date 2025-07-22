@@ -71,30 +71,17 @@ export default function HomesMapPage() {
       if (unitFilter !== "ALL") params.append("unit", unitFilter)
       if (caseManagerFilter !== "ALL") params.append("caseManager", caseManagerFilter)
 
-      console.log("🏠 Fetching homes data...")
       const response = await fetch(`/api/homes-for-map?${params}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data: ApiResponse = await response.json()
-      console.log("✅ Homes data received:", data)
 
       if (data.success) {
-        // Filter out homes without valid coordinates
-        const validHomes = data.homes.filter(
-          (home) =>
-            home.latitude &&
-            home.longitude &&
-            !isNaN(home.latitude) &&
-            !isNaN(home.longitude) &&
-            home.latitude !== 0 &&
-            home.longitude !== 0,
-        )
-
-        setHomes(validHomes)
+        setHomes(data.homes)
         setCaseManagers(data.caseManagers || [])
-        console.log(`📊 Loaded ${validHomes.length} homes with valid coordinates for map`)
+        console.log(`📊 Loaded ${data.homes.length} homes for map`)
       } else {
         throw new Error(data.error || "Failed to fetch homes")
       }

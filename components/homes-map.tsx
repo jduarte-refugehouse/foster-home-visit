@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
+import { MapPin, Phone, Mail, User, ExternalLink } from "lucide-react"
 
 interface MapHome {
   id: string
@@ -30,28 +30,13 @@ interface HomesMapProps {
 }
 
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
-  const [mapError, setMapError] = useState<string | null>(null)
-
   useEffect(() => {
     console.log(`🗺️ HomesMap component received ${homes.length} homes`)
-    setMapError(null)
   }, [homes])
 
   const handleMarkerClick = (home: MapHome) => {
     console.log(`📍 Marker clicked for: ${home.name}`)
     onHomeSelect(home)
-  }
-
-  if (mapError) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-medium">Map Error</p>
-          <p className="text-sm text-gray-600 mt-1">{mapError}</p>
-        </div>
-      </div>
-    )
   }
 
   if (homes.length === 0) {
@@ -66,85 +51,67 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     )
   }
 
-  // Calculate bounds for positioning
-  const latitudes = homes.map((h) => h.latitude)
-  const longitudes = homes.map((h) => h.longitude)
-  const minLat = Math.min(...latitudes)
-  const maxLat = Math.max(...latitudes)
-  const minLng = Math.min(...longitudes)
-  const maxLng = Math.max(...longitudes)
-
-  // Convert lat/lng to percentage positions on the map
-  const getPosition = (home: MapHome) => {
-    const x = ((home.longitude - minLng) / (maxLng - minLng)) * 100
-    const y = ((maxLat - home.latitude) / (maxLat - minLat)) * 100
-    return { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) }
-  }
-
   return (
     <div className="w-full h-full relative">
-      {/* Simple Map Background */}
-      <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 relative">
-        {/* Grid lines for map feel */}
+      {/* Simple Map View */}
+      <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 relative border">
+        {/* Map Grid */}
         <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {/* Vertical lines */}
             {[20, 40, 60, 80].map((x) => (
               <line key={`v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#94a3b8" strokeWidth="0.5" />
             ))}
-            {/* Horizontal lines */}
             {[20, 40, 60, 80].map((y) => (
               <line key={`h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#94a3b8" strokeWidth="0.5" />
             ))}
           </svg>
         </div>
 
-        {/* Home Markers */}
-        {homes.map((home) => {
-          const position = getPosition(home)
-          const isSelected = selectedHome?.id === home.id
-
-          return (
+        {/* Homes List as Cards */}
+        <div className="absolute inset-4 overflow-y-auto space-y-2">
+          {homes.map((home, index) => (
             <div
               key={home.id}
-              className="absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group"
-              style={{
-                left: `${position.x}%`,
-                top: `${position.y}%`,
-              }}
+              className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md bg-white/90 backdrop-blur-sm ${
+                selectedHome?.id === home.id
+                  ? "border-blue-500 bg-blue-50/90 shadow-md"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
               onClick={() => handleMarkerClick(home)}
             >
-              {/* Marker */}
-              <div
-                className={`w-6 h-6 rounded-full border-2 border-white shadow-lg transition-all duration-200 flex items-center justify-center ${
-                  isSelected
-                    ? "bg-blue-600 scale-125 z-20"
-                    : home.Unit === "DAL"
-                      ? "bg-green-500 hover:scale-110"
-                      : "bg-red-500 hover:scale-110"
-                } group-hover:scale-125`}
-              >
-                <div className="text-white text-xs font-bold">🏠</div>
-              </div>
-
-              {/* Tooltip on hover */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30 pointer-events-none">
-                <div className="bg-white rounded-lg shadow-lg p-3 min-w-48 border">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1 flex-1">
                   <div className="font-semibold text-sm">{home.name}</div>
-                  <div className="text-xs text-gray-600 mt-1">{home.address}</div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-muted-foreground">{home.address}</div>
+                  <div className="text-xs text-muted-foreground">
                     {home.City}, {home.State} {home.zipCode}
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
                       {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
                     </Badge>
+                    <div className="text-xs text-gray-400">
+                      {home.latitude.toFixed(4)}, {home.longitude.toFixed(4)}
+                    </div>
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2 ml-2 bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
+                    window.open(url, "_blank")
+                  }}
+                >
+                  <ExternalLink className="h-2 w-2 mr-1" />
+                  Maps
+                </Button>
               </div>
             </div>
-          )
-        })}
+          ))}
+        </div>
 
         {/* Map Legend */}
         <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-30">
@@ -163,7 +130,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
 
         {/* Coordinate Info */}
         <div className="absolute bottom-2 left-2 text-xs text-gray-500 bg-white px-2 py-1 rounded z-20">
-          Geographic Distribution • {homes.length} homes
+          {homes.length} homes displayed
         </div>
       </div>
 
@@ -192,7 +159,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                {/* Contact Person */}
                 {selectedHome.contactPersonName && (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-gray-400" />
@@ -203,7 +169,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
                   </div>
                 )}
 
-                {/* Phone */}
                 {selectedHome.phoneNumber && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-gray-400" />
@@ -214,7 +179,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
                   </div>
                 )}
 
-                {/* Email */}
                 {selectedHome.email && (
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-gray-400" />
