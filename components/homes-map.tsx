@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, Phone, Mail, User, ExternalLink } from "lucide-react"
+import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 
 interface MapHome {
   id: string
@@ -29,28 +32,65 @@ interface HomesMapProps {
   selectedHome: MapHome | null
 }
 
+// Fix for default markers in Leaflet
+const DefaultIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
+
+L.Marker.prototype.options.icon = DefaultIcon
+
+// Custom hook to fit bounds when homes change
+function FitBounds({ homes }: { homes: MapHome[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (homes.length > 0) {
+      const bounds = L.latLngBounds(homes.map((home) => [home.latitude, home.longitude]))
+      map.fitBounds(bounds, { padding: [20, 20] })
+    }
+  }, [homes, map])
+
+  return null
+}
+
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
-  const [mapBounds, setMapBounds] = useState({ minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 })
+  const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
     console.log(`🗺️ HomesMap component received ${homes.length} homes`)
-
-    if (homes.length > 0) {
-      const latitudes = homes.map((h) => h.latitude)
-      const longitudes = homes.map((h) => h.longitude)
-
-      setMapBounds({
-        minLat: Math.min(...latitudes),
-        maxLat: Math.max(...latitudes),
-        minLng: Math.min(...longitudes),
-        maxLng: Math.max(...longitudes),
-      })
-    }
   }, [homes])
 
   const handleMarkerClick = (home: MapHome) => {
     console.log(`📍 Marker clicked for: ${home.name}`)
     onHomeSelect(home)
+  }
+
+  // Calculate center point of all homes for map centering
+  const getMapCenter = (): [number, number] => {
+    if (homes.length === 0) return [32.7767, -96.797] // Dallas default
+
+    const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
+    const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
+
+    return [avgLat, avgLng]
+  }
+
+  if (mapError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">Map Error</p>
+          <p className="text-sm text-gray-600 mt-1">{mapError}</p>
+        </div>
+      </div>
+    )
   }
 
   if (homes.length === 0) {
@@ -65,153 +105,74 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     )
   }
 
-  // Convert lat/lng to pixel positions on the map
-  const getMarkerPosition = (home: MapHome) => {
-    const { minLat, maxLat, minLng, maxLng } = mapBounds
-
-    // Add padding to prevent markers from being too close to edges
-    const padding = 0.1
-    const latRange = maxLat - minLat || 1
-    const lngRange = maxLng - minLng || 1
-
-    const x = ((home.longitude - minLng) / lngRange) * (100 - 2 * padding * 100) + padding * 100
-    const y = ((maxLat - home.latitude) / latRange) * (100 - 2 * padding * 100) + padding * 100
-
-    return {
-      left: `${Math.max(5, Math.min(95, x))}%`,
-      top: `${Math.max(5, Math.min(95, y))}%`,
-    }
-  }
+  const center = getMapCenter()
 
   return (
     <div className="w-full h-full relative">
-      {/* Map Background with Tile-like Pattern */}
-      <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-green-100 via-blue-50 to-green-50 relative border">
-        {/* Map Grid Pattern */}
-        <div className="absolute inset-0">
-          <svg className="w-full h-full opacity-30" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {/* Major grid lines */}
-            {[0, 25, 50, 75, 100].map((x) => (
-              <line key={`major-v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#059669" strokeWidth="0.3" />
-            ))}
-            {[0, 25, 50, 75, 100].map((y) => (
-              <line key={`major-h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#059669" strokeWidth="0.3" />
-            ))}
-            {/* Minor grid lines */}
-            {[12.5, 37.5, 62.5, 87.5].map((x) => (
-              <line key={`minor-v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#10b981" strokeWidth="0.1" />
-            ))}
-            {[12.5, 37.5, 62.5, 87.5].map((y) => (
-              <line key={`minor-h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#10b981" strokeWidth="0.1" />
-            ))}
-          </svg>
-        </div>
+      <div className="w-full h-full rounded-lg overflow-hidden">
+        <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} className="rounded-lg">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-        {/* Geographic Features Simulation */}
-        <div className="absolute inset-0 opacity-20">
-          {/* Simulate roads/highways */}
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M10,30 Q30,25 50,35 T90,40" stroke="#6b7280" strokeWidth="0.8" fill="none" />
-            <path d="M20,60 Q40,55 60,65 T85,70" stroke="#6b7280" strokeWidth="0.6" fill="none" />
-            <path d="M30,10 L35,90" stroke="#6b7280" strokeWidth="0.5" fill="none" />
-            <path d="M70,15 L75,85" stroke="#6b7280" strokeWidth="0.5" fill="none" />
-          </svg>
-        </div>
+          <FitBounds homes={homes} />
 
-        {/* Home Markers */}
-        {homes.map((home) => {
-          const position = getMarkerPosition(home)
-          const isSelected = selectedHome?.id === home.id
-          const isDallas = home.Unit === "DAL"
-
-          return (
-            <div
+          {homes.map((home) => (
+            <Marker
               key={home.id}
-              className="absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group z-10"
-              style={position}
-              onClick={() => handleMarkerClick(home)}
+              position={[home.latitude, home.longitude]}
+              eventHandlers={{
+                click: () => handleMarkerClick(home),
+              }}
             >
-              {/* Marker Pin */}
-              <div
-                className={`relative transition-all duration-200 ${isSelected ? "scale-125 z-20" : "hover:scale-110"}`}
-              >
-                {/* Pin Shadow */}
-                <div className="absolute top-1 left-1 w-6 h-6 bg-black/20 rounded-full blur-sm"></div>
-
-                {/* Pin Body */}
-                <div
-                  className={`w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold ${
-                    isSelected
-                      ? "bg-blue-600 ring-2 ring-blue-300"
-                      : isDallas
-                        ? "bg-green-600 hover:bg-green-700"
-                        : "bg-red-600 hover:bg-red-700"
-                  }`}
-                >
-                  🏠
-                </div>
-
-                {/* Pin Point */}
-                <div
-                  className={`absolute top-5 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent ${
-                    isSelected ? "border-t-blue-600" : isDallas ? "border-t-green-600" : "border-t-red-600"
-                  }`}
-                ></div>
-              </div>
-
-              {/* Hover Tooltip */}
-              <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30 pointer-events-none">
-                <div className="bg-white rounded-lg shadow-lg p-3 min-w-48 border">
-                  <div className="font-semibold text-sm">{home.name}</div>
-                  <div className="text-xs text-gray-600 mt-1">{home.address}</div>
-                  <div className="text-xs text-gray-600">
+              <Popup>
+                <div className="min-w-[200px] p-2">
+                  <h3 className="font-bold text-sm mb-2">{home.name}</h3>
+                  <p className="text-xs text-gray-600 mb-1">{home.address}</p>
+                  <p className="text-xs text-gray-600 mb-3">
                     {home.City}, {home.State} {home.zipCode}
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant={isDallas ? "default" : "destructive"} className="text-xs">
-                      {isDallas ? "Dallas" : "San Antonio"}
+                  </p>
+
+                  {home.contactPersonName && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs">{home.contactPersonName}</span>
+                    </div>
+                  )}
+
+                  {home.phoneNumber && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <Phone className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs">{home.phoneNumber}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between mt-3">
+                    <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
+                      {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
                     </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-6 px-2 bg-transparent"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
+                        window.open(url, "_blank")
+                      }}
+                    >
+                      <ExternalLink className="h-2 w-2 mr-1" />
+                      Maps
+                    </Button>
                   </div>
-                  {/* Tooltip Arrow */}
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
                 </div>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Map Legend */}
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 z-30">
-          <div className="text-sm font-medium mb-2">Legend</div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-4 h-4 bg-green-600 rounded-full border border-white shadow-sm flex items-center justify-center text-white text-xs">
-                🏠
-              </div>
-              <span>Dallas ({homes.filter((h) => h.Unit === "DAL").length})</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="w-4 h-4 bg-red-600 rounded-full border border-white shadow-sm flex items-center justify-center text-white text-xs">
-                🏠
-              </div>
-              <span>San Antonio ({homes.filter((h) => h.Unit === "SAN").length})</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Coordinate Info */}
-        <div className="absolute bottom-2 left-2 text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-2 py-1 rounded z-20">
-          {homes.length} homes • Geographic distribution
-        </div>
-
-        {/* Zoom Info */}
-        <div className="absolute bottom-2 right-2 text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-2 py-1 rounded z-20">
-          Lat: {mapBounds.minLat.toFixed(3)} to {mapBounds.maxLat.toFixed(3)} • Lng: {mapBounds.minLng.toFixed(3)} to{" "}
-          {mapBounds.maxLng.toFixed(3)}
-        </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
       </div>
 
-      {/* Selected Home Details Panel */}
       {selectedHome && (
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
           <Card className="shadow-lg border-2 border-blue-200 bg-white">

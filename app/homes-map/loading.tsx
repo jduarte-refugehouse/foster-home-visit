@@ -14,7 +14,6 @@ export default function Loading() {
           </CardContent>
         </Card>
       </div>
-
       {/* Filters Skeleton */}
       <Card>
         <CardHeader>
@@ -31,7 +30,6 @@ export default function Loading() {
           </div>
         </CardContent>
       </Card>
-
       {/* Map and List Skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         <Card className="lg:col-span-2">
@@ -44,7 +42,6 @@ export default function Loading() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Loading Homes...</CardTitle>
