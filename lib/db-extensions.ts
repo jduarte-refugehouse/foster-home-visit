@@ -1,358 +1,328 @@
-import { query } from "./db"
+import { getConnection, sql } from "./db"
 
-// Types for database entities
 export interface Home {
   id: number
   name: string
   address: string
   city: string
   state: string
-  zipCode: string
+  zip: string
+  phone: string
+  email: string
+  capacity: number
+  current_residents: number
+  license_number: string
+  license_expiry: Date
+  status: string
   latitude?: number
   longitude?: number
-  unit?: string
-  caseManager?: string
-  status: string
-  capacity: number
-  currentOccupancy: number
-  lastUpdated: Date
-}
-
-export interface HomeForMap {
-  id: number
-  name: string
-  address: string
-  city: string
-  state: string
-  latitude: number
-  longitude: number
-  unit: string
-  caseManager: string
-  status: string
-  capacity: number
-  currentOccupancy: number
-}
-
-export interface HomeStats {
-  totalHomes: number
-  activeHomes: number
-  totalCapacity: number
-  currentOccupancy: number
-  occupancyRate: number
-  unitCounts: { unit: string; count: number }[]
-  caseManagerCounts: { caseManager: string; count: number }[]
+  last_visit?: Date
+  next_visit?: Date
+  created_at: Date
+  updated_at: Date
 }
 
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
+  first_name: string
+  last_name: string
   role: string
   permissions: string[]
-  createdAt: Date
-  lastLogin?: Date
-  isActive: boolean
+  created_at: Date
+  updated_at: Date
 }
 
-// Home-related functions
-export async function getHomesForMap(): Promise<HomeForMap[]> {
-  const homes = await query<HomeForMap>(`
-    SELECT 
-      id,
-      name,
-      address,
-      city,
-      state,
-      latitude,
-      longitude,
-      unit,
-      caseManager,
-      status,
-      capacity,
-      currentOccupancy
-    FROM SyncActiveHomes 
-    WHERE latitude IS NOT NULL 
-      AND longitude IS NOT NULL
-      AND status = 'Active'
-    ORDER BY name
-  `)
-
-  return homes
+export interface Visit {
+  id: number
+  home_id: number
+  user_id: string
+  visit_date: Date
+  visit_type: string
+  status: string
+  notes: string
+  created_at: Date
+  updated_at: Date
 }
 
 export async function getAllHomes(): Promise<Home[]> {
-  const homes = await query<Home>(`
-    SELECT 
-      id,
-      name,
-      address,
-      city,
-      state,
-      zipCode,
-      latitude,
-      longitude,
-      unit,
-      caseManager,
-      status,
-      capacity,
-      currentOccupancy,
-      lastUpdated
-    FROM SyncActiveHomes 
-    ORDER BY name
-  `)
-
-  return homes
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, name, address, city, state, zip, phone, email,
+        capacity, current_residents, license_number, license_expiry,
+        status, latitude, longitude, last_visit, next_visit,
+        created_at, updated_at
+      FROM homes 
+      ORDER BY name
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching homes:", error)
+    throw error
+  }
 }
 
 export async function getActiveHomes(): Promise<Home[]> {
-  const homes = await query<Home>(`
-    SELECT 
-      id,
-      name,
-      address,
-      city,
-      state,
-      zipCode,
-      latitude,
-      longitude,
-      unit,
-      caseManager,
-      status,
-      capacity,
-      currentOccupancy,
-      lastUpdated
-    FROM SyncActiveHomes 
-    WHERE status = 'Active'
-    ORDER BY name
-  `)
-
-  return homes
-}
-
-export async function getHomeStats(): Promise<HomeStats> {
-  // Get basic stats
-  const basicStats = await query<{
-    totalHomes: number
-    activeHomes: number
-    totalCapacity: number
-    currentOccupancy: number
-  }>(`
-    SELECT 
-      COUNT(*) as totalHomes,
-      SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as activeHomes,
-      SUM(capacity) as totalCapacity,
-      SUM(currentOccupancy) as currentOccupancy
-    FROM SyncActiveHomes
-  `)
-
-  // Get unit counts
-  const unitCounts = await query<{ unit: string; count: number }>(`
-    SELECT 
-      unit,
-      COUNT(*) as count
-    FROM SyncActiveHomes 
-    WHERE unit IS NOT NULL AND unit != ''
-    GROUP BY unit
-    ORDER BY count DESC
-  `)
-
-  // Get case manager counts
-  const caseManagerCounts = await query<{ caseManager: string; count: number }>(`
-    SELECT 
-      caseManager,
-      COUNT(*) as count
-    FROM SyncActiveHomes 
-    WHERE caseManager IS NOT NULL AND caseManager != ''
-    GROUP BY caseManager
-    ORDER BY count DESC
-  `)
-
-  const stats = basicStats[0]
-  const occupancyRate = stats.totalCapacity > 0 ? (stats.currentOccupancy / stats.totalCapacity) * 100 : 0
-
-  return {
-    totalHomes: stats.totalHomes,
-    activeHomes: stats.activeHomes,
-    totalCapacity: stats.totalCapacity,
-    currentOccupancy: stats.currentOccupancy,
-    occupancyRate: Math.round(occupancyRate * 100) / 100,
-    unitCounts,
-    caseManagerCounts,
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, name, address, city, state, zip, phone, email,
+        capacity, current_residents, license_number, license_expiry,
+        status, latitude, longitude, last_visit, next_visit,
+        created_at, updated_at
+      FROM homes 
+      WHERE status = 'active'
+      ORDER BY name
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching active homes:", error)
+    throw error
   }
 }
 
-export async function getUnits(): Promise<string[]> {
-  const units = await query<{ unit: string }>(`
-    SELECT DISTINCT unit
-    FROM SyncActiveHomes 
-    WHERE unit IS NOT NULL AND unit != ''
-    ORDER BY unit
-  `)
-
-  return units.map((u) => u.unit)
+export async function getHomesForMap(): Promise<Home[]> {
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, name, address, city, state, zip,
+        latitude, longitude, status, capacity, current_residents
+      FROM homes 
+      WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+      ORDER BY name
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching homes for map:", error)
+    throw error
+  }
 }
 
-export async function getCaseManagers(): Promise<string[]> {
-  const caseManagers = await query<{ caseManager: string }>(`
-    SELECT DISTINCT caseManager
-    FROM SyncActiveHomes 
-    WHERE caseManager IS NOT NULL AND caseManager != ''
-    ORDER BY caseManager
-  `)
-
-  return caseManagers.map((cm) => cm.caseManager)
+export async function getUnits(): Promise<any[]> {
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, home_id, unit_number, capacity, current_residents,
+        status, created_at, updated_at
+      FROM units 
+      ORDER BY home_id, unit_number
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching units:", error)
+    return []
+  }
 }
 
-// User management functions
+export async function getCaseManagers(): Promise<any[]> {
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, first_name, last_name, email, phone,
+        status, created_at, updated_at
+      FROM case_managers 
+      WHERE status = 'active'
+      ORDER BY last_name, first_name
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching case managers:", error)
+    return []
+  }
+}
+
+export async function getHomeStats(): Promise<{
+  total: number
+  active: number
+  inactive: number
+  pending: number
+  totalCapacity: number
+  totalResidents: number
+}> {
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(capacity) as totalCapacity,
+        SUM(current_residents) as totalResidents
+      FROM homes
+    `)
+    return result.recordset[0]
+  } catch (error) {
+    console.error("Error fetching home stats:", error)
+    return {
+      total: 0,
+      active: 0,
+      inactive: 0,
+      pending: 0,
+      totalCapacity: 0,
+      totalResidents: 0,
+    }
+  }
+}
+
+export async function getHomeById(id: number): Promise<Home | null> {
+  try {
+    const pool = await getConnection()
+    const result = await pool
+      .request()
+      .input("id", sql.Int, id)
+      .query(`
+        SELECT 
+          id, name, address, city, state, zip, phone, email,
+          capacity, current_residents, license_number, license_expiry,
+          status, latitude, longitude, last_visit, next_visit,
+          created_at, updated_at
+        FROM homes 
+        WHERE id = @id
+      `)
+    return result.recordset[0] || null
+  } catch (error) {
+    console.error("Error fetching home by ID:", error)
+    throw error
+  }
+}
+
+export async function getHomesStats(): Promise<{
+  total: number
+  active: number
+  inactive: number
+  pending: number
+  totalCapacity: number
+  totalResidents: number
+}> {
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(capacity) as totalCapacity,
+        SUM(current_residents) as totalResidents
+      FROM homes
+    `)
+    return result.recordset[0]
+  } catch (error) {
+    console.error("Error fetching homes stats:", error)
+    throw error
+  }
+}
+
+export async function getUserByClerkId(clerkId: string): Promise<User | null> {
+  try {
+    const pool = await getConnection()
+    const result = await pool
+      .request()
+      .input("clerkId", sql.VarChar, clerkId)
+      .query(`
+        SELECT 
+          id, email, first_name, last_name, role, permissions,
+          created_at, updated_at
+        FROM users 
+        WHERE id = @clerkId
+      `)
+    return result.recordset[0] || null
+  } catch (error) {
+    console.error("Error fetching user by Clerk ID:", error)
+    throw error
+  }
+}
+
+export async function createUser(userData: {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  role?: string
+}): Promise<User> {
+  try {
+    const pool = await getConnection()
+    const result = await pool
+      .request()
+      .input("id", sql.VarChar, userData.id)
+      .input("email", sql.VarChar, userData.email)
+      .input("first_name", sql.VarChar, userData.first_name)
+      .input("last_name", sql.VarChar, userData.last_name)
+      .input("role", sql.VarChar, userData.role || "user")
+      .input("permissions", sql.VarChar, JSON.stringify(["read"]))
+      .query(`
+        INSERT INTO users (id, email, first_name, last_name, role, permissions, created_at, updated_at)
+        OUTPUT INSERTED.*
+        VALUES (@id, @email, @first_name, @last_name, @role, @permissions, GETDATE(), GETDATE())
+      `)
+    return result.recordset[0]
+  } catch (error) {
+    console.error("Error creating user:", error)
+    throw error
+  }
+}
+
+export async function updateUser(id: string, userData: Partial<User>): Promise<User | null> {
+  try {
+    const pool = await getConnection()
+    const result = await pool
+      .request()
+      .input("id", sql.VarChar, id)
+      .input("email", sql.VarChar, userData.email)
+      .input("first_name", sql.VarChar, userData.first_name)
+      .input("last_name", sql.VarChar, userData.last_name)
+      .input("role", sql.VarChar, userData.role)
+      .input("permissions", sql.VarChar, userData.permissions ? JSON.stringify(userData.permissions) : null)
+      .query(`
+        UPDATE users 
+        SET 
+          email = COALESCE(@email, email),
+          first_name = COALESCE(@first_name, first_name),
+          last_name = COALESCE(@last_name, last_name),
+          role = COALESCE(@role, role),
+          permissions = COALESCE(@permissions, permissions),
+          updated_at = GETDATE()
+        OUTPUT INSERTED.*
+        WHERE id = @id
+      `)
+    return result.recordset[0] || null
+  } catch (error) {
+    console.error("Error updating user:", error)
+    throw error
+  }
+}
+
 export async function getAllUsers(): Promise<User[]> {
-  const users = await query<User>(`
-    SELECT 
-      id,
-      email,
-      firstName,
-      lastName,
-      role,
-      permissions,
-      createdAt,
-      lastLogin,
-      isActive
-    FROM Users 
-    ORDER BY lastName, firstName
-  `)
-
-  return users.map((user) => ({
-    ...user,
-    permissions: typeof user.permissions === "string" ? JSON.parse(user.permissions) : user.permissions,
-  }))
-}
-
-export async function getUserById(id: string): Promise<User | null> {
-  const users = await query<User>(
-    `
-    SELECT 
-      id,
-      email,
-      firstName,
-      lastName,
-      role,
-      permissions,
-      createdAt,
-      lastLogin,
-      isActive
-    FROM Users 
-    WHERE id = ?
-  `,
-    [id],
-  )
-
-  if (users.length === 0) return null
-
-  const user = users[0]
-  return {
-    ...user,
-    permissions: typeof user.permissions === "string" ? JSON.parse(user.permissions) : user.permissions,
+  try {
+    const pool = await getConnection()
+    const result = await pool.request().query(`
+      SELECT 
+        id, email, first_name, last_name, role, permissions,
+        created_at, updated_at
+      FROM users 
+      ORDER BY created_at DESC
+    `)
+    return result.recordset
+  } catch (error) {
+    console.error("Error fetching all users:", error)
+    throw error
   }
 }
 
-export async function createUser(userData: Omit<User, "id" | "createdAt">): Promise<User> {
-  const id = crypto.randomUUID()
-  const now = new Date()
-
-  await query(
-    `
-    INSERT INTO Users (id, email, firstName, lastName, role, permissions, createdAt, isActive)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `,
-    [
-      id,
-      userData.email,
-      userData.firstName,
-      userData.lastName,
-      userData.role,
-      JSON.stringify(userData.permissions),
-      now,
-      userData.isActive,
-    ],
-  )
-
-  return {
-    id,
-    ...userData,
-    createdAt: now,
+export async function testConnection(): Promise<boolean> {
+  try {
+    const pool = await getConnection()
+    await pool.request().query("SELECT 1 as test")
+    return true
+  } catch (error) {
+    console.error("Database connection test failed:", error)
+    return false
   }
-}
-
-export async function updateUser(id: string, userData: Partial<Omit<User, "id" | "createdAt">>): Promise<User | null> {
-  const existingUser = await getUserById(id)
-  if (!existingUser) return null
-
-  const updates: string[] = []
-  const values: any[] = []
-
-  if (userData.email !== undefined) {
-    updates.push("email = ?")
-    values.push(userData.email)
-  }
-  if (userData.firstName !== undefined) {
-    updates.push("firstName = ?")
-    values.push(userData.firstName)
-  }
-  if (userData.lastName !== undefined) {
-    updates.push("lastName = ?")
-    values.push(userData.lastName)
-  }
-  if (userData.role !== undefined) {
-    updates.push("role = ?")
-    values.push(userData.role)
-  }
-  if (userData.permissions !== undefined) {
-    updates.push("permissions = ?")
-    values.push(JSON.stringify(userData.permissions))
-  }
-  if (userData.isActive !== undefined) {
-    updates.push("isActive = ?")
-    values.push(userData.isActive)
-  }
-  if (userData.lastLogin !== undefined) {
-    updates.push("lastLogin = ?")
-    values.push(userData.lastLogin)
-  }
-
-  if (updates.length === 0) return existingUser
-
-  values.push(id)
-
-  await query(
-    `
-    UPDATE Users 
-    SET ${updates.join(", ")}
-    WHERE id = ?
-  `,
-    values,
-  )
-
-  return await getUserById(id)
-}
-
-export async function deleteUser(id: string): Promise<boolean> {
-  const result = await query(
-    `
-    DELETE FROM Users 
-    WHERE id = ?
-  `,
-    [id],
-  )
-
-  return result.length > 0
-}
-
-export async function getUserPermissions(userId: string): Promise<string[]> {
-  const user = await getUserById(userId)
-  return user?.permissions || []
-}
-
-export async function hasPermission(userId: string, permission: string): Promise<boolean> {
-  const permissions = await getUserPermissions(userId)
-  return permissions.includes(permission) || permissions.includes("admin")
 }

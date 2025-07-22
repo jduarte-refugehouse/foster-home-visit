@@ -1,35 +1,14 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Users, Settings, Shield, Database, Activity, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic"
 
 export default function AdminPage() {
-  const { isSignedIn, isLoaded } = useUser()
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-        <p className="text-muted-foreground">Please sign in to access the admin panel.</p>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-8">
       <div>
@@ -105,7 +84,7 @@ export default function AdminPage() {
                 <Badge variant="secondary">3</Badge>
               </div>
             </div>
-            <Link href="/admin/users">
+            <Link href="/admin/invitations">
               <Button className="w-full">Manage Users</Button>
             </Link>
           </CardContent>

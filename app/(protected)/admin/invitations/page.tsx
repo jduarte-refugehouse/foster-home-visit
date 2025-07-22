@@ -1,6 +1,5 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,29 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Mail, Plus, Trash2, RefreshCw } from "lucide-react"
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic"
 
 export default function InvitationsPage() {
-  const { isSignedIn, isLoaded } = useUser()
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-        <p className="text-muted-foreground">Please sign in to access invitations.</p>
-      </div>
-    )
-  }
-
   const invitations = [
     {
       id: 1,
@@ -66,7 +45,6 @@ export default function InvitationsPage() {
         <p className="text-muted-foreground">Manage user invitations and access requests</p>
       </div>
 
-      {/* Send New Invitation */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -104,7 +82,6 @@ export default function InvitationsPage() {
         </CardContent>
       </Card>
 
-      {/* Pending Invitations */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -173,42 +150,6 @@ export default function InvitationsPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Invitation Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sent</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Acceptance Rate</CardTitle>
-            <Badge className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">83%</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Awaiting response</p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

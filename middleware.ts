@@ -1,9 +1,10 @@
-// Completely disable Clerk middleware to prevent handshake redirects
+import { NextResponse } from "next/server"
+
+// Completely disabled middleware - no Clerk protection at all
 export default function middleware() {
-  // No middleware processing - let all requests pass through
-  return
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [],
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 }

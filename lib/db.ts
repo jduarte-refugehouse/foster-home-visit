@@ -1,214 +1,178 @@
 import sql from "mssql"
-import type net from "net"
-import tls from "tls"
-import { SocksClient } from "socks"
 import { SecretClient } from "@azure/keyvault-secrets"
-import { ClientSecretCredential } from "@azure/identity"
+import { DefaultAzureCredential } from "@azure/identity"
+import { SocksClient } from "socks"
 
+// Connection lock to prevent multiple simultaneous connections
+let connectionLock = false
 let pool: sql.ConnectionPool | null = null
 
-// ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
-// DO NOT CHANGE THE DATABASE CONNECTION PARAMETERS BELOW WITHOUT EXPLICIT USER PERMISSION
-// THESE PARAMETERS ARE LOCKED AND WORKING
-// CHANGING THEM WILL BREAK THE APPLICATION
-// IF YOU CHANGE THESE, YOU WILL HAVE TO BREAK YOUR OWN FINGERS
-// ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
-
-// 🔒 CONNECTION LOCK ACTIVE 🔒
-// This connection is protected by lib/db-connection-lock.ts
-// Any modifications require explicit user permission
-// See the lock file for details on what's forbidden
-
-// Azure Key Vault client setup
-async function getPasswordFromKeyVault(): Promise<{ password: string; source: string; error?: string }> {
-  try {
-    console.log("🔑 Attempting to retrieve password from Azure Key Vault...")
-    const credential = new ClientSecretCredential(
-      process.env.AZURE_TENANT_ID!,
-      process.env.AZURE_CLIENT_ID!,
-      process.env.AZURE_CLIENT_SECRET!,
-    )
-    const keyVaultUrl = `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net/`
-    console.log(`🔑 Key Vault URL: ${keyVaultUrl}`)
-    const client = new SecretClient(keyVaultUrl, credential)
-    const secret = await client.getSecret("database-password")
-    console.log("✅ Successfully retrieved password from Key Vault")
-    return {
-      password: secret.value!,
-      source: "Azure Key Vault",
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
-    console.error("❌ Failed to retrieve password from Key Vault:", errorMessage)
-    console.error("❌ CRITICAL: No fallback password available. Key Vault must be configured correctly.")
-    throw new Error(
-      `Key Vault authentication failed: ${errorMessage}. Please check your Azure Key Vault configuration.`,
-    )
+interface DatabaseConfig {
+  server: string
+  database: string
+  user: string
+  password: string
+  port: number
+  options: {
+    encrypt: boolean
+    trustServerCertificate: boolean
+    enableArithAbort: boolean
+    requestTimeout: number
+    connectionTimeout: number
   }
 }
 
-// Custom connector function for Fixie SOCKS proxy
-function createFixieConnector(config: sql.config) {
-  return new Promise<net.Socket>((resolve, reject) => {
-    if (!process.env.FIXIE_SOCKS_HOST) {
-      return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
+async function getSecretFromKeyVault(secretName: string): Promise<string> {
+  try {
+    const keyVaultName = process.env.AZURE_KEY_VAULT_NAME
+    if (!keyVaultName) {
+      throw new Error("AZURE_KEY_VAULT_NAME environment variable is not set")
     }
 
-    const fixieUrl = process.env.FIXIE_SOCKS_HOST
-    // This regex is designed for the format: socks://user:password@host:port
-    const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
+    const url = `https://${keyVaultName}.vault.azure.net`
+    const credential = new DefaultAzureCredential()
+    const client = new SecretClient(url, credential)
 
-    if (!match) {
-      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
+    const secret = await client.getSecret(secretName)
+    if (!secret.value) {
+      throw new Error(`Secret ${secretName} has no value`)
     }
 
-    const [, userId, password, host, port] = match
-
-    console.log(`Attempting SOCKS connection via ${host}:${port}`)
-
-    SocksClient.createConnection(
-      {
-        proxy: {
-          host: host,
-          port: Number.parseInt(port, 10),
-          type: 5, // SOCKS5
-          userId: userId,
-          password: password,
-        },
-        destination: {
-          host: config.server,
-          port: config.port || 1433,
-        },
-        command: "connect",
-      },
-      (err, info) => {
-        if (err) {
-          console.error("SOCKS connection error:", err)
-          return reject(err)
-        }
-
-        console.log("SOCKS connection established. Initiating TLS handshake...")
-
-        if (!info) {
-          return reject(new Error("SOCKS connection info is undefined."))
-        }
-
-        const tlsSocket = tls.connect(
-          {
-            socket: info.socket,
-            servername: config.server,
-            rejectUnauthorized: true, // Enforce certificate validation
-          },
-          () => {
-            if (tlsSocket.authorized) {
-              console.log("TLS handshake successful. Socket is authorized.")
-              resolve(tlsSocket)
-            } else {
-              const tlsError = tlsSocket.authorizationError || new Error("TLS authorization failed")
-              console.error("TLS authorization failed:", tlsError)
-              reject(tlsError)
-            }
-          },
-        )
-
-        tlsSocket.on("error", (error) => {
-          console.error("TLS socket error:", error)
-          reject(error)
-        })
-      },
-    )
-  })
+    return secret.value
+  } catch (error) {
+    console.error(`Error retrieving secret ${secretName}:`, error)
+    throw error
+  }
 }
 
-// Store password source for diagnostics
-let lastPasswordSource = ""
-let lastPasswordError = ""
+async function createSocksConnection(): Promise<any> {
+  const fixieUrl = process.env.FIXIE_SOCKS_HOST
+  if (!fixieUrl) {
+    throw new Error("FIXIE_SOCKS_HOST environment variable is not set")
+  }
+
+  // Parse the Fixie SOCKS URL
+  const url = new URL(fixieUrl)
+  const [username, password] = url.username ? [url.username, url.password] : ["", ""]
+
+  const socksOptions = {
+    proxy: {
+      host: url.hostname,
+      port: Number.parseInt(url.port) || 1080,
+      type: 5 as const,
+      userId: username,
+      password: password,
+    },
+    command: "connect" as const,
+    destination: {
+      host: await getSecretFromKeyVault("db-server"),
+      port: 1433,
+    },
+  }
+
+  console.log("Creating SOCKS connection through Fixie...")
+  const info = await SocksClient.createConnection(socksOptions)
+  console.log("SOCKS connection established")
+
+  return info.socket
+}
+
+async function getDatabaseConfig(): Promise<DatabaseConfig> {
+  try {
+    console.log("Retrieving database configuration...")
+
+    const [server, database, user, password] = await Promise.all([
+      getSecretFromKeyVault("db-server"),
+      getSecretFromKeyVault("db-database"),
+      getSecretFromKeyVault("db-user"),
+      getSecretFromKeyVault("db-password"),
+    ])
+
+    return {
+      server,
+      database,
+      user,
+      password,
+      port: 1433,
+      options: {
+        encrypt: true,
+        trustServerCertificate: false,
+        enableArithAbort: true,
+        requestTimeout: 30000,
+        connectionTimeout: 30000,
+      },
+    }
+  } catch (error) {
+    console.error("Error getting database configuration:", error)
+    throw error
+  }
+}
 
 export async function getConnection(): Promise<sql.ConnectionPool> {
   if (pool && pool.connected) {
     return pool
   }
 
-  if (pool) {
-    await pool.close().catch((err) => console.error("Error closing stale pool:", err))
+  if (connectionLock) {
+    // Wait for existing connection attempt
+    while (connectionLock) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (pool && pool.connected) {
+      return pool
+    }
   }
 
-  // Get password from Azure Key Vault (no fallback - Key Vault is required)
+  connectionLock = true
+
   try {
-    const passwordResult = await getPasswordFromKeyVault()
-    lastPasswordSource = passwordResult.source
-    lastPasswordError = passwordResult.error || ""
+    console.log("Establishing new database connection...")
 
-    // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
-    // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
-    // THESE PARAMETERS WORK AND ARE STABLE
-    const config: sql.config = {
-      user: "v0_app_user",
-      password: passwordResult.password, // Retrieved securely from Key Vault only
-      database: "RadiusBifrost",
-      server: "refugehouse-bifrost-server.database.windows.net",
-      port: 1433,
-      pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000,
-      },
-      options: {
-        encrypt: true,
-        trustServerCertificate: false,
-        connectTimeout: 60000,
-        requestTimeout: 60000,
-      },
-    }
-    // ⚠️⚠️⚠️ END LOCKED PARAMETERS ⚠️⚠️⚠️
+    const config = await getDatabaseConfig()
 
-    if (process.env.FIXIE_SOCKS_HOST) {
-      console.log("Using Fixie SOCKS proxy for connection.")
-      config.options.connector = () => createFixieConnector(config)
-    } else {
-      console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
-    }
+    // Create SOCKS connection
+    const socket = await createSocksConnection()
 
-    console.log(`🔌 Attempting new connection to ${config.server}...`)
-    console.log(`🔑 Password source: ${lastPasswordSource}`)
-
-    pool = new sql.ConnectionPool(config)
-
-    pool.on("error", (err) => {
-      console.error("❌ Database Pool Error:", err)
-      if (pool) {
-        pool.close()
-        pool = null
-      }
+    // Create connection pool with SOCKS socket
+    pool = new sql.ConnectionPool({
+      ...config,
+      stream: socket,
     })
 
     await pool.connect()
-    console.log("✅ Database connection successful.")
+    console.log("Database connection established successfully")
+
     return pool
   } catch (error) {
-    console.error("❌ Failed to establish database connection:", error)
-    lastPasswordSource = "Key Vault (Failed)"
-    lastPasswordError = error instanceof Error ? error.message : "Unknown error"
+    console.error("Database connection failed:", error)
     pool = null
     throw error
+  } finally {
+    connectionLock = false
   }
 }
 
-// Add the missing export alias
-export const getDbConnection = getConnection
+export async function getDbConnection(): Promise<sql.ConnectionPool> {
+  return getConnection()
+}
 
-export async function closeConnection() {
-  if (pool && pool.connected) {
-    await pool.close()
-    pool = null
-    console.log("Database connection closed.")
+export async function closeConnection(): Promise<void> {
+  if (pool) {
+    try {
+      await pool.close()
+      console.log("Database connection closed")
+    } catch (error) {
+      console.error("Error closing database connection:", error)
+    } finally {
+      pool = null
+    }
   }
 }
 
-export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+export async function query(queryText: string, params?: any[]): Promise<any> {
   try {
-    const connection = await getConnection()
-    const request = connection.request()
+    const pool = await getConnection()
+    const request = pool.request()
 
     if (params) {
       params.forEach((param, index) => {
@@ -219,43 +183,21 @@ export async function query<T = any>(queryText: string, params: any[] = []): Pro
     const result = await request.query(queryText)
     return result.recordset
   } catch (error) {
-    console.error("❌ Query execution failed:", error)
-    if (pool) {
-      await pool.close()
-      pool = null
-    }
+    console.error("Database query failed:", error)
     throw error
   }
 }
 
-export async function testConnection(): Promise<{
-  success: boolean
-  message: string
-  data?: any[]
-  passwordSource?: string
-  passwordError?: string
-}> {
+export async function testConnection(): Promise<boolean> {
   try {
-    const result = await query(`
-      SELECT
-        SUSER_SNAME() as login_name,
-        DB_NAME() as db_name,
-        CONNECTIONPROPERTY('client_net_address') as client_ip
-    `)
-
-    return {
-      success: true,
-      message: "Database connection successful.",
-      data: result,
-      passwordSource: lastPasswordSource,
-      passwordError: lastPasswordError,
-    }
+    const pool = await getConnection()
+    await pool.request().query("SELECT 1 as test")
+    return true
   } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error during connection test.",
-      passwordSource: lastPasswordSource,
-      passwordError: lastPasswordError,
-    }
+    console.error("Database connection test failed:", error)
+    return false
   }
 }
+
+// Export sql for use in other modules
+export { sql }

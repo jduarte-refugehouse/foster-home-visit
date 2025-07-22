@@ -1,33 +1,12 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Home, Users, Calendar, TrendingUp, AlertTriangle } from "lucide-react"
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic"
 
 export default function DashboardPage() {
-  const { isSignedIn, isLoaded } = useUser()
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-        <p className="text-muted-foreground">Please sign in to access the dashboard.</p>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-8">
       <div>
