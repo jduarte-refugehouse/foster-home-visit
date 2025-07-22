@@ -1,201 +1,164 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Phone, Mail, Building, RefreshCw } from "lucide-react"
+import { MapPin, AlertCircle } from "lucide-react"
 
-interface MapHome {
-  id: string
-  name: string
+interface HomeType {
+  id: number
   address: string
-  City: string
-  State: string
-  zipCode: string
-  Unit: string
-  latitude: number
-  longitude: number
-  phoneNumber: string
-  contactPersonName: string
-  email: string
-  contactPhone: string
-  lastSync: string
+  city: string
+  state: string
+  zip_code: string
+  latitude?: number
+  longitude?: number
+  status: string
+  created_at: string
+  updated_at: string
 }
 
-interface HomesMapProps {
-  filters?: {
-    unit?: string
-    caseManager?: string
-  }
-}
-
-export default function HomesMap({ filters }: HomesMapProps) {
-  const [homes, setHomes] = useState<MapHome[]>([])
+export default function HomesMap() {
+  const [homes, setHomes] = useState<HomeType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchHomes = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const params = new URLSearchParams()
-      if (filters?.unit && filters.unit !== "ALL") {
-        params.append("unit", filters.unit)
-      }
-      if (filters?.caseManager && filters.caseManager !== "ALL") {
-        params.append("caseManager", filters.caseManager)
-      }
-
-      const response = await fetch(`/api/homes-for-map?${params.toString()}`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch homes: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      setHomes(data.homes || [])
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error"
-      setError(errorMessage)
-      console.error("Error fetching homes for map:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    const fetchHomes = async () => {
+      try {
+        const response = await fetch("/api/homes-for-map")
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        const data = await response.json()
+        setHomes(data)
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error"
+        setError(errorMessage)
+        console.error("Error fetching homes for map:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchHomes()
-  }, [filters])
+  }, [])
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 animate-spin" />
-            Loading Map Data...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Loading homes data...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Homes Map</h1>
+          <p className="text-muted-foreground">Loading homes with location data...</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-3 bg-muted rounded w-full mb-2"></div>
+                <div className="h-3 bg-muted rounded w-2/3"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-red-600">Map Error</CardTitle>
-          <CardDescription>Failed to load homes data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={fetchHomes} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Homes Map</h1>
+          <p className="text-muted-foreground">Interactive map of all homes with location data</p>
+        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="text-red-800 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Error Loading Homes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-700">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Homes Map</h1>
+        <p className="text-muted-foreground">Interactive map of all homes with location data ({homes.length} homes)</p>
+      </div>
+
+      {/* Map Placeholder */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Homes Map
+            Interactive Map
           </CardTitle>
-          <CardDescription>Showing {homes.length} homes with valid coordinates</CardDescription>
+          <CardDescription>Map visualization will be implemented here</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Map placeholder - would integrate with actual mapping library */}
-          <div className="bg-muted rounded-lg h-96 flex items-center justify-center mb-6">
+          <div className="h-96 bg-muted rounded-lg flex items-center justify-center">
             <div className="text-center">
-              <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium">Interactive Map</p>
-              <p className="text-muted-foreground">Map integration would display {homes.length} homes here</p>
+              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Map component will be integrated here</p>
+              <p className="text-sm text-muted-foreground mt-2">Showing {homes.length} homes with coordinates</p>
             </div>
           </div>
-
-          {/* Homes List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {homes.map((home) => (
-              <Card key={home.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{home.name}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {home.latitude.toFixed(4)}, {home.longitude.toFixed(4)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium">{home.address}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {home.City}, {home.State} {home.zipCode}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <Badge variant="secondary">{home.Unit}</Badge>
-                  </div>
-
-                  {home.contactPersonName && home.contactPersonName !== "~unassigned~" && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Case Manager</p>
-                      <p className="text-sm text-muted-foreground">{home.contactPersonName}</p>
-
-                      {home.contactPhone && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {home.contactPhone}
-                        </div>
-                      )}
-
-                      {home.email && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail className="h-3 w-3" />
-                          {home.email}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {home.phoneNumber && (
-                    <div className="flex items-center gap-1 text-sm">
-                      <Phone className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">Home:</span>
-                      {home.phoneNumber}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {homes.length === 0 && (
-            <div className="text-center py-8">
-              <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium">No homes found</p>
-              <p className="text-muted-foreground">No homes with valid coordinates match the current filters</p>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Homes Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {homes.map((home) => (
+          <Card key={home.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  {/* Home Icon Placeholder */}
+                  Home #{home.id}
+                </span>
+                <Badge variant={home.status === "active" ? "default" : "secondary"}>{home.status}</Badge>
+              </CardTitle>
+              <CardDescription>{home.address}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  {home.city}, {home.state} {home.zip_code}
+                </p>
+                {home.latitude && home.longitude && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {home.latitude.toFixed(6)}, {home.longitude.toFixed(6)}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">Added: {new Date(home.created_at).toLocaleDateString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {homes.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Homes with Location Data</h3>
+            <p className="text-muted-foreground">No homes have been found with latitude and longitude coordinates.</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
