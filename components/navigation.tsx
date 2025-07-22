@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, MapPin, List, Settings, Users, FileText } from "lucide-react"
+import { Home, MapPin, List, Settings, Users, FileText, TestTube } from "lucide-react"
 
 export function Navigation() {
   return (
@@ -49,6 +49,17 @@ export function Navigation() {
               <Button variant="ghost" size="sm">
                 <FileText className="h-4 w-4 mr-2" />
                 Diagnostics
+              </Button>
+            </Link>
+
+            <Link href="/auth-test">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50 bg-transparent"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Test Auth
               </Button>
             </Link>
           </div>
