@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { usePermissions } from "@/hooks/use-permissions"
+import { AdminDashboard } from "@/components/dashboards/admin-dashboard"
+import { StaffDashboard } from "@/components/dashboards/staff-dashboard"
+import { ExternalUserDashboard } from "@/components/dashboards/external-user-dashboard"
+import { NoPermissionsDashboard } from "@/components/dashboards/no-permissions-dashboard"
 import { SchedulingAdminDashboard } from "@/components/dashboards/scheduling-admin-dashboard"
 import { QADirectorDashboard } from "@/components/dashboards/qa-director-dashboard"
 import { CaseManagerDashboard } from "@/components/dashboards/case-manager-dashboard"
 import { HomeVisitLiaisonDashboard } from "@/components/dashboards/home-visit-liaison-dashboard"
-import { StaffDashboard } from "@/components/dashboards/staff-dashboard"
-import { ExternalUserDashboard } from "@/components/dashboards/external-user-dashboard"
-import { NoPermissionsDashboard } from "@/components/dashboards/no-permissions-dashboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -53,7 +54,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { isLoaded, roles, permissions, isAdmin } = usePermissions()
+  const { isLoaded, roles, permissions, isAdmin, isSystemAdmin } = usePermissions()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +102,11 @@ export default function DashboardPage() {
         </div>
       </div>
     )
+  }
+
+  // System Admin gets the admin dashboard
+  if (isSystemAdmin) {
+    return <AdminDashboard />
   }
 
   // Determine which dashboard to show based on roles and permissions

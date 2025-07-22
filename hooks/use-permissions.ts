@@ -84,6 +84,13 @@ export const TEST_USERS = {
         category: "admin",
         microservice: "home-visits",
       },
+      { permissionCode: "home_view", permissionName: "View Homes", category: "basic", microservice: "home-visits" },
+      {
+        permissionCode: "dashboard_view",
+        permissionName: "View Dashboard",
+        category: "basic",
+        microservice: "home-visits",
+      },
     ],
   },
 
@@ -260,6 +267,31 @@ export const TEST_USERS = {
   },
 } as const
 
+// Helper function to safely access localStorage
+function getStoredUserType(): keyof typeof TEST_USERS {
+  if (typeof window === "undefined") {
+    // Default for SSR
+    return "hsartin"
+  }
+
+  try {
+    return (localStorage.getItem("test-user-type") as keyof typeof TEST_USERS) || "hsartin"
+  } catch {
+    return "hsartin"
+  }
+}
+
+// Helper function to safely set localStorage
+function setStoredUserType(userType: keyof typeof TEST_USERS) {
+  if (typeof window === "undefined") return
+
+  try {
+    localStorage.setItem("test-user-type", userType)
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
+
 export function usePermissions(): UserPermissions {
   const [permissionData, setPermissionData] = useState<UserPermissions>({
     userId: null,
@@ -278,9 +310,11 @@ export function usePermissions(): UserPermissions {
   })
 
   useEffect(() => {
-    // For now, use localStorage to simulate different users
-    const testUserKey = localStorage.getItem("test-user-type") || "hsartin"
-    const userData = TEST_USERS[testUserKey as keyof typeof TEST_USERS] || TEST_USERS.hsartin
+    // Only run on client side
+    if (typeof window === "undefined") return
+
+    const testUserKey = getStoredUserType()
+    const userData = TEST_USERS[testUserKey] || TEST_USERS.hsartin
 
     const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
       return userData.roles.some((role) => role.roleName === roleName && role.microservice === microservice)
@@ -338,10 +372,12 @@ export function usePermissions(): UserPermissions {
 }
 
 export function setTestUser(userKey: keyof typeof TEST_USERS) {
-  localStorage.setItem("test-user-type", userKey)
-  window.location.reload()
+  setStoredUserType(userKey)
+  if (typeof window !== "undefined") {
+    window.location.reload()
+  }
 }
 
 export function getCurrentTestUser(): keyof typeof TEST_USERS {
-  return (localStorage.getItem("test-user-type") as keyof typeof TEST_USERS) || "hsartin"
+  return getStoredUserType()
 }

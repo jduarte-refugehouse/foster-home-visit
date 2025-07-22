@@ -1,202 +1,218 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Shield, FileText, TrendingUp, AlertTriangle, CheckCircle, Users } from "lucide-react"
-import Link from "next/link"
+import { CheckCircle, AlertTriangle, FileText, TrendingUp, Home } from "lucide-react"
 
 export function QADirectorDashboard() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">Quality Assurance Dashboard</h1>
-            <Badge variant="destructive">
-              <Shield className="h-3 w-3 mr-1" />
-              QA Director
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">Sheila Mathis - Foster Home Quality Assurance Director</p>
+          <h1 className="text-3xl font-bold">Quality Assurance Dashboard</h1>
+          <p className="text-muted-foreground">Monitor quality standards and compliance</p>
         </div>
+        <Button>
+          <FileText className="h-4 w-4 mr-2" />
+          Generate QA Report
+        </Button>
       </div>
 
-      {/* QA Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Quality Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Overall Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">12</div>
-            <p className="text-xs text-muted-foreground">Awaiting QA review</p>
+            <div className="text-2xl font-bold text-green-600">92%</div>
+            <Progress value={92} className="mt-2" />
+            <div className="text-xs text-muted-foreground mt-1">+3% from last month</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Reviews</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">94%</div>
-            <p className="text-xs text-muted-foreground">+2% from last month</p>
+            <div className="text-2xl font-bold">12</div>
+            <div className="text-xs text-muted-foreground">3 high priority</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Issues Identified</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Compliance Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold text-green-600">98%</div>
+            <div className="text-xs text-muted-foreground">Above target (95%)</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved Reports</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Issues Resolved</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">87</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">47</div>
+            <div className="text-xs text-muted-foreground">This month</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* QA Overview */}
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Reviews */}
         <Card>
           <CardHeader>
-            <CardTitle>Quality Metrics</CardTitle>
-            <CardDescription>Overall quality assurance performance</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Visit Report Quality</span>
-                <span className="text-sm text-muted-foreground">92%</span>
-              </div>
-              <Progress value={92} className="h-2" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Documentation Completeness</span>
-                <span className="text-sm text-muted-foreground">96%</span>
-              </div>
-              <Progress value={96} className="h-2" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Compliance Score</span>
-                <span className="text-sm text-muted-foreground">89%</span>
-              </div>
-              <Progress value={89} className="h-2" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Timeliness</span>
-                <span className="text-sm text-muted-foreground">94%</span>
-              </div>
-              <Progress value={94} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent QA Activity</CardTitle>
-            <CardDescription>Latest quality assurance reviews and approvals</CardDescription>
+            <CardTitle className="flex items-center">
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Recent Reviews
+            </CardTitle>
+            <CardDescription>Latest quality assessments</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-green-100">
-                  <CheckCircle className="h-3 w-3 text-green-600" />
+              {[
+                {
+                  home: "Johnson Family Home",
+                  reviewer: "Gabe Groman",
+                  score: 95,
+                  status: "approved",
+                  date: "2 hours ago",
+                },
+                {
+                  home: "Smith Residence",
+                  reviewer: "Gabe Groman",
+                  score: 87,
+                  status: "needs_revision",
+                  date: "4 hours ago",
+                },
+                {
+                  home: "Davis Home",
+                  reviewer: "Heather Sartin",
+                  score: 92,
+                  status: "pending",
+                  date: "1 day ago",
+                },
+              ].map((review, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Home className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="font-medium">{review.home}</div>
+                      <div className="text-sm text-muted-foreground">
+                        By {review.reviewer} • {review.date}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-sm font-medium">{review.score}%</div>
+                    <Badge
+                      variant={
+                        review.status === "approved"
+                          ? "default"
+                          : review.status === "pending"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                    >
+                      {review.status.replace("_", " ")}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Johnson Family Visit - Approved</p>
-                  <p className="text-xs text-muted-foreground">Reviewed by Sheila Mathis - 2 hours ago</p>
-                </div>
-              </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-orange-100">
-                  <AlertTriangle className="h-3 w-3 text-orange-600" />
+        {/* Quality Issues */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              Quality Issues
+            </CardTitle>
+            <CardDescription>Items requiring attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                {
+                  issue: "Incomplete safety checklist",
+                  home: "Wilson Family",
+                  severity: "high",
+                  assigned: "Heather Sartin",
+                },
+                {
+                  issue: "Missing documentation",
+                  home: "Brown Residence",
+                  severity: "medium",
+                  assigned: "Gabe Groman",
+                },
+                {
+                  issue: "Follow-up required",
+                  home: "Taylor Home",
+                  severity: "low",
+                  assigned: "Michele Gorman",
+                },
+              ].map((issue, index) => (
+                <div key={index} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">{issue.issue}</div>
+                    <Badge
+                      variant={
+                        issue.severity === "high"
+                          ? "destructive"
+                          : issue.severity === "medium"
+                            ? "secondary"
+                            : "outline"
+                      }
+                    >
+                      {issue.severity}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    {issue.home} • Assigned to {issue.assigned}
+                  </div>
+                  <Button size="sm" variant="outline">
+                    Review
+                  </Button>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Smith Family Visit - Needs Revision</p>
-                  <p className="text-xs text-muted-foreground">Documentation incomplete - 4 hours ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-100">
-                  <FileText className="h-3 w-3 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Davis Family Visit - Under Review</p>
-                  <p className="text-xs text-muted-foreground">Assigned to QA team - 6 hours ago</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* QA Actions */}
+      {/* Quality Trends */}
       <Card>
         <CardHeader>
-          <CardTitle>Quality Assurance Tools</CardTitle>
-          <CardDescription>QA management and oversight functions</CardDescription>
+          <CardTitle className="flex items-center">
+            <TrendingUp className="h-5 w-5 mr-2" />
+            Quality Trends
+          </CardTitle>
+          <CardDescription>Performance over time</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
-              <Link href="/quality-assurance/reviews">
-                <div className="flex flex-col items-center gap-2">
-                  <FileText className="h-6 w-6" />
-                  <div className="text-center">
-                    <div className="font-medium">Review Queue</div>
-                    <div className="text-xs text-muted-foreground">12 pending reviews</div>
-                  </div>
-                </div>
-              </Link>
-            </Button>
-
-            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
-              <Link href="/quality-assurance/reports">
-                <div className="flex flex-col items-center gap-2">
-                  <TrendingUp className="h-6 w-6" />
-                  <div className="text-center">
-                    <div className="font-medium">QA Reports</div>
-                    <div className="text-xs text-muted-foreground">Generate quality reports</div>
-                  </div>
-                </div>
-              </Link>
-            </Button>
-
-            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
-              <Link href="/cases">
-                <div className="flex flex-col items-center gap-2">
-                  <Users className="h-6 w-6" />
-                  <div className="text-center">
-                    <div className="font-medium">All Cases</div>
-                    <div className="text-xs text-muted-foreground">System-wide oversight</div>
-                  </div>
-                </div>
-              </Link>
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">+5%</div>
+              <div className="text-sm text-muted-foreground">Overall improvement</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">-23%</div>
+              <div className="text-sm text-muted-foreground">Fewer issues reported</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">98%</div>
+              <div className="text-sm text-muted-foreground">Staff satisfaction</div>
+            </div>
           </div>
         </CardContent>
       </Card>
