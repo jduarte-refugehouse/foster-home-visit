@@ -2,180 +2,177 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth, UserButton } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
-import { Home, Map, List, Settings, Users, BarChart3, Menu, X } from "lucide-react"
-import { useState } from "react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Home, Map, Users, Settings, LogOut, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigationItems = [
   {
-    name: "Dashboard",
-    href: "/dashboard",
+    name: "Home",
+    href: "/",
     icon: Home,
-    description: "Overview and statistics",
+  },
+  {
+    name: "Homes List",
+    href: "/homes-list",
+    icon: Home,
+    requiresAuth: true,
   },
   {
     name: "Homes Map",
     href: "/homes-map",
     icon: Map,
-    description: "Interactive map view",
+    requiresAuth: true,
   },
   {
-    name: "Homes List",
-    href: "/homes-list",
-    icon: List,
-    description: "Detailed list view",
-  },
-  {
-    name: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-    description: "Analytics and reports",
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: Settings,
+    requiresAuth: true,
   },
   {
     name: "Admin",
     href: "/admin",
-    icon: Settings,
-    description: "System administration",
-  },
-  {
-    name: "Users",
-    href: "/admin/users",
     icon: Users,
-    description: "User management",
+    requiresAuth: true,
+    adminOnly: true,
   },
 ]
 
 export function Navigation() {
   const pathname = usePathname()
-  const { isSignedIn } = useAuth()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { user, isSignedIn } = useUser()
+  const { signOut } = useClerk()
 
-  if (!isSignedIn) {
-    return (
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Home className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-semibold text-gray-900">Home Visits</span>
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/features">
-                <Button variant="ghost">Features</Button>
-              </Link>
-              <Link href="/contact">
-                <Button variant="ghost">Contact</Button>
-              </Link>
-              <Link href="/sign-in">
-                <Button variant="outline">Sign In</Button>
-              </Link>
-              <Link href="/sign-up">
-                <Button>Get Started</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-    )
+  const handleSignOut = () => {
+    signOut()
   }
 
+  const filteredItems = navigationItems.filter((item) => {
+    if (item.requiresAuth && !isSignedIn) return false
+    if (item.adminOnly && (!user || !user.publicMetadata?.role || user.publicMetadata.role !== "admin")) return false
+    return true
+  })
+
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Logo and brand */}
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Home className="w-5 h-5 text-white" />
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center space-x-4">
+            <Link href="/" className="flex items-center space-x-2">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Home className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-gray-900">Home Visits</span>
+              <span className="font-bold text-xl">RefugeHouse</span>
             </Link>
           </div>
 
-          {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navigationItems.map((item) => {
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-6">
+            {filteredItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
-
               return (
-                <Link key={item.name} href={item.href}>
-                  <Button
-                    variant={isActive ? "default" : "ghost"}
-                    size="sm"
-                    className={cn(
-                      "flex items-center space-x-2",
-                      isActive && "bg-blue-600 text-white hover:bg-blue-700",
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </Button>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
                 </Link>
               )
             })}
           </div>
 
-          {/* User menu and mobile toggle */}
+          {/* User Menu */}
           <div className="flex items-center space-x-4">
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-8 h-8",
-                },
-              }}
-            />
+            {isSignedIn ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.imageUrl || "/placeholder.svg"} alt={user?.fullName || ""} />
+                      <AvatarFallback>
+                        {user?.firstName?.charAt(0)}
+                        {user?.lastName?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      {user?.fullName && <p className="font-medium">{user.fullName}</p>}
+                      {user?.primaryEmailAddress?.emailAddress && (
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user.primaryEmailAddress.emailAddress}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button asChild variant="ghost">
+                  <Link href="/sign-in">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/sign-up">Sign Up</Link>
+                </Button>
+              </div>
+            )}
 
-            {/* Mobile menu button */}
+            {/* Mobile Menu */}
             <div className="md:hidden">
-              <Button variant="ghost" size="sm" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  {filteredItems.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href} className="flex items-center space-x-2">
+                          <Icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
-
-        {/* Mobile navigation menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigationItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
-
-                return (
-                  <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                    <div
-                      className={cn(
-                        "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                        isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100",
-                      )}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <div>
-                        <div>{item.name}</div>
-                        <div className={cn("text-xs", isActive ? "text-blue-100" : "text-gray-500")}>
-                          {item.description}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   )
 }
 
+// Export both named and default for compatibility
 export default Navigation

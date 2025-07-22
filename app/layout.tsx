@@ -4,14 +4,14 @@ import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navigation } from "@/components/navigation"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Home Visits Application",
-  description: "Manage and track home visits efficiently",
+  title: "RefugeHouse - Home Visits Application",
+  description: "Manage and track home visits for RefugeHouse",
     generator: 'v0.dev'
 }
 
@@ -21,23 +21,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      appearance={{
-        elements: {
-          formButtonPrimary: "bg-blue-600 hover:bg-blue-700 text-sm",
-          card: "shadow-lg",
-          headerTitle: "text-gray-900",
-          headerSubtitle: "text-gray-600",
-        },
-      }}
-    >
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
       <html lang="en" suppressHydrationWarning>
         <body className={inter.className}>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-            <div className="min-h-screen bg-gray-50">
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <div className="min-h-screen bg-background">
               <Navigation />
-              <main className="flex-1">{children}</main>
+              <main className="container mx-auto px-4 py-8">{children}</main>
             </div>
             <Toaster />
           </ThemeProvider>
