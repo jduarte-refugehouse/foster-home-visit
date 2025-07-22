@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { CardDescription } from "@/components/ui/card"
+
+import { useEffect, useState } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
 import L from "leaflet"
-
-// Import Leaflet CSS
 import "leaflet/dist/leaflet.css"
 
 interface MapHome {
@@ -34,17 +34,18 @@ interface HomesMapProps {
   selectedHome: MapHome | null
 }
 
-// Fix Leaflet default markers issue
-const initializeLeafletIcons = () => {
-  // Delete the default icon URLs to force re-initialization
-  delete (L.Icon.Default.prototype as any)._getIconUrl
+// Simple fix for Leaflet default markers
+const DefaultIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+})
 
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-    iconUrl: "/leaflet/marker-icon.png",
-    shadowUrl: "/leaflet/marker-shadow.png",
-  })
-}
+L.Marker.prototype.options.icon = DefaultIcon
 
 // Custom hook to fit bounds when homes change
 function FitBounds({ homes }: { homes: MapHome[] }) {
@@ -52,64 +53,20 @@ function FitBounds({ homes }: { homes: MapHome[] }) {
 
   useEffect(() => {
     if (homes.length > 0) {
-      try {
-        const bounds = L.latLngBounds(homes.map((home) => [home.latitude, home.longitude]))
-        map.fitBounds(bounds, { padding: [20, 20] })
-      } catch (error) {
-        console.error("Error fitting bounds:", error)
-      }
+      const bounds = L.latLngBounds(homes.map((home) => [home.latitude, home.longitude]))
+      map.fitBounds(bounds, { padding: [20, 20] })
     }
   }, [homes, map])
 
   return null
 }
 
-// Create custom icons for different units
-const createCustomIcon = (unit: string, isSelected: boolean) => {
-  const color = unit === "DAL" ? "#22c55e" : "#ef4444"
-  const size = isSelected ? 35 : 25
-
-  return new L.DivIcon({
-    html: `
-      <div style="
-        background-color: ${color};
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        ${isSelected ? "box-shadow: 0 0 0 3px #3b82f6;" : ""}
-      ">
-        <div style="color: white; font-size: ${size > 30 ? "16px" : "12px"}; font-weight: bold;">
-          🏠
-        </div>
-      </div>
-    `,
-    className: "custom-marker",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  })
-}
-
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
   const [mapError, setMapError] = useState<string | null>(null)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const mapRef = useRef<L.Map | null>(null)
 
-  // Initialize Leaflet icons on component mount
   useEffect(() => {
-    try {
-      initializeLeafletIcons()
-      setIsInitialized(true)
-      console.log(`🗺️ HomesMap component received ${homes.length} homes`)
-    } catch (error) {
-      console.error("Error initializing Leaflet:", error)
-      setMapError("Failed to initialize map")
-    }
-  }, [homes.length])
+    console.log(`🗺️ HomesMap component received ${homes.length} homes`)
+  }, [homes])
 
   const handleMarkerClick = (home: MapHome) => {
     console.log(`📍 Marker clicked for: ${home.name}`)
@@ -126,17 +83,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     return [avgLat, avgLng]
   }
 
-  if (!isInitialized) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <span>Initializing map...</span>
-        </div>
-      </div>
-    )
-  }
-
   if (mapError) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
@@ -144,24 +90,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 font-medium">Map Error</p>
           <p className="text-sm text-gray-600 mt-1">{mapError}</p>
-          <Button
-            onClick={() => {
-              setMapError(null)
-              setIsInitialized(false)
-              setTimeout(() => {
-                try {
-                  initializeLeafletIcons()
-                  setIsInitialized(true)
-                } catch (error) {
-                  setMapError("Failed to reinitialize map")
-                }
-              }, 100)
-            }}
-            className="mt-4"
-            variant="outline"
-          >
-            Try Again
-          </Button>
         </div>
       </div>
     )
@@ -181,191 +109,152 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
 
   const center = getMapCenter()
 
-  try {
-    return (
-      <div className="w-full h-full relative">
-        {/* React-Leaflet Map Container */}
-        <div className="w-full h-full rounded-lg overflow-hidden">
-          <MapContainer
-            center={center}
-            zoom={10}
-            style={{ height: "100%", width: "100%" }}
-            className="rounded-lg"
-            ref={mapRef}
-            whenCreated={(mapInstance) => {
-              mapRef.current = mapInstance
-            }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+  return (
+    <div className="w-full h-full relative">
+      <div className="w-full h-full rounded-lg overflow-hidden">
+        <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} className="rounded-lg">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-            {/* Fit bounds when homes change */}
-            <FitBounds homes={homes} />
+          <FitBounds homes={homes} />
 
-            {/* Render markers for each home */}
-            {homes.map((home) => {
-              const isSelected = selectedHome?.id === home.id
+          {homes.map((home) => (
+            <Marker
+              key={home.id}
+              position={[home.latitude, home.longitude]}
+              eventHandlers={{
+                click: () => handleMarkerClick(home),
+              }}
+            >
+              <Popup>
+                <div className="min-w-[200px] p-2">
+                  <h3 className="font-bold text-sm mb-2">{home.name}</h3>
+                  <p className="text-xs text-gray-600 mb-1">{home.address}</p>
+                  <p className="text-xs text-gray-600 mb-3">
+                    {home.City}, {home.State} {home.zipCode}
+                  </p>
 
-              try {
-                return (
-                  <Marker
-                    key={home.id}
-                    position={[home.latitude, home.longitude]}
-                    icon={createCustomIcon(home.Unit, isSelected)}
-                    eventHandlers={{
-                      click: () => handleMarkerClick(home),
-                    }}
-                  >
-                    <Popup>
-                      <div className="min-w-[200px] p-2">
-                        <h3 className="font-bold text-sm mb-2">{home.name}</h3>
-                        <p className="text-xs text-gray-600 mb-1">{home.address}</p>
-                        <p className="text-xs text-gray-600 mb-3">
-                          {home.City}, {home.State} {home.zipCode}
-                        </p>
-
-                        {home.contactPersonName && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <User className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs">{home.contactPersonName}</span>
-                          </div>
-                        )}
-
-                        {home.phoneNumber && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <Phone className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs">{home.phoneNumber}</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mt-3">
-                          <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
-                            {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-6 px-2 bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
-                              window.open(url, "_blank")
-                            }}
-                          >
-                            <ExternalLink className="h-2 w-2 mr-1" />
-                            Maps
-                          </Button>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                )
-              } catch (error) {
-                console.error(`Error rendering marker for home ${home.id}:`, error)
-                return null
-              }
-            })}
-          </MapContainer>
-        </div>
-
-        {/* Selected Home Details Panel */}
-        {selectedHome && (
-          <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-            <Card className="shadow-lg border-2 border-blue-200 bg-white">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{selectedHome.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {selectedHome.address}, {selectedHome.City}, {selectedHome.State} {selectedHome.zipCode}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onHomeSelect(null as any)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ×
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {/* Contact Person */}
-                  {selectedHome.contactPersonName && (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <div className="font-medium">{selectedHome.contactPersonName}</div>
-                        <div className="text-xs text-gray-500">Case Manager</div>
-                      </div>
+                  {home.contactPersonName && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs">{home.contactPersonName}</span>
                     </div>
                   )}
 
-                  {/* Phone */}
-                  {selectedHome.phoneNumber && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <div>{selectedHome.phoneNumber}</div>
-                        <div className="text-xs text-gray-500">Home Phone</div>
-                      </div>
+                  {home.phoneNumber && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <Phone className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs">{home.phoneNumber}</span>
                     </div>
                   )}
 
-                  {/* Email */}
-                  {selectedHome.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <div className="truncate">{selectedHome.email}</div>
-                        <div className="text-xs text-gray-500">Email</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between mt-4">
-                  <Badge variant={selectedHome.Unit === "DAL" ? "default" : "destructive"}>
-                    {selectedHome.Unit === "DAL" ? "Dallas Unit" : "San Antonio Unit"}
-                  </Badge>
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-500">
-                      {selectedHome.latitude.toFixed(6)}, {selectedHome.longitude.toFixed(6)}
-                    </div>
+                  <div className="flex items-center justify-between mt-3">
+                    <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
+                      {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
+                    </Badge>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        const url = `https://www.google.com/maps/search/?api=1&query=${selectedHome.latitude},${selectedHome.longitude}`
+                      className="text-xs h-6 px-2 bg-transparent"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
                         window.open(url, "_blank")
                       }}
                     >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Google Maps
+                      <ExternalLink className="h-2 w-2 mr-1" />
+                      Maps
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
       </div>
-    )
-  } catch (error) {
-    console.error("Error rendering map:", error)
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-medium">Map Rendering Error</p>
-          <p className="text-sm text-gray-600 mt-1">Failed to render the map component</p>
+
+      {selectedHome && (
+        <div className="absolute bottom-4 left-4 right-4 z-[1000]">
+          <Card className="shadow-lg border-2 border-blue-200 bg-white">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">{selectedHome.name}</CardTitle>
+                  <CardDescription className="flex items-center gap-1 mt-1">
+                    <MapPin className="h-3 w-3" />
+                    {selectedHome.address}, {selectedHome.City}, {selectedHome.State} {selectedHome.zipCode}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onHomeSelect(null as any)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                {selectedHome.contactPersonName && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <div className="font-medium">{selectedHome.contactPersonName}</div>
+                      <div className="text-xs text-gray-500">Case Manager</div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedHome.phoneNumber && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <div>{selectedHome.phoneNumber}</div>
+                      <div className="text-xs text-gray-500">Home Phone</div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedHome.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <div className="truncate">{selectedHome.email}</div>
+                      <div className="text-xs text-gray-500">Email</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <Badge variant={selectedHome.Unit === "DAL" ? "default" : "destructive"}>
+                  {selectedHome.Unit === "DAL" ? "Dallas Unit" : "San Antonio Unit"}
+                </Badge>
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-gray-500">
+                    {selectedHome.latitude.toFixed(6)}, {selectedHome.longitude.toFixed(6)}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `https://www.google.com/maps/search/?api=1&query=${selectedHome.latitude},${selectedHome.longitude}`
+                      window.open(url, "_blank")
+                    }}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Google Maps
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    )
-  }
+      )}
+    </div>
+  )
 }
