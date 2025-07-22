@@ -153,7 +153,7 @@ export default function HomePage() {
                   alt="Refuge House Logo"
                   width={200}
                   height={80}
-                  className="object-contain"
+                  className="object-contain dark:brightness-0 dark:invert"
                 />
                 <div>
                   <CardTitle className="text-xl bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
