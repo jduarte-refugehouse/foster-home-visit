@@ -1,13 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
 
 interface MapHome {
   id: string
@@ -32,55 +29,164 @@ interface HomesMapProps {
   selectedHome: MapHome | null
 }
 
-// Fix for default markers in Leaflet - using CDN URLs that work in production
-const DefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
-
-// Apply the default icon to all markers
-L.Marker.prototype.options.icon = DefaultIcon
-
-// Custom hook to fit bounds when homes change
-function FitBounds({ homes }: { homes: MapHome[] }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (homes.length > 0) {
-      const bounds = L.latLngBounds(homes.map((home) => [home.latitude, home.longitude]))
-      map.fitBounds(bounds, { padding: [20, 20] })
-    }
-  }, [homes, map])
-
-  return null
+declare global {
+  interface Window {
+    google: any
+    initMap: () => void
+  }
 }
 
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
+  const [map, setMap] = useState<any>(null)
+  const [markers, setMarkers] = useState<any[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     console.log(`🗺️ HomesMap component received ${homes.length} homes`)
   }, [homes])
 
-  const handleMarkerClick = (home: MapHome) => {
-    console.log(`📍 Marker clicked for: ${home.name}`)
-    onHomeSelect(home)
-  }
+  const handleMarkerClick = useCallback(
+    (home: MapHome) => {
+      console.log(`📍 Marker clicked for: ${home.name}`)
+      onHomeSelect(home)
+    },
+    [onHomeSelect],
+  )
 
-  // Calculate center point of all homes for map centering
-  const getMapCenter = (): [number, number] => {
-    if (homes.length === 0) return [32.7767, -96.797] // Dallas default
+  // Initialize Google Maps
+  useEffect(() => {
+    const initializeMap = () => {
+      if (typeof window !== "undefined" && window.google && homes.length > 0) {
+        try {
+          // Calculate center point
+          const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
+          const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
 
-    const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
-    const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
+          const mapInstance = new window.google.maps.Map(document.getElementById("google-map"), {
+            center: { lat: avgLat, lng: avgLng },
+            zoom: 10,
+            mapTypeId: "roadmap",
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }],
+              },
+            ],
+          })
 
-    return [avgLat, avgLng]
-  }
+          setMap(mapInstance)
+
+          // Create markers
+          const newMarkers = homes.map((home) => {
+            const marker = new window.google.maps.Marker({
+              position: { lat: home.latitude, lng: home.longitude },
+              map: mapInstance,
+              title: home.name,
+              icon: {
+                url:
+                  home.Unit === "DAL"
+                    ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                    : "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                scaledSize: new window.google.maps.Size(32, 32),
+              },
+            })
+
+            const infoWindow = new window.google.maps.InfoWindow({
+              content: `
+                <div style="padding: 8px; min-width: 200px;">
+                  <h3 style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${home.name}</h3>
+                  <p style="font-size: 12px; color: #666; margin-bottom: 4px;">${home.address}</p>
+                  <p style="font-size: 12px; color: #666; margin-bottom: 12px;">${home.City}, ${home.State} ${home.zipCode}</p>
+                  ${
+                    home.contactPersonName
+                      ? `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <span style="font-size: 12px;">👤 ${home.contactPersonName}</span>
+                    </div>
+                  `
+                      : ""
+                  }
+                  ${
+                    home.phoneNumber
+                      ? `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <span style="font-size: 12px;">📞 ${home.phoneNumber}</span>
+                    </div>
+                  `
+                      : ""
+                  }
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                    <span style="background: ${home.Unit === "DAL" ? "#3b82f6" : "#ef4444"}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+                      ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
+                    </span>
+                    <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}', '_blank')" 
+                            style="background: #f3f4f6; border: 1px solid #d1d5db; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                      🔗 Maps
+                    </button>
+                  </div>
+                </div>
+              `,
+            })
+
+            marker.addListener("click", () => {
+              // Close all other info windows
+              newMarkers.forEach((m) => m.infoWindow?.close())
+              infoWindow.open(mapInstance, marker)
+              handleMarkerClick(home)
+            })
+
+            return { marker, infoWindow, home }
+          })
+
+          setMarkers(newMarkers)
+
+          // Fit bounds to show all markers
+          if (homes.length > 1) {
+            const bounds = new window.google.maps.LatLngBounds()
+            homes.forEach((home) => {
+              bounds.extend({ lat: home.latitude, lng: home.longitude })
+            })
+            mapInstance.fitBounds(bounds)
+          }
+
+          setIsLoaded(true)
+        } catch (error) {
+          console.error("Error initializing Google Maps:", error)
+          setMapError("Failed to initialize map")
+        }
+      }
+    }
+
+    // Load Google Maps API
+    if (typeof window !== "undefined" && !window.google) {
+      const script = document.createElement("script")
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dO_X0Q_MplT9So&libraries=places`
+      script.async = true
+      script.defer = true
+      script.onload = initializeMap
+      script.onerror = () => setMapError("Failed to load Google Maps")
+      document.head.appendChild(script)
+    } else if (window.google && homes.length > 0) {
+      initializeMap()
+    }
+  }, [homes, handleMarkerClick])
+
+  // Update selected marker
+  useEffect(() => {
+    if (markers.length > 0 && selectedHome) {
+      const selectedMarker = markers.find((m) => m.home.id === selectedHome.id)
+      if (selectedMarker) {
+        // Close all info windows
+        markers.forEach((m) => m.infoWindow?.close())
+        // Open selected info window
+        selectedMarker.infoWindow.open(map, selectedMarker.marker)
+        // Center map on selected marker
+        map?.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
+      }
+    }
+  }, [selectedHome, markers, map])
 
   if (mapError) {
     return (
@@ -106,72 +212,19 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     )
   }
 
-  const center = getMapCenter()
-
   return (
     <div className="w-full h-full relative">
       <div className="w-full h-full rounded-lg overflow-hidden">
-        <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} className="rounded-lg">
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+        <div id="google-map" className="w-full h-full rounded-lg" />
 
-          <FitBounds homes={homes} />
-
-          {homes.map((home) => (
-            <Marker
-              key={home.id}
-              position={[home.latitude, home.longitude]}
-              eventHandlers={{
-                click: () => handleMarkerClick(home),
-              }}
-            >
-              <Popup>
-                <div className="min-w-[200px] p-2">
-                  <h3 className="font-bold text-sm mb-2">{home.name}</h3>
-                  <p className="text-xs text-gray-600 mb-1">{home.address}</p>
-                  <p className="text-xs text-gray-600 mb-3">
-                    {home.City}, {home.State} {home.zipCode}
-                  </p>
-
-                  {home.contactPersonName && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs">{home.contactPersonName}</span>
-                    </div>
-                  )}
-
-                  {home.phoneNumber && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs">{home.phoneNumber}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between mt-3">
-                    <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
-                      {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-6 px-2 bg-transparent"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
-                        window.open(url, "_blank")
-                      }}
-                    >
-                      <ExternalLink className="h-2 w-2 mr-1" />
-                      Maps
-                    </Button>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+        {!isLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span>Loading map...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedHome && (
