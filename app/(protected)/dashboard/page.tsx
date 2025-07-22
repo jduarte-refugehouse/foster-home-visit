@@ -4,50 +4,73 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Home, Users, MapPin, TrendingUp, AlertTriangle, Database, Clock, CheckCircle } from "lucide-react"
-
-export const dynamic = "force-dynamic"
+import { Progress } from "@/components/ui/progress"
+import {
+  Home,
+  MapPin,
+  Users,
+  Building2,
+  RefreshCw,
+  TrendingUp,
+  Clock,
+  Database,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react"
+import Link from "next/link"
 
 interface DashboardData {
-  totalHomes: number
-  homesWithCoordinates: number
-  coordinateCompleteness: number
-  totalUnits: number
-  totalCaseManagers: number
-  avgHomesPerManager: number
-  unitDistribution: Record<string, number>
-  caseManagerDistribution: Record<string, number>
-  recentActivity: Array<{
-    type: string
-    message: string
-    timestamp: string
-    status: string
-  }>
-  systemHealth: {
-    databaseConnection: boolean
-    dataFreshness: string
-    lastSync: string
+  overview: {
+    totalHomes: number
+    mappedHomes: number
+    coordinateCompleteness: number
+    activeCaseManagers: number
+    serviceUnits: number
   }
+  distribution: {
+    byUnit: Record<string, number>
+    byCaseManager: Record<string, number>
+  }
+  caseManagerWorkload: Array<{
+    manager: string
+    homeCount: number
+    isUnassigned: boolean
+  }>
+  recentActivity: Array<{
+    action: string
+    timestamp: string
+    type: string
+  }>
+  lastUpdated: string
 }
 
 export default function DashboardPage() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+    setLoading(true)
+    setError(null)
 
+    try {
+      console.log("📊 Fetching dashboard data...")
       const response = await fetch("/api/dashboard-data")
+
       if (!response.ok) {
-        throw new Error("Failed to fetch dashboard data")
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const data = await response.json()
-      setDashboardData(data)
+      const result = await response.json()
+
+      if (result.success) {
+        setData(result.data)
+        console.log("✅ Dashboard data loaded successfully")
+      } else {
+        throw new Error(result.error || "Failed to fetch dashboard data")
+      }
     } catch (err) {
+      console.error("❌ Error fetching dashboard data:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
@@ -60,20 +83,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Agency Dashboard</h1>
-          <p className="text-muted-foreground">Loading dashboard data...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-            </Card>
-          ))}
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-96">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+            <span>Loading dashboard...</span>
+          </div>
         </div>
       </div>
     )
@@ -81,52 +96,72 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Agency Dashboard</h1>
-          <p className="text-red-600">Error loading dashboard: {error}</p>
-        </div>
-        <Button onClick={fetchDashboardData}>Retry</Button>
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+              <p className="font-semibold">Error loading dashboard</p>
+              <p className="text-sm mt-2">{error}</p>
+              <Button onClick={fetchDashboardData} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  if (!dashboardData) return null
+  if (!data) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <p>No dashboard data available</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Agency Dashboard</h1>
-          <p className="text-muted-foreground">Home Visits Management System - Agency Facing Interface</p>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary">Agency Facing</Badge>
-            <Badge variant="outline">Refuge House Staff</Badge>
-            {dashboardData.systemHealth.databaseConnection && (
-              <Badge variant="default" className="bg-green-600">
-                <Database className="w-3 h-3 mr-1" />
-                Connected
-              </Badge>
-            )}
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold">Home Visits Dashboard</h1>
+            <Badge variant="default" className="bg-purple-600">
+              Agency Facing
+            </Badge>
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Connected
+            </Badge>
           </div>
+          <p className="text-muted-foreground">Refuge House Staff Interface - Foster & Adoptive Home Management</p>
         </div>
-        <div className="text-right text-sm text-muted-foreground">
-          <p>Last Updated: {new Date(dashboardData.systemHealth.lastSync).toLocaleString()}</p>
-          <p>Data Status: {dashboardData.systemHealth.dataFreshness}</p>
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">
+            Last updated: {new Date(data.lastUpdated).toLocaleTimeString()}
+          </div>
+          <Button onClick={fetchDashboardData} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Core Metrics */}
+      {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Foster/Adoptive Homes</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Homes</CardTitle>
             <Home className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.totalHomes}</div>
-            <p className="text-xs text-muted-foreground">Active homes in system</p>
+            <div className="text-2xl font-bold">{data.overview.totalHomes}</div>
+            <p className="text-xs text-muted-foreground">Foster & Adoptive Homes</p>
           </CardContent>
         </Card>
 
@@ -136,12 +171,11 @@ export default function DashboardPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.homesWithCoordinates}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className={dashboardData.coordinateCompleteness >= 80 ? "text-green-600" : "text-orange-600"}>
-                {dashboardData.coordinateCompleteness}% complete
-              </span>
-            </p>
+            <div className="text-2xl font-bold">{data.overview.mappedHomes}</div>
+            <div className="flex items-center gap-2 mt-1">
+              <Progress value={data.overview.coordinateCompleteness} className="flex-1" />
+              <span className="text-xs text-muted-foreground">{data.overview.coordinateCompleteness}%</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -151,96 +185,158 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.totalCaseManagers}</div>
-            <p className="text-xs text-muted-foreground">Avg {dashboardData.avgHomesPerManager} homes each</p>
+            <div className="text-2xl font-bold">{data.overview.activeCaseManagers}</div>
+            <p className="text-xs text-muted-foreground">Active Case Managers</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Service Units</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.totalUnits}</div>
-            <p className="text-xs text-muted-foreground">Active service units</p>
+            <div className="text-2xl font-bold">{data.overview.serviceUnits}</div>
+            <p className="text-xs text-muted-foreground">Active Units</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Distribution Charts */}
+      {/* Distribution and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Unit Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Homes by Service Unit</CardTitle>
-            <CardDescription>Distribution of homes across service units</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Distribution by Unit
+            </CardTitle>
+            <CardDescription>Foster homes across service units</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(dashboardData.unitDistribution)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, 5)
-              .map(([unit, count]) => (
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(data.distribution.byUnit).map(([unit, count]) => (
                 <div key={unit} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{unit || "Unassigned"}</p>
-                    <p className="text-sm text-muted-foreground">{count} homes</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={unit === "DAL" ? "default" : "destructive"}>
+                      {unit === "DAL" ? "Dallas" : "San Antonio"}
+                    </Badge>
                   </div>
-                  <Badge variant="outline">{count}</Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium">{count} homes</div>
+                    <div className="text-xs text-muted-foreground">
+                      ({Math.round((count / data.overview.totalHomes) * 100)}%)
+                    </div>
+                  </div>
                 </div>
               ))}
+            </div>
           </CardContent>
         </Card>
 
+        {/* Case Manager Workload */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent System Activity</CardTitle>
-            <CardDescription>Latest updates and system events</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Case Manager Workload
+            </CardTitle>
+            <CardDescription>Home assignments per case manager</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {dashboardData.recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-start space-x-3">
-                {activity.status === "completed" ? (
-                  <CheckCircle className="h-4 w-4 mt-0.5 text-green-500" />
-                ) : activity.status === "info" ? (
-                  <AlertTriangle className="h-4 w-4 mt-0.5 text-blue-500" />
-                ) : (
-                  <Clock className="h-4 w-4 mt-0.5 text-orange-500" />
-                )}
+          <CardContent>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {data.caseManagerWorkload.slice(0, 8).map((manager, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`text-sm ${manager.isUnassigned ? "text-orange-600 font-medium" : ""}`}>
+                      {manager.manager}
+                    </div>
+                    {manager.isUnassigned && (
+                      <Badge variant="outline" className="text-orange-600 border-orange-600">
+                        Needs Assignment
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm font-medium">{manager.homeCount}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Recent Activity
+          </CardTitle>
+          <CardDescription>System updates and data synchronization</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {data.recentActivity.map((activity, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${activity.type === "system" ? "bg-blue-100" : "bg-green-100"}`}>
+                  {activity.type === "system" ? (
+                    <Database className="h-3 w-3 text-blue-600" />
+                  ) : (
+                    <CheckCircle className="h-3 w-3 text-green-600" />
+                  )}
+                </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{activity.message}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString()}</p>
+                  <div className="text-sm font-medium">{activity.action}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString()}</div>
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common agency tasks and navigation</CardDescription>
+          <CardDescription>Common tasks for agency staff</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="justify-start bg-transparent" asChild>
-              <a href="/homes-list">
-                <Home className="mr-2 h-4 w-4" />
-                View All Homes
-              </a>
+            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
+              <Link href="/homes-list">
+                <div className="flex flex-col items-center gap-2">
+                  <Home className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">View All Homes</div>
+                    <div className="text-xs text-muted-foreground">Browse complete list</div>
+                  </div>
+                </div>
+              </Link>
             </Button>
-            <Button variant="outline" className="justify-start bg-transparent" asChild>
-              <a href="/homes-map">
-                <MapPin className="mr-2 h-4 w-4" />
-                View Homes Map
-              </a>
+
+            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
+              <Link href="/homes-map">
+                <div className="flex flex-col items-center gap-2">
+                  <MapPin className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">Geographic Map</div>
+                    <div className="text-xs text-muted-foreground">View locations</div>
+                  </div>
+                </div>
+              </Link>
             </Button>
-            <Button variant="outline" className="justify-start bg-transparent" asChild>
-              <a href="/auth-test">
-                <Users className="mr-2 h-4 w-4" />
-                Test Authentication
-              </a>
+
+            <Button asChild variant="outline" className="h-auto p-4 bg-transparent">
+              <Link href="/auth-test">
+                <div className="flex flex-col items-center gap-2">
+                  <Users className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">Test Authentication</div>
+                    <div className="text-xs text-muted-foreground">User management</div>
+                  </div>
+                </div>
+              </Link>
             </Button>
           </div>
         </CardContent>
