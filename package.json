@@ -49,6 +49,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.454.0",
     "mssql": "latest",
+    "net": "latest",
     "next": "14.2.16",
     "next-themes": "latest",
     "react": "^18",
@@ -58,11 +59,12 @@
     "react-leaflet": "^4.2.1",
     "react-resizable-panels": "latest",
     "recharts": "latest",
-    "socks": "^2.8.3",
+    "socks": "latest",
     "socks-proxy-agent": "latest",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "tls": "latest",
     "vaul": "latest"
   },
   "devDependencies": {

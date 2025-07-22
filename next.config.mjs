@@ -1,11 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@azure/identity', '@azure/keyvault-secrets', 'socks-proxy-agent']
-  },
-  env: {
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -15,10 +9,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Disable static optimization for pages that use Clerk
-  async generateStaticParams() {
-    return []
-  }
+  experimental: {
+    serverComponentsExternalPackages: ['mssql', 'socks', '@azure/keyvault-secrets', '@azure/identity'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('mssql', 'socks', '@azure/keyvault-secrets', '@azure/identity')
+    }
+    return config
+  },
 }
 
 export default nextConfig

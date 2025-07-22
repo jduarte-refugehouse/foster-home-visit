@@ -1,281 +1,358 @@
 import { query } from "./db"
 
+// Types for database entities
 export interface Home {
-  HomeID: number
-  HomeName: string
-  Address: string
-  City: string
-  State: string
-  ZipCode: string
-  Latitude?: number
-  Longitude?: number
-  CaseManager?: string
-  Unit?: string
-  Status: string
-  LastVisit?: Date
-  NextVisit?: Date
+  id: number
+  name: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
+  latitude?: number
+  longitude?: number
+  unit?: string
+  caseManager?: string
+  status: string
+  capacity: number
+  currentOccupancy: number
+  lastUpdated: Date
+}
+
+export interface HomeForMap {
+  id: number
+  name: string
+  address: string
+  city: string
+  state: string
+  latitude: number
+  longitude: number
+  unit: string
+  caseManager: string
+  status: string
+  capacity: number
+  currentOccupancy: number
 }
 
 export interface HomeStats {
   totalHomes: number
   activeHomes: number
-  pendingVisits: number
-  overdue: number
+  totalCapacity: number
+  currentOccupancy: number
+  occupancyRate: number
+  unitCounts: { unit: string; count: number }[]
+  caseManagerCounts: { caseManager: string; count: number }[]
 }
 
 export interface User {
   id: string
   email: string
-  firstName?: string
-  lastName?: string
+  firstName: string
+  lastName: string
   role: string
   permissions: string[]
   createdAt: Date
   lastLogin?: Date
+  isActive: boolean
 }
 
-export async function getHomesForMap(): Promise<Home[]> {
-  const queryText = `
+// Home-related functions
+export async function getHomesForMap(): Promise<HomeForMap[]> {
+  const homes = await query<HomeForMap>(`
     SELECT 
-      HomeID,
-      HomeName,
-      Address,
-      City,
-      State,
-      ZipCode,
-      Latitude,
-      Longitude,
-      CaseManager,
-      Unit,
-      Status
+      id,
+      name,
+      address,
+      city,
+      state,
+      latitude,
+      longitude,
+      unit,
+      caseManager,
+      status,
+      capacity,
+      currentOccupancy
     FROM SyncActiveHomes 
-    WHERE Latitude IS NOT NULL 
-      AND Longitude IS NOT NULL
-      AND Status = 'Active'
-  `
-  return await query<Home>(queryText)
+    WHERE latitude IS NOT NULL 
+      AND longitude IS NOT NULL
+      AND status = 'Active'
+    ORDER BY name
+  `)
+
+  return homes
 }
 
 export async function getAllHomes(): Promise<Home[]> {
-  const queryText = `
+  const homes = await query<Home>(`
     SELECT 
-      HomeID,
-      HomeName,
-      Address,
-      City,
-      State,
-      ZipCode,
-      Latitude,
-      Longitude,
-      CaseManager,
-      Unit,
-      Status,
-      LastVisit,
-      NextVisit
+      id,
+      name,
+      address,
+      city,
+      state,
+      zipCode,
+      latitude,
+      longitude,
+      unit,
+      caseManager,
+      status,
+      capacity,
+      currentOccupancy,
+      lastUpdated
     FROM SyncActiveHomes 
-    ORDER BY HomeName
-  `
-  return await query<Home>(queryText)
+    ORDER BY name
+  `)
+
+  return homes
 }
 
 export async function getActiveHomes(): Promise<Home[]> {
-  const queryText = `
+  const homes = await query<Home>(`
     SELECT 
-      HomeID,
-      HomeName,
-      Address,
-      City,
-      State,
-      ZipCode,
-      Latitude,
-      Longitude,
-      CaseManager,
-      Unit,
-      Status,
-      LastVisit,
-      NextVisit
+      id,
+      name,
+      address,
+      city,
+      state,
+      zipCode,
+      latitude,
+      longitude,
+      unit,
+      caseManager,
+      status,
+      capacity,
+      currentOccupancy,
+      lastUpdated
     FROM SyncActiveHomes 
-    WHERE Status = 'Active'
-    ORDER BY HomeName
-  `
-  return await query<Home>(queryText)
+    WHERE status = 'Active'
+    ORDER BY name
+  `)
+
+  return homes
 }
 
 export async function getHomeStats(): Promise<HomeStats> {
-  const queryText = `
+  // Get basic stats
+  const basicStats = await query<{
+    totalHomes: number
+    activeHomes: number
+    totalCapacity: number
+    currentOccupancy: number
+  }>(`
     SELECT 
       COUNT(*) as totalHomes,
-      SUM(CASE WHEN Status = 'Active' THEN 1 ELSE 0 END) as activeHomes,
-      SUM(CASE WHEN NextVisit IS NOT NULL AND NextVisit <= GETDATE() + 7 THEN 1 ELSE 0 END) as pendingVisits,
-      SUM(CASE WHEN NextVisit IS NOT NULL AND NextVisit < GETDATE() THEN 1 ELSE 0 END) as overdue
+      SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as activeHomes,
+      SUM(capacity) as totalCapacity,
+      SUM(currentOccupancy) as currentOccupancy
     FROM SyncActiveHomes
-  `
-  const result = await query<HomeStats>(queryText)
-  return result[0] || { totalHomes: 0, activeHomes: 0, pendingVisits: 0, overdue: 0 }
+  `)
+
+  // Get unit counts
+  const unitCounts = await query<{ unit: string; count: number }>(`
+    SELECT 
+      unit,
+      COUNT(*) as count
+    FROM SyncActiveHomes 
+    WHERE unit IS NOT NULL AND unit != ''
+    GROUP BY unit
+    ORDER BY count DESC
+  `)
+
+  // Get case manager counts
+  const caseManagerCounts = await query<{ caseManager: string; count: number }>(`
+    SELECT 
+      caseManager,
+      COUNT(*) as count
+    FROM SyncActiveHomes 
+    WHERE caseManager IS NOT NULL AND caseManager != ''
+    GROUP BY caseManager
+    ORDER BY count DESC
+  `)
+
+  const stats = basicStats[0]
+  const occupancyRate = stats.totalCapacity > 0 ? (stats.currentOccupancy / stats.totalCapacity) * 100 : 0
+
+  return {
+    totalHomes: stats.totalHomes,
+    activeHomes: stats.activeHomes,
+    totalCapacity: stats.totalCapacity,
+    currentOccupancy: stats.currentOccupancy,
+    occupancyRate: Math.round(occupancyRate * 100) / 100,
+    unitCounts,
+    caseManagerCounts,
+  }
 }
 
 export async function getUnits(): Promise<string[]> {
-  const queryText = `
-    SELECT DISTINCT Unit
+  const units = await query<{ unit: string }>(`
+    SELECT DISTINCT unit
     FROM SyncActiveHomes 
-    WHERE Unit IS NOT NULL 
-      AND Unit != ''
-    ORDER BY Unit
-  `
-  const result = await query<{ Unit: string }>(queryText)
-  return result.map((row) => row.Unit)
+    WHERE unit IS NOT NULL AND unit != ''
+    ORDER BY unit
+  `)
+
+  return units.map((u) => u.unit)
 }
 
 export async function getCaseManagers(): Promise<string[]> {
-  const queryText = `
-    SELECT DISTINCT CaseManager
+  const caseManagers = await query<{ caseManager: string }>(`
+    SELECT DISTINCT caseManager
     FROM SyncActiveHomes 
-    WHERE CaseManager IS NOT NULL 
-      AND CaseManager != ''
-    ORDER BY CaseManager
-  `
-  const result = await query<{ CaseManager: string }>(queryText)
-  return result.map((row) => row.CaseManager)
-}
+    WHERE caseManager IS NOT NULL AND caseManager != ''
+    ORDER BY caseManager
+  `)
 
-export async function getHomeById(homeId: number): Promise<Home | null> {
-  const queryText = `
-    SELECT 
-      HomeID,
-      HomeName,
-      Address,
-      City,
-      State,
-      ZipCode,
-      Latitude,
-      Longitude,
-      CaseManager,
-      Unit,
-      Status,
-      LastVisit,
-      NextVisit
-    FROM SyncActiveHomes 
-    WHERE HomeID = @param0
-  `
-  const result = await query<Home>(queryText, [homeId])
-  return result[0] || null
-}
-
-export async function updateHomeCoordinates(homeId: number, latitude: number, longitude: number): Promise<boolean> {
-  try {
-    const queryText = `
-      UPDATE SyncActiveHomes 
-      SET Latitude = @param0, Longitude = @param1
-      WHERE HomeID = @param2
-    `
-    await query(queryText, [latitude, longitude, homeId])
-    return true
-  } catch (error) {
-    console.error("Error updating home coordinates:", error)
-    return false
-  }
+  return caseManagers.map((cm) => cm.caseManager)
 }
 
 // User management functions
-export async function createUser(userData: Partial<User>): Promise<User> {
-  const queryText = `
-    INSERT INTO Users (id, email, firstName, lastName, role, permissions, createdAt)
-    OUTPUT INSERTED.*
-    VALUES (@param0, @param1, @param2, @param3, @param4, @param5, @param6)
-  `
-  const result = await query<User>(queryText, [
-    userData.id,
-    userData.email,
-    userData.firstName,
-    userData.lastName,
-    userData.role || "user",
-    JSON.stringify(userData.permissions || []),
-    new Date(),
-  ])
-  return result[0]
-}
-
-export async function getUserById(userId: string): Promise<User | null> {
-  const queryText = `
-    SELECT id, email, firstName, lastName, role, permissions, createdAt, lastLogin
-    FROM Users 
-    WHERE id = @param0
-  `
-  const result = await query<User>(queryText, [userId])
-  if (result[0]) {
-    result[0].permissions = JSON.parse(result[0].permissions as any)
-  }
-  return result[0] || null
-}
-
 export async function getAllUsers(): Promise<User[]> {
-  const queryText = `
-    SELECT id, email, firstName, lastName, role, permissions, createdAt, lastLogin
+  const users = await query<User>(`
+    SELECT 
+      id,
+      email,
+      firstName,
+      lastName,
+      role,
+      permissions,
+      createdAt,
+      lastLogin,
+      isActive
     FROM Users 
-    ORDER BY createdAt DESC
-  `
-  const result = await query<User>(queryText)
-  return result.map((user) => ({
+    ORDER BY lastName, firstName
+  `)
+
+  return users.map((user) => ({
     ...user,
-    permissions: JSON.parse(user.permissions as any),
+    permissions: typeof user.permissions === "string" ? JSON.parse(user.permissions) : user.permissions,
   }))
 }
 
-export async function updateUserRole(userId: string, role: string): Promise<boolean> {
-  try {
-    const queryText = `
-      UPDATE Users 
-      SET role = @param0
-      WHERE id = @param1
+export async function getUserById(id: string): Promise<User | null> {
+  const users = await query<User>(
     `
-    await query(queryText, [role, userId])
-    return true
-  } catch (error) {
-    console.error("Error updating user role:", error)
-    return false
+    SELECT 
+      id,
+      email,
+      firstName,
+      lastName,
+      role,
+      permissions,
+      createdAt,
+      lastLogin,
+      isActive
+    FROM Users 
+    WHERE id = ?
+  `,
+    [id],
+  )
+
+  if (users.length === 0) return null
+
+  const user = users[0]
+  return {
+    ...user,
+    permissions: typeof user.permissions === "string" ? JSON.parse(user.permissions) : user.permissions,
   }
 }
 
-export async function updateUserPermissions(userId: string, permissions: string[]): Promise<boolean> {
-  try {
-    const queryText = `
-      UPDATE Users 
-      SET permissions = @param0
-      WHERE id = @param1
+export async function createUser(userData: Omit<User, "id" | "createdAt">): Promise<User> {
+  const id = crypto.randomUUID()
+  const now = new Date()
+
+  await query(
     `
-    await query(queryText, [JSON.stringify(permissions), userId])
-    return true
-  } catch (error) {
-    console.error("Error updating user permissions:", error)
-    return false
+    INSERT INTO Users (id, email, firstName, lastName, role, permissions, createdAt, isActive)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `,
+    [
+      id,
+      userData.email,
+      userData.firstName,
+      userData.lastName,
+      userData.role,
+      JSON.stringify(userData.permissions),
+      now,
+      userData.isActive,
+    ],
+  )
+
+  return {
+    id,
+    ...userData,
+    createdAt: now,
   }
 }
 
-export async function updateUserLastLogin(userId: string): Promise<boolean> {
-  try {
-    const queryText = `
-      UPDATE Users 
-      SET lastLogin = @param0
-      WHERE id = @param1
-    `
-    await query(queryText, [new Date(), userId])
-    return true
-  } catch (error) {
-    console.error("Error updating user last login:", error)
-    return false
+export async function updateUser(id: string, userData: Partial<Omit<User, "id" | "createdAt">>): Promise<User | null> {
+  const existingUser = await getUserById(id)
+  if (!existingUser) return null
+
+  const updates: string[] = []
+  const values: any[] = []
+
+  if (userData.email !== undefined) {
+    updates.push("email = ?")
+    values.push(userData.email)
   }
+  if (userData.firstName !== undefined) {
+    updates.push("firstName = ?")
+    values.push(userData.firstName)
+  }
+  if (userData.lastName !== undefined) {
+    updates.push("lastName = ?")
+    values.push(userData.lastName)
+  }
+  if (userData.role !== undefined) {
+    updates.push("role = ?")
+    values.push(userData.role)
+  }
+  if (userData.permissions !== undefined) {
+    updates.push("permissions = ?")
+    values.push(JSON.stringify(userData.permissions))
+  }
+  if (userData.isActive !== undefined) {
+    updates.push("isActive = ?")
+    values.push(userData.isActive)
+  }
+  if (userData.lastLogin !== undefined) {
+    updates.push("lastLogin = ?")
+    values.push(userData.lastLogin)
+  }
+
+  if (updates.length === 0) return existingUser
+
+  values.push(id)
+
+  await query(
+    `
+    UPDATE Users 
+    SET ${updates.join(", ")}
+    WHERE id = ?
+  `,
+    values,
+  )
+
+  return await getUserById(id)
 }
 
-export async function deleteUser(userId: string): Promise<boolean> {
-  try {
-    const queryText = `
-      DELETE FROM Users 
-      WHERE id = @param0
+export async function deleteUser(id: string): Promise<boolean> {
+  const result = await query(
     `
-    await query(queryText, [userId])
-    return true
-  } catch (error) {
-    console.error("Error deleting user:", error)
-    return false
-  }
+    DELETE FROM Users 
+    WHERE id = ?
+  `,
+    [id],
+  )
+
+  return result.length > 0
+}
+
+export async function getUserPermissions(userId: string): Promise<string[]> {
+  const user = await getUserById(userId)
+  return user?.permissions || []
+}
+
+export async function hasPermission(userId: string, permission: string): Promise<boolean> {
+  const permissions = await getUserPermissions(userId)
+  return permissions.includes(permission) || permissions.includes("admin")
 }
