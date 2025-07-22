@@ -1,15 +1,10 @@
 "use client"
 
-import { CardDescription } from "@/components/ui/card"
-
 import { useEffect, useState } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
 
 interface MapHome {
   id: string
@@ -34,53 +29,17 @@ interface HomesMapProps {
   selectedHome: MapHome | null
 }
 
-// Simple fix for Leaflet default markers
-const DefaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
-
-L.Marker.prototype.options.icon = DefaultIcon
-
-// Custom hook to fit bounds when homes change
-function FitBounds({ homes }: { homes: MapHome[] }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (homes.length > 0) {
-      const bounds = L.latLngBounds(homes.map((home) => [home.latitude, home.longitude]))
-      map.fitBounds(bounds, { padding: [20, 20] })
-    }
-  }, [homes, map])
-
-  return null
-}
-
 export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMapProps) {
   const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
     console.log(`🗺️ HomesMap component received ${homes.length} homes`)
+    setMapError(null)
   }, [homes])
 
   const handleMarkerClick = (home: MapHome) => {
     console.log(`📍 Marker clicked for: ${home.name}`)
     onHomeSelect(home)
-  }
-
-  // Calculate center point of all homes for map centering
-  const getMapCenter = (): [number, number] => {
-    if (homes.length === 0) return [32.7767, -96.797] // Dallas default
-
-    const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
-    const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
-
-    return [avgLat, avgLng]
   }
 
   if (mapError) {
@@ -107,74 +66,108 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     )
   }
 
-  const center = getMapCenter()
+  // Calculate bounds for positioning
+  const latitudes = homes.map((h) => h.latitude)
+  const longitudes = homes.map((h) => h.longitude)
+  const minLat = Math.min(...latitudes)
+  const maxLat = Math.max(...latitudes)
+  const minLng = Math.min(...longitudes)
+  const maxLng = Math.max(...longitudes)
+
+  // Convert lat/lng to percentage positions on the map
+  const getPosition = (home: MapHome) => {
+    const x = ((home.longitude - minLng) / (maxLng - minLng)) * 100
+    const y = ((maxLat - home.latitude) / (maxLat - minLat)) * 100
+    return { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) }
+  }
 
   return (
     <div className="w-full h-full relative">
-      <div className="w-full h-full rounded-lg overflow-hidden">
-        <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} className="rounded-lg">
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+      {/* Simple Map Background */}
+      <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 relative">
+        {/* Grid lines for map feel */}
+        <div className="absolute inset-0 opacity-20">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Vertical lines */}
+            {[20, 40, 60, 80].map((x) => (
+              <line key={`v${x}`} x1={x} y1="0" x2={x} y2="100" stroke="#94a3b8" strokeWidth="0.5" />
+            ))}
+            {/* Horizontal lines */}
+            {[20, 40, 60, 80].map((y) => (
+              <line key={`h${y}`} x1="0" y1={y} x2="100" y2={y} stroke="#94a3b8" strokeWidth="0.5" />
+            ))}
+          </svg>
+        </div>
 
-          <FitBounds homes={homes} />
+        {/* Home Markers */}
+        {homes.map((home) => {
+          const position = getPosition(home)
+          const isSelected = selectedHome?.id === home.id
 
-          {homes.map((home) => (
-            <Marker
+          return (
+            <div
               key={home.id}
-              position={[home.latitude, home.longitude]}
-              eventHandlers={{
-                click: () => handleMarkerClick(home),
+              className="absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group"
+              style={{
+                left: `${position.x}%`,
+                top: `${position.y}%`,
               }}
+              onClick={() => handleMarkerClick(home)}
             >
-              <Popup>
-                <div className="min-w-[200px] p-2">
-                  <h3 className="font-bold text-sm mb-2">{home.name}</h3>
-                  <p className="text-xs text-gray-600 mb-1">{home.address}</p>
-                  <p className="text-xs text-gray-600 mb-3">
+              {/* Marker */}
+              <div
+                className={`w-6 h-6 rounded-full border-2 border-white shadow-lg transition-all duration-200 flex items-center justify-center ${
+                  isSelected
+                    ? "bg-blue-600 scale-125 z-20"
+                    : home.Unit === "DAL"
+                      ? "bg-green-500 hover:scale-110"
+                      : "bg-red-500 hover:scale-110"
+                } group-hover:scale-125`}
+              >
+                <div className="text-white text-xs font-bold">🏠</div>
+              </div>
+
+              {/* Tooltip on hover */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30 pointer-events-none">
+                <div className="bg-white rounded-lg shadow-lg p-3 min-w-48 border">
+                  <div className="font-semibold text-sm">{home.name}</div>
+                  <div className="text-xs text-gray-600 mt-1">{home.address}</div>
+                  <div className="text-xs text-gray-600">
                     {home.City}, {home.State} {home.zipCode}
-                  </p>
-
-                  {home.contactPersonName && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs">{home.contactPersonName}</span>
-                    </div>
-                  )}
-
-                  {home.phoneNumber && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs">{home.phoneNumber}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between mt-3">
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
                     <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
                       {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
                     </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-6 px-2 bg-transparent"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const url = `https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}`
-                        window.open(url, "_blank")
-                      }}
-                    >
-                      <ExternalLink className="h-2 w-2 mr-1" />
-                      Maps
-                    </Button>
                   </div>
                 </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Map Legend */}
+        <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-3 z-30">
+          <div className="text-sm font-medium mb-2">Legend</div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>Dallas ({homes.filter((h) => h.Unit === "DAL").length})</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span>San Antonio ({homes.filter((h) => h.Unit === "SAN").length})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Coordinate Info */}
+        <div className="absolute bottom-2 left-2 text-xs text-gray-500 bg-white px-2 py-1 rounded z-20">
+          Geographic Distribution • {homes.length} homes
+        </div>
       </div>
 
+      {/* Selected Home Details Panel */}
       {selectedHome && (
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
           <Card className="shadow-lg border-2 border-blue-200 bg-white">
@@ -199,6 +192,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
             </CardHeader>
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                {/* Contact Person */}
                 {selectedHome.contactPersonName && (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-gray-400" />
@@ -209,6 +203,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
                   </div>
                 )}
 
+                {/* Phone */}
                 {selectedHome.phoneNumber && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-gray-400" />
@@ -219,6 +214,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
                   </div>
                 )}
 
+                {/* Email */}
                 {selectedHome.email && (
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-gray-400" />

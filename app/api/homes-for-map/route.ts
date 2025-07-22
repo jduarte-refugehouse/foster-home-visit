@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [API] Error in homes-for-map:", error)
+
     return NextResponse.json(
       {
         success: false,

@@ -181,9 +181,9 @@ export default function HomesMapPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Foster Homes Geographic Map</h1>
+          <h1 className="text-3xl font-bold">Homes Map</h1>
           <p className="text-muted-foreground">
-            Real geographic locations of {filteredHomes.length} of {homes.length} foster homes
+            Interactive map showing {filteredHomes.length} of {homes.length} homes
           </p>
         </div>
         <Button onClick={fetchHomes} disabled={loading}>
@@ -259,25 +259,11 @@ export default function HomesMapPage() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" />
-              Geographic Map View
+              Interactive Map
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2 h-[520px]">
-            {filteredHomes.length > 0 ? (
-              <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-                <div className="text-center">
-                  <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">No Homes with Valid Coordinates</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {homes.length > 0
-                      ? "No homes match your current filters"
-                      : "No homes found with latitude/longitude data"}
-                  </p>
-                </div>
-              </div>
-            )}
+            <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
           </CardContent>
         </Card>
 
@@ -307,13 +293,10 @@ export default function HomesMapPage() {
                     <div className="text-xs text-muted-foreground">
                       {home.City}, {home.State} {home.zipCode}
                     </div>
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2 mt-2">
                       <Badge variant={home.Unit === "DAL" ? "default" : "destructive"} className="text-xs">
                         {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
                       </Badge>
-                      <div className="text-xs text-gray-400">
-                        {home.latitude.toFixed(4)}, {home.longitude.toFixed(4)}
-                      </div>
                     </div>
                   </div>
                 </div>
