@@ -1,71 +1,51 @@
 import { NextResponse } from "next/server"
-import { getConnection } from "@/lib/db"
-
-export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
+import { auth } from "@clerk/nextjs/server"
+import { getDbConnection } from "@/lib/db"
 
 export async function GET() {
-  console.log("📊 Fetching database information...")
-
-  const debugInfo = {
-    timestamp: new Date().toISOString(),
-    connection: {
-      status: "unknown",
-      server: "",
-      database: "",
-      user: "",
-      clientIp: "",
-    },
-    tables: {
-      syncActiveHomes: { exists: false, count: 0 },
-    },
-    errors: [] as string[],
-  }
-
   try {
-    const pool = await getConnection()
+    const { userId } = await auth()
 
-    // Test basic connection info
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const debug = {
+      timestamp: new Date().toISOString(),
+      userId,
+      connectionTest: { status: "unknown", details: "" },
+      environmentCheck: {
+        hasAzureClientId: !!process.env.AZURE_CLIENT_ID,
+        hasAzureClientSecret: !!process.env.AZURE_CLIENT_SECRET,
+        hasAzureTenantId: !!process.env.AZURE_TENANT_ID,
+        hasKeyVaultName: !!process.env.AZURE_KEY_VAULT_NAME,
+        nodeEnv: process.env.NODE_ENV,
+      },
+    }
+
     try {
-      const connectionInfo = await pool.request().query(`
+      const pool = await getDbConnection()
+      const result = await pool.request().query(`
         SELECT 
-          @@SERVERNAME as server_name,
-          DB_NAME() as database_name,
-          SUSER_SNAME() as login_name,
-          CONNECTIONPROPERTY('client_net_address') as client_ip
+          COUNT(*) as home_count,
+          @@VERSION as sql_version,
+          DB_NAME() as database_name
       `)
 
-      if (connectionInfo.recordset.length > 0) {
-        const info = connectionInfo.recordset[0]
-        debugInfo.connection.status = "connected"
-        debugInfo.connection.server = info.server_name || "Unknown"
-        debugInfo.connection.database = info.database_name || "Unknown"
-        debugInfo.connection.user = info.login_name || "Unknown"
-        debugInfo.connection.clientIp = info.client_ip || "Unknown"
+      debug.connectionTest = {
+        status: "success",
+        details: `Connected to ${result.recordset[0].database_name}, found ${result.recordset[0].home_count} homes`,
       }
-    } catch (error) {
-      debugInfo.errors.push(`Connection info error: ${error instanceof Error ? error.message : "Unknown"}`)
+    } catch (dbError) {
+      debug.connectionTest = {
+        status: "error",
+        details: dbError instanceof Error ? dbError.message : "Unknown database error",
+      }
     }
 
-    // Test SyncActiveHomes table
-    try {
-      const tableTest = await pool.request().query(`
-        SELECT COUNT(*) as total_count
-        FROM SyncActiveHomes
-      `)
-
-      if (tableTest.recordset.length > 0) {
-        debugInfo.tables.syncActiveHomes.exists = true
-        debugInfo.tables.syncActiveHomes.count = tableTest.recordset[0].total_count || 0
-      }
-    } catch (error) {
-      debugInfo.errors.push(`SyncActiveHomes table error: ${error instanceof Error ? error.message : "Unknown"}`)
-    }
-
-    return NextResponse.json(debugInfo)
+    return NextResponse.json(debug)
   } catch (error) {
-    console.error("Error debugging connection:", error)
-    debugInfo.errors.push(`General error: ${error instanceof Error ? error.message : "Unknown"}`)
-    return NextResponse.json(debugInfo, { status: 500 })
+    console.error("Connection debug error:", error)
+    return NextResponse.json({ error: "Failed to run connection debug" }, { status: 500 })
   }
 }

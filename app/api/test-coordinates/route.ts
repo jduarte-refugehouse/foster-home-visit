@@ -1,57 +1,35 @@
-import { NextResponse } from "next/server"
-import { getConnection } from "@/lib/db"
+import { type NextRequest, NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 
-export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
-
-export async function GET() {
-  console.log("=== 🧪 Testing coordinate column access ===")
-
+export async function POST(request: NextRequest) {
   try {
-    const pool = await getConnection()
+    const { userId } = await auth()
 
-    // Test coordinate access with proper SQL Server syntax
-    const coordinateTest = await pool.request().query(`
-      SELECT TOP 5
-        [Xref] as id,
-        [HomeName] as name,
-        [Street] as address,
-        [City],
-        [State],
-        [Zip] as zipCode,
-        [Unit],
-        CAST([Latitude] AS FLOAT) as latitude,
-        CAST([Longitude] AS FLOAT) as longitude,
-        [HomePhone] as phoneNumber,
-        [CaseManager] as contactPersonName,
-        [CaseManagerEmail] as email,
-        [CaseManagerPhone] as contactPhone,
-        [LastSync] as lastSync
-      FROM SyncActiveHomes
-      WHERE [Latitude] IS NOT NULL 
-        AND [Longitude] IS NOT NULL
-        AND [Latitude] != 0 
-        AND [Longitude] != 0
-      ORDER BY [HomeName]
-    `)
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-    console.log(`✅ Coordinate test successful: ${coordinateTest.recordset.length} homes with coordinates`)
+    const { address } = await request.json()
 
-    return NextResponse.json({
-      success: true,
-      message: "Coordinate access test successful",
-      count: coordinateTest.recordset.length,
-      sample: coordinateTest.recordset,
-    })
+    if (!address) {
+      return NextResponse.json({ error: "Address is required" }, { status: 400 })
+    }
+
+    // Mock geocoding response for testing
+    // In a real implementation, you would use a geocoding service like Google Maps API
+    const mockResult = {
+      address: address,
+      latitude: 40.7128 + (Math.random() - 0.5) * 0.1, // Random coordinates near NYC
+      longitude: -74.006 + (Math.random() - 0.5) * 0.1,
+      confidence: "High",
+    }
+
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    return NextResponse.json(mockResult)
   } catch (error) {
-    console.error("Coordinate test failed:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Coordinate test failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    console.error("Coordinate test error:", error)
+    return NextResponse.json({ error: "Failed to geocode address" }, { status: 500 })
   }
 }

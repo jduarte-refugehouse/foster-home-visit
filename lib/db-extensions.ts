@@ -1,282 +1,190 @@
 import { query } from "./db"
 
-// ✅ SAFE EXTENSION FUNCTIONS - These extend functionality without modifying core connection
-// These functions use the locked db.ts connection but don't modify it
-
-// ⚠️⚠️⚠️ CRITICAL STABILITY WARNING ⚠️⚠️⚠️
-// DO NOT MODIFY THE INTERFACE STRUCTURES BELOW WITHOUT EXPLICIT USER PERMISSION
-// These interfaces are used across multiple screens and API endpoints
-// Changing them will break the homes list, homes map, and dashboard functionality
-// The lastSync field was added after debugging missing sync data - DO NOT REMOVE
-// ⚠️⚠️⚠️ END STABILITY WARNING ⚠️⚠️⚠️
-
-export interface ListHome {
-  id: string
+export interface HomeData {
+  id: number
   name: string
   address: string
-  City: string
-  State: string
+  city: string
+  state: string
   zipCode: string
-  Unit: string
+  phone: string
+  email: string
+  contactPerson: string
+  latitude: number | null
+  longitude: number | null
+  lastSync: Date
+  unit: string
+  caseManager: string
+  status: string
+}
+
+export interface MapHomeData {
+  id: number
+  name: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
   latitude: number
   longitude: number
-  phoneNumber: string
-  contactPersonName: string
+  unit: string
+  caseManager: string
+  lastSync: Date
+  phone: string
   email: string
-  contactPhone: string
-  lastSync: string // CRITICAL: Added to fix missing sync data - DO NOT REMOVE
+  contactPerson: string
 }
 
-export interface MapHome extends ListHome {
-  // Same interface for consistency - DO NOT DIVERGE
-}
-
-export interface HomeStats {
-  total: number
-  withCoordinates: number
-  byUnit: Record<string, number>
-  byCaseManager: Record<string, number>
-}
-
-// ⚠️⚠️⚠️ CRITICAL DATABASE QUERY WARNING ⚠️⚠️⚠️
-// The SQL queries below use the CORRECT table name: SyncActiveHomes
-// DO NOT change to 'Homes' - that table does not exist and will cause build failures
-// The CAST operations for Latitude/Longitude are REQUIRED for proper coordinate handling
-// The lastSync field inclusion was added to fix missing sync data display
-// ⚠️⚠️⚠️ END DATABASE QUERY WARNING ⚠️⚠️⚠️
-
-/**
- * Fetch homes list with proper coordinate casting and LastSync data
- * Uses the locked database connection safely
- * STABILITY NOTE: This function is used by homes-list page and API endpoints
- */
-export async function fetchHomesList(filters?: {
+export async function getActiveHomes(filters?: {
   unit?: string
   caseManager?: string
   search?: string
-}): Promise<ListHome[]> {
-  console.log("🏠 [Extension] Fetching homes list from database...")
-
-  let whereClause = "WHERE 1=1"
-  const params: any[] = []
-
-  if (filters?.unit && filters.unit !== "ALL") {
-    whereClause += ` AND [Unit] = @param${params.length}`
-    params.push(filters.unit)
-  }
-
-  if (filters?.caseManager && filters.caseManager !== "ALL") {
-    whereClause += ` AND [CaseManager] = @param${params.length}`
-    params.push(filters.caseManager)
-  }
-
-  if (filters?.search) {
-    whereClause += ` AND ([HomeName] LIKE @param${params.length} OR [Street] LIKE @param${params.length + 1} OR [CaseManager] LIKE @param${params.length + 2})`
-    params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`)
-  }
-
-  // CRITICAL: This query structure is STABLE and TESTED
-  // DO NOT modify table name, column names, or CAST operations
-  const queryText = `
-   SELECT 
-     [Xref] as id,
-     [HomeName] as name,
-     [Street] as address,
-     [City],
-     [State], 
-     [Zip] as zipCode,
-     [Unit],
-     CAST([Latitude] AS FLOAT) as latitude,
-     CAST([Longitude] AS FLOAT) as longitude,
-     [HomePhone] as phoneNumber,
-     [CaseManager] as contactPersonName,
-     [CaseManagerEmail] as email,
-     [CaseManagerPhone] as contactPhone,
-     [LastSync] as lastSync
-   FROM SyncActiveHomes 
-   ${whereClause}
-   ORDER BY [HomeName]
- `
-
+}): Promise<HomeData[]> {
   try {
-    const results = await query<any>(queryText, params)
-    console.log(`✅ [Extension] Retrieved ${results.length} homes from database`)
+    let whereClause = "WHERE 1=1"
+    const params: any[] = []
 
-    // Process and validate results - CRITICAL data processing
-    const processedHomes: ListHome[] = results.map((home) => ({
-      id: home.id || "",
-      name: home.name || "",
-      address: home.address || "",
-      City: home.City || "",
-      State: home.State || "",
-      zipCode: home.zipCode || "",
-      Unit: home.Unit || "",
-      latitude: typeof home.latitude === "number" && !isNaN(home.latitude) ? home.latitude : 0,
-      longitude: typeof home.longitude === "number" && !isNaN(home.longitude) ? home.longitude : 0,
-      phoneNumber: home.phoneNumber || "",
-      contactPersonName: home.contactPersonName || "~unassigned~",
-      email: home.email || "",
-      contactPhone: home.contactPhone || "",
-      lastSync: home.lastSync || "", // CRITICAL: Fixed missing sync data
-    }))
+    if (filters?.unit && filters.unit !== "all") {
+      whereClause += ` AND Unit = @param${params.length}`
+      params.push(filters.unit)
+    }
 
-    console.log("🔄 [Extension] Processing homes for display...")
-    return processedHomes
+    if (filters?.caseManager && filters.caseManager !== "all") {
+      whereClause += ` AND CaseManager = @param${params.length}`
+      params.push(filters.caseManager)
+    }
+
+    if (filters?.search) {
+      whereClause += ` AND (Name LIKE @param${params.length} OR Address LIKE @param${params.length + 1} OR ContactPerson LIKE @param${params.length + 2})`
+      params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`)
+    }
+
+    const queryText = `
+      SELECT 
+        ID as id,
+        Name as name,
+        Address as address,
+        City as city,
+        State as state,
+        ZipCode as zipCode,
+        Phone as phone,
+        Email as email,
+        ContactPerson as contactPerson,
+        CAST(Latitude AS FLOAT) as latitude,
+        CAST(Longitude AS FLOAT) as longitude,
+        LastSync as lastSync,
+        Unit as unit,
+        CaseManager as caseManager,
+        Status as status
+      FROM SyncActiveHomes 
+      ${whereClause}
+      ORDER BY Name
+    `
+
+    const results = await query<HomeData>(queryText, params)
+    return results
   } catch (error) {
-    console.error("❌ [Extension] Error fetching homes list:", error)
+    console.error("Error fetching active homes:", error)
     throw error
   }
 }
 
-/**
- * Fetch homes for map display with coordinate validation
- * Uses the locked database connection safely
- * STABILITY NOTE: This function is used by homes-map page and map component
- */
-export async function fetchHomesForMap(filters?: {
-  unit?: string
-  caseManager?: string
-}): Promise<MapHome[]> {
-  console.log("🗺️ [Extension] Fetching homes for map display...")
-
-  let whereClause = "WHERE [Latitude] IS NOT NULL AND [Longitude] IS NOT NULL"
-  const params: any[] = []
-
-  if (filters?.unit && filters.unit !== "ALL") {
-    whereClause += ` AND [Unit] = @param${params.length}`
-    params.push(filters.unit)
-  }
-
-  if (filters?.caseManager && filters.caseManager !== "ALL") {
-    whereClause += ` AND [CaseManager] = @param${params.length}`
-    params.push(filters.caseManager)
-  }
-
-  // CRITICAL: Same query structure as fetchHomesList for consistency
-  const queryText = `
-   SELECT 
-     [Xref] as id,
-     [HomeName] as name,
-     [Street] as address,
-     [City],
-     [State], 
-     [Zip] as zipCode,
-     [Unit],
-     CAST([Latitude] AS FLOAT) as latitude,
-     CAST([Longitude] AS FLOAT) as longitude,
-     [HomePhone] as phoneNumber,
-     [CaseManager] as contactPersonName,
-     [CaseManagerEmail] as email,
-     [CaseManagerPhone] as contactPhone,
-     [LastSync] as lastSync
-   FROM SyncActiveHomes 
-   ${whereClause}
-   ORDER BY [HomeName]
- `
-
+export async function getHomesForMap(): Promise<MapHomeData[]> {
   try {
-    const results = await query<any>(queryText, params)
-    console.log(`✅ [Extension] Retrieved ${results.length} homes for map`)
+    const queryText = `
+      SELECT 
+        ID as id,
+        Name as name,
+        Address as address,
+        City as city,
+        State as state,
+        ZipCode as zipCode,
+        CAST(Latitude AS FLOAT) as latitude,
+        CAST(Longitude AS FLOAT) as longitude,
+        Unit as unit,
+        CaseManager as caseManager,
+        LastSync as lastSync,
+        Phone as phone,
+        Email as email,
+        ContactPerson as contactPerson
+      FROM SyncActiveHomes 
+      WHERE Latitude IS NOT NULL 
+        AND Longitude IS NOT NULL 
+        AND Latitude != 0 
+        AND Longitude != 0
+        AND Status = 'Active'
+      ORDER BY Name
+    `
 
-    // Filter out homes with invalid coordinates - CRITICAL for map display
-    const validHomes = results
-      .filter((home) => {
-        const lat = typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude))
-        const lng = typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude))
-
-        const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90
-        const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180
-
-        if (!isValidLat || !isValidLng) {
-          console.log(`⚠️ [Extension] Invalid coordinates for ${home.name}: ${lat}, ${lng}`)
-          return false
-        }
-
-        return true
-      })
-      .map((home) => ({
-        id: home.id || "",
-        name: home.name || "",
-        address: home.address || "",
-        City: home.City || "",
-        State: home.State || "",
-        zipCode: home.zipCode || "",
-        Unit: home.Unit || "",
-        latitude: typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude)),
-        longitude: typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude)),
-        phoneNumber: home.phoneNumber || "",
-        contactPersonName: home.contactPersonName || "~unassigned~",
-        email: home.email || "",
-        contactPhone: home.contactPhone || "",
-        lastSync: home.lastSync || "",
-      }))
-
-    console.log(`🔄 [Extension] Processed ${validHomes.length} valid homes for map`)
-    return validHomes
+    const results = await query<MapHomeData>(queryText)
+    return results
   } catch (error) {
-    console.error("❌ [Extension] Error fetching homes for map:", error)
+    console.error("Error fetching homes for map:", error)
     throw error
   }
 }
 
-/**
- * Calculate statistics about homes
- * Uses the locked database connection safely
- * STABILITY NOTE: This function is used by dashboard and stats endpoints
- */
-export async function calculateHomesStats(): Promise<HomeStats> {
-  console.log("📈 [Extension] Calculating homes statistics...")
-
-  const homes = await fetchHomesList()
-
-  const stats: HomeStats = {
-    total: homes.length,
-    withCoordinates: homes.filter((h) => h.latitude !== 0 && h.longitude !== 0).length,
-    byUnit: {},
-    byCaseManager: {},
-  }
-
-  // Calculate unit distribution
-  homes.forEach((home) => {
-    stats.byUnit[home.Unit] = (stats.byUnit[home.Unit] || 0) + 1
-  })
-
-  // Calculate case manager distribution
-  homes.forEach((home) => {
-    const manager = home.contactPersonName || "~unassigned~"
-    stats.byCaseManager[manager] = (stats.byCaseManager[manager] || 0) + 1
-  })
-
-  console.log("✅ [Extension] Statistics calculated:", stats)
-  return stats
-}
-
-/**
- * Get unique case managers for filtering
- * Uses the locked database connection safely
- * STABILITY NOTE: This function is used by filter dropdowns across the application
- */
-export async function getUniqueCaseManagers(): Promise<string[]> {
-  console.log("👥 [Extension] Fetching unique case managers...")
-
-  const queryText = `
-   SELECT DISTINCT [CaseManager] as manager
-   FROM SyncActiveHomes 
-   WHERE [CaseManager] IS NOT NULL
-   ORDER BY [CaseManager]
- `
-
+export async function getHomeStats(): Promise<{
+  totalHomes: number
+  activeHomes: number
+  homesWithCoordinates: number
+  recentlyUpdated: number
+}> {
   try {
-    const results = await query<{ manager: string }>(queryText)
-    const managers = results.map((r) => r.manager || "~unassigned~").filter((m) => m.trim() !== "")
+    const queryText = `
+      SELECT 
+        COUNT(*) as totalHomes,
+        SUM(CASE WHEN Status = 'Active' THEN 1 ELSE 0 END) as activeHomes,
+        SUM(CASE WHEN Latitude IS NOT NULL AND Longitude IS NOT NULL AND Latitude != 0 AND Longitude != 0 THEN 1 ELSE 0 END) as homesWithCoordinates,
+        SUM(CASE WHEN LastSync >= DATEADD(day, -7, GETDATE()) THEN 1 ELSE 0 END) as recentlyUpdated
+      FROM SyncActiveHomes
+    `
 
-    console.log(`✅ [Extension] Found ${managers.length} unique case managers`)
-    return managers
+    const results = await query(queryText)
+    return (
+      results[0] || {
+        totalHomes: 0,
+        activeHomes: 0,
+        homesWithCoordinates: 0,
+        recentlyUpdated: 0,
+      }
+    )
   } catch (error) {
-    console.error("❌ [Extension] Error fetching case managers:", error)
-    return []
+    console.error("Error fetching home stats:", error)
+    throw error
   }
 }
 
-// Export alias for compatibility - DO NOT REMOVE
-export const getHomesStatistics = calculateHomesStats
+export async function getUnits(): Promise<string[]> {
+  try {
+    const queryText = `
+      SELECT DISTINCT Unit 
+      FROM SyncActiveHomes 
+      WHERE Unit IS NOT NULL AND Unit != ''
+      ORDER BY Unit
+    `
+
+    const results = await query<{ Unit: string }>(queryText)
+    return results.map((r) => r.Unit)
+  } catch (error) {
+    console.error("Error fetching units:", error)
+    throw error
+  }
+}
+
+export async function getCaseManagers(): Promise<string[]> {
+  try {
+    const queryText = `
+      SELECT DISTINCT CaseManager 
+      FROM SyncActiveHomes 
+      WHERE CaseManager IS NOT NULL AND CaseManager != ''
+      ORDER BY CaseManager
+    `
+
+    const results = await query<{ CaseManager: string }>(queryText)
+    return results.map((r) => r.CaseManager)
+  } catch (error) {
+    console.error("Error fetching case managers:", error)
+    throw error
+  }
+}

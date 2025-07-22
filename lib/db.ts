@@ -194,6 +194,9 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
   }
 }
 
+// Add the missing export alias
+export const getDbConnection = getConnection
+
 export async function closeConnection() {
   if (pool && pool.connected) {
     await pool.close()
