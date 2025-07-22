@@ -32,7 +32,7 @@ interface HomesMapProps {
   selectedHome: MapHome | null
 }
 
-// Fix for default markers in Leaflet
+// Fix for default markers in Leaflet - using CDN URLs that work in production
 const DefaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -43,6 +43,7 @@ const DefaultIcon = L.icon({
   shadowSize: [41, 41],
 })
 
+// Apply the default icon to all markers
 L.Marker.prototype.options.icon = DefaultIcon
 
 // Custom hook to fit bounds when homes change
