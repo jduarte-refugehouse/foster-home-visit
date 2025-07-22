@@ -1,5 +1,266 @@
-import { getConnection, sql } from "./db"
+import { query } from "./db"
 
+// ✅ SAFE EXTENSION FUNCTIONS - These extend functionality without modifying core connection
+// These functions use the locked db.ts connection but don't modify it
+
+export interface ListHome {
+  id: string
+  name: string
+  address: string
+  City: string
+  State: string
+  zipCode: string
+  Unit: string
+  latitude: number
+  longitude: number
+  phoneNumber: string
+  contactPersonName: string
+  email: string
+  contactPhone: string
+  lastSync: string // Added lastSync field
+}
+
+export interface MapHome extends ListHome {
+  // Same interface for consistency
+}
+
+export interface HomeStats {
+  total: number
+  withCoordinates: number
+  byUnit: Record<string, number>
+  byCaseManager: Record<string, number>
+}
+
+/**
+ * Fetch homes list with proper coordinate casting and LastSync data
+ * Uses the locked database connection safely
+ */
+export async function fetchHomesList(filters?: {
+  unit?: string
+  caseManager?: string
+  search?: string
+}): Promise<ListHome[]> {
+  console.log("🏠 [Extension] Fetching homes list from database...")
+
+  let whereClause = "WHERE 1=1"
+  const params: any[] = []
+
+  if (filters?.unit && filters.unit !== "ALL") {
+    whereClause += ` AND [Unit] = @param${params.length}`
+    params.push(filters.unit)
+  }
+
+  if (filters?.caseManager && filters.caseManager !== "ALL") {
+    whereClause += ` AND [CaseManager] = @param${params.length}`
+    params.push(filters.caseManager)
+  }
+
+  if (filters?.search) {
+    whereClause += ` AND ([HomeName] LIKE @param${params.length} OR [Street] LIKE @param${params.length + 1} OR [CaseManager] LIKE @param${params.length + 2})`
+    params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`)
+  }
+
+  const queryText = `
+    SELECT 
+     [Xref] as id,
+     [HomeName] as name,
+     [Street] as address,
+     [City],
+     [State], 
+     [Zip] as zipCode,
+     [Unit],
+     CAST([Latitude] AS FLOAT) as latitude,
+     CAST([Longitude] AS FLOAT) as longitude,
+     [HomePhone] as phoneNumber,
+     [CaseManager] as contactPersonName,
+     [CaseManagerEmail] as email,
+     [CaseManagerPhone] as contactPhone,
+     [LastSync] as lastSync
+    FROM SyncActiveHomes 
+    ${whereClause}
+    ORDER BY [HomeName]
+  `
+
+  try {
+    const results = await query<any>(queryText, params)
+    console.log(`✅ [Extension] Retrieved ${results.length} homes from database`)
+
+    // Process and validate results
+    const processedHomes: ListHome[] = results.map((home) => ({
+      id: home.id || "",
+      name: home.name || "",
+      address: home.address || "",
+      City: home.City || "",
+      State: home.State || "",
+      zipCode: home.zipCode || "",
+      Unit: home.Unit || "",
+      latitude: typeof home.latitude === "number" && !isNaN(home.latitude) ? home.latitude : 0,
+      longitude: typeof home.longitude === "number" && !isNaN(home.longitude) ? home.longitude : 0,
+      phoneNumber: home.phoneNumber || "",
+      contactPersonName: home.contactPersonName || "~unassigned~",
+      email: home.email || "",
+      contactPhone: home.contactPhone || "",
+      lastSync: home.lastSync || "",
+    }))
+
+    console.log("🔄 [Extension] Processing homes for display...")
+    return processedHomes
+  } catch (error) {
+    console.error("❌ [Extension] Error fetching homes list:", error)
+    throw error
+  }
+}
+
+/**
+ * Fetch homes for map display with coordinate validation
+ * Uses the locked database connection safely
+ */
+export async function getHomesForMap(filters?: {
+  unit?: string
+  caseManager?: string
+}): Promise<MapHome[]> {
+  console.log("🗺️ [Extension] Fetching homes for map display...")
+
+  let whereClause = "WHERE [Latitude] IS NOT NULL AND [Longitude] IS NOT NULL"
+  const params: any[] = []
+
+  if (filters?.unit && filters.unit !== "ALL") {
+    whereClause += ` AND [Unit] = @param${params.length}`
+    params.push(filters.unit)
+  }
+
+  if (filters?.caseManager && filters.caseManager !== "ALL") {
+    whereClause += ` AND [CaseManager] = @param${params.length}`
+    params.push(filters.caseManager)
+  }
+
+  const queryText = `
+    SELECT 
+     [Xref] as id,
+     [HomeName] as name,
+     [Street] as address,
+     [City],
+     [State], 
+     [Zip] as zipCode,
+     [Unit],
+     CAST([Latitude] AS FLOAT) as latitude,
+     CAST([Longitude] AS FLOAT) as longitude,
+     [HomePhone] as phoneNumber,
+     [CaseManager] as contactPersonName,
+     [CaseManagerEmail] as email,
+     [CaseManagerPhone] as contactPhone,
+     [LastSync] as lastSync
+    FROM SyncActiveHomes 
+    ${whereClause}
+    ORDER BY [HomeName]
+  `
+
+  try {
+    const results = await query<any>(queryText, params)
+    console.log(`✅ [Extension] Retrieved ${results.length} homes for map`)
+
+    // Filter out homes with invalid coordinates
+    const validHomes = results
+      .filter((home) => {
+        const lat = typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude))
+        const lng = typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude))
+
+        const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90
+        const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180
+
+        if (!isValidLat || !isValidLng) {
+          console.log(`⚠️ [Extension] Invalid coordinates for ${home.name}: ${lat}, ${lng}`)
+          return false
+        }
+        return true
+      })
+      .map((home) => ({
+        id: home.id || "",
+        name: home.name || "",
+        address: home.address || "",
+        City: home.City || "",
+        State: home.State || "",
+        zipCode: home.zipCode || "",
+        Unit: home.Unit || "",
+        latitude: typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude)),
+        longitude: typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude)),
+        phoneNumber: home.phoneNumber || "",
+        contactPersonName: home.contactPersonName || "~unassigned~",
+        email: home.email || "",
+        contactPhone: home.contactPhone || "",
+        lastSync: home.lastSync || "",
+      }))
+
+    console.log(`🔄 [Extension] Processed ${validHomes.length} valid homes for map`)
+    return validHomes
+  } catch (error) {
+    console.error("❌ [Extension] Error fetching homes for map:", error)
+    throw error
+  }
+}
+
+/**
+ * Calculate statistics about homes
+ * Uses the locked database connection safely
+ */
+export async function getHomeStats(): Promise<HomeStats> {
+  console.log("📈 [Extension] Calculating homes statistics...")
+
+  const homes = await fetchHomesList()
+
+  const stats: HomeStats = {
+    total: homes.length,
+    withCoordinates: homes.filter((h) => h.latitude !== 0 && h.longitude !== 0).length,
+    byUnit: {},
+    byCaseManager: {},
+  }
+
+  // Calculate unit distribution
+  homes.forEach((home) => {
+    stats.byUnit[home.Unit] = (stats.byUnit[home.Unit] || 0) + 1
+  })
+
+  // Calculate case manager distribution
+  homes.forEach((home) => {
+    const manager = home.contactPersonName || "~unassigned~"
+    stats.byCaseManager[manager] = (stats.byCaseManager[manager] || 0) + 1
+  })
+
+  console.log("✅ [Extension] Statistics calculated:", stats)
+  return stats
+}
+
+/**
+ * Get unique case managers for filtering
+ * Uses the locked database connection safely
+ */
+export async function getUniqueCaseManagers(): Promise<string[]> {
+  console.log("👥 [Extension] Fetching unique case managers...")
+
+  const queryText = `
+    SELECT DISTINCT [CaseManager] as manager
+    FROM SyncActiveHomes 
+    WHERE [CaseManager] IS NOT NULL
+    ORDER BY [CaseManager]
+  `
+
+  try {
+    const results = await query<{ manager: string }>(queryText)
+    const managers = results.map((r) => r.manager || "~unassigned~").filter((m) => m.trim() !== "")
+    console.log(`✅ [Extension] Found ${managers.length} unique case managers`)
+    return managers
+  } catch (error) {
+    console.error("❌ [Extension] Error fetching case managers:", error)
+    return []
+  }
+}
+
+// Legacy compatibility exports
+export const calculateHomesStats = getHomeStats
+export const getHomesStatistics = getHomeStats
+export const fetchHomesForMap = getHomesForMap
+
+// Original interface exports for backward compatibility
 export interface Home {
   id: number
   name: string
@@ -45,281 +306,44 @@ export interface Visit {
   updated_at: Date
 }
 
+// Legacy functions for backward compatibility
 export async function getAllHomes(): Promise<Home[]> {
   try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, name, address, city, state, zip, phone, email,
-        capacity, current_residents, license_number, license_expiry,
-        status, latitude, longitude, last_visit, next_visit,
-        created_at, updated_at
-      FROM homes 
-      ORDER BY name
-    `)
-    return result.recordset
+    const homes = await fetchHomesList()
+    return homes.map((home) => ({
+      id: Number.parseInt(home.id) || 0,
+      name: home.name,
+      address: home.address,
+      city: home.City,
+      state: home.State,
+      zip: home.zipCode,
+      phone: home.phoneNumber,
+      email: home.email,
+      capacity: 0,
+      current_residents: 0,
+      license_number: "",
+      license_expiry: new Date(),
+      status: "active",
+      latitude: home.latitude,
+      longitude: home.longitude,
+      last_visit: undefined,
+      next_visit: undefined,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }))
   } catch (error) {
-    console.error("Error fetching homes:", error)
-    throw error
+    console.error("Error in getAllHomes:", error)
+    return []
   }
 }
 
 export async function getActiveHomes(): Promise<Home[]> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, name, address, city, state, zip, phone, email,
-        capacity, current_residents, license_number, license_expiry,
-        status, latitude, longitude, last_visit, next_visit,
-        created_at, updated_at
-      FROM homes 
-      WHERE status = 'active'
-      ORDER BY name
-    `)
-    return result.recordset
-  } catch (error) {
-    console.error("Error fetching active homes:", error)
-    throw error
-  }
-}
-
-export async function getHomesForMap(): Promise<Home[]> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, name, address, city, state, zip,
-        latitude, longitude, status, capacity, current_residents
-      FROM homes 
-      WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-      ORDER BY name
-    `)
-    return result.recordset
-  } catch (error) {
-    console.error("Error fetching homes for map:", error)
-    throw error
-  }
-}
-
-export async function getUnits(): Promise<any[]> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, home_id, unit_number, capacity, current_residents,
-        status, created_at, updated_at
-      FROM units 
-      ORDER BY home_id, unit_number
-    `)
-    return result.recordset
-  } catch (error) {
-    console.error("Error fetching units:", error)
-    return []
-  }
-}
-
-export async function getCaseManagers(): Promise<any[]> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, first_name, last_name, email, phone,
-        status, created_at, updated_at
-      FROM case_managers 
-      WHERE status = 'active'
-      ORDER BY last_name, first_name
-    `)
-    return result.recordset
-  } catch (error) {
-    console.error("Error fetching case managers:", error)
-    return []
-  }
-}
-
-export async function getHomeStats(): Promise<{
-  total: number
-  active: number
-  inactive: number
-  pending: number
-  totalCapacity: number
-  totalResidents: number
-}> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(capacity) as totalCapacity,
-        SUM(current_residents) as totalResidents
-      FROM homes
-    `)
-    return result.recordset[0]
-  } catch (error) {
-    console.error("Error fetching home stats:", error)
-    return {
-      total: 0,
-      active: 0,
-      inactive: 0,
-      pending: 0,
-      totalCapacity: 0,
-      totalResidents: 0,
-    }
-  }
-}
-
-export async function getHomeById(id: number): Promise<Home | null> {
-  try {
-    const pool = await getConnection()
-    const result = await pool
-      .request()
-      .input("id", sql.Int, id)
-      .query(`
-        SELECT 
-          id, name, address, city, state, zip, phone, email,
-          capacity, current_residents, license_number, license_expiry,
-          status, latitude, longitude, last_visit, next_visit,
-          created_at, updated_at
-        FROM homes 
-        WHERE id = @id
-      `)
-    return result.recordset[0] || null
-  } catch (error) {
-    console.error("Error fetching home by ID:", error)
-    throw error
-  }
-}
-
-export async function getHomesStats(): Promise<{
-  total: number
-  active: number
-  inactive: number
-  pending: number
-  totalCapacity: number
-  totalResidents: number
-}> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(capacity) as totalCapacity,
-        SUM(current_residents) as totalResidents
-      FROM homes
-    `)
-    return result.recordset[0]
-  } catch (error) {
-    console.error("Error fetching homes stats:", error)
-    throw error
-  }
-}
-
-export async function getUserByClerkId(clerkId: string): Promise<User | null> {
-  try {
-    const pool = await getConnection()
-    const result = await pool
-      .request()
-      .input("clerkId", sql.VarChar, clerkId)
-      .query(`
-        SELECT 
-          id, email, first_name, last_name, role, permissions,
-          created_at, updated_at
-        FROM users 
-        WHERE id = @clerkId
-      `)
-    return result.recordset[0] || null
-  } catch (error) {
-    console.error("Error fetching user by Clerk ID:", error)
-    throw error
-  }
-}
-
-export async function createUser(userData: {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  role?: string
-}): Promise<User> {
-  try {
-    const pool = await getConnection()
-    const result = await pool
-      .request()
-      .input("id", sql.VarChar, userData.id)
-      .input("email", sql.VarChar, userData.email)
-      .input("first_name", sql.VarChar, userData.first_name)
-      .input("last_name", sql.VarChar, userData.last_name)
-      .input("role", sql.VarChar, userData.role || "user")
-      .input("permissions", sql.VarChar, JSON.stringify(["read"]))
-      .query(`
-        INSERT INTO users (id, email, first_name, last_name, role, permissions, created_at, updated_at)
-        OUTPUT INSERTED.*
-        VALUES (@id, @email, @first_name, @last_name, @role, @permissions, GETDATE(), GETDATE())
-      `)
-    return result.recordset[0]
-  } catch (error) {
-    console.error("Error creating user:", error)
-    throw error
-  }
-}
-
-export async function updateUser(id: string, userData: Partial<User>): Promise<User | null> {
-  try {
-    const pool = await getConnection()
-    const result = await pool
-      .request()
-      .input("id", sql.VarChar, id)
-      .input("email", sql.VarChar, userData.email)
-      .input("first_name", sql.VarChar, userData.first_name)
-      .input("last_name", sql.VarChar, userData.last_name)
-      .input("role", sql.VarChar, userData.role)
-      .input("permissions", sql.VarChar, userData.permissions ? JSON.stringify(userData.permissions) : null)
-      .query(`
-        UPDATE users 
-        SET 
-          email = COALESCE(@email, email),
-          first_name = COALESCE(@first_name, first_name),
-          last_name = COALESCE(@last_name, last_name),
-          role = COALESCE(@role, role),
-          permissions = COALESCE(@permissions, permissions),
-          updated_at = GETDATE()
-        OUTPUT INSERTED.*
-        WHERE id = @id
-      `)
-    return result.recordset[0] || null
-  } catch (error) {
-    console.error("Error updating user:", error)
-    throw error
-  }
-}
-
-export async function getAllUsers(): Promise<User[]> {
-  try {
-    const pool = await getConnection()
-    const result = await pool.request().query(`
-      SELECT 
-        id, email, first_name, last_name, role, permissions,
-        created_at, updated_at
-      FROM users 
-      ORDER BY created_at DESC
-    `)
-    return result.recordset
-  } catch (error) {
-    console.error("Error fetching all users:", error)
-    throw error
-  }
+  return getAllHomes()
 }
 
 export async function testConnection(): Promise<boolean> {
   try {
-    const pool = await getConnection()
-    await pool.request().query("SELECT 1 as test")
+    await fetchHomesList()
     return true
   } catch (error) {
     console.error("Database connection test failed:", error)

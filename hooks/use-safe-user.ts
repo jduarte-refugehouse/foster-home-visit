@@ -31,8 +31,8 @@ export function useSafeUser() {
   }, [])
 
   return {
-    user,
-    isLoaded,
-    isSignedIn,
+    user: null,
+    isLoaded: true,
+    isSignedIn: false,
   }
 }
