@@ -14,6 +14,10 @@ export interface AppUser {
   is_active: boolean
   created_at: Date
   updated_at: Date
+  // Core organizational role
+  core_role: "admin" | "staff" | "external" | "foster_parent"
+  department?: string
+  job_title?: string
 }
 
 export interface MicroserviceApp {
@@ -30,9 +34,13 @@ export interface UserRole {
   user_id: string
   microservice_id: string
   role_name: string
+  role_display_name: string
   granted_by: string
   granted_at: Date
   is_active: boolean
+  // Role hierarchy and inheritance
+  parent_role_id?: string
+  role_level: number // 1=basic, 2=supervisor, 3=admin, 4=system_admin
 }
 
 export interface Permission {
@@ -42,6 +50,9 @@ export interface Permission {
   permission_name: string
   description: string
   category: string
+  // Permission grouping and dependencies
+  permission_group: string
+  requires_permissions?: string[] // JSON array of prerequisite permissions
 }
 
 export interface UserPermission {
@@ -52,20 +63,69 @@ export interface UserPermission {
   granted_at: Date
   expires_at?: Date
   is_active: boolean
+  // Context-specific permissions
+  context_type?: string // "all", "unit", "region", "specific_homes"
+  context_value?: string // JSON object with context details
 }
 
-export interface User {
-  id: string
-  clerk_user_id: string
-  email: string
-  first_name?: string
-  last_name?: string
-  role: "admin" | "user" | "supervisor"
-  status: "active" | "inactive" | "pending"
-  created_at: Date
-  updated_at: Date
-  last_login?: Date
-}
+// Core organizational roles that apply across all microservices
+export const CORE_ROLES = {
+  SYSTEM_ADMIN: "system_admin",
+  AGENCY_ADMIN: "agency_admin",
+  STAFF: "staff",
+  EXTERNAL: "external",
+  FOSTER_PARENT: "foster_parent",
+} as const
+
+// Home Visits specific roles
+export const HOME_VISITS_ROLES = {
+  // Administrative roles
+  SCHEDULING_ADMIN: "scheduling_admin",
+  QA_DIRECTOR: "qa_director",
+
+  // Operational roles
+  HOME_VISIT_LIAISON: "home_visit_liaison",
+  CASE_MANAGER: "case_manager",
+  SUPERVISOR: "supervisor",
+
+  // Limited access roles
+  VIEWER: "viewer",
+  FOSTER_PARENT: "foster_parent",
+} as const
+
+// Home Visits specific permissions
+export const HOME_VISITS_PERMISSIONS = {
+  // Scheduling permissions
+  SCHEDULE_CREATE: "schedule_create",
+  SCHEDULE_EDIT: "schedule_edit",
+  SCHEDULE_DELETE: "schedule_delete",
+  SCHEDULE_VIEW_ALL: "schedule_view_all",
+
+  // Home visit permissions
+  VISIT_CONDUCT: "visit_conduct",
+  VISIT_REPORT_CREATE: "visit_report_create",
+  VISIT_REPORT_EDIT: "visit_report_edit",
+  VISIT_REPORT_VIEW: "visit_report_view",
+  VISIT_REPORT_APPROVE: "visit_report_approve",
+
+  // Case management permissions
+  CASE_VIEW_ASSIGNED: "case_view_assigned",
+  CASE_VIEW_ALL: "case_view_all",
+  CASE_EDIT: "case_edit",
+
+  // Quality assurance permissions
+  QA_REVIEW_ALL: "qa_review_all",
+  QA_APPROVE: "qa_approve",
+  QA_REPORTS: "qa_reports",
+
+  // Administrative permissions
+  USER_MANAGE: "user_manage",
+  SYSTEM_CONFIG: "system_config",
+
+  // Basic permissions
+  HOME_VIEW: "home_view",
+  DASHBOARD_VIEW: "dashboard_view",
+} as const
 
 export async function getCurrentAppUser(): Promise<AppUser | null> {
   const user = await currentUser()
@@ -80,34 +140,39 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
   }
 }
 
-export async function getUserRolesForMicroservice(userId: string, microserviceCode: string): Promise<string[]> {
+export async function getUserRolesForMicroservice(userId: string, microserviceCode: string): Promise<UserRole[]> {
   try {
-    const result = await query<{ role_name: string }>(
-      `SELECT ur.role_name 
+    const result = await query<UserRole>(
+      `SELECT ur.*, ma.app_code, ma.app_name 
        FROM user_roles ur
        INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
-       WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND ur.is_active = 1`,
+       WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND ur.is_active = 1
+       ORDER BY ur.role_level DESC, ur.granted_at ASC`,
       [userId, microserviceCode],
     )
-    return result.map((r) => r.role_name)
+    return result
   } catch (error) {
     console.error("Error fetching user roles:", error)
     return []
   }
 }
 
-export async function getUserPermissionsForMicroservice(userId: string, microserviceCode: string): Promise<string[]> {
+export async function getUserPermissionsForMicroservice(
+  userId: string,
+  microserviceCode: string,
+): Promise<Permission[]> {
   try {
-    const result = await query<{ permission_code: string }>(
-      `SELECT p.permission_code
+    const result = await query<Permission>(
+      `SELECT DISTINCT p.*
        FROM user_permissions up
        INNER JOIN permissions p ON up.permission_id = p.id
        INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
        WHERE up.user_id = @param0 AND ma.app_code = @param1 
-       AND up.is_active = 1 AND (up.expires_at IS NULL OR up.expires_at > GETDATE())`,
+       AND up.is_active = 1 AND (up.expires_at IS NULL OR up.expires_at > GETDATE())
+       ORDER BY p.category, p.permission_code`,
       [userId, microserviceCode],
     )
-    return result.map((r) => r.permission_code)
+    return result
   } catch (error) {
     console.error("Error fetching user permissions:", error)
     return []
@@ -118,37 +183,112 @@ export async function hasPermission(
   userId: string,
   permissionCode: string,
   microserviceCode: string = CURRENT_MICROSERVICE,
+  context?: { type: string; value: any },
 ): Promise<boolean> {
-  const permissions = await getUserPermissionsForMicroservice(userId, microserviceCode)
-  return permissions.includes(permissionCode)
-}
-
-export async function hasRole(
-  userId: string,
-  roleName: string,
-  microserviceCode: string = CURRENT_MICROSERVICE,
-): Promise<boolean> {
-  const roles = await getUserRolesForMicroservice(userId, microserviceCode)
-  return roles.includes(roleName)
-}
-
-export async function isUserAdmin(userId: string): Promise<boolean> {
-  // Check if user has admin role in ANY microservice or is refugehouse.org user
   try {
-    const user = await query<AppUser>("SELECT email FROM app_users WHERE id = @param0", [userId])
-    if (user[0]?.email?.endsWith("@refugehouse.org")) {
+    // Check direct permission
+    const directPermission = await query<{ count: number }>(
+      `SELECT COUNT(*) as count
+       FROM user_permissions up
+       INNER JOIN permissions p ON up.permission_id = p.id
+       INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+       WHERE up.user_id = @param0 AND ma.app_code = @param1 AND p.permission_code = @param2
+       AND up.is_active = 1 AND (up.expires_at IS NULL OR up.expires_at > GETDATE())`,
+      [userId, microserviceCode, permissionCode],
+    )
+
+    if (directPermission[0]?.count > 0) {
       return true
     }
 
-    const adminRoles = await query<{ count: number }>(
-      `SELECT COUNT(*) as count FROM user_roles 
-       WHERE user_id = @param0 AND role_name = 'admin' AND is_active = 1`,
-      [userId],
+    // Check role-based permissions (roles can inherit permissions)
+    const rolePermission = await query<{ count: number }>(
+      `SELECT COUNT(*) as count
+       FROM user_roles ur
+       INNER JOIN role_permissions rp ON ur.role_name = rp.role_name
+       INNER JOIN permissions p ON rp.permission_id = p.id
+       INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+       WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND p.permission_code = @param2
+       AND ur.is_active = 1`,
+      [userId, microserviceCode, permissionCode],
     )
-    return adminRoles[0]?.count > 0
+
+    return rolePermission[0]?.count > 0
   } catch (error) {
-    console.error("Error checking admin status:", error)
+    console.error("Error checking permission:", error)
     return false
+  }
+}
+
+export async function assignUserToRole(
+  userId: string,
+  roleName: string,
+  microserviceCode: string,
+  grantedBy: string,
+  context?: { type: string; value: any },
+): Promise<void> {
+  try {
+    const microservice = await query<{ id: string }>("SELECT id FROM microservice_apps WHERE app_code = @param0", [
+      microserviceCode,
+    ])
+
+    if (microservice.length === 0) {
+      throw new Error(`Microservice ${microserviceCode} not found`)
+    }
+
+    const microserviceId = microservice[0].id
+
+    // Get role details
+    const roleDetails = await query<{ role_level: number; role_display_name: string }>(
+      `SELECT role_level, role_display_name FROM role_definitions 
+       WHERE role_name = @param0 AND microservice_id = @param1`,
+      [roleName, microserviceId],
+    )
+
+    if (roleDetails.length === 0) {
+      throw new Error(`Role ${roleName} not found for microservice ${microserviceCode}`)
+    }
+
+    // Assign role
+    await query(
+      `INSERT INTO user_roles (user_id, microservice_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active)
+       VALUES (@param0, @param1, @param2, @param3, @param4, @param5, GETDATE(), 1)`,
+      [userId, microserviceId, roleName, roleDetails[0].role_display_name, roleDetails[0].role_level, grantedBy],
+    )
+
+    // Auto-assign role-based permissions
+    await assignRolePermissions(userId, roleName, microserviceId, grantedBy)
+  } catch (error) {
+    console.error("Error assigning user to role:", error)
+    throw error
+  }
+}
+
+async function assignRolePermissions(
+  userId: string,
+  roleName: string,
+  microserviceId: string,
+  grantedBy: string,
+): Promise<void> {
+  try {
+    // Get all permissions for this role
+    const rolePermissions = await query<{ permission_id: string }>(
+      `SELECT permission_id FROM role_permissions 
+       WHERE role_name = @param0 AND microservice_id = @param1`,
+      [roleName, microserviceId],
+    )
+
+    // Assign each permission
+    for (const perm of rolePermissions) {
+      await query(
+        `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
+         VALUES (@param0, @param1, @param2, GETDATE(), 1)`,
+        [userId, perm.permission_id, grantedBy],
+      )
+    }
+  } catch (error) {
+    console.error("Error assigning role permissions:", error)
+    throw error
   }
 }
 
@@ -173,17 +313,18 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
       )
       userId = existingUser[0].id
     } else {
-      // Create new user
+      // Create new user with core role determination
+      const coreRole = determineCoreRole(email)
       const newUserResult = await query<{ id: string }>(
-        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, is_active, created_at, updated_at)
+        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, core_role, is_active, created_at, updated_at)
          OUTPUT INSERTED.id
-         VALUES (@param0, @param1, @param2, @param3, 1, GETDATE(), GETDATE())`,
-        [clerkUser.id, email, firstName, lastName],
+         VALUES (@param0, @param1, @param2, @param3, @param4, 1, GETDATE(), GETDATE())`,
+        [clerkUser.id, email, firstName, lastName, coreRole],
       )
       userId = newUserResult[0].id
 
-      // Assign default roles based on email domain
-      await assignDefaultRoles(userId, email)
+      // Assign microservice-specific roles based on email and core role
+      await assignDefaultMicroserviceRoles(userId, email, coreRole)
     }
 
     // Return the updated/created user
@@ -195,7 +336,19 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
   }
 }
 
-async function assignDefaultRoles(userId: string, email: string): Promise<void> {
+function determineCoreRole(email: string): string {
+  if (email === "jduarte@refugehouse.org") {
+    return CORE_ROLES.SYSTEM_ADMIN
+  }
+
+  if (email.endsWith("@refugehouse.org")) {
+    return CORE_ROLES.STAFF
+  }
+
+  return CORE_ROLES.EXTERNAL
+}
+
+async function assignDefaultMicroserviceRoles(userId: string, email: string, coreRole: string): Promise<void> {
   try {
     // Get current microservice ID
     const microservice = await query<{ id: string }>("SELECT id FROM microservice_apps WHERE app_code = @param0", [
@@ -209,52 +362,115 @@ async function assignDefaultRoles(userId: string, email: string): Promise<void> 
 
     const microserviceId = microservice[0].id
 
-    // Assign roles based on email domain
-    if (email.endsWith("@refugehouse.org")) {
-      // Internal users get admin role
-      await query(
-        `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
-         VALUES (@param0, @param1, 'admin', 'system', GETDATE(), 1)`,
-        [userId, microserviceId],
-      )
-
-      // Also assign all permissions for this microservice
-      const permissions = await query<{ id: string }>("SELECT id FROM permissions WHERE microservice_id = @param0", [
-        microserviceId,
-      ])
-
-      for (const permission of permissions) {
-        await query(
-          `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
-           VALUES (@param0, @param1, 'system', GETDATE(), 1)`,
-          [userId, permission.id],
-        )
-      }
-    } else {
-      // External users get foster_parent role
-      await query(
-        `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
-         VALUES (@param0, @param1, 'foster_parent', 'system', GETDATE(), 1)`,
-        [userId, microserviceId],
-      )
-
-      // Assign basic permissions for foster parents
-      const basicPermissions = await query<{ id: string }>(
-        `SELECT id FROM permissions 
-         WHERE microservice_id = @param0 AND permission_code IN ('view_homes', 'view_dashboard')`,
-        [microserviceId],
-      )
-
-      for (const permission of basicPermissions) {
-        await query(
-          `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
-           VALUES (@param0, @param1, 'system', GETDATE(), 1)`,
-          [userId, permission.id],
-        )
-      }
+    // Assign roles based on specific email addresses (your examples)
+    if (email === "jduarte@refugehouse.org") {
+      await assignUserToRole(userId, HOME_VISITS_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
+    } else if (email === "mgorman@refugehouse.org") {
+      await assignUserToRole(userId, HOME_VISITS_ROLES.SCHEDULING_ADMIN, CURRENT_MICROSERVICE, "system")
+    } else if (email === "ggroman@refugehouse.org") {
+      await assignUserToRole(userId, HOME_VISITS_ROLES.HOME_VISIT_LIAISON, CURRENT_MICROSERVICE, "system")
+    } else if (email === "hsartin@refugehouse.org") {
+      await assignUserToRole(userId, HOME_VISITS_ROLES.CASE_MANAGER, CURRENT_MICROSERVICE, "system")
+    } else if (email === "smathis@refugehouse.org") {
+      await assignUserToRole(userId, HOME_VISITS_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
+    } else if (coreRole === CORE_ROLES.STAFF) {
+      // Default staff role
+      await assignUserToRole(userId, HOME_VISITS_ROLES.VIEWER, CURRENT_MICROSERVICE, "system")
+    } else if (coreRole === CORE_ROLES.EXTERNAL) {
+      // External users need invitation
+      await assignUserToRole(userId, HOME_VISITS_ROLES.FOSTER_PARENT, CURRENT_MICROSERVICE, "system")
     }
   } catch (error) {
-    console.error("Error assigning default roles:", error)
+    console.error("Error assigning default microservice roles:", error)
+  }
+}
+
+export async function getUserProfile(userId: string): Promise<{
+  user: AppUser
+  roles: UserRole[]
+  permissions: Permission[]
+  microservices: string[]
+}> {
+  try {
+    const user = await query<AppUser>("SELECT * FROM app_users WHERE id = @param0", [userId])
+
+    if (user.length === 0) {
+      throw new Error("User not found")
+    }
+
+    const roles = await query<UserRole>(
+      `SELECT ur.*, ma.app_name, ma.app_code
+       FROM user_roles ur
+       INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
+       WHERE ur.user_id = @param0 AND ur.is_active = 1
+       ORDER BY ma.app_name, ur.role_level DESC`,
+      [userId],
+    )
+
+    const permissions = await query<Permission>(
+      `SELECT DISTINCT p.*, ma.app_name, ma.app_code
+       FROM user_permissions up
+       INNER JOIN permissions p ON up.permission_id = p.id
+       INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+       WHERE up.user_id = @param0 AND up.is_active = 1
+       ORDER BY ma.app_name, p.category, p.permission_code`,
+      [userId],
+    )
+
+    const microservices = [...new Set(roles.map((r) => r.microservice_id))]
+
+    return {
+      user: user[0],
+      roles,
+      permissions,
+      microservices,
+    }
+  } catch (error) {
+    console.error("Error fetching user profile:", error)
+    throw error
+  }
+}
+
+// Helper function to check if user can perform action in specific context
+export async function canUserPerformAction(
+  userId: string,
+  action: string,
+  context: {
+    microservice: string
+    resourceType?: string
+    resourceId?: string
+    unitId?: string
+  },
+): Promise<boolean> {
+  try {
+    // Check if user has the required permission
+    const hasDirectPermission = await hasPermission(userId, action, context.microservice)
+
+    if (!hasDirectPermission) {
+      return false
+    }
+
+    // Check context-specific restrictions
+    if (context.unitId) {
+      const contextPermission = await query<{ count: number }>(
+        `SELECT COUNT(*) as count
+         FROM user_permissions up
+         INNER JOIN permissions p ON up.permission_id = p.id
+         INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+         WHERE up.user_id = @param0 AND ma.app_code = @param1 AND p.permission_code = @param2
+         AND up.is_active = 1 
+         AND (up.context_type IS NULL OR up.context_type = 'all' 
+              OR (up.context_type = 'unit' AND JSON_VALUE(up.context_value, '$.unit_id') = @param3))`,
+        [userId, context.microservice, action, context.unitId],
+      )
+
+      return contextPermission[0]?.count > 0
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error checking user action permission:", error)
+    return false
   }
 }
 
@@ -295,11 +511,16 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
         u.email,
         u.first_name,
         u.last_name,
+        u.core_role,
+        u.department,
+        u.job_title,
         u.is_active,
         u.created_at,
         ma.app_name as microservice_name,
         ma.app_code as microservice_code,
         ur.role_name,
+        ur.role_display_name,
+        ur.role_level,
         STRING_AGG(p.permission_code, ', ') as permissions
       FROM app_users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = 1
@@ -307,9 +528,9 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
       LEFT JOIN user_permissions up ON u.id = up.user_id AND up.is_active = 1
       LEFT JOIN permissions p ON up.permission_id = p.id
       WHERE u.is_active = 1
-      GROUP BY u.id, u.email, u.first_name, u.last_name, u.is_active, u.created_at, 
-               ma.app_name, ma.app_code, ur.role_name
-      ORDER BY u.email, ma.app_name
+      GROUP BY u.id, u.email, u.first_name, u.last_name, u.core_role, u.department, u.job_title,
+               u.is_active, u.created_at, ma.app_name, ma.app_code, ur.role_name, ur.role_display_name, ur.role_level
+      ORDER BY u.email, ma.app_name, ur.role_level DESC
     `)
     return result
   } catch (error) {
@@ -318,6 +539,7 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
   }
 }
 
+// Legacy functions for backward compatibility
 export async function createUser(userData: {
   clerk_user_id: string
   email: string
@@ -346,7 +568,7 @@ export async function createUser(userData: {
   return userId
 }
 
-export async function getUserByClerkId(clerkUserId: string): Promise<User | null> {
+export async function getUserByClerkId(clerkUserId: string): Promise<any | null> {
   const pool = await getDbConnection()
 
   const result = await pool
@@ -366,7 +588,7 @@ export async function updateUserLastLogin(clerkUserId: string): Promise<void> {
     .query("UPDATE users SET last_login = GETDATE(), updated_at = GETDATE() WHERE clerk_user_id = @clerk_user_id")
 }
 
-export async function getAllUsers(): Promise<User[]> {
+export async function getAllUsers(): Promise<any[]> {
   const pool = await getDbConnection()
 
   const result = await pool.request().query("SELECT * FROM users ORDER BY created_at DESC")

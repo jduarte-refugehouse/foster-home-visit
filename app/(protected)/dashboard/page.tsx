@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { usePermissions } from "@/hooks/use-permissions"
-import { AdminDashboard } from "@/components/dashboards/admin-dashboard"
+import { SchedulingAdminDashboard } from "@/components/dashboards/scheduling-admin-dashboard"
+import { QADirectorDashboard } from "@/components/dashboards/qa-director-dashboard"
+import { CaseManagerDashboard } from "@/components/dashboards/case-manager-dashboard"
+import { HomeVisitLiaisonDashboard } from "@/components/dashboards/home-visit-liaison-dashboard"
 import { StaffDashboard } from "@/components/dashboards/staff-dashboard"
 import { ExternalUserDashboard } from "@/components/dashboards/external-user-dashboard"
 import { NoPermissionsDashboard } from "@/components/dashboards/no-permissions-dashboard"
@@ -101,20 +104,33 @@ export default function DashboardPage() {
   }
 
   // Determine which dashboard to show based on roles and permissions
-  if (isAdmin) {
-    return <AdminDashboard />
-  }
+  const primaryRole = roles[0]?.roleName
 
-  if (permissions.includes("view_homes")) {
-    return <StaffDashboard />
-  }
+  switch (primaryRole) {
+    case "scheduling_admin":
+      return <SchedulingAdminDashboard />
 
-  if (roles.length > 0 || permissions.length > 0) {
-    return <ExternalUserDashboard />
-  }
+    case "qa_director":
+      return <QADirectorDashboard />
 
-  // User has no permissions
-  return <NoPermissionsDashboard />
+    case "case_manager":
+      return <CaseManagerDashboard />
+
+    case "home_visit_liaison":
+      return <HomeVisitLiaisonDashboard />
+
+    default:
+      // Fallback based on permissions
+      if (permissions.includes("view_homes")) {
+        return <StaffDashboard />
+      }
+
+      if (roles.length > 0 || permissions.length > 0) {
+        return <ExternalUserDashboard />
+      }
+
+      return <NoPermissionsDashboard />
+  }
 
   if (loading) {
     return (
