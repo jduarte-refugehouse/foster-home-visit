@@ -292,80 +292,98 @@ function setStoredUserType(userType: keyof typeof TEST_USERS) {
   }
 }
 
+// Create default empty permissions object
+const createDefaultPermissions = (): UserPermissions => ({
+  userId: null,
+  email: null,
+  coreRole: null,
+  roles: [],
+  permissions: [],
+  isLoaded: false,
+  isSystemAdmin: false,
+  isAgencyAdmin: false,
+  hasRole: () => false,
+  hasPermission: () => false,
+  canPerformAction: () => false,
+  getRolesForMicroservice: () => [],
+  getPermissionsForMicroservice: () => [],
+})
+
 export function usePermissions(): UserPermissions {
-  const [permissionData, setPermissionData] = useState<UserPermissions>({
-    userId: null,
-    email: null,
-    coreRole: null,
-    roles: [],
-    permissions: [],
-    isLoaded: false,
-    isSystemAdmin: false,
-    isAgencyAdmin: false,
-    hasRole: () => false,
-    hasPermission: () => false,
-    canPerformAction: () => false,
-    getRolesForMicroservice: () => [],
-    getPermissionsForMicroservice: () => [],
-  })
+  const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions)
 
   useEffect(() => {
     // Only run on client side
     if (typeof window === "undefined") return
 
-    const testUserKey = getStoredUserType()
-    const userData = TEST_USERS[testUserKey] || TEST_USERS.hsartin
+    try {
+      const testUserKey = getStoredUserType()
+      const userData = TEST_USERS[testUserKey] || TEST_USERS.hsartin
 
-    const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
-      return userData.roles.some((role) => role.roleName === roleName && role.microservice === microservice)
-    }
-
-    const hasPermission = (permissionCode: string, microservice = "home-visits"): boolean => {
-      return userData.permissions.some(
-        (perm) => perm.permissionCode === permissionCode && perm.microservice === microservice,
-      )
-    }
-
-    const canPerformAction = (action: string, context?: any): boolean => {
-      // Check if user has the specific permission
-      if (hasPermission(action)) {
-        return true
+      const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
+        if (!userData.roles || !Array.isArray(userData.roles)) return false
+        return userData.roles.some((role) => role.roleName === roleName && role.microservice === microservice)
       }
 
-      // Check role-based permissions
-      if (userData.coreRole === "system_admin") {
-        return true
+      const hasPermission = (permissionCode: string, microservice = "home-visits"): boolean => {
+        if (!userData.permissions || !Array.isArray(userData.permissions)) return false
+        return userData.permissions.some(
+          (perm) => perm.permissionCode === permissionCode && perm.microservice === microservice,
+        )
       }
 
-      // Context-specific checks could go here
-      return false
-    }
+      const canPerformAction = (action: string, context?: any): boolean => {
+        // Check if user has the specific permission
+        if (hasPermission(action)) {
+          return true
+        }
 
-    const getRolesForMicroservice = (microservice: string): string[] => {
-      return userData.roles.filter((role) => role.microservice === microservice).map((role) => role.roleName)
-    }
+        // Check role-based permissions
+        if (userData.coreRole === "system_admin") {
+          return true
+        }
 
-    const getPermissionsForMicroservice = (microservice: string): string[] => {
-      return userData.permissions
-        .filter((perm) => perm.microservice === microservice)
-        .map((perm) => perm.permissionCode)
-    }
+        // Context-specific checks could go here
+        return false
+      }
 
-    setPermissionData({
-      userId: userData.userId,
-      email: userData.email,
-      coreRole: userData.coreRole,
-      roles: userData.roles,
-      permissions: userData.permissions,
-      isLoaded: true,
-      isSystemAdmin: userData.coreRole === "system_admin",
-      isAgencyAdmin: userData.roles.some((r) => r.roleName === "qa_director" || r.roleName === "scheduling_admin"),
-      hasRole,
-      hasPermission,
-      canPerformAction,
-      getRolesForMicroservice,
-      getPermissionsForMicroservice,
-    })
+      const getRolesForMicroservice = (microservice: string): string[] => {
+        if (!userData.roles || !Array.isArray(userData.roles)) return []
+        return userData.roles.filter((role) => role.microservice === microservice).map((role) => role.roleName)
+      }
+
+      const getPermissionsForMicroservice = (microservice: string): string[] => {
+        if (!userData.permissions || !Array.isArray(userData.permissions)) return []
+        return userData.permissions
+          .filter((perm) => perm.microservice === microservice)
+          .map((perm) => perm.permissionCode)
+      }
+
+      setPermissionData({
+        userId: userData.userId || null,
+        email: userData.email || null,
+        coreRole: userData.coreRole || null,
+        roles: userData.roles || [],
+        permissions: userData.permissions || [],
+        isLoaded: true,
+        isSystemAdmin: userData.coreRole === "system_admin",
+        isAgencyAdmin: userData.roles
+          ? userData.roles.some((r) => r.roleName === "qa_director" || r.roleName === "scheduling_admin")
+          : false,
+        hasRole,
+        hasPermission,
+        canPerformAction,
+        getRolesForMicroservice,
+        getPermissionsForMicroservice,
+      })
+    } catch (error) {
+      console.error("Error initializing permissions:", error)
+      // Set safe defaults on error
+      setPermissionData({
+        ...createDefaultPermissions(),
+        isLoaded: true,
+      })
+    }
   }, [])
 
   return permissionData

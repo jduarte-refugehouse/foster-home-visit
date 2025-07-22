@@ -54,10 +54,19 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { isLoaded, roles, permissions, isAdmin, isSystemAdmin } = usePermissions()
+  const permissions = usePermissions()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Safe access to permissions data with fallbacks
+  const {
+    isLoaded = false,
+    roles = [],
+    permissions: userPermissions = [],
+    isSystemAdmin = false,
+    hasPermission = () => false,
+  } = permissions || {}
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -106,36 +115,68 @@ export default function DashboardPage() {
 
   // System Admin gets the admin dashboard
   if (isSystemAdmin) {
-    return <AdminDashboard />
+    return (
+      <div className="container mx-auto p-6">
+        <AdminDashboard />
+      </div>
+    )
   }
 
   // Determine which dashboard to show based on roles and permissions
-  const primaryRole = roles[0]?.roleName
+  const primaryRole = roles?.[0]?.roleName
 
   switch (primaryRole) {
     case "scheduling_admin":
-      return <SchedulingAdminDashboard />
+      return (
+        <div className="container mx-auto p-6">
+          <SchedulingAdminDashboard />
+        </div>
+      )
 
     case "qa_director":
-      return <QADirectorDashboard />
+      return (
+        <div className="container mx-auto p-6">
+          <QADirectorDashboard />
+        </div>
+      )
 
     case "case_manager":
-      return <CaseManagerDashboard />
+      return (
+        <div className="container mx-auto p-6">
+          <CaseManagerDashboard />
+        </div>
+      )
 
     case "home_visit_liaison":
-      return <HomeVisitLiaisonDashboard />
+      return (
+        <div className="container mx-auto p-6">
+          <HomeVisitLiaisonDashboard />
+        </div>
+      )
 
     default:
       // Fallback based on permissions
-      if (permissions.includes("view_homes")) {
-        return <StaffDashboard />
+      if (hasPermission("home_view")) {
+        return (
+          <div className="container mx-auto p-6">
+            <StaffDashboard />
+          </div>
+        )
       }
 
-      if (roles.length > 0 || permissions.length > 0) {
-        return <ExternalUserDashboard />
+      if (roles.length > 0 || userPermissions.length > 0) {
+        return (
+          <div className="container mx-auto p-6">
+            <ExternalUserDashboard />
+          </div>
+        )
       }
 
-      return <NoPermissionsDashboard />
+      return (
+        <div className="container mx-auto p-6">
+          <NoPermissionsDashboard />
+        </div>
+      )
   }
 
   if (loading) {

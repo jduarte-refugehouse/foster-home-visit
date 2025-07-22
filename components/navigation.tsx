@@ -18,7 +18,16 @@ import { usePermissions, setTestUser, TEST_USERS, getCurrentTestUser } from "@/h
 export function Navigation() {
   const pathname = usePathname()
   const permissions = usePermissions()
-  const currentTestUser = getCurrentTestUser()
+
+  // Safe access to permissions data with fallbacks
+  const {
+    isLoaded = false,
+    roles = [],
+    permissions: userPermissions = [],
+    isSystemAdmin = false,
+    isAgencyAdmin = false,
+    hasPermission = () => false,
+  } = permissions || {}
 
   const navItems = [
     {
@@ -83,26 +92,37 @@ export function Navigation() {
   ]
 
   const canAccessNavItem = (item: (typeof navItems)[0]): boolean => {
-    if (!permissions.isLoaded) return false
+    if (!isLoaded) return false
 
-    if (permissions.isSystemAdmin) return true
+    if (isSystemAdmin) return true
 
     if (item.requiresAny) {
-      return item.requiredPermissions.some((perm) => permissions.hasPermission(perm))
+      return item.requiredPermissions.some((perm) => hasPermission(perm))
     }
 
-    return item.requiredPermissions.every((perm) => permissions.hasPermission(perm))
+    return item.requiredPermissions.every((perm) => hasPermission(perm))
   }
 
   const getUserDisplayInfo = () => {
-    const userData = TEST_USERS[currentTestUser]
-    const primaryRole = userData.roles[0]?.roleDisplayName || "No Role"
+    try {
+      const currentTestUser = getCurrentTestUser()
+      const userData = TEST_USERS[currentTestUser]
+      const primaryRole = userData?.roles?.[0]?.roleDisplayName || "No Role"
 
-    return {
-      name: userData.email.split("@")[0],
-      email: userData.email,
-      role: primaryRole,
-      roleLevel: userData.roles[0]?.roleLevel || 0,
+      return {
+        name: userData?.email?.split("@")[0] || "Unknown",
+        email: userData?.email || "unknown@example.com",
+        role: primaryRole,
+        roleLevel: userData?.roles?.[0]?.roleLevel || 0,
+      }
+    } catch (error) {
+      console.error("Error getting user display info:", error)
+      return {
+        name: "Unknown",
+        email: "unknown@example.com",
+        role: "No Role",
+        roleLevel: 0,
+      }
     }
   }
 
@@ -158,15 +178,11 @@ export function Navigation() {
 
           {/* User Info and Controls */}
           <div className="flex items-center space-x-4">
-            {permissions.isLoaded && (
+            {isLoaded && (
               <div className="flex items-center space-x-3">
                 {/* User Role Badge */}
                 <div className="flex items-center space-x-2">
-                  <Badge
-                    variant={
-                      permissions.isSystemAdmin ? "destructive" : permissions.isAgencyAdmin ? "default" : "secondary"
-                    }
-                  >
+                  <Badge variant={isSystemAdmin ? "destructive" : isAgencyAdmin ? "default" : "secondary"}>
                     {userInfo.role}
                   </Badge>
                   {userInfo.roleLevel >= 3 && (
