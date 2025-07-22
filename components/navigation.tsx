@@ -5,6 +5,14 @@ import { usePathname } from "next/navigation"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,161 +20,159 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Home, Map, Users, Settings, LogOut, Menu } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-const navigationItems = [
-  {
-    name: "Home",
-    href: "/",
-    icon: Home,
-  },
-  {
-    name: "Homes List",
-    href: "/homes-list",
-    icon: Home,
-    requiresAuth: true,
-  },
-  {
-    name: "Homes Map",
-    href: "/homes-map",
-    icon: Map,
-    requiresAuth: true,
-  },
-  {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: Settings,
-    requiresAuth: true,
-  },
-  {
-    name: "Admin",
-    href: "/admin",
-    icon: Users,
-    requiresAuth: true,
-    adminOnly: true,
-  },
-]
+import { Home, Map, Users, Settings, LogOut, User } from "lucide-react"
 
 export function Navigation() {
   const pathname = usePathname()
   const { user, isSignedIn } = useUser()
   const { signOut } = useClerk()
 
-  const handleSignOut = () => {
-    signOut()
+  const isActive = (path: string) => pathname === path
+
+  if (!isSignedIn) {
+    return (
+      <nav className="border-b bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="text-xl font-bold text-blue-600">
+                RefugeHouse
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/sign-in">
+                <Button variant="ghost">Sign In</Button>
+              </Link>
+              <Link href="/sign-up">
+                <Button>Sign Up</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+    )
   }
 
-  const filteredItems = navigationItems.filter((item) => {
-    if (item.requiresAuth && !isSignedIn) return false
-    if (item.adminOnly && (!user || !user.publicMetadata?.role || user.publicMetadata.role !== "admin")) return false
-    return true
-  })
-
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="border-b bg-white">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Home className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-xl">RefugeHouse</span>
+          <div className="flex items-center space-x-8">
+            <Link href="/" className="text-xl font-bold text-blue-600">
+              RefugeHouse
             </Link>
-          </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {filteredItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.name}</span>
-                </Link>
-              )
-            })}
-          </div>
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <Link href="/dashboard" legacyBehavior passHref>
+                    <NavigationMenuLink
+                      className={`px-3 py-2 rounded-md text-sm font-medium ${
+                        isActive("/dashboard") ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Dashboard
+                    </NavigationMenuLink>
+                  </Link>
+                </NavigationMenuItem>
 
-          {/* User Menu */}
-          <div className="flex items-center space-x-4">
-            {isSignedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.imageUrl || "/placeholder.svg"} alt={user?.fullName || ""} />
-                      <AvatarFallback>
-                        {user?.firstName?.charAt(0)}
-                        {user?.lastName?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <div className="flex items-center justify-start gap-2 p-2">
-                    <div className="flex flex-col space-y-1 leading-none">
-                      {user?.fullName && <p className="font-medium">{user.fullName}</p>}
-                      {user?.primaryEmailAddress?.emailAddress && (
-                        <p className="w-[200px] truncate text-sm text-muted-foreground">
-                          {user.primaryEmailAddress.emailAddress}
-                        </p>
-                      )}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>Homes</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="grid gap-3 p-4 w-[400px]">
+                      <Link href="/homes-list" legacyBehavior passHref>
+                        <NavigationMenuLink className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100">
+                          <Home className="h-4 w-4" />
+                          <div>
+                            <div className="text-sm font-medium">Homes List</div>
+                            <div className="text-xs text-gray-500">View all foster homes</div>
+                          </div>
+                        </NavigationMenuLink>
+                      </Link>
+                      <Link href="/homes-map" legacyBehavior passHref>
+                        <NavigationMenuLink className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100">
+                          <Map className="h-4 w-4" />
+                          <div>
+                            <div className="text-sm font-medium">Homes Map</div>
+                            <div className="text-xs text-gray-500">View homes on map</div>
+                          </div>
+                        </NavigationMenuLink>
+                      </Link>
                     </div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Button asChild variant="ghost">
-                  <Link href="/sign-in">Sign In</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/sign-up">Sign Up</Link>
-                </Button>
-              </div>
-            )}
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
 
-            {/* Mobile Menu */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end">
-                  {filteredItems.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <DropdownMenuItem key={item.href} asChild>
-                        <Link href={item.href} className="flex items-center space-x-2">
-                          <Icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    )
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>Admin</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="grid gap-3 p-4 w-[400px]">
+                      <Link href="/admin" legacyBehavior passHref>
+                        <NavigationMenuLink className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100">
+                          <Users className="h-4 w-4" />
+                          <div>
+                            <div className="text-sm font-medium">User Management</div>
+                            <div className="text-xs text-gray-500">Manage users and permissions</div>
+                          </div>
+                        </NavigationMenuLink>
+                      </Link>
+                      <Link href="/admin/invitations" legacyBehavior passHref>
+                        <NavigationMenuLink className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100">
+                          <Settings className="h-4 w-4" />
+                          <div>
+                            <div className="text-sm font-medium">Invitations</div>
+                            <div className="text-xs text-gray-500">Send user invitations</div>
+                          </div>
+                        </NavigationMenuLink>
+                      </Link>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.imageUrl || "/placeholder.svg"} alt={user?.fullName || ""} />
+                    <AvatarFallback>
+                      {user?.firstName?.[0]}
+                      {user?.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-1 leading-none">
+                    <p className="font-medium">{user?.fullName}</p>
+                    <p className="w-[200px] truncate text-sm text-muted-foreground">
+                      {user?.primaryEmailAddress?.emailAddress}
+                    </p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" onSelect={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -174,5 +180,4 @@ export function Navigation() {
   )
 }
 
-// Export both named and default for compatibility
 export default Navigation

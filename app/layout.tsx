@@ -15,13 +15,26 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
+// Force dynamic rendering to prevent static generation issues with Clerk
+export const dynamic = "force-dynamic"
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
+    <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+      appearance={{
+        elements: {
+          formButtonPrimary: "bg-blue-600 hover:bg-blue-700 text-sm",
+          card: "shadow-lg",
+          headerTitle: "text-gray-900",
+          headerSubtitle: "text-gray-600",
+        },
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
         <body className={inter.className}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
