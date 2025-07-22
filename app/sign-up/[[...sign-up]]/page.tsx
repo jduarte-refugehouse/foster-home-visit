@@ -1,9 +1,6 @@
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Link from "next/link"
+import { SignUp } from "@clerk/nextjs"
 
 export default function SignUpPage() {
   return (
@@ -17,7 +14,8 @@ export default function SignUpPage() {
             <CardDescription>Create a new account to get started</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <SignUp path="/sign-up" />
+            {/* <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">First Name</Label>
                 <Input id="firstName" placeholder="John" />
@@ -45,7 +43,7 @@ export default function SignUpPage() {
               <Link href="/sign-in" className="text-primary hover:underline">
                 Sign in
               </Link>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </main>
