@@ -4,12 +4,89 @@ import { useUser, useAuth, SignInButton, SignUpButton, SignOutButton } from "@cl
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, LogIn, UserPlus, LogOut, Shield, Mail, Calendar, Key } from "lucide-react"
+import { User, LogIn, UserPlus, LogOut, Shield, Mail, Calendar, Key, Database, Users, Lock } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
+
+interface AppUser {
+  id: string
+  clerk_user_id: string
+  email: string
+  first_name: string
+  last_name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface UserRole {
+  role_name: string
+  app_name: string
+}
+
+interface UserPermission {
+  permission_code: string
+  permission_name: string
+  app_name: string
+}
+
+interface DatabaseUserInfo {
+  appUser: AppUser
+  roles: UserRole[]
+  permissions: UserPermission[]
+}
 
 export default function AuthTestPage() {
   const { isLoaded, isSignedIn, user } = useUser()
   const { signOut } = useAuth()
+  const [dbUserInfo, setDbUserInfo] = useState<DatabaseUserInfo | null>(null)
+  const [dbLoading, setDbLoading] = useState(false)
+  const [dbError, setDbError] = useState<string | null>(null)
+
+  // Fetch database user info when user signs in
+  useEffect(() => {
+    if (isSignedIn && user) {
+      fetchDatabaseUserInfo()
+    } else {
+      setDbUserInfo(null)
+      setDbError(null)
+    }
+  }, [isSignedIn, user])
+
+  const fetchDatabaseUserInfo = async () => {
+    if (!user) return
+
+    setDbLoading(true)
+    setDbError(null)
+
+    try {
+      const response = await fetch("/api/auth-test/user-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clerkUserId: user.id,
+          email: user.primaryEmailAddress?.emailAddress,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch user info")
+      }
+
+      const data = await response.json()
+      setDbUserInfo(data)
+    } catch (error) {
+      console.error("Error fetching database user info:", error)
+      setDbError(error instanceof Error ? error.message : "Unknown error")
+    } finally {
+      setDbLoading(false)
+    }
+  }
 
   if (!isLoaded) {
     return (
@@ -26,7 +103,7 @@ export default function AuthTestPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">🔐 Clerk Authentication Test</h1>
@@ -38,13 +115,13 @@ export default function AuthTestPage() {
           </Link>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Authentication Status Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Authentication Status
+                Clerk Authentication
               </CardTitle>
               <CardDescription>Current authentication state and user information</CardDescription>
             </CardHeader>
@@ -60,7 +137,7 @@ export default function AuthTestPage() {
                 <div className="space-y-3 pt-4 border-t">
                   <h4 className="font-medium flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    User Information
+                    Clerk User Info
                   </h4>
 
                   <div className="grid gap-2 text-sm">
@@ -111,6 +188,68 @@ export default function AuthTestPage() {
             </CardContent>
           </Card>
 
+          {/* Database User Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Database User Info
+              </CardTitle>
+              <CardDescription>App user record and database connection</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isSignedIn ? (
+                <div className="text-center text-gray-500 py-4">Sign in to view database user information</div>
+              ) : dbLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-sm">Loading database info...</span>
+                </div>
+              ) : dbError ? (
+                <div className="text-center py-4">
+                  <div className="text-red-600 text-sm mb-2">Database Error:</div>
+                  <div className="text-xs text-gray-600 bg-red-50 p-2 rounded">{dbError}</div>
+                  <Button onClick={fetchDatabaseUserInfo} size="sm" className="mt-2">
+                    Retry
+                  </Button>
+                </div>
+              ) : dbUserInfo ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Database Status:</span>
+                    <Badge variant="default">Connected</Badge>
+                  </div>
+
+                  <div className="pt-2 border-t">
+                    <h4 className="font-medium mb-2">App User Record</h4>
+                    <div className="grid gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">App User ID:</span>
+                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{dbUserInfo.appUser.id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email:</span>
+                        <span>{dbUserInfo.appUser.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Active:</span>
+                        <Badge variant={dbUserInfo.appUser.is_active ? "default" : "secondary"}>
+                          {dbUserInfo.appUser.is_active ? "Yes" : "No"}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Created:</span>
+                        <span>{new Date(dbUserInfo.appUser.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-4">No database info available</div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Authentication Actions Card */}
           <Card>
             <CardHeader>
@@ -152,11 +291,83 @@ export default function AuthTestPage() {
                       Sign Out
                     </Button>
                   </SignOutButton>
+
+                  {dbUserInfo && (
+                    <Button
+                      onClick={fetchDatabaseUserInfo}
+                      variant="outline"
+                      className="w-full bg-transparent"
+                      size="sm"
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Refresh DB Info
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Roles and Permissions Cards */}
+        {isSignedIn && dbUserInfo && (
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* User Roles Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  User Roles
+                </CardTitle>
+                <CardDescription>Assigned roles across microservices</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dbUserInfo.roles.length > 0 ? (
+                  <div className="space-y-2">
+                    {dbUserInfo.roles.map((role, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                        <span className="font-medium">{role.role_name}</span>
+                        <Badge variant="outline">{role.app_name}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-4">No roles assigned</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* User Permissions Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  User Permissions
+                </CardTitle>
+                <CardDescription>Granted permissions across microservices</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dbUserInfo.permissions.length > 0 ? (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {dbUserInfo.permissions.map((permission, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded text-sm">
+                        <div>
+                          <div className="font-medium">{permission.permission_name}</div>
+                          <div className="text-xs text-gray-600">{permission.permission_code}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {permission.app_name}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-4">No permissions assigned</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Debug Information Card */}
         <Card>
@@ -165,7 +376,7 @@ export default function AuthTestPage() {
             <CardDescription>Technical details for debugging authentication issues</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <h4 className="font-medium mb-2">Environment Variables</h4>
                 <div className="text-sm space-y-1">
@@ -191,11 +402,27 @@ export default function AuthTestPage() {
                   </div>
                 </div>
               </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Database State</h4>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span>DB Connected:</span>
+                    <Badge variant={dbUserInfo ? "default" : "secondary"}>{dbUserInfo ? "Yes" : "No"}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>User Created:</span>
+                    <Badge variant={dbUserInfo?.appUser ? "default" : "secondary"}>
+                      {dbUserInfo?.appUser ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {isSignedIn && user && (
               <div className="mt-4 pt-4 border-t">
-                <h4 className="font-medium mb-2">Raw User Object (for debugging)</h4>
+                <h4 className="font-medium mb-2">Raw Clerk User Object (for debugging)</h4>
                 <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
                   {JSON.stringify(
                     {
@@ -215,6 +442,15 @@ export default function AuthTestPage() {
                 </pre>
               </div>
             )}
+
+            {dbUserInfo && (
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="font-medium mb-2">Raw Database User Object (for debugging)</h4>
+                <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
+                  {JSON.stringify(dbUserInfo, null, 2)}
+                </pre>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -226,19 +462,28 @@ export default function AuthTestPage() {
           <CardContent>
             <div className="space-y-2 text-sm">
               <p>
-                <strong>1. Sign Up:</strong> Click "Sign Up" to create a new account
+                <strong>1. Sign Up:</strong> Click "Sign Up" to create a new account (creates both Clerk and database
+                records)
               </p>
               <p>
                 <strong>2. Sign In:</strong> Click "Sign In" to authenticate with existing credentials
               </p>
               <p>
-                <strong>3. View User Info:</strong> Once signed in, user details will appear above
+                <strong>3. View User Info:</strong> Once signed in, both Clerk and database user details will appear
               </p>
               <p>
-                <strong>4. Sign Out:</strong> Click "Sign Out" to end the session
+                <strong>4. Check Roles & Permissions:</strong> View assigned roles and permissions based on email domain
               </p>
               <p>
-                <strong>5. Debug:</strong> Check the debug section for troubleshooting
+                <strong>5. Sign Out:</strong> Click "Sign Out" to end the session
+              </p>
+              <p>
+                <strong>6. Debug:</strong> Check the debug section for troubleshooting both Clerk and database
+                connections
+              </p>
+              <p className="text-blue-600">
+                <strong>Note:</strong> Users with @refugehouse.org emails get admin roles, others get foster_parent
+                roles
               </p>
             </div>
           </CardContent>
