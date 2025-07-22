@@ -32,6 +32,24 @@ export async function POST(request: NextRequest) {
       )
       appUser = existingUser[0]
     } else {
+      // Check if non-refugehouse user has invitation
+      if (!email.endsWith("@refugehouse.org")) {
+        const invitation = await query<{ id: string }>(
+          "SELECT id FROM invited_users WHERE email = @param0 AND is_active = 1",
+          [email],
+        )
+
+        if (invitation.length === 0) {
+          return NextResponse.json(
+            {
+              error: "Access denied. External users require an invitation to join.",
+              requiresInvitation: true,
+            },
+            { status: 403 },
+          )
+        }
+      }
+
       // Create new user
       const newUserResult = await query<{ id: string }>(
         `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, is_active, created_at, updated_at)
@@ -42,8 +60,8 @@ export async function POST(request: NextRequest) {
 
       const userId = newUserResult[0].id
 
-      // Assign default roles based on email domain
-      await assignDefaultRoles(userId, email)
+      // Assign roles and permissions based on email and specific user rules
+      await assignUserRolesAndPermissions(userId, email)
 
       // Get the created user
       const createdUser = await query<{
@@ -95,7 +113,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function assignDefaultRoles(userId: string, email: string): Promise<void> {
+async function assignUserRolesAndPermissions(userId: string, email: string): Promise<void> {
   try {
     // Get home-visits microservice ID
     const microservice = await query<{ id: string }>("SELECT id FROM microservice_apps WHERE app_code = @param0", [
@@ -109,51 +127,60 @@ async function assignDefaultRoles(userId: string, email: string): Promise<void> 
 
     const microserviceId = microservice[0].id
 
-    // Assign roles based on email domain
-    if (email.endsWith("@refugehouse.org")) {
-      // Internal users get admin role
+    if (email === "jduarte@refugehouse.org") {
+      // Global admin - gets admin role and all permissions
       await query(
         `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
-         VALUES (@param0, @param1, 'admin', 'system', GETDATE(), 1)`,
+         VALUES (@param0, @param1, 'global_admin', 'system', GETDATE(), 1)`,
         [userId, microserviceId],
       )
 
-      // Also assign all permissions for this microservice
-      const permissions = await query<{ id: string }>("SELECT id FROM permissions WHERE microservice_id = @param0", [
+      // Assign all permissions for this microservice
+      const allPermissions = await query<{ id: string }>("SELECT id FROM permissions WHERE microservice_id = @param0", [
         microserviceId,
       ])
 
-      for (const permission of permissions) {
+      for (const permission of allPermissions) {
         await query(
           `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
            VALUES (@param0, @param1, 'system', GETDATE(), 1)`,
           [userId, permission.id],
         )
       }
+    } else if (email.endsWith("@refugehouse.org")) {
+      // Regular refugehouse.org users - get staff role with view_homes permission only
+      await query(
+        `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
+         VALUES (@param0, @param1, 'staff', 'system', GETDATE(), 1)`,
+        [userId, microserviceId],
+      )
+
+      // Assign only view_homes permission
+      const viewHomesPermission = await query<{ id: string }>(
+        `SELECT id FROM permissions 
+         WHERE microservice_id = @param0 AND permission_code = 'view_homes'`,
+        [microserviceId],
+      )
+
+      if (viewHomesPermission.length > 0) {
+        await query(
+          `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
+           VALUES (@param0, @param1, 'system', GETDATE(), 1)`,
+          [userId, viewHomesPermission[0].id],
+        )
+      }
     } else {
-      // External users get foster_parent role
+      // External users (with invitation) - get foster_parent role but NO permissions initially
       await query(
         `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
          VALUES (@param0, @param1, 'foster_parent', 'system', GETDATE(), 1)`,
         [userId, microserviceId],
       )
 
-      // Assign basic permissions for foster parents
-      const basicPermissions = await query<{ id: string }>(
-        `SELECT id FROM permissions 
-         WHERE microservice_id = @param0 AND permission_code IN ('view_homes', 'view_dashboard')`,
-        [microserviceId],
-      )
-
-      for (const permission of basicPermissions) {
-        await query(
-          `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
-           VALUES (@param0, @param1, 'system', GETDATE(), 1)`,
-          [userId, permission.id],
-        )
-      }
+      // No permissions assigned - they must be granted manually by an admin
+      console.log(`External user ${email} created with foster_parent role but no permissions`)
     }
   } catch (error) {
-    console.error("Error assigning default roles:", error)
+    console.error("Error assigning user roles and permissions:", error)
   }
 }

@@ -4,7 +4,20 @@ import { useUser, useAuth, SignInButton, SignUpButton, SignOutButton } from "@cl
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, LogIn, UserPlus, LogOut, Shield, Mail, Calendar, Key, Database, Users, Lock } from "lucide-react"
+import {
+  User,
+  LogIn,
+  UserPlus,
+  LogOut,
+  Shield,
+  Mail,
+  Calendar,
+  Key,
+  Database,
+  Users,
+  Lock,
+  AlertTriangle,
+} from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -42,6 +55,7 @@ export default function AuthTestPage() {
   const [dbUserInfo, setDbUserInfo] = useState<DatabaseUserInfo | null>(null)
   const [dbLoading, setDbLoading] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
+  const [requiresInvitation, setRequiresInvitation] = useState(false)
 
   // Fetch database user info when user signs in
   useEffect(() => {
@@ -50,6 +64,7 @@ export default function AuthTestPage() {
     } else {
       setDbUserInfo(null)
       setDbError(null)
+      setRequiresInvitation(false)
     }
   }, [isSignedIn, user])
 
@@ -58,6 +73,7 @@ export default function AuthTestPage() {
 
     setDbLoading(true)
     setDbError(null)
+    setRequiresInvitation(false)
 
     try {
       const response = await fetch("/api/auth-test/user-info", {
@@ -75,6 +91,9 @@ export default function AuthTestPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        if (response.status === 403 && errorData.requiresInvitation) {
+          setRequiresInvitation(true)
+        }
         throw new Error(errorData.error || "Failed to fetch user info")
       }
 
@@ -85,6 +104,30 @@ export default function AuthTestPage() {
       setDbError(error instanceof Error ? error.message : "Unknown error")
     } finally {
       setDbLoading(false)
+    }
+  }
+
+  const getUserTypeInfo = (email: string | undefined) => {
+    if (!email) return { type: "Unknown", description: "No email available" }
+
+    if (email === "jduarte@refugehouse.org") {
+      return {
+        type: "Global Admin",
+        description: "Full system access with all permissions",
+        color: "bg-red-100 text-red-800 border-red-200",
+      }
+    } else if (email.endsWith("@refugehouse.org")) {
+      return {
+        type: "Staff Member",
+        description: "Refuge House staff with view_homes access only",
+        color: "bg-blue-100 text-blue-800 border-blue-200",
+      }
+    } else {
+      return {
+        type: "External User",
+        description: "Requires invitation and manual permission grants",
+        color: "bg-orange-100 text-orange-800 border-orange-200",
+      }
     }
   }
 
@@ -101,6 +144,8 @@ export default function AuthTestPage() {
     )
   }
 
+  const userTypeInfo = getUserTypeInfo(user?.primaryEmailAddress?.emailAddress)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -114,6 +159,23 @@ export default function AuthTestPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Invitation Required Warning */}
+        {requiresInvitation && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                <div>
+                  <h4 className="font-medium text-orange-800">Invitation Required</h4>
+                  <p className="text-sm text-orange-700">
+                    External users need an invitation to access the system. Please contact an administrator.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Authentication Status Card */}
@@ -183,6 +245,12 @@ export default function AuthTestPage() {
                       <span>{user.lastSignInAt ? new Date(user.lastSignInAt).toLocaleDateString() : "Never"}</span>
                     </div>
                   </div>
+
+                  {/* User Type Badge */}
+                  <div className={`p-3 rounded-lg border ${userTypeInfo.color}`}>
+                    <div className="font-medium">{userTypeInfo.type}</div>
+                    <div className="text-sm mt-1">{userTypeInfo.description}</div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -209,9 +277,11 @@ export default function AuthTestPage() {
                 <div className="text-center py-4">
                   <div className="text-red-600 text-sm mb-2">Database Error:</div>
                   <div className="text-xs text-gray-600 bg-red-50 p-2 rounded">{dbError}</div>
-                  <Button onClick={fetchDatabaseUserInfo} size="sm" className="mt-2">
-                    Retry
-                  </Button>
+                  {!requiresInvitation && (
+                    <Button onClick={fetchDatabaseUserInfo} size="sm" className="mt-2">
+                      Retry
+                    </Button>
+                  )}
                 </div>
               ) : dbUserInfo ? (
                 <div className="space-y-3">
@@ -362,7 +432,15 @@ export default function AuthTestPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 py-4">No permissions assigned</div>
+                  <div className="text-center text-gray-500 py-4">
+                    <div>No permissions assigned</div>
+                    {user?.primaryEmailAddress?.emailAddress &&
+                      !user.primaryEmailAddress.emailAddress.endsWith("@refugehouse.org") && (
+                        <div className="text-xs text-orange-600 mt-1">
+                          External users require manual permission grants
+                        </div>
+                      )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -457,34 +535,47 @@ export default function AuthTestPage() {
         {/* Instructions Card */}
         <Card>
           <CardHeader>
-            <CardTitle>📋 Testing Instructions</CardTitle>
+            <CardTitle>📋 Testing Instructions & Permission Rules</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm">
-              <p>
-                <strong>1. Sign Up:</strong> Click "Sign Up" to create a new account (creates both Clerk and database
-                records)
-              </p>
-              <p>
-                <strong>2. Sign In:</strong> Click "Sign In" to authenticate with existing credentials
-              </p>
-              <p>
-                <strong>3. View User Info:</strong> Once signed in, both Clerk and database user details will appear
-              </p>
-              <p>
-                <strong>4. Check Roles & Permissions:</strong> View assigned roles and permissions based on email domain
-              </p>
-              <p>
-                <strong>5. Sign Out:</strong> Click "Sign Out" to end the session
-              </p>
-              <p>
-                <strong>6. Debug:</strong> Check the debug section for troubleshooting both Clerk and database
-                connections
-              </p>
-              <p className="text-blue-600">
-                <strong>Note:</strong> Users with @refugehouse.org emails get admin roles, others get foster_parent
-                roles
-              </p>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Testing Steps:</h4>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>1. Sign Up:</strong> Click "Sign Up" to create a new account
+                  </p>
+                  <p>
+                    <strong>2. Sign In:</strong> Click "Sign In" to authenticate with existing credentials
+                  </p>
+                  <p>
+                    <strong>3. View User Info:</strong> Once signed in, both Clerk and database user details will appear
+                  </p>
+                  <p>
+                    <strong>4. Check Roles & Permissions:</strong> View assigned roles and permissions based on email
+                  </p>
+                  <p>
+                    <strong>5. Sign Out:</strong> Click "Sign Out" to end the session
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-2">Permission Rules:</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="p-2 bg-red-50 rounded border border-red-200">
+                    <strong className="text-red-800">jduarte@refugehouse.org:</strong> Global Admin with all permissions
+                  </div>
+                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                    <strong className="text-blue-800">@refugehouse.org users:</strong> Staff role with view_homes
+                    permission only
+                  </div>
+                  <div className="p-2 bg-orange-50 rounded border border-orange-200">
+                    <strong className="text-orange-800">External users:</strong> Require invitation + manual permission
+                    grants
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
