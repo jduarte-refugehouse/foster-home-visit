@@ -95,7 +95,7 @@ export default function HomePage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-refuge-gray flex items-center justify-center">
+      <div className="min-h-screen bg-refuge-gray dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-refuge-purple"></div>
       </div>
     )
@@ -103,8 +103,8 @@ export default function HomePage() {
 
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-refuge-gray flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-refuge-gray dark:bg-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
               <Image
@@ -119,14 +119,16 @@ export default function HomePage() {
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
                 Home Visits Service
               </CardTitle>
-              <CardDescription className="text-refuge-dark-blue mt-2">Please sign in to continue</CardDescription>
+              <CardDescription className="text-refuge-dark-blue dark:text-gray-300 mt-2">
+                Please sign in to continue
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <SignInButton mode="modal">
               <Button className="w-full bg-refuge-purple hover:bg-refuge-light-purple text-white">Sign In</Button>
             </SignInButton>
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}
               <SignInButton mode="modal">
                 <button className="text-refuge-purple hover:text-refuge-magenta font-medium">Sign up here</button>
@@ -139,10 +141,10 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-refuge-gray p-4">
+    <div className="min-h-screen bg-refuge-gray dark:bg-gray-900 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card>
+        <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -157,7 +159,9 @@ export default function HomePage() {
                   <CardTitle className="text-xl bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
                     Authentication Test - Success!
                   </CardTitle>
-                  <CardDescription>Clerk integration working with database</CardDescription>
+                  <CardDescription className="text-gray-600 dark:text-gray-300">
+                    Clerk integration working with database
+                  </CardDescription>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -172,7 +176,7 @@ export default function HomePage() {
                 <SignOutButton>
                   <Button
                     variant="outline"
-                    className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent"
+                    className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent dark:border-refuge-light-purple dark:text-refuge-light-purple"
                   >
                     Sign Out
                   </Button>
@@ -184,11 +188,11 @@ export default function HomePage() {
 
         {/* Loading State */}
         {loading && (
-          <Card>
+          <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <CardContent className="flex items-center justify-center py-8">
               <div className="flex items-center gap-3">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-refuge-purple"></div>
-                <span className="text-refuge-dark-blue">Loading user information...</span>
+                <span className="text-refuge-dark-blue dark:text-gray-200">Loading user information...</span>
               </div>
             </CardContent>
           </Card>
@@ -196,9 +200,9 @@ export default function HomePage() {
 
         {/* Error State */}
         {error && (
-          <Card className="border-red-200">
+          <Card className="border-red-200 dark:border-red-800 bg-white dark:bg-gray-800">
             <CardContent className="py-6">
-              <div className="flex items-center gap-3 text-red-600">
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
                 <AlertCircle className="h-5 w-5" />
                 <span className="font-medium">Error: {error}</span>
               </div>
@@ -210,9 +214,9 @@ export default function HomePage() {
         {userInfo && !loading && (
           <>
             {/* Clerk User Info */}
-            <Card>
+            <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
+                <CardTitle className="flex items-center gap-2 text-refuge-purple dark:text-refuge-light-purple">
                   <User className="h-5 w-5" />
                   Clerk User Information
                 </CardTitle>
@@ -220,29 +224,31 @@ export default function HomePage() {
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">User ID:</span>
-                    <p className="text-sm text-gray-600 font-mono">{user?.id}</p>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">User ID:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 font-mono break-all">{user?.id}</p>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">Email:</span>
-                    <p className="text-sm text-gray-600">{user?.primaryEmailAddress?.emailAddress}</p>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Email:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {user?.primaryEmailAddress?.emailAddress}
+                    </p>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">First Name:</span>
-                    <p className="text-sm text-gray-600">{user?.firstName || "Not provided"}</p>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">First Name:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{user?.firstName || "Not provided"}</p>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">Last Name:</span>
-                    <p className="text-sm text-gray-600">{user?.lastName || "Not provided"}</p>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Last Name:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{user?.lastName || "Not provided"}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Database User Info */}
-            <Card>
+            <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
+                <CardTitle className="flex items-center gap-2 text-refuge-purple dark:text-refuge-light-purple">
                   <Database className="h-5 w-5" />
                   Database User Information
                 </CardTitle>
@@ -250,24 +256,26 @@ export default function HomePage() {
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">App User ID:</span>
-                    <p className="text-sm text-gray-600 font-mono">{userInfo.appUser.id}</p>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">App User ID:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 font-mono break-all">
+                      {userInfo.appUser.id}
+                    </p>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">Status:</span>
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Status:</span>
                     <Badge variant={userInfo.appUser.is_active ? "default" : "secondary"} className="ml-2">
                       {userInfo.appUser.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">Created:</span>
-                    <p className="text-sm text-gray-600">
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Created:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       {new Date(userInfo.appUser.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
-                    <span className="font-medium text-refuge-dark-blue">Updated:</span>
-                    <p className="text-sm text-gray-600">
+                    <span className="font-medium text-refuge-dark-blue dark:text-gray-200">Updated:</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       {new Date(userInfo.appUser.updated_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -276,9 +284,9 @@ export default function HomePage() {
             </Card>
 
             {/* Roles */}
-            <Card>
+            <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
+                <CardTitle className="flex items-center gap-2 text-refuge-purple dark:text-refuge-light-purple">
                   <Shield className="h-5 w-5" />
                   User Roles ({userInfo.roles.length})
                 </CardTitle>
@@ -287,27 +295,33 @@ export default function HomePage() {
                 {userInfo.roles.length > 0 ? (
                   <div className="space-y-2">
                     {userInfo.roles.map((role, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-refuge-gray rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
                         <div>
-                          <span className="font-medium text-refuge-dark-blue">{role.role_name}</span>
-                          <p className="text-sm text-gray-600">in {role.app_name}</p>
+                          <span className="font-medium text-refuge-dark-blue dark:text-gray-200">{role.role_name}</span>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">in {role.app_name}</p>
                         </div>
-                        <Badge variant="outline" className="border-refuge-purple text-refuge-purple">
+                        <Badge
+                          variant="outline"
+                          className="border-refuge-purple text-refuge-purple dark:border-refuge-light-purple dark:text-refuge-light-purple"
+                        >
                           Role
                         </Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic">No roles assigned</p>
+                  <p className="text-gray-500 dark:text-gray-400 italic">No roles assigned</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Permissions */}
-            <Card>
+            <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
+                <CardTitle className="flex items-center gap-2 text-refuge-purple dark:text-refuge-light-purple">
                   <CheckCircle className="h-5 w-5" />
                   User Permissions ({userInfo.permissions.length})
                 </CardTitle>
@@ -316,14 +330,22 @@ export default function HomePage() {
                 {userInfo.permissions.length > 0 ? (
                   <div className="space-y-2">
                     {userInfo.permissions.map((permission, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-refuge-gray rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
                         <div>
-                          <span className="font-medium text-refuge-dark-blue">{permission.permission_name}</span>
-                          <p className="text-sm text-gray-600">
+                          <span className="font-medium text-refuge-dark-blue dark:text-gray-200">
+                            {permission.permission_name}
+                          </span>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             {permission.permission_code} in {permission.app_name}
                           </p>
                         </div>
-                        <Badge variant="outline" className="border-refuge-magenta text-refuge-magenta">
+                        <Badge
+                          variant="outline"
+                          className="border-refuge-magenta text-refuge-magenta dark:border-pink-400 dark:text-pink-400"
+                        >
                           Permission
                         </Badge>
                       </div>
@@ -331,9 +353,11 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500 font-medium">No permissions assigned</p>
-                    <p className="text-sm text-gray-400 mt-1">Contact an administrator to request access</p>
+                    <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">No permissions assigned</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                      Contact an administrator to request access
+                    </p>
                   </div>
                 )}
               </CardContent>
