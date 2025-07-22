@@ -1,125 +1,134 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Home, MapPin, Clock, CheckCircle } from "lucide-react"
+import { Home, MapPin, Clock, Phone } from "lucide-react"
 
 export default function HomeVisitLiaisonDashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Home Visit Liaison Dashboard</h2>
-        <Badge variant="outline">Home Visit Liaison</Badge>
+      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Home className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Home Visit Liaison Dashboard</h1>
+            <p className="text-cyan-100">Coordinate and support home visits</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm italic">"A home is in the heart of every child."</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Scheduled Visits</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Visits</CardTitle>
             <Home className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-2xl font-bold">8</div>
+            <p className="text-xs text-muted-foreground">Scheduled visits</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Visits</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">This week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Travel Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4.2h</div>
-            <p className="text-xs text-muted-foreground">Average daily</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Coverage Area</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Routes</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">North</div>
-            <p className="text-xs text-muted-foreground">Dallas region</p>
+            <div className="text-2xl font-bold">3</div>
+            <p className="text-xs text-muted-foreground">Service areas</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Visit Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">1.5h</div>
+            <p className="text-xs text-muted-foreground">Per visit</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Emergency Calls</CardTitle>
+            <Phone className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Today</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
             <CardTitle>Today's Route</CardTitle>
+            <CardDescription>Your scheduled visits for today</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">9:00 AM - Johnson Family</p>
-                  <p className="text-sm text-muted-foreground">1234 Oak Street, Dallas, TX</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Johnson Family</p>
+                  <p className="text-xs text-muted-foreground">9:00 AM - 123 Oak St, Dallas</p>
                 </div>
-                <Badge variant="outline">Next</Badge>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Completed
+                </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">11:30 AM - Williams Family</p>
-                  <p className="text-sm text-muted-foreground">5678 Pine Avenue, Dallas, TX</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Smith Family</p>
+                  <p className="text-xs text-muted-foreground">11:00 AM - 456 Pine Ave, Plano</p>
                 </div>
-                <Badge variant="secondary">Scheduled</Badge>
+                <Badge variant="outline" className="text-blue-600 border-blue-600">
+                  In Progress
+                </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">2:00 PM - Davis Family</p>
-                  <p className="text-sm text-muted-foreground">9012 Elm Drive, Dallas, TX</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Brown Family</p>
+                  <p className="text-xs text-muted-foreground">2:00 PM - 789 Elm Dr, Richardson</p>
                 </div>
-                <Badge variant="secondary">Scheduled</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">4:30 PM - Brown Family</p>
-                  <p className="text-sm text-muted-foreground">3456 Maple Lane, Dallas, TX</p>
-                </div>
-                <Badge variant="secondary">Scheduled</Badge>
+                <Badge variant="outline">Scheduled</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Visit Checklist</CardTitle>
+            <CardTitle>Visit Coordination</CardTitle>
+            <CardDescription>Support and logistics management</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Safety assessment form</span>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Transportation arranged</p>
+                  <p className="text-xs text-muted-foreground">Wilson Family visit tomorrow</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Documentation camera</span>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Interpreter scheduled</p>
+                  <p className="text-xs text-muted-foreground">Garcia Family - Spanish</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Emergency contact list</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Resource materials</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm">Vehicle inspection</span>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Safety equipment checked</p>
+                  <p className="text-xs text-muted-foreground">All vehicles ready</p>
+                </div>
               </div>
             </div>
           </CardContent>

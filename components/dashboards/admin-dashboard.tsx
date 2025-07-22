@@ -5,9 +5,15 @@ import { Users, Shield, Settings, Activity } from "lucide-react"
 export default function AdminDashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
-        <Badge variant="secondary">Global Admin</Badge>
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Shield className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Welcome back, Admin!</h1>
+            <p className="text-purple-100">Here's what's happening in your system today</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm italic">"A home is in the heart of every child."</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -17,8 +23,8 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            <div className="text-2xl font-bold">24</div>
+            <p className="text-xs text-muted-foreground">Active system users</p>
           </CardContent>
         </Card>
 
@@ -28,15 +34,15 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">573</div>
-            <p className="text-xs text-muted-foreground">+180.1% from last month</p>
+            <div className="text-2xl font-bold">8</div>
+            <p className="text-xs text-muted-foreground">Currently online</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">99.9%</div>
@@ -46,54 +52,79 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Configurations</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
+            <Badge variant="secondary">3</Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Pending updates</p>
+            <div className="text-2xl font-bold">3</div>
+            <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>System Overview</CardTitle>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest system events and user actions</CardDescription>
           </CardHeader>
-          <CardContent className="pl-2">
+          <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm">Database: Operational</span>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">New user registered</p>
+                  <p className="text-xs text-muted-foreground">2 minutes ago</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm">API Services: Operational</span>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">System backup completed</p>
+                  <p className="text-xs text-muted-foreground">1 hour ago</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                <span className="text-sm">Background Jobs: Degraded</span>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Permission update required</p>
+                  <p className="text-xs text-muted-foreground">3 hours ago</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest system events</CardDescription>
+            <CardTitle>System Status</CardTitle>
+            <CardDescription>Current system performance metrics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="text-sm">
-                <span className="font-medium">User created:</span> john.doe@example.com
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Database</span>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Online
+                </Badge>
               </div>
-              <div className="text-sm">
-                <span className="font-medium">Permission updated:</span> Admin role assigned
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Authentication</span>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Healthy
+                </Badge>
               </div>
-              <div className="text-sm">
-                <span className="font-medium">System backup:</span> Completed successfully
+              <div className="flex items-center justify-between">
+                <span className="text-sm">API Services</span>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Running
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Background Jobs</span>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                  Processing
+                </Badge>
               </div>
             </div>
           </CardContent>

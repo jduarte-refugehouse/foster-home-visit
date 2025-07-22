@@ -1,20 +1,20 @@
 "use client"
 
-import { Home, Users, FileText, Shield } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import Image from "next/image"
+import { Home, BookOpen, User, Plus, Shield } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Resource Library", href: "/resources", icon: FileText },
-  { name: "Profile", href: "/profile", icon: Users },
+  { name: "Resource Library", href: "/resources", icon: BookOpen },
+  { name: "Profile", href: "/profile", icon: User },
 ]
 
 const adminNavigation = [
   { name: "Admin Dashboard", href: "/admin", icon: Shield },
-  { name: "Create Resource", href: "/admin/create", icon: FileText },
+  { name: "Create Resource", href: "/admin/create", icon: Plus },
 ]
 
 export function Sidebar() {

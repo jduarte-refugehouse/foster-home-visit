@@ -1,105 +1,131 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Calendar, Users, Clock } from "lucide-react"
+import { Calendar, FileText, Users, Clock } from "lucide-react"
 
 export default function StaffDashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Staff Dashboard</h2>
-        <Badge variant="outline">Staff Member</Badge>
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Users className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Welcome back, Staff Member!</h1>
+            <p className="text-blue-100">Your daily overview and tasks</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm italic">"A home is in the heart of every child."</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Cases</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">Active cases assigned</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Appointments</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Visits</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-2xl font-bold">5</div>
+            <p className="text-xs text-muted-foreground">Scheduled for today</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Families</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Reports</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">3</div>
+            <p className="text-xs text-muted-foreground">Need completion</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
-            <p className="text-xs text-muted-foreground">Under my care</p>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">Under your care</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours Logged</CardTitle>
+            <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">32.5</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-2xl font-bold">32</div>
+            <p className="text-xs text-muted-foreground">Out of 40 hours</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Upcoming Appointments</CardTitle>
+            <CardTitle>Today's Schedule</CardTitle>
+            <CardDescription>Your upcoming visits and appointments</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Johnson Family Visit</p>
-                  <p className="text-sm text-muted-foreground">Home assessment</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Johnson Family Visit</p>
+                  <p className="text-xs text-muted-foreground">9:00 AM - 10:30 AM</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Today 2:00 PM</p>
-                  <Badge variant="outline" className="text-xs">
-                    Scheduled
-                  </Badge>
-                </div>
+                <Badge variant="outline">Scheduled</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Smith Family Check-in</p>
-                  <p className="text-sm text-muted-foreground">Follow-up visit</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Smith Family Check-in</p>
+                  <p className="text-xs text-muted-foreground">2:00 PM - 3:00 PM</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Tomorrow 10:00 AM</p>
-                  <Badge variant="outline" className="text-xs">
-                    Scheduled
-                  </Badge>
+                <Badge variant="outline">Scheduled</Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Team Meeting</p>
+                  <p className="text-xs text-muted-foreground">4:00 PM - 5:00 PM</p>
                 </div>
+                <Badge variant="outline">Meeting</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Recent Updates</CardTitle>
+            <CardDescription>Latest case updates and notifications</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">Schedule new visit</button>
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">Update case notes</button>
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">Generate report</button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Case #1234 updated</p>
+                  <p className="text-xs text-muted-foreground">New documentation added</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Training reminder</p>
+                  <p className="text-xs text-muted-foreground">Monthly safety training due</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">New resource available</p>
+                  <p className="text-xs text-muted-foreground">Child development guide</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,35 +1,41 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Users, Calendar, AlertCircle } from "lucide-react"
+import { Users, FileText, Calendar, AlertCircle } from "lucide-react"
 
 export default function CaseManagerDashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Case Manager Dashboard</h2>
-        <Badge variant="outline">Case Manager</Badge>
+      <div className="bg-gradient-to-r from-rose-600 to-pink-600 rounded-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Users className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Case Management Dashboard</h1>
+            <p className="text-rose-100">Manage your family cases and support plans</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm italic">"A home is in the heart of every child."</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">28</div>
-            <p className="text-xs text-muted-foreground">Currently assigned</p>
+            <div className="text-2xl font-bold">15</div>
+            <p className="text-xs text-muted-foreground">Under your management</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Families Served</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Due Reports</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">52</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">4</div>
+            <p className="text-xs text-muted-foreground">Need completion</p>
           </CardContent>
         </Card>
 
@@ -40,7 +46,7 @@ export default function CaseManagerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">6</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
 
@@ -50,67 +56,75 @@ export default function CaseManagerDashboard() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4</div>
+            <div className="text-2xl font-bold">2</div>
             <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Case Priority Overview</CardTitle>
+            <CardTitle>Priority Cases</CardTitle>
+            <CardDescription>Cases requiring immediate attention</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg border-red-200 bg-red-50">
-                <div>
-                  <p className="font-medium text-red-800">Johnson Family - Case #2024-001</p>
-                  <p className="text-sm text-red-600">Safety assessment overdue</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Johnson Family - Case #1234</p>
+                  <p className="text-xs text-muted-foreground">Court review due in 3 days</p>
                 </div>
-                <Badge variant="destructive">High Priority</Badge>
+                <Badge variant="destructive">High</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg border-yellow-200 bg-yellow-50">
-                <div>
-                  <p className="font-medium text-yellow-800">Smith Family - Case #2024-015</p>
-                  <p className="text-sm text-yellow-600">Court hearing next week</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Smith Family - Case #5678</p>
+                  <p className="text-xs text-muted-foreground">Safety plan update needed</p>
                 </div>
-                <Badge variant="outline" className="border-yellow-500 text-yellow-700">
-                  Medium Priority
-                </Badge>
+                <Badge variant="secondary">Medium</Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Davis Family - Case #2024-023</p>
-                  <p className="text-sm text-muted-foreground">Regular check-in scheduled</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Brown Family - Case #9012</p>
+                  <p className="text-xs text-muted-foreground">Monthly report due</p>
                 </div>
-                <Badge variant="secondary">Normal</Badge>
+                <Badge variant="outline">Standard</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Today's Tasks</CardTitle>
+            <CardTitle>Recent Activities</CardTitle>
+            <CardDescription>Latest case updates and actions</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="p-2 border rounded-lg">
-                <p className="text-sm font-medium">Complete safety assessment</p>
-                <p className="text-xs text-muted-foreground">Johnson Family</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Home visit completed</p>
+                  <p className="text-xs text-muted-foreground">Wilson Family - 2 hours ago</p>
+                </div>
               </div>
-              <div className="p-2 border rounded-lg">
-                <p className="text-sm font-medium">Update case notes</p>
-                <p className="text-xs text-muted-foreground">3 cases pending</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Case plan updated</p>
+                  <p className="text-xs text-muted-foreground">Garcia Family - Yesterday</p>
+                </div>
               </div>
-              <div className="p-2 border rounded-lg">
-                <p className="text-sm font-medium">Schedule home visit</p>
-                <p className="text-xs text-muted-foreground">Williams Family</p>
-              </div>
-              <div className="p-2 border rounded-lg">
-                <p className="text-sm font-medium">Prepare court documents</p>
-                <p className="text-xs text-muted-foreground">Smith Family hearing</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Court report submitted</p>
+                  <p className="text-xs text-muted-foreground">Taylor Family - 2 days ago</p>
+                </div>
               </div>
             </div>
           </CardContent>

@@ -1,13 +1,19 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Users, CheckCircle } from "lucide-react"
+import { Calendar, Clock, Users, MapPin } from "lucide-react"
 
 export default function SchedulingAdminDashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Scheduling Admin Dashboard</h2>
-        <Badge variant="outline">Scheduling Admin</Badge>
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-6 text-white">
+        <div className="flex items-center gap-3">
+          <Calendar className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Scheduling Dashboard</h1>
+            <p className="text-indigo-100">Manage visits and appointments</p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm italic">"A home is in the heart of every child."</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -17,8 +23,8 @@ export default function SchedulingAdminDashboard() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground">Scheduled for today</p>
+            <div className="text-2xl font-bold">18</div>
+            <p className="text-xs text-muted-foreground">Scheduled visits</p>
           </CardContent>
         </Card>
 
@@ -29,7 +35,7 @@ export default function SchedulingAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">7</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
+            <p className="text-xs text-muted-foreground">Need scheduling</p>
           </CardContent>
         </Card>
 
@@ -46,64 +52,89 @@ export default function SchedulingAdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Coverage Areas</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-2xl font-bold">5</div>
+            <p className="text-xs text-muted-foreground">Service regions</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Schedule Overview</CardTitle>
+            <CardTitle>Today's Schedule</CardTitle>
+            <CardDescription>Current day visit assignments</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Morning Block (8:00 AM - 12:00 PM)</p>
-                  <p className="text-sm text-muted-foreground">6 visits scheduled</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Sarah J. - Johnson Family</p>
+                  <p className="text-xs text-muted-foreground">9:00 AM - 10:30 AM, Dallas</p>
                 </div>
-                <Badge variant="outline">75% Capacity</Badge>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  Confirmed
+                </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Afternoon Block (1:00 PM - 5:00 PM)</p>
-                  <p className="text-sm text-muted-foreground">9 visits scheduled</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Mike R. - Smith Family</p>
+                  <p className="text-xs text-muted-foreground">11:00 AM - 12:00 PM, Plano</p>
                 </div>
-                <Badge variant="destructive">Full</Badge>
+                <Badge variant="outline" className="text-blue-600 border-blue-600">
+                  In Progress
+                </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">Evening Block (5:00 PM - 8:00 PM)</p>
-                  <p className="text-sm text-muted-foreground">2 visits scheduled</p>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Lisa M. - Brown Family</p>
+                  <p className="text-xs text-muted-foreground">2:00 PM - 3:30 PM, Richardson</p>
                 </div>
-                <Badge variant="secondary">Available</Badge>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                  Pending
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Scheduling Requests</CardTitle>
+            <CardDescription>New appointments needing assignment</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">Schedule new visit</button>
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
-                Approve pending requests
-              </button>
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
-                View staff availability
-              </button>
-              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
-                Generate schedule report
-              </button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Emergency Visit - Wilson Family</p>
+                  <p className="text-xs text-muted-foreground">ASAP - High Priority</p>
+                </div>
+                <Badge variant="destructive">Urgent</Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Follow-up - Garcia Family</p>
+                  <p className="text-xs text-muted-foreground">This week preferred</p>
+                </div>
+                <Badge variant="secondary">Standard</Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Initial Visit - Taylor Family</p>
+                  <p className="text-xs text-muted-foreground">Next week</p>
+                </div>
+                <Badge variant="outline">Routine</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
