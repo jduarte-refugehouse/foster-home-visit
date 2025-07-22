@@ -57,43 +57,6 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     [onHomeSelect],
   )
 
-  const createInfoWindowContent = (home: MapHome) => {
-    return `
-      <div style="padding: 12px; min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <h3 style="font-weight: 600; margin: 0 0 8px 0; font-size: 16px; color: #1f2937;">${home.name}</h3>
-        <p style="font-size: 14px; color: #6b7280; margin: 0 0 4px 0;">${home.address}</p>
-        <p style="font-size: 14px; color: #6b7280; margin: 0 0 12px 0;">${home.City}, ${home.State} ${home.zipCode}</p>
-        ${
-          home.contactPersonName
-            ? `
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 14px; color: #374151;">👤 ${home.contactPersonName}</span>
-          </div>
-        `
-            : ""
-        }
-        ${
-          home.phoneNumber
-            ? `
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-            <span style="font-size: 14px; color: #374151;">📞 ${home.phoneNumber}</span>
-          </div>
-        `
-            : ""
-        }
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-          <span style="background: ${home.Unit === "DAL" ? "#3b82f6" : "#ef4444"}; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
-            ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-          </span>
-          <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}', '_blank')" 
-                  style="background: #f9fafb; border: 1px solid #d1d5db; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; color: #374151;">
-            🔗 Open in Maps
-          </button>
-        </div>
-      </div>
-    `
-  }
-
   const initializeMap = useCallback(async () => {
     if (!window.google || !window.google.maps || !mapRef.current || homes.length === 0) {
       console.log("⏳ Google Maps not ready or no homes to display")
@@ -171,18 +134,12 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
           title: home.name,
         })
 
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: createInfoWindowContent(home),
-        })
-
+        // Only use the custom card component, no Google Maps InfoWindow
         marker.addListener("click", () => {
-          // Close all other info windows
-          newMarkers.forEach((m) => m.infoWindow?.close())
-          infoWindow.open(mapInstance, marker)
           handleMarkerClick(home)
         })
 
-        return { marker, infoWindow, home }
+        return { marker, home }
       })
 
       setMarkers(newMarkers)
@@ -254,16 +211,28 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     }
   }, [homes, initializeMap])
 
-  // Update selected marker
+  // Update selected marker styling
   useEffect(() => {
-    if (markers.length > 0 && selectedHome && map) {
-      const selectedMarker = markers.find((m) => m.home.id === selectedHome.id)
-      if (selectedMarker) {
-        // Close all info windows
-        markers.forEach((m) => m.infoWindow?.close())
-        // Open selected info window
-        selectedMarker.infoWindow.open(map, selectedMarker.marker)
-        // Center map on selected marker
+    if (markers.length > 0 && map) {
+      markers.forEach((markerData) => {
+        const isSelected = selectedHome && markerData.home.id === selectedHome.id
+        const markerElement = markerData.marker.content.querySelector("div")
+
+        if (markerElement) {
+          if (isSelected) {
+            markerElement.style.transform = "scale(1.2)"
+            markerElement.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)"
+            markerElement.style.zIndex = "1000"
+          } else {
+            markerElement.style.transform = "scale(1)"
+            markerElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)"
+            markerElement.style.zIndex = "auto"
+          }
+        }
+      })
+
+      // Center map on selected marker
+      if (selectedHome) {
         map.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
       }
     }
