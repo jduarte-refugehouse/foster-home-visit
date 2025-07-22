@@ -1,10 +1,10 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, User, Shield, CheckCircle, AlertCircle } from "lucide-react"
+import { ArrowLeft, User, Shield, CheckCircle, AlertCircle, Home, Map, List, BarChart3 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -111,16 +111,18 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-refuge-gray p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
-                  Dashboard
+                <CardTitle className="text-3xl bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
+                  Home Visits Service
                 </CardTitle>
-                <p className="text-refuge-dark-blue mt-2">Welcome to your Home Visits Service dashboard</p>
+                <CardDescription className="text-lg mt-2">
+                  Welcome, {userInfo?.appUser.first_name} {userInfo?.appUser.last_name}
+                </CardDescription>
               </div>
               <Link href="/">
                 <Button
@@ -135,93 +137,164 @@ export default function DashboardPage() {
           </CardHeader>
         </Card>
 
-        {userInfo && (
-          <>
-            {/* User Summary */}
-            <Card>
+        {/* Main Navigation Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Homes List Card */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+            <Link href="/homes-list">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
-                  <User className="h-5 w-5" />
-                  User Summary
+                <CardTitle className="flex items-center gap-3 text-refuge-purple group-hover:text-refuge-magenta transition-colors">
+                  <List className="h-6 w-6" />
+                  Foster Homes List
                 </CardTitle>
+                <CardDescription>View detailed information about all active foster homes in the system</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-refuge-gray rounded-lg">
-                    <p className="text-sm text-gray-600">Name</p>
-                    <p className="font-medium text-refuge-dark-blue">
-                      {userInfo.appUser.first_name} {userInfo.appUser.last_name}
-                    </p>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Browse homes, contact information, case managers, and more
                   </div>
-                  <div className="text-center p-4 bg-refuge-gray rounded-lg">
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium text-refuge-dark-blue">{userInfo.appUser.email}</p>
-                  </div>
-                  <div className="text-center p-4 bg-refuge-gray rounded-lg">
-                    <p className="text-sm text-gray-600">Status</p>
-                    <Badge variant={userInfo.appUser.is_active ? "default" : "secondary"}>
-                      {userInfo.appUser.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
+                  <Badge variant="outline" className="border-refuge-purple text-refuge-purple">
+                    View Access
+                  </Badge>
                 </div>
               </CardContent>
-            </Card>
+            </Link>
+          </Card>
 
-            {/* Current Roles */}
-            <Card>
+          {/* Homes Map Card */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+            <Link href="/homes-map">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
-                  <Shield className="h-5 w-5" />
-                  Current Roles ({userInfo.roles.length})
+                <CardTitle className="flex items-center gap-3 text-refuge-purple group-hover:text-refuge-magenta transition-colors">
+                  <Map className="h-6 w-6" />
+                  Geographic Map
                 </CardTitle>
+                <CardDescription>Interactive map showing the geographic locations of foster homes</CardDescription>
               </CardHeader>
               <CardContent>
-                {userInfo.roles.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Visual map with filtering, search, and detailed home information
+                  </div>
+                  <Badge variant="outline" className="border-refuge-purple text-refuge-purple">
+                    View Access
+                  </Badge>
+                </div>
+              </CardContent>
+            </Link>
+          </Card>
+        </div>
+
+        {/* User Status Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-refuge-purple">
+              <User className="h-5 w-5" />
+              Your Account Status
+            </CardTitle>
+            <CardDescription>Current permissions and access level</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Email Domain</p>
+                <p className="font-medium text-refuge-dark-blue">
+                  {userInfo?.appUser.email?.includes("@refugehouse.org") ? "refugehouse.org" : "External"}
+                </p>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Account Status</p>
+                <Badge variant={userInfo?.appUser.is_active ? "default" : "secondary"}>
+                  {userInfo?.appUser.is_active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Assigned Roles</p>
+                <p className="font-medium text-refuge-dark-blue">{userInfo?.roles.length || 0}</p>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border">
+                <p className="text-sm text-gray-600">Permissions</p>
+                <p className="font-medium text-refuge-dark-blue">{userInfo?.permissions.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Default Access Notice */}
+        <Card className="border-refuge-purple/20 bg-refuge-purple/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-refuge-purple">
+              <Home className="h-5 w-5" />
+              Default Access Level
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-refuge-dark-blue">
+                As a refugehouse.org domain user, you have default access to view foster homes information:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>View foster homes list and details</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>Access interactive geographic map</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>Filter and search home information</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>View case manager contact details</span>
+                </div>
+              </div>
+              {userInfo?.roles && userInfo.roles.length > 0 && (
+                <div className="mt-4 p-3 bg-white rounded-lg border">
+                  <p className="text-sm font-medium text-refuge-dark-blue mb-2">Additional Role-Based Access:</p>
+                  <div className="space-y-1">
                     {userInfo.roles.map((role, index) => (
-                      <div key={index} className="p-4 bg-refuge-gray rounded-lg border-l-4 border-refuge-purple">
-                        <h4 className="font-medium text-refuge-dark-blue">{role.role_name}</h4>
-                        <p className="text-sm text-gray-600">in {role.app_name}</p>
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <Shield className="h-4 w-4 text-refuge-purple" />
+                        <span>
+                          {role.role_name} in {role.app_name}
+                        </span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-gray-500 italic text-center py-4">No roles assigned</p>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Current Permissions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-refuge-purple">
-                  <CheckCircle className="h-5 w-5" />
-                  Current Permissions ({userInfo.permissions.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {userInfo.permissions.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {userInfo.permissions.map((permission, index) => (
-                      <div key={index} className="p-4 bg-refuge-gray rounded-lg border-l-4 border-refuge-magenta">
-                        <h4 className="font-medium text-refuge-dark-blue">{permission.permission_name}</h4>
-                        <p className="text-sm text-gray-600">
-                          {permission.permission_code} • {permission.app_name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500 font-medium">No permissions assigned</p>
-                    <p className="text-sm text-gray-400 mt-1">Contact an administrator to request access</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="text-center">
+            <CardContent className="py-6">
+              <BarChart3 className="h-8 w-8 text-refuge-purple mx-auto mb-2" />
+              <p className="text-2xl font-bold text-refuge-dark-blue">Active</p>
+              <p className="text-sm text-gray-600">System Status</p>
+            </CardContent>
+          </Card>
+          <Card className="text-center">
+            <CardContent className="py-6">
+              <Home className="h-8 w-8 text-refuge-magenta mx-auto mb-2" />
+              <p className="text-2xl font-bold text-refuge-dark-blue">Ready</p>
+              <p className="text-sm text-gray-600">Data Access</p>
+            </CardContent>
+          </Card>
+          <Card className="text-center">
+            <CardContent className="py-6">
+              <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-refuge-dark-blue">Authorized</p>
+              <p className="text-sm text-gray-600">User Status</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
