@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ interface HomesMapProps {
 declare global {
   interface Window {
     google: any
-    initMap: () => void
+    initGoogleMaps: () => void
   }
 }
 
@@ -41,6 +41,9 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
   const [markers, setMarkers] = useState<any[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const mapRef = useRef<HTMLDivElement>(null)
+  const scriptLoadedRef = useRef(false)
 
   useEffect(() => {
     console.log(`🗺️ HomesMap component received ${homes.length} homes`)
@@ -54,148 +57,206 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     [onHomeSelect],
   )
 
-  // Initialize Google Maps
-  useEffect(() => {
-    const initializeMap = async () => {
-      if (typeof window !== "undefined" && window.google && homes.length > 0) {
-        try {
-          // Calculate center point
-          const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
-          const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
-
-          const mapInstance = new window.google.maps.Map(document.getElementById("google-map"), {
-            center: { lat: avgLat, lng: avgLng },
-            zoom: 10,
-            mapTypeId: "roadmap",
-            mapId: "DEMO_MAP_ID", // Required for AdvancedMarkerElement
-            styles: [
-              {
-                featureType: "poi",
-                elementType: "labels",
-                stylers: [{ visibility: "off" }],
-              },
-            ],
-          })
-
-          setMap(mapInstance)
-
-          // Import AdvancedMarkerElement (new recommended approach)
-          const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker")
-
-          // Create markers using the new AdvancedMarkerElement
-          const newMarkers = homes.map((home) => {
-            // Create custom marker content
-            const markerContent = document.createElement("div")
-            markerContent.innerHTML = `
-              <div style="
-                width: 24px; 
-                height: 24px; 
-                background-color: ${home.Unit === "DAL" ? "#22c55e" : "#ef4444"}; 
-                border: 2px solid white; 
-                border-radius: 50%; 
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 12px;
-                color: white;
-                font-weight: bold;
-              ">
-                🏠
-              </div>
-            `
-
-            const marker = new AdvancedMarkerElement({
-              map: mapInstance,
-              position: { lat: home.latitude, lng: home.longitude },
-              content: markerContent,
-              title: home.name,
-            })
-
-            const infoWindow = new window.google.maps.InfoWindow({
-              content: `
-                <div style="padding: 8px; min-width: 200px;">
-                  <h3 style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${home.name}</h3>
-                  <p style="font-size: 12px; color: #666; margin-bottom: 4px;">${home.address}</p>
-                  <p style="font-size: 12px; color: #666; margin-bottom: 12px;">${home.City}, ${home.State} ${home.zipCode}</p>
-                  ${
-                    home.contactPersonName
-                      ? `
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                      <span style="font-size: 12px;">👤 ${home.contactPersonName}</span>
-                    </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    home.phoneNumber
-                      ? `
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                      <span style="font-size: 12px;">📞 ${home.phoneNumber}</span>
-                    </div>
-                  `
-                      : ""
-                  }
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-                    <span style="background: ${home.Unit === "DAL" ? "#3b82f6" : "#ef4444"}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
-                      ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
-                    </span>
-                    <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}', '_blank')" 
-                            style="background: #f3f4f6; border: 1px solid #d1d5db; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">
-                      🔗 Maps
-                    </button>
-                  </div>
-                </div>
-              `,
-            })
-
-            marker.addListener("click", () => {
-              // Close all other info windows
-              newMarkers.forEach((m) => m.infoWindow?.close())
-              infoWindow.open(mapInstance, marker)
-              handleMarkerClick(home)
-            })
-
-            return { marker, infoWindow, home }
-          })
-
-          setMarkers(newMarkers)
-
-          // Fit bounds to show all markers
-          if (homes.length > 1) {
-            const bounds = new window.google.maps.LatLngBounds()
-            homes.forEach((home) => {
-              bounds.extend({ lat: home.latitude, lng: home.longitude })
-            })
-            mapInstance.fitBounds(bounds)
-          }
-
-          setIsLoaded(true)
-          console.log("✅ Google Maps initialized successfully with AdvancedMarkerElement")
-        } catch (error) {
-          console.error("Error initializing Google Maps:", error)
-          setMapError("Failed to initialize map: " + (error instanceof Error ? error.message : "Unknown error"))
+  const createInfoWindowContent = (home: MapHome) => {
+    return `
+      <div style="padding: 12px; min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <h3 style="font-weight: 600; margin: 0 0 8px 0; font-size: 16px; color: #1f2937;">${home.name}</h3>
+        <p style="font-size: 14px; color: #6b7280; margin: 0 0 4px 0;">${home.address}</p>
+        <p style="font-size: 14px; color: #6b7280; margin: 0 0 12px 0;">${home.City}, ${home.State} ${home.zipCode}</p>
+        ${
+          home.contactPersonName
+            ? `
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 14px; color: #374151;">👤 ${home.contactPersonName}</span>
+          </div>
+        `
+            : ""
         }
-      }
+        ${
+          home.phoneNumber
+            ? `
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="font-size: 14px; color: #374151;">📞 ${home.phoneNumber}</span>
+          </div>
+        `
+            : ""
+        }
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+          <span style="background: ${home.Unit === "DAL" ? "#3b82f6" : "#ef4444"}; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+            ${home.Unit === "DAL" ? "Dallas" : "San Antonio"}
+          </span>
+          <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${home.latitude},${home.longitude}', '_blank')" 
+                  style="background: #f9fafb; border: 1px solid #d1d5db; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; color: #374151;">
+            🔗 Open in Maps
+          </button>
+        </div>
+      </div>
+    `
+  }
+
+  const initializeMap = useCallback(async () => {
+    if (!window.google || !window.google.maps || !mapRef.current || homes.length === 0) {
+      console.log("⏳ Google Maps not ready or no homes to display")
+      return
     }
 
-    // Load Google Maps API with async loading
-    if (typeof window !== "undefined" && !window.google) {
-      const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCx6DSV5XxD5D0VAuODGakQrhejpR6062M&libraries=marker&loading=async`
-      script.async = true
-      script.defer = true
-      script.onload = initializeMap
-      script.onerror = () => setMapError("Failed to load Google Maps API")
-      document.head.appendChild(script)
-    } else if (window.google && homes.length > 0) {
-      initializeMap()
+    try {
+      console.log("🚀 Initializing Google Maps...")
+      setIsLoading(true)
+
+      // Calculate center point
+      const avgLat = homes.reduce((sum, home) => sum + home.latitude, 0) / homes.length
+      const avgLng = homes.reduce((sum, home) => sum + home.longitude, 0) / homes.length
+
+      // Create map instance
+      const mapInstance = new window.google.maps.Map(mapRef.current, {
+        center: { lat: avgLat, lng: avgLng },
+        zoom: 10,
+        mapTypeId: "roadmap",
+        mapId: "DEMO_MAP_ID",
+        styles: [
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }],
+          },
+        ],
+      })
+
+      setMap(mapInstance)
+
+      // Wait for map to be ready
+      await new Promise((resolve) => {
+        window.google.maps.event.addListenerOnce(mapInstance, "idle", resolve)
+      })
+
+      // Import AdvancedMarkerElement
+      const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker")
+
+      // Create markers
+      const newMarkers = homes.map((home) => {
+        // Create custom marker content
+        const markerContent = document.createElement("div")
+        markerContent.innerHTML = `
+          <div style="
+            width: 32px; 
+            height: 32px; 
+            background-color: ${home.Unit === "DAL" ? "#22c55e" : "#ef4444"}; 
+            border: 3px solid white; 
+            border-radius: 50%; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+          ">
+            🏠
+          </div>
+        `
+
+        // Add hover effect
+        markerContent.addEventListener("mouseenter", () => {
+          markerContent.style.transform = "scale(1.1)"
+        })
+        markerContent.addEventListener("mouseleave", () => {
+          markerContent.style.transform = "scale(1)"
+        })
+
+        const marker = new AdvancedMarkerElement({
+          map: mapInstance,
+          position: { lat: home.latitude, lng: home.longitude },
+          content: markerContent,
+          title: home.name,
+        })
+
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: createInfoWindowContent(home),
+        })
+
+        marker.addListener("click", () => {
+          // Close all other info windows
+          newMarkers.forEach((m) => m.infoWindow?.close())
+          infoWindow.open(mapInstance, marker)
+          handleMarkerClick(home)
+        })
+
+        return { marker, infoWindow, home }
+      })
+
+      setMarkers(newMarkers)
+
+      // Fit bounds to show all markers
+      if (homes.length > 1) {
+        const bounds = new window.google.maps.LatLngBounds()
+        homes.forEach((home) => {
+          bounds.extend({ lat: home.latitude, lng: home.longitude })
+        })
+        mapInstance.fitBounds(bounds)
+
+        // Ensure minimum zoom level
+        const listener = window.google.maps.event.addListener(mapInstance, "bounds_changed", () => {
+          if (mapInstance.getZoom() > 15) {
+            mapInstance.setZoom(15)
+          }
+          window.google.maps.event.removeListener(listener)
+        })
+      }
+
+      setIsLoaded(true)
+      setMapError(null)
+      console.log("✅ Google Maps initialized successfully")
+    } catch (error) {
+      console.error("❌ Error initializing Google Maps:", error)
+      setMapError("Failed to initialize map: " + (error instanceof Error ? error.message : "Unknown error"))
+    } finally {
+      setIsLoading(false)
     }
   }, [homes, handleMarkerClick])
 
+  // Load Google Maps API
+  useEffect(() => {
+    const loadGoogleMaps = () => {
+      if (scriptLoadedRef.current) {
+        initializeMap()
+        return
+      }
+
+      if (typeof window !== "undefined" && !window.google) {
+        console.log("📦 Loading Google Maps API...")
+        const script = document.createElement("script")
+        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCx6DSV5XxD5D0VAuODGakQrhejpR6062M&libraries=marker&loading=async&callback=initGoogleMaps`
+        script.async = true
+        script.defer = true
+
+        window.initGoogleMaps = () => {
+          console.log("🎯 Google Maps API loaded via callback")
+          scriptLoadedRef.current = true
+          initializeMap()
+        }
+
+        script.onerror = (error) => {
+          console.error("❌ Failed to load Google Maps API:", error)
+          setMapError("Failed to load Google Maps API. Please check your internet connection.")
+        }
+
+        document.head.appendChild(script)
+      } else if (window.google) {
+        console.log("♻️ Google Maps API already loaded")
+        scriptLoadedRef.current = true
+        initializeMap()
+      }
+    }
+
+    if (homes.length > 0) {
+      loadGoogleMaps()
+    }
+  }, [homes, initializeMap])
+
   // Update selected marker
   useEffect(() => {
-    if (markers.length > 0 && selectedHome) {
+    if (markers.length > 0 && selectedHome && map) {
       const selectedMarker = markers.find((m) => m.home.id === selectedHome.id)
       if (selectedMarker) {
         // Close all info windows
@@ -203,7 +264,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         // Open selected info window
         selectedMarker.infoWindow.open(map, selectedMarker.marker)
         // Center map on selected marker
-        map?.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
+        map.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
       }
     }
   }, [selectedHome, markers, map])
@@ -211,10 +272,22 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
   if (mapError) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
+        <div className="text-center p-6">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-medium">Map Error</p>
-          <p className="text-sm text-gray-600 mt-1">{mapError}</p>
+          <p className="text-red-600 font-medium mb-2">Map Error</p>
+          <p className="text-sm text-gray-600 mb-4">{mapError}</p>
+          <Button
+            onClick={() => {
+              setMapError(null)
+              setIsLoaded(false)
+              scriptLoadedRef.current = false
+              initializeMap()
+            }}
+            variant="outline"
+            size="sm"
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     )
@@ -235,19 +308,19 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
   return (
     <div className="w-full h-full relative">
       <div className="w-full h-full rounded-lg overflow-hidden">
-        <div id="google-map" className="w-full h-full rounded-lg" />
+        <div ref={mapRef} className="w-full h-full rounded-lg" />
 
-        {!isLoaded && (
+        {(isLoading || !isLoaded) && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span>Loading map...</span>
+              <span>{isLoading ? "Initializing map..." : "Loading map..."}</span>
             </div>
           </div>
         )}
       </div>
 
-      {selectedHome && (
+      {selectedHome && isLoaded && (
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
           <Card className="shadow-lg border-2 border-blue-200 bg-white">
             <CardHeader className="pb-2">
