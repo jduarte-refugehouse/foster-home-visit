@@ -2,95 +2,116 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useUser, UserButton } from "@clerk/nextjs"
+import { usePathname } from "next/navigation"
+import { useUser, SignInButton, UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Home, Map, List, BarChart3, Users } from "lucide-react"
+import { Menu, Home, MapPin, List, Settings, Users, BarChart3 } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const navigation = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Homes Map", href: "/homes-map", icon: MapPin },
+  { name: "Homes List", href: "/homes-list", icon: List },
+  { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+  { name: "Admin", href: "/admin", icon: Settings },
+  { name: "Users", href: "/admin/users", icon: Users },
+]
 
 export function Navigation() {
-  const { isSignedIn, isLoaded } = useUser()
   const [isOpen, setIsOpen] = useState(false)
-
-  const navigationItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/homes-map", label: "Homes Map", icon: Map },
-    { href: "/homes-list", label: "Homes List", icon: List },
-    { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-    { href: "/admin", label: "Admin", icon: Users },
-  ]
+  const pathname = usePathname()
+  const { isSignedIn, user } = useUser()
 
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <Home className="h-6 w-6" />
-              <span className="font-bold">Foster Home Visits</span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {isLoaded && isSignedIn && (
-              <>
-                {navigationItems.slice(1).map((item) => (
+    <nav className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-xl font-bold text-gray-900">
+                Foster Home Visits
+              </Link>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {navigation.map((item) => {
+                const Icon = item.icon
+                return (
                   <Link
-                    key={item.href}
+                    key={item.name}
                     href={item.href}
-                    className="flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary"
+                    className={cn(
+                      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium",
+                      pathname === item.href
+                        ? "border-blue-500 text-gray-900"
+                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                    )}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <Icon className="w-4 h-4 mr-2" />
+                    {item.name}
                   </Link>
-                ))}
-              </>
+                )
+              })}
+            </div>
+          </div>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {isSignedIn ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-700">
+                  Welcome, {user?.firstName || user?.emailAddresses[0]?.emailAddress}
+                </span>
+                <UserButton afterSignOutUrl="/" />
+              </div>
+            ) : (
+              <SignInButton mode="modal">
+                <Button variant="outline">Sign In</Button>
+              </SignInButton>
             )}
           </div>
-
-          {/* User Actions */}
-          <div className="flex items-center space-x-4">
-            {isLoaded ? (
-              isSignedIn ? (
-                <UserButton afterSignOutUrl="/" />
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href="/sign-in">Sign In</Link>
-                  </Button>
-                  <Button asChild size="sm">
-                    <Link href="/sign-up">Sign Up</Link>
-                  </Button>
-                </div>
-              )
-            ) : (
-              <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-            )}
-
-            {/* Mobile Menu */}
+          <div className="sm:hidden flex items-center">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="sm">
-                  <Menu className="h-5 w-5" />
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col space-y-4 mt-8">
-                  {isLoaded && isSignedIn && (
-                    <>
-                      {navigationItems.map((item) => (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className="flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.label}</span>
-                        </Link>
-                      ))}
-                    </>
-                  )}
+                <div className="flex flex-col space-y-4 mt-4">
+                  {navigation.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={cn(
+                          "flex items-center px-3 py-2 rounded-md text-base font-medium",
+                          pathname === item.href
+                            ? "bg-blue-100 text-blue-900"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        )}
+                      >
+                        <Icon className="w-5 h-5 mr-3" />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
+                  <div className="pt-4 border-t">
+                    {isSignedIn ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">
+                          {user?.firstName || user?.emailAddresses[0]?.emailAddress}
+                        </span>
+                        <UserButton afterSignOutUrl="/" />
+                      </div>
+                    ) : (
+                      <SignInButton mode="modal">
+                        <Button variant="outline" className="w-full bg-transparent">
+                          Sign In
+                        </Button>
+                      </SignInButton>
+                    )}
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
