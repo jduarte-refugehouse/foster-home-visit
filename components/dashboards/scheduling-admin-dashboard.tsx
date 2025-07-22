@@ -1,155 +1,109 @@
-"use client"
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Home, Plus, AlertCircle } from "lucide-react"
+import { Calendar, Clock, Users, CheckCircle } from "lucide-react"
 
 export default function SchedulingAdminDashboard() {
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Scheduling Dashboard</h1>
-          <p className="text-muted-foreground">Manage home visit schedules and appointments</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Schedule Visit
-        </Button>
+        <h2 className="text-3xl font-bold tracking-tight">Scheduling Admin Dashboard</h2>
+        <Badge variant="outline">Scheduling Admin</Badge>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Visits</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Visits</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <div className="text-xs text-muted-foreground">+2 from yesterday</div>
+            <div className="text-2xl font-bold">15</div>
+            <p className="text-xs text-muted-foreground">Scheduled for today</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">34</div>
-            <div className="text-xs text-muted-foreground">5 pending confirmation</div>
+            <div className="text-2xl font-bold">7</div>
+            <p className="text-xs text-muted-foreground">Awaiting approval</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Staff</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">3</div>
-            <div className="text-xs text-muted-foreground">Require rescheduling</div>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">Available today</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completion Rate</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">94%</div>
-            <div className="text-xs text-muted-foreground">This month</div>
+            <div className="text-2xl font-bold">89</div>
+            <p className="text-xs text-muted-foreground">This week</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Visits */}
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Upcoming Visits
-            </CardTitle>
-            <CardDescription>Next 7 days</CardDescription>
+            <CardTitle>Schedule Overview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { home: "Johnson Family", time: "10:00 AM", date: "Today", status: "confirmed" },
-                { home: "Smith Residence", time: "2:30 PM", date: "Today", status: "pending" },
-                { home: "Davis Home", time: "9:00 AM", date: "Tomorrow", status: "confirmed" },
-                { home: "Wilson Family", time: "11:30 AM", date: "Tomorrow", status: "overdue" },
-              ].map((visit, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Home className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">{visit.home}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {visit.date} at {visit.time}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      visit.status === "confirmed"
-                        ? "default"
-                        : visit.status === "pending"
-                          ? "secondary"
-                          : "destructive"
-                    }
-                  >
-                    {visit.status}
-                  </Badge>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">Morning Block (8:00 AM - 12:00 PM)</p>
+                  <p className="text-sm text-muted-foreground">6 visits scheduled</p>
                 </div>
-              ))}
+                <Badge variant="outline">75% Capacity</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">Afternoon Block (1:00 PM - 5:00 PM)</p>
+                  <p className="text-sm text-muted-foreground">9 visits scheduled</p>
+                </div>
+                <Badge variant="destructive">Full</Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">Evening Block (5:00 PM - 8:00 PM)</p>
+                  <p className="text-sm text-muted-foreground">2 visits scheduled</p>
+                </div>
+                <Badge variant="secondary">Available</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Schedule Conflicts */}
-        <Card>
+        <Card className="col-span-3">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              Schedule Conflicts
-            </CardTitle>
-            <CardDescription>Require attention</CardDescription>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  issue: "Double booking",
-                  description: "Gabe has two visits at 2:00 PM on Friday",
-                  priority: "high",
-                },
-                {
-                  issue: "Travel time conflict",
-                  description: "15 minutes between visits 20 miles apart",
-                  priority: "medium",
-                },
-                {
-                  issue: "Liaison unavailable",
-                  description: "No coverage for Thursday afternoon visits",
-                  priority: "high",
-                },
-              ].map((conflict, index) => (
-                <div key={index} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">{conflict.issue}</div>
-                    <Badge variant={conflict.priority === "high" ? "destructive" : "secondary"}>
-                      {conflict.priority}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{conflict.description}</div>
-                  <Button size="sm" variant="outline" className="mt-2 bg-transparent">
-                    Resolve
-                  </Button>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">Schedule new visit</button>
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
+                Approve pending requests
+              </button>
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
+                View staff availability
+              </button>
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg text-sm">
+                Generate schedule report
+              </button>
             </div>
           </CardContent>
         </Card>

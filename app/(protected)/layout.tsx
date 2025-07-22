@@ -1,7 +1,8 @@
 import type React from "react"
-import { auth, UserButton, currentUser } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
+import { UserButton } from "@clerk/nextjs"
 
 export default async function ProtectedLayout({
   children,

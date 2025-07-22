@@ -1,49 +1,24 @@
-"use client"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Settings, Users, Home, Database, Shield, Activity } from "lucide-react"
-import Link from "next/link"
+import { Users, Shield, Settings, Activity } from "lucide-react"
 
 export default function AdminDashboard() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">Administrator Dashboard</h1>
-            <Badge variant="destructive">
-              <Shield className="h-3 w-3 mr-1" />
-              Admin Access
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">Full system access and management capabilities</p>
-        </div>
+        <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+        <Badge variant="secondary">Global Admin</Badge>
       </div>
 
-      {/* Admin Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">Active users</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Database Status</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Online</div>
-            <p className="text-xs text-muted-foreground">All systems operational</p>
+            <div className="text-2xl font-bold">1,234</div>
+            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
           </CardContent>
         </Card>
 
@@ -53,8 +28,8 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">Current active users</p>
+            <div className="text-2xl font-bold">573</div>
+            <p className="text-xs text-muted-foreground">+180.1% from last month</p>
           </CardContent>
         </Card>
 
@@ -64,107 +39,66 @@ export default function AdminDashboard() {
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">100%</div>
-            <p className="text-xs text-muted-foreground">All services running</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Admin Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>System Management</CardTitle>
-            <CardDescription>Administrative tools and system controls</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button asChild className="w-full justify-start">
-              <Link href="/admin/users">
-                <Users className="mr-2 h-4 w-4" />
-                Manage Users & Permissions
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start bg-transparent">
-              <Link href="/admin/invitations">
-                <Settings className="mr-2 h-4 w-4" />
-                Send Invitations
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start bg-transparent">
-              <Link href="/diagnostics">
-                <Database className="mr-2 h-4 w-4" />
-                System Diagnostics
-              </Link>
-            </Button>
+            <div className="text-2xl font-bold">99.9%</div>
+            <p className="text-xs text-muted-foreground">Uptime this month</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Data Management</CardTitle>
-            <CardDescription>Access all data and reporting features</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Configurations</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button asChild variant="outline" className="w-full justify-start bg-transparent">
-              <Link href="/homes-list">
-                <Home className="mr-2 h-4 w-4" />
-                View All Homes
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start bg-transparent">
-              <Link href="/homes-map">
-                <Settings className="mr-2 h-4 w-4" />
-                Geographic Map
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start bg-transparent">
-              <Link href="/auth-test">
-                <Shield className="mr-2 h-4 w-4" />
-                Authentication Test
-              </Link>
-            </Button>
+          <CardContent>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">Pending updates</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Admin Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Administrative Activity</CardTitle>
-          <CardDescription>Latest system changes and user actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-100">
-                <Users className="h-3 w-3 text-blue-600" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>System Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-sm">Database: Operational</span>
               </div>
-              <div>
-                <p className="text-sm font-medium">New user invitation sent</p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-sm">API Services: Operational</span>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-100">
-                <Database className="h-3 w-3 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Database sync completed</p>
-                <p className="text-xs text-muted-foreground">4 hours ago</p>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                <span className="text-sm">Background Jobs: Degraded</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-orange-100">
-                <Settings className="h-3 w-3 text-orange-600" />
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest system events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="text-sm">
+                <span className="font-medium">User created:</span> john.doe@example.com
               </div>
-              <div>
-                <p className="text-sm font-medium">System configuration updated</p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
+              <div className="text-sm">
+                <span className="font-medium">Permission updated:</span> Admin role assigned
+              </div>
+              <div className="text-sm">
+                <span className="font-medium">System backup:</span> Completed successfully
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

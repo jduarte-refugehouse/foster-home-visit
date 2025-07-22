@@ -1,107 +1,76 @@
-"use client"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Mail, Phone, User, AlertCircle } from "lucide-react"
+import { Eye, FileText, Calendar, Info } from "lucide-react"
 
 export default function ExternalUserDashboard() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">Welcome</h1>
-            <Badge variant="secondary">
-              <User className="h-3 w-3 mr-1" />
-              External User
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">Limited access - contact administrator for additional permissions</p>
-        </div>
+        <h2 className="text-3xl font-bold tracking-tight">External User Dashboard</h2>
+        <Badge variant="secondary">External Access</Badge>
       </div>
 
-      {/* Limited Access Notice */}
-      <Card className="border-orange-200 bg-orange-50">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Available Resources</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">Resources you can view</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Documents</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">8</div>
+            <p className="text-xs text-muted-foreground">Shared documents</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Last Access</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Today</div>
+            <p className="text-xs text-muted-foreground">7/22/2025</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-orange-800">
-            <AlertCircle className="h-5 w-5" />
-            Limited Access Account
+          <CardTitle className="flex items-center gap-2">
+            <Info className="h-5 w-5" />
+            Access Information
           </CardTitle>
-          <CardDescription className="text-orange-700">
-            Your account has limited permissions. Contact your administrator to request additional access to home visit
-            features.
+          <CardDescription>
+            Your account has limited access to specific resources as determined by your organization.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="font-medium text-orange-800 mb-2">Available Actions:</h4>
-              <ul className="text-sm text-orange-700 space-y-1">
-                <li>• View your profile information</li>
-                <li>• Update your contact details</li>
-                <li>• Access basic system information</li>
+              <h4 className="font-medium mb-2">Available Resources</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• View shared documents</li>
+                <li>• Access approved reports</li>
+                <li>• Download permitted files</li>
               </ul>
             </div>
-
             <div>
-              <h4 className="font-medium text-orange-800 mb-2">To Request Access:</h4>
-              <ul className="text-sm text-orange-700 space-y-1">
-                <li>• Contact your system administrator</li>
-                <li>• Provide your business justification</li>
-                <li>• Specify which features you need access to</li>
-              </ul>
+              <h4 className="font-medium mb-2">Contact Information</h4>
+              <p className="text-sm text-muted-foreground">
+                For additional access or questions, please contact your system administrator.
+              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Need Help?</CardTitle>
-          <CardDescription>Contact information for system support</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-100">
-              <Mail className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium">Email Support</p>
-              <p className="text-sm text-muted-foreground">jduarte@refugehouse.org</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-green-100">
-              <Phone className="h-4 w-4 text-green-600" />
-            </div>
-            <div>
-              <p className="font-medium">Phone Support</p>
-              <p className="text-sm text-muted-foreground">Contact your administrator</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Management</CardTitle>
-          <CardDescription>Manage your profile and account settings</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start bg-transparent">
-              <User className="mr-2 h-4 w-4" />
-              View Profile
-            </Button>
-            <Button variant="outline" className="w-full justify-start bg-transparent">
-              <Mail className="mr-2 h-4 w-4" />
-              Update Contact Information
-            </Button>
           </div>
         </CardContent>
       </Card>
