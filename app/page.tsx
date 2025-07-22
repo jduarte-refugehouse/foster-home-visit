@@ -5,8 +5,9 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle, User, Shield, Database } from "lucide-react"
+import { AlertCircle, CheckCircle, User, Shield, Database, ArrowRight } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 interface AppUser {
   id: string
@@ -159,14 +160,24 @@ export default function HomePage() {
                   <CardDescription>Clerk integration working with database</CardDescription>
                 </div>
               </div>
-              <SignOutButton>
-                <Button
-                  variant="outline"
-                  className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent"
-                >
-                  Sign Out
-                </Button>
-              </SignOutButton>
+              <div className="flex gap-2">
+                {userInfo && !loading && !error && (
+                  <Link href="/dashboard">
+                    <Button className="bg-refuge-purple hover:bg-refuge-light-purple text-white">
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Go to Dashboard
+                    </Button>
+                  </Link>
+                )}
+                <SignOutButton>
+                  <Button
+                    variant="outline"
+                    className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white bg-transparent"
+                  >
+                    Sign Out
+                  </Button>
+                </SignOutButton>
+              </div>
             </div>
           </CardHeader>
         </Card>
