@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Home, Users, Settings, PanelLeft, Package2, ShieldCheck, LayoutDashboard } from "lucide-react"
+import { Home, Users, Settings, PanelLeft, Package2, ShieldCheck, LayoutDashboard, Wrench } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,11 +14,15 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { usePathname } from "next/navigation"
 import { usePermissions } from "@/hooks/use-permissions"
-import { UserButton, SignedIn, SignedOut } from "@clerk/nextjs"
+import { UserButton, SignedIn, SignedOut, useUser } from "@clerk/nextjs"
 
 export function Navigation() {
   const pathname = usePathname()
   const { hasPermission, isSystemAdmin } = usePermissions()
+  const { user } = useUser()
+
+  // Check if current user is system admin (jduarte@refugehouse.org)
+  const isCurrentUserSystemAdmin = user?.primaryEmailAddress?.emailAddress === "jduarte@refugehouse.org"
 
   const getBreadcrumbs = () => {
     const segments = pathname.split("/").filter(Boolean)
@@ -114,12 +118,37 @@ export function Navigation() {
                   </Link>
                 ),
             )}
+            {/* System Admin Tools - Mobile */}
+            {isCurrentUserSystemAdmin && (
+              <Link
+                href="/system-admin"
+                className={`flex items-center gap-4 px-2.5 ${
+                  pathname === "/system-admin" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Wrench className="h-5 w-5" />
+                System Admin
+              </Link>
+            )}
           </nav>
         </SheetContent>
       </Sheet>
       {getBreadcrumbs()}
       <div className="relative ml-auto flex-1 md:grow-0">{/* Search can go here if needed */}</div>
       <div className="ml-auto flex items-center gap-4">
+        {/* System Admin Button - Desktop Only */}
+        {isCurrentUserSystemAdmin && (
+          <Link href="/system-admin">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-400 dark:hover:text-gray-900 bg-transparent"
+            >
+              <Wrench className="h-4 w-4" />
+              System Admin
+            </Button>
+          </Link>
+        )}
         <SignedIn>
           <UserButton afterSignOutUrl="/" />
         </SignedIn>
