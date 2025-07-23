@@ -1,80 +1,80 @@
 import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
-import { query } from "@/lib/db"
+import { testConnection, query } from "@/lib/db"
+
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    console.log("🔍 Testing system status...")
 
     // Test database connection
-    let databaseStatus = "connected"
-    let additionalInfo = {}
+    const dbTest = await testConnection()
 
-    try {
-      // Test basic connection
-      const testResult = await query("SELECT 1 as test")
-
-      // Get some basic stats
-      const userCount = await query(`
-        SELECT COUNT(*) as count FROM app_users WHERE is_active = 1
-      `)
-
-      const permissionCount = await query(`
-        SELECT COUNT(*) as count FROM permissions p
-        INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-        WHERE ma.app_code = 'home-visits'
-      `)
-
-      const roleCount = await query(`
-        SELECT COUNT(DISTINCT role_name) as count FROM user_roles ur
-        INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
-        WHERE ma.app_code = 'home-visits' AND ur.is_active = 1
-      `)
-
-      additionalInfo = {
-        activeUsers: userCount[0]?.count || 0,
-        totalPermissions: permissionCount[0]?.count || 0,
-        totalRoles: roleCount[0]?.count || 0,
-      }
-
-      if (testResult.length > 0) {
-        databaseStatus = "connected"
-      }
-    } catch (error) {
-      console.error("Database connection test failed:", error)
-      databaseStatus = "error"
+    const systemStats = {
+      activeUsers: 0,
+      totalRoles: 0,
+      totalPermissions: 0,
     }
 
-    // Calculate uptime (simplified)
-    const uptimeMs = process.uptime() * 1000
-    const uptimeHours = Math.floor(uptimeMs / (1000 * 60 * 60))
-    const uptimeMinutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60))
-    const uptime = `${uptimeHours}h ${uptimeMinutes}m`
+    if (dbTest.success) {
+      try {
+        // Get active users count
+        const userCount = await query(`
+          SELECT COUNT(*) as count 
+          FROM app_users 
+          WHERE is_active = 1
+        `)
+        systemStats.activeUsers = userCount[0]?.count || 0
 
-    return NextResponse.json({
-      database: databaseStatus,
+        // Get roles count for home-visits
+        const roleCount = await query(`
+          SELECT COUNT(DISTINCT role_name) as count 
+          FROM user_roles 
+          WHERE microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7' 
+            AND is_active = 1
+        `)
+        systemStats.totalRoles = roleCount[0]?.count || 0
+
+        // Get permissions count for home-visits
+        const permissionCount = await query(`
+          SELECT COUNT(*) as count 
+          FROM permissions 
+          WHERE microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
+        `)
+        systemStats.totalPermissions = permissionCount[0]?.count || 0
+
+        console.log("✅ System stats:", systemStats)
+      } catch (statsError) {
+        console.error("❌ Error getting system stats:", statsError)
+      }
+    }
+
+    const response = {
+      database: dbTest.success ? "connected" : "error",
       environment: process.env.NODE_ENV || "development",
       version: "1.0.0",
-      uptime: uptime,
+      uptime: "Active",
       lastCheck: new Date().toISOString(),
-      timestamp: Date.now(),
-      ...additionalInfo,
-    })
+      ...systemStats,
+      dbMessage: dbTest.message,
+      passwordSource: dbTest.passwordSource,
+    }
+
+    console.log("✅ System status response:", response)
+
+    return NextResponse.json(response)
   } catch (error) {
-    console.error("System status check failed:", error)
-    return NextResponse.json(
-      {
-        database: "error",
-        environment: "unknown",
-        version: "1.0.0",
-        uptime: "unknown",
-        lastCheck: new Date().toISOString(),
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    console.error("❌ System status error:", error)
+    return NextResponse.json({
+      database: "error",
+      environment: "unknown",
+      version: "1.0.0",
+      uptime: "Unknown",
+      lastCheck: new Date().toISOString(),
+      activeUsers: 0,
+      totalRoles: 0,
+      totalPermissions: 0,
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }
