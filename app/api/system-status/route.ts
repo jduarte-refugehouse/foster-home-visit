@@ -1,37 +1,97 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { query, testConnection } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching system status (no auth)...")
+    console.log("🔍 Fetching system status...")
 
-    // Get database statistics - no auth checks
-    const userCount = await query("SELECT COUNT(*) as count FROM app_users")
-    const activeUserCount = await query("SELECT COUNT(*) as count FROM app_users WHERE is_active = 1")
-    const roleCount = await query("SELECT COUNT(DISTINCT role_name) as count FROM user_roles")
-    const permissionCount = await query("SELECT COUNT(*) as count FROM permissions")
-    const appCount = await query("SELECT COUNT(*) as count FROM microservice_apps")
+    // Test database connection
+    const connectionTest = await testConnection()
 
-    const systemStatus = {
-      database: "connected",
-      environment: process.env.NODE_ENV || "development",
-      version: "1.0.0",
-      uptime: process.uptime ? `${Math.floor(process.uptime() / 60)} minutes` : "Unknown",
-      totalUsers: userCount[0]?.count || 0,
-      activeUsers: activeUserCount[0]?.count || 0,
-      totalRoles: roleCount[0]?.count || 0,
-      totalPermissions: permissionCount[0]?.count || 0,
-      totalApps: appCount[0]?.count || 0,
-      lastCheck: new Date().toISOString(),
+    let totalUsers = 0
+    let activeUsers = 0
+    let totalRoles = 0
+    let totalPermissions = 0
+    let totalApps = 0
+
+    if (connectionTest.success) {
+      try {
+        // Get user counts
+        const userCounts = await query(`
+          SELECT 
+            COUNT(*) as total_users,
+            COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_users
+          FROM app_users
+        `)
+
+        if (userCounts.length > 0) {
+          totalUsers = userCounts[0].total_users || 0
+          activeUsers = userCounts[0].active_users || 0
+        }
+
+        // Get role counts
+        const roleCounts = await query(`
+          SELECT COUNT(*) as total_roles
+          FROM user_roles
+        `)
+
+        if (roleCounts.length > 0) {
+          totalRoles = roleCounts[0].total_roles || 0
+        }
+
+        // Get permission counts
+        const permissionCounts = await query(`
+          SELECT COUNT(*) as total_permissions
+          FROM permissions
+        `)
+
+        if (permissionCounts.length > 0) {
+          totalPermissions = permissionCounts[0].total_permissions || 0
+        }
+
+        // Get app counts
+        const appCounts = await query(`
+          SELECT COUNT(*) as total_apps
+          FROM microservice_apps
+        `)
+
+        if (appCounts.length > 0) {
+          totalApps = appCounts[0].total_apps || 0
+        }
+
+        console.log("✅ System status counts:", {
+          totalUsers,
+          activeUsers,
+          totalRoles,
+          totalPermissions,
+          totalApps,
+        })
+      } catch (countError) {
+        console.error("❌ Error getting counts:", countError)
+      }
     }
 
-    console.log("✅ System status:", systemStatus)
+    const statusData = {
+      database: connectionTest.success ? "connected" : "error",
+      environment: process.env.NODE_ENV || "development",
+      version: "1.0.0",
+      uptime: process.uptime ? `${Math.floor(process.uptime())} seconds` : "Unknown",
+      totalUsers,
+      activeUsers,
+      totalRoles,
+      totalPermissions,
+      totalApps,
+      lastCheck: new Date().toISOString(),
+      error: connectionTest.success ? undefined : connectionTest.message,
+    }
 
-    return NextResponse.json(systemStatus)
+    console.log("✅ Final system status:", statusData)
+
+    return NextResponse.json(statusData)
   } catch (error) {
-    console.error("❌ Error fetching system status:", error)
+    console.error("❌ Error in system status:", error)
     return NextResponse.json(
       {
         database: "error",
