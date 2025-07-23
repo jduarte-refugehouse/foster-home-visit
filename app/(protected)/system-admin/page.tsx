@@ -2,34 +2,34 @@
 
 import { useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   ArrowLeft,
   Database,
   Users,
   Shield,
-  UserCheck,
-  Activity,
-  Clock,
-  Server,
-  AlertTriangle,
+  Settings,
   CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Activity,
 } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface SystemStatus {
-  database: "connected" | "disconnected" | "error"
+  database: string
   environment: string
   version: string
   uptime: string
+  activeUsers: number
+  totalRoles: number
+  totalPermissions: number
   lastCheck: string
-  activeUsers?: number
-  totalPermissions?: number
-  totalRoles?: number
 }
 
 interface AppUser {
@@ -44,180 +44,151 @@ interface AppUser {
   updated_at: string
   department?: string
   job_title?: string
+  roles?: string[]
+  permissions?: string[]
 }
 
-interface AppRole {
+interface Role {
   role_name: string
   role_display_name: string
   role_level: number
   description: string
-  permissions: string
   user_count: number
+  permissions: string
 }
 
-interface AppPermission {
+interface Permission {
   id: string
   permission_code: string
   permission_name: string
-  category: string
   description: string
-  microservice_id: string
-  app_name: string
-  app_code: string
+  category: string
   created_at: string
 }
 
-interface UserWithRoles extends AppUser {
-  roles: string[]
-  permissions: string[]
-  microservice_roles: Array<{
-    role_name: string
-    role_display_name: string
-    microservice_name: string
-  }>
-}
-
 export default function SystemAdminPage() {
-  const { user, isLoaded } = useUser()
+  const { user } = useUser()
+  const router = useRouter()
+
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
-  const [appUsers, setAppUsers] = useState<AppUser[]>([])
-  const [usersWithRoles, setUsersWithRoles] = useState<UserWithRoles[]>([])
-  const [appRoles, setAppRoles] = useState<AppRole[]>([])
-  const [appPermissions, setAppPermissions] = useState<AppPermission[]>([])
+  const [users, setUsers] = useState<AppUser[]>([])
+  const [usersWithRoles, setUsersWithRoles] = useState<AppUser[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
+  const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Check if user is system admin
-  const isSystemAdmin = user?.primaryEmailAddress?.emailAddress === "jduarte@refugehouse.org"
+  useEffect(() => {
+    if (user && user.primaryEmailAddress?.emailAddress !== "jduarte@refugehouse.org") {
+      router.push("/dashboard")
+      return
+    }
+  }, [user, router])
 
   useEffect(() => {
-    if (isLoaded && !isSystemAdmin) {
-      redirect("/dashboard")
+    if (user?.primaryEmailAddress?.emailAddress === "jduarte@refugehouse.org") {
+      fetchAllData()
     }
-  }, [isLoaded, isSystemAdmin])
+  }, [user])
 
-  useEffect(() => {
-    if (isSystemAdmin) {
-      fetchSystemData()
-    }
-  }, [isSystemAdmin])
+  const fetchAllData = async () => {
+    setLoading(true)
+    setError(null)
 
-  const fetchSystemData = async () => {
     try {
-      setError(null)
+      console.log("🔄 Fetching all admin data...")
 
       // Fetch system status
-      try {
-        const statusResponse = await fetch("/api/system-status")
-        if (statusResponse.ok) {
-          const statusData = await statusResponse.json()
-          setSystemStatus(statusData)
-        } else {
-          setSystemStatus({
-            database: "error",
-            environment: "Unknown",
-            version: "1.0.0",
-            uptime: "Unknown",
-            lastCheck: new Date().toISOString(),
-          })
-        }
-      } catch (err) {
-        console.error("Error fetching system status:", err)
-        setSystemStatus({
-          database: "error",
-          environment: "Development",
-          version: "1.0.0",
-          uptime: "Unknown",
-          lastCheck: new Date().toISOString(),
-        })
+      const statusResponse = await fetch("/api/system-status")
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json()
+        console.log("✅ System status:", statusData)
+        setSystemStatus(statusData)
+      } else {
+        console.error("❌ Failed to fetch system status:", statusResponse.status)
       }
 
-      // Fetch app users
-      try {
-        const usersResponse = await fetch("/api/admin/users")
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json()
-          setAppUsers(usersData.users || [])
-          setUsersWithRoles(usersData.usersWithRoles || [])
-        }
-      } catch (err) {
-        console.error("Error fetching users:", err)
+      // Fetch users
+      const usersResponse = await fetch("/api/admin/users")
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        console.log("✅ Users data:", usersData)
+        setUsers(usersData.users || [])
+        setUsersWithRoles(usersData.usersWithRoles || [])
+      } else {
+        console.error("❌ Failed to fetch users:", usersResponse.status)
+        const errorData = await usersResponse.json()
+        console.error("Error details:", errorData)
       }
 
-      // Fetch app roles
-      try {
-        const rolesResponse = await fetch("/api/admin/roles")
-        if (rolesResponse.ok) {
-          const rolesData = await rolesResponse.json()
-          setAppRoles(rolesData || [])
-        }
-      } catch (err) {
-        console.error("Error fetching roles:", err)
+      // Fetch roles
+      const rolesResponse = await fetch("/api/admin/roles")
+      if (rolesResponse.ok) {
+        const rolesData = await rolesResponse.json()
+        console.log("✅ Roles data:", rolesData)
+        setRoles(rolesData || [])
+      } else {
+        console.error("❌ Failed to fetch roles:", rolesResponse.status)
       }
 
-      // Fetch app permissions
-      try {
-        const permissionsResponse = await fetch("/api/admin/permissions")
-        if (permissionsResponse.ok) {
-          const permissionsData = await permissionsResponse.json()
-          setAppPermissions(permissionsData || [])
-        }
-      } catch (err) {
-        console.error("Error fetching permissions:", err)
+      // Fetch permissions
+      const permissionsResponse = await fetch("/api/admin/permissions")
+      if (permissionsResponse.ok) {
+        const permissionsData = await permissionsResponse.json()
+        console.log("✅ Permissions data:", permissionsData)
+        setPermissions(permissionsData || [])
+      } else {
+        console.error("❌ Failed to fetch permissions:", permissionsResponse.status)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch system data")
+      console.error("❌ Error fetching admin data:", err)
+      setError(err instanceof Error ? err.message : "Unknown error occurred")
     } finally {
       setLoading(false)
     }
   }
 
-  if (!isLoaded || !isSystemAdmin) {
-    return null
+  if (!user || user.primaryEmailAddress?.emailAddress !== "jduarte@refugehouse.org") {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Access Denied: System Administrator Only</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "connected":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "disconnected":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case "error":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />
-      default:
-        return <Activity className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "connected":
-        return "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-      case "disconnected":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800"
-      case "error":
-        return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-800"
-    }
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="container mx-auto p-8 space-y-8 max-w-7xl">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-            <Server className="h-8 w-8 text-orange-500" />
-            System Administration
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
-            Home Visits Microservice - Administrative Tools & System Overview
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
+          <p className="text-gray-600 dark:text-gray-300">Home Visits Microservice Management</p>
         </div>
         <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2 bg-transparent px-6 py-2">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="outline" className="dark:border-gray-600 dark:text-gray-300 bg-transparent">
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>
         </Link>
@@ -226,410 +197,315 @@ export default function SystemAdminPage() {
       <Separator className="dark:border-gray-700" />
 
       {error && (
-        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-          <CardContent className="py-6">
+        <Card className="border-red-200 dark:border-red-800">
+          <CardContent className="py-4">
             <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">Error: {error}</span>
+              <AlertCircle className="h-5 w-5" />
+              <span>Error: {error}</span>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400 text-lg">Loading system data...</p>
-        </div>
-      ) : (
-        <div className="grid gap-8">
-          {/* 1. System Status */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-orange-600 dark:text-orange-400 text-xl">
-                <Activity className="h-6 w-6" />
-                1. System Status
-              </CardTitle>
-              <CardDescription className="dark:text-gray-400 text-base">
-                Current system health and operational status
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                  <div className="flex items-center justify-center mb-3">
-                    {getStatusIcon(systemStatus?.database || "unknown")}
-                    <Database className="h-6 w-6 ml-2 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Database Connection</p>
-                  <Badge variant="outline" className={getStatusColor(systemStatus?.database || "unknown")}>
-                    {systemStatus?.database || "Unknown"}
-                  </Badge>
-                  {systemStatus?.activeUsers !== undefined && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      {systemStatus.activeUsers} active users
-                    </p>
+      {/* System Status Section */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">1. System Status</CardTitle>
+              <CardDescription className="dark:text-gray-400">Current system health and statistics</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {systemStatus ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                <div className="flex items-center gap-2 mb-2">
+                  {systemStatus.database === "connected" ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500" />
                   )}
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Database</span>
                 </div>
-                <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                  <Server className="h-6 w-6 mx-auto mb-3 text-green-600 dark:text-green-400" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Environment</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-200">
-                    {systemStatus?.environment || "Development"}
-                  </p>
-                  {systemStatus?.totalRoles !== undefined && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      {systemStatus.totalRoles} roles defined
-                    </p>
-                  )}
-                </div>
-                <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                  <Shield className="h-6 w-6 mx-auto mb-3 text-purple-600 dark:text-purple-400" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Application Version</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-200">{systemStatus?.version || "1.0.0"}</p>
-                  {systemStatus?.totalPermissions !== undefined && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      {systemStatus.totalPermissions} permissions
-                    </p>
-                  )}
-                </div>
-                <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                  <Clock className="h-6 w-6 mx-auto mb-3 text-orange-600 dark:text-orange-400" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">System Uptime</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-200">{systemStatus?.uptime || "Active"}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                    Last check:{" "}
-                    {systemStatus?.lastCheck ? new Date(systemStatus.lastCheck).toLocaleTimeString() : "Unknown"}
-                  </p>
-                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{systemStatus.database}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* 2. Current Users */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-orange-600 dark:text-orange-400 text-xl">
-                <Users className="h-6 w-6" />
-                2. Current Users for this Microservice
-              </CardTitle>
-              <CardDescription className="dark:text-gray-400 text-base">
-                All users registered in the Home Visits application ({appUsers.length} total users)
+              <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="h-5 w-5 text-blue-500" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Environment</span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{systemStatus.environment}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-5 w-5 text-purple-500" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Uptime</span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{systemStatus.uptime}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                <div className="flex items-center gap-2 mb-2">
+                  <Settings className="h-5 w-5 text-orange-500" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Version</span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{systemStatus.version}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No system status data available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Current Users Section */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">2. Current Users</CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                All users registered in this microservice ({users.length} total)
               </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {appUsers.length > 0 ? (
-                  appUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <p className="font-semibold text-gray-900 dark:text-gray-200 text-lg">
-                            {user.first_name} {user.last_name}
-                          </p>
-                          <Badge variant={user.is_active ? "default" : "secondary"} className="text-xs">
-                            {user.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{user.email}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-                          <span>User ID: {user.id.substring(0, 8)}...</span>
-                          <span>•</span>
-                          <span>Created: {new Date(user.created_at).toLocaleDateString()}</span>
-                          {user.department && (
-                            <>
-                              <span>•</span>
-                              <span>Dept: {user.department}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs font-medium">
-                          {user.core_role.replace("_", " ").toUpperCase()}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {users.length > 0 ? (
+            <div className="space-y-4">
+              {users.map((user) => (
+                <div key={user.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                        {user.first_name} {user.last_name}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        Core Role: {user.core_role} | Created: {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={user.is_active ? "default" : "secondary"}>
+                        {user.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No users found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Permissions and Roles Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Roles */}
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-gray-900 dark:text-gray-100">3a. Current Roles</CardTitle>
+                <CardDescription className="dark:text-gray-400">
+                  Role definitions ({roles.length} total)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {roles.length > 0 ? (
+              <div className="space-y-3">
+                {roles.map((role, index) => (
+                  <div key={index} className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{role.role_name}</h4>
+                      <Badge variant="outline">{role.user_count} users</Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{role.description}</p>
+                    {role.permissions && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        Permissions: {role.permissions || "None"}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">No roles found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Permissions */}
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Settings className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-gray-900 dark:text-gray-100">3b. Current Permissions</CardTitle>
+                <CardDescription className="dark:text-gray-400">
+                  Permission definitions ({permissions.length} total)
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {permissions.length > 0 ? (
+              <div className="space-y-3">
+                {permissions.map((permission) => (
+                  <div
+                    key={permission.id}
+                    className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{permission.permission_name}</h4>
+                      <Badge variant="outline">{permission.category}</Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{permission.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">Code: {permission.permission_code}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">No permissions found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Current User Objects Section */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <Users className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">4. Current User Objects</CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                Detailed user information with roles and permissions ({usersWithRoles.length} total)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {usersWithRoles.length > 0 ? (
+            <div className="space-y-4">
+              {usersWithRoles.map((user) => (
+                <div key={user.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* User Details */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">User Details</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Name:</strong> {user.first_name} {user.last_name}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Email:</strong> {user.email}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Core Role:</strong> {user.core_role}
+                      </p>
+                      {user.department && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <strong>Department:</strong> {user.department}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Activity */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Activity</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Status:</strong>
+                        <Badge variant={user.is_active ? "default" : "secondary"} className="ml-2">
+                          {user.is_active ? "Active" : "Inactive"}
                         </Badge>
-                      </div>
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Created:</strong> {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Updated:</strong> {new Date(user.updated_at).toLocaleDateString()}
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">No users found</p>
-                    <p className="text-gray-400 dark:text-gray-500 text-sm">Users will appear here once they sign up</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* 3. Current Permissions/Roles */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-orange-600 dark:text-orange-400 text-xl">
-                <Shield className="h-6 w-6" />
-                3. Current Permissions/Roles for this App
-              </CardTitle>
-              <CardDescription className="dark:text-gray-400 text-base">
-                Role definitions and associated permissions ({appRoles.length} roles, {appPermissions.length}{" "}
-                permissions)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Roles Section */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-200 mb-4 text-lg flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Defined Roles ({appRoles.length})
-                  </h4>
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {appRoles.length > 0 ? (
-                      appRoles.map((role, index) => (
-                        <div
-                          key={index}
-                          className="p-4 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium text-gray-900 dark:text-gray-200">{role.role_display_name}</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                Level {role.role_level}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs">
-                                {role.user_count} users
-                              </Badge>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-mono">{role.role_name}</p>
-                          {role.description && (
-                            <p className="text-sm text-gray-500 dark:text-gray-500 mb-2">{role.description}</p>
-                          )}
-                          {role.permissions && (
-                            <div className="mt-2">
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Common Permissions:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {role.permissions
-                                  .split(", ")
-                                  .filter((p) => p)
-                                  .map((permission, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs">
-                                      {permission}
-                                    </Badge>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <Shield className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <p className="text-gray-500 dark:text-gray-400">No roles defined</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Permissions Section */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-200 mb-4 text-lg flex items-center gap-2">
-                    <UserCheck className="h-5 w-5" />
-                    Defined Permissions ({appPermissions.length})
-                  </h4>
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {appPermissions.length > 0 ? (
-                      appPermissions.map((permission, index) => (
-                        <div
-                          key={index}
-                          className="p-4 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium text-gray-900 dark:text-gray-200 text-sm">
-                              {permission.permission_name}
-                            </p>
-                            <Badge variant="outline" className="text-xs">
-                              {permission.category}
+                    {/* Access Control */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Access Control</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Microservice Roles:</strong> {user.roles?.length || 0}
+                      </p>
+                      {user.roles && user.roles.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {user.roles.map((role, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {role}
                             </Badge>
-                          </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 font-mono">
-                            {permission.permission_code}
-                          </p>
-                          {permission.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">{permission.description}</p>
-                          )}
-                          <p className="text-xs text-gray-400 dark:text-gray-600">
-                            Created: {new Date(permission.created_at).toLocaleDateString()}
-                          </p>
+                          ))}
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <UserCheck className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <p className="text-gray-500 dark:text-gray-400">No permissions defined</p>
-                      </div>
-                    )}
+                      )}
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        <strong>Direct Permissions:</strong> {user.permissions?.length || 0}
+                      </p>
+                      {user.permissions && user.permissions.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {user.permissions.slice(0, 3).map((permission, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {permission}
+                            </Badge>
+                          ))}
+                          {user.permissions.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{user.permissions.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No user objects found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          {/* 4. Current User Objects */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-orange-600 dark:text-orange-400 text-xl">
-                <Database className="h-6 w-6" />
-                4. Current User Objects in this Microservice
-              </CardTitle>
-              <CardDescription className="dark:text-gray-400 text-base">
-                Detailed user information with role assignments and permission grants for this application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {usersWithRoles.length > 0 ? (
-                  usersWithRoles.map((user) => (
-                    <div key={user.id} className="p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* User Details */}
-                        <div>
-                          <h5 className="font-semibold text-gray-900 dark:text-gray-200 mb-3 flex items-center gap-2">
-                            <UserCheck className="h-4 w-4" />
-                            User Details
-                          </h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Name:</span>
-                              <span className="text-gray-900 dark:text-gray-200 font-medium">
-                                {user.first_name} {user.last_name}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Email:</span>
-                              <span className="text-gray-900 dark:text-gray-200">{user.email}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">ID:</span>
-                              <span className="text-gray-900 dark:text-gray-200 font-mono text-xs">
-                                {user.id.substring(0, 12)}...
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Core Role:</span>
-                              <Badge variant="outline" className="text-xs">
-                                {user.core_role.replace("_", " ").toUpperCase()}
-                              </Badge>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                              <Badge variant={user.is_active ? "default" : "secondary"} className="text-xs">
-                                {user.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Activity Information */}
-                        <div>
-                          <h5 className="font-semibold text-gray-900 dark:text-gray-200 mb-3 flex items-center gap-2">
-                            <Activity className="h-4 w-4" />
-                            Activity
-                          </h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Created:</span>
-                              <span className="text-gray-900 dark:text-gray-200">
-                                {new Date(user.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Updated:</span>
-                              <span className="text-gray-900 dark:text-gray-200">
-                                {new Date(user.updated_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {user.department && (
-                              <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-400">Department:</span>
-                                <span className="text-gray-900 dark:text-gray-200">{user.department}</span>
-                              </div>
-                            )}
-                            {user.job_title && (
-                              <div className="flex justify-between">
-                                <span className="text-gray-600 dark:text-gray-400">Job Title:</span>
-                                <span className="text-gray-900 dark:text-gray-200">{user.job_title}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Roles and Permissions */}
-                        <div>
-                          <h5 className="font-semibold text-gray-900 dark:text-gray-200 mb-3 flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Access Control
-                          </h5>
-                          <div className="space-y-3">
-                            {/* Microservice Roles */}
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Assigned Roles:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {user.roles && user.roles.length > 0 ? (
-                                  user.roles.map((role, idx) => (
-                                    <Badge key={idx} variant="outline" className="text-xs">
-                                      {role}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <span className="text-xs text-gray-500 dark:text-gray-500">No roles assigned</span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Direct Permissions */}
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Direct Permissions:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {user.permissions && user.permissions.length > 0 ? (
-                                  user.permissions.slice(0, 3).map((permission, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs">
-                                      {permission}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <span className="text-xs text-gray-500 dark:text-gray-500">
-                                    No direct permissions
-                                  </span>
-                                )}
-                                {user.permissions && user.permissions.length > 3 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    +{user.permissions.length - 3} more
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <Database className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">No user objects found</p>
-                    <p className="text-gray-400 dark:text-gray-500 text-sm">
-                      User role assignments will appear here once configured
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Refresh Button */}
+      <div className="flex justify-center">
+        <Button onClick={fetchAllData} disabled={loading}>
+          {loading ? "Refreshing..." : "Refresh All Data"}
+        </Button>
+      </div>
     </div>
   )
 }
