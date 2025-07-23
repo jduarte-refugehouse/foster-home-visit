@@ -27,6 +27,9 @@ interface SystemStatus {
   version: string
   uptime: string
   lastCheck: string
+  activeUsers?: number
+  totalPermissions?: number
+  totalRoles?: number
 }
 
 interface AppUser {
@@ -44,12 +47,12 @@ interface AppUser {
 }
 
 interface AppRole {
-  id: string
   role_name: string
   role_display_name: string
   role_level: number
   description: string
   permissions: string
+  user_count: number
 }
 
 interface AppPermission {
@@ -59,6 +62,9 @@ interface AppPermission {
   category: string
   description: string
   microservice_id: string
+  app_name: string
+  app_code: string
+  created_at: string
 }
 
 interface UserWithRoles extends AppUser {
@@ -259,6 +265,11 @@ export default function SystemAdminPage() {
                   <Badge variant="outline" className={getStatusColor(systemStatus?.database || "unknown")}>
                     {systemStatus?.database || "Unknown"}
                   </Badge>
+                  {systemStatus?.activeUsers !== undefined && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                      {systemStatus.activeUsers} active users
+                    </p>
+                  )}
                 </div>
                 <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
                   <Server className="h-6 w-6 mx-auto mb-3 text-green-600 dark:text-green-400" />
@@ -266,16 +277,30 @@ export default function SystemAdminPage() {
                   <p className="font-medium text-gray-900 dark:text-gray-200">
                     {systemStatus?.environment || "Development"}
                   </p>
+                  {systemStatus?.totalRoles !== undefined && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                      {systemStatus.totalRoles} roles defined
+                    </p>
+                  )}
                 </div>
                 <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
                   <Shield className="h-6 w-6 mx-auto mb-3 text-purple-600 dark:text-purple-400" />
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Application Version</p>
                   <p className="font-medium text-gray-900 dark:text-gray-200">{systemStatus?.version || "1.0.0"}</p>
+                  {systemStatus?.totalPermissions !== undefined && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                      {systemStatus.totalPermissions} permissions
+                    </p>
+                  )}
                 </div>
                 <div className="text-center p-6 bg-white dark:bg-gray-700 rounded-lg border dark:border-gray-600">
                   <Clock className="h-6 w-6 mx-auto mb-3 text-orange-600 dark:text-orange-400" />
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">System Uptime</p>
                   <p className="font-medium text-gray-900 dark:text-gray-200">{systemStatus?.uptime || "Active"}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                    Last check:{" "}
+                    {systemStatus?.lastCheck ? new Date(systemStatus.lastCheck).toLocaleTimeString() : "Unknown"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -369,9 +394,14 @@ export default function SystemAdminPage() {
                         >
                           <div className="flex items-center justify-between mb-2">
                             <p className="font-medium text-gray-900 dark:text-gray-200">{role.role_display_name}</p>
-                            <Badge variant="outline" className="text-xs">
-                              Level {role.role_level}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                Level {role.role_level}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {role.user_count} users
+                              </Badge>
+                            </div>
                           </div>
                           <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-mono">{role.role_name}</p>
                           {role.description && (
@@ -379,7 +409,7 @@ export default function SystemAdminPage() {
                           )}
                           {role.permissions && (
                             <div className="mt-2">
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Permissions:</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Common Permissions:</p>
                               <div className="flex flex-wrap gap-1">
                                 {role.permissions
                                   .split(", ")
@@ -428,8 +458,11 @@ export default function SystemAdminPage() {
                             {permission.permission_code}
                           </p>
                           {permission.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500">{permission.description}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">{permission.description}</p>
                           )}
+                          <p className="text-xs text-gray-400 dark:text-gray-600">
+                            Created: {new Date(permission.created_at).toLocaleDateString()}
+                          </p>
                         </div>
                       ))
                     ) : (
@@ -542,12 +575,12 @@ export default function SystemAdminPage() {
                           <div className="space-y-3">
                             {/* Microservice Roles */}
                             <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Microservice Roles:</p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Assigned Roles:</p>
                               <div className="flex flex-wrap gap-1">
-                                {user.microservice_roles && user.microservice_roles.length > 0 ? (
-                                  user.microservice_roles.map((role, idx) => (
+                                {user.roles && user.roles.length > 0 ? (
+                                  user.roles.map((role, idx) => (
                                     <Badge key={idx} variant="outline" className="text-xs">
-                                      {role.role_display_name}
+                                      {role}
                                     </Badge>
                                   ))
                                 ) : (

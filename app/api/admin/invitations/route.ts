@@ -1,109 +1,79 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getDbConnection } from "@/lib/db"
+import { query } from "@/lib/db"
 
 export async function GET() {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const pool = await getDbConnection()
-
-    const result = await pool.request().query(`
+    // Get all invited users
+    const invitations = await query(`
       SELECT 
         id,
         email,
-        role,
-        status,
+        invited_by,
         created_at,
-        expires_at
-      FROM user_invitations 
+        is_active
+      FROM invited_users
       ORDER BY created_at DESC
     `)
 
-    return NextResponse.json(result.recordset)
+    return NextResponse.json({
+      invitations: invitations,
+      total: invitations.length,
+    })
   } catch (error) {
     console.error("Error fetching invitations:", error)
-    return NextResponse.json({ error: "Failed to fetch invitations" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to fetch invitations", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { email, role } = await request.json()
+    const { email, invitedBy } = await request.json()
 
-    if (!email || !role) {
-      return NextResponse.json({ error: "Email and role are required" }, { status: 400 })
+    if (!email || !invitedBy) {
+      return NextResponse.json({ error: "Email and invitedBy are required" }, { status: 400 })
     }
 
-    const pool = await getDbConnection()
+    // Check if user is already invited
+    const existing = await query(
+      `
+      SELECT id FROM invited_users WHERE email = @param0
+    `,
+      [email],
+    )
 
-    // Check if invitation already exists
-    const existingResult = await pool
-      .request()
-      .input("email", email)
-      .query("SELECT id FROM user_invitations WHERE email = @email AND status = 'pending'")
-
-    if (existingResult.recordset.length > 0) {
-      return NextResponse.json({ error: "Invitation already exists for this email" }, { status: 400 })
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "User already invited" }, { status: 400 })
     }
 
-    // Create new invitation
-    const invitationId = crypto.randomUUID()
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // Expires in 7 days
+    // Create invitation
+    await query(
+      `
+      INSERT INTO invited_users (id, email, invited_by, created_at, is_active)
+      VALUES (NEWID(), @param0, @param1, GETDATE(), 1)
+    `,
+      [email, invitedBy],
+    )
 
-    await pool
-      .request()
-      .input("id", invitationId)
-      .input("email", email)
-      .input("role", role)
-      .input("status", "pending")
-      .input("created_by", userId)
-      .input("expires_at", expiresAt)
-      .query(`
-        INSERT INTO user_invitations (id, email, role, status, created_by, expires_at, created_at)
-        VALUES (@id, @email, @role, @status, @created_by, @expires_at, GETDATE())
-      `)
-
-    return NextResponse.json({ success: true, id: invitationId })
+    return NextResponse.json({ success: true, message: "Invitation created successfully" })
   } catch (error) {
     console.error("Error creating invitation:", error)
-    return NextResponse.json({ error: "Failed to create invitation" }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { userId } = await auth()
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const invitationId = searchParams.get("id")
-
-    if (!invitationId) {
-      return NextResponse.json({ error: "Invitation ID is required" }, { status: 400 })
-    }
-
-    const pool = await getDbConnection()
-
-    await pool.request().input("id", invitationId).query("DELETE FROM user_invitations WHERE id = @id")
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting invitation:", error)
-    return NextResponse.json({ error: "Failed to delete invitation" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to create invitation", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }
