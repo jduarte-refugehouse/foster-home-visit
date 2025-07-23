@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching ALL permissions from permissions table (no filters)...")
+    console.log("🔍 Fetching ALL permissions...")
 
     // Get all permissions
     const permissions = await query(`
@@ -21,8 +21,7 @@ export async function GET() {
       ORDER BY created_at DESC
     `)
 
-    console.log(`✅ Found ${permissions.length} permissions:`)
-    console.log("Raw permissions data:", JSON.stringify(permissions, null, 2))
+    console.log(`✅ Found ${permissions.length} permissions:`, permissions)
 
     // Get all microservice apps
     const microserviceApps = await query(`
@@ -38,8 +37,7 @@ export async function GET() {
       ORDER BY created_at DESC
     `)
 
-    console.log(`✅ Found ${microserviceApps.length} microservice apps:`)
-    console.log("Raw microservice apps data:", JSON.stringify(microserviceApps, null, 2))
+    console.log(`✅ Found ${microserviceApps.length} microservice apps:`, microserviceApps)
 
     return NextResponse.json({
       permissions: permissions,

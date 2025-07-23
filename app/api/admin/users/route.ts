@@ -5,24 +5,12 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching ALL users from app_users table (no filters, no auth)...")
+    console.log("🔍 Fetching ALL users from app_users table using your exact query...")
 
-    // Use your exact query structure
+    // Use your exact query
     const users = await query(`
-      SELECT 
-        [id], 
-        [clerk_user_id], 
-        [email], 
-        [first_name], 
-        [last_name], 
-        [core_role],
-        [is_active], 
-        [created_at], 
-        [updated_at],
-        [department],
-        [job_title]
+      SELECT [id], [clerk_user_id], [email], [first_name], [last_name], [is_active], [created_at], [updated_at] 
       FROM app_users
-      ORDER BY created_at DESC
     `)
 
     console.log(`✅ Raw query result - Found ${users.length} users:`)
@@ -147,11 +135,11 @@ export async function POST(request: NextRequest) {
     // Create new user
     const result = await query(
       `
-      INSERT INTO app_users (email, first_name, last_name, core_role, is_active, created_at)
+      INSERT INTO app_users (email, first_name, last_name, is_active, created_at)
       OUTPUT INSERTED.*
-      VALUES (@param0, @param1, @param2, @param3, 1, GETDATE())
+      VALUES (@param0, @param1, @param2, 1, GETDATE())
     `,
-      [email, firstName, lastName, role],
+      [email, firstName, lastName],
     )
 
     return NextResponse.json({ user: result[0] }, { status: 201 })

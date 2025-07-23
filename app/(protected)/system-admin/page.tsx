@@ -27,12 +27,9 @@ interface AppUser {
   email: string
   first_name: string
   last_name: string
-  core_role: string
   is_active: boolean
   created_at: string
   updated_at: string
-  department?: string
-  job_title?: string
 }
 
 interface UserRole {
@@ -102,6 +99,8 @@ export default function SystemAdminPage() {
       if (usersResponse.ok) {
         const usersData = await usersResponse.json()
         console.log("✅ Users data:", usersData)
+        console.log("✅ Users array:", usersData.users)
+        console.log("✅ Users array length:", usersData.users?.length)
         setUsers(usersData.users || [])
         setUserRoles(usersData.userRoles || [])
         setPermissions(usersData.permissions || [])
@@ -279,12 +278,9 @@ export default function SystemAdminPage() {
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-500">
-                        ID: {user.id} | Core Role: {user.core_role} | Created:{" "}
+                        ID: {user.id} | Clerk ID: {user.clerk_user_id} | Created:{" "}
                         {new Date(user.created_at).toLocaleDateString()}
                       </p>
-                      {user.department && (
-                        <p className="text-xs text-gray-500 dark:text-gray-500">Department: {user.department}</p>
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={user.is_active ? "default" : "secondary"}>
@@ -298,6 +294,9 @@ export default function SystemAdminPage() {
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-500 dark:text-gray-400">No users found in app_users table</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                Check console for detailed logging information
+              </p>
             </div>
           )}
         </CardContent>

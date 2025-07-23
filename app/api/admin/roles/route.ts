@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching ALL roles from user_roles table (no filters)...")
+    console.log("🔍 Fetching ALL roles from user_roles table...")
 
     // Get all user roles
     const allRoles = await query(`
@@ -21,22 +21,25 @@ export async function GET() {
       ORDER BY granted_at DESC
     `)
 
-    console.log(`✅ Found ${allRoles.length} roles:`)
-    console.log("Raw roles data:", JSON.stringify(allRoles, null, 2))
+    console.log(`✅ Found ${allRoles.length} roles:`, allRoles)
 
-    // Get unique role names with counts
-    const uniqueRoles = await query(`
-      SELECT 
-        [role_name],
-        COUNT(*) as user_count,
-        COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_count
-      FROM user_roles
-      GROUP BY [role_name]
-      ORDER BY user_count DESC
-    `)
+    // Get unique roles
+    const uniqueRoles = allRoles.reduce((acc: any[], role: any) => {
+      const existing = acc.find((r) => r.role_name === role.role_name)
+      if (!existing) {
+        acc.push({
+          role_name: role.role_name,
+          role_display_name: role.role_name,
+          role_level: 1,
+          description: `Role: ${role.role_name}`,
+          user_count: allRoles.filter((r) => r.role_name === role.role_name).length,
+          permissions: "Various permissions",
+        })
+      }
+      return acc
+    }, [])
 
-    console.log(`✅ Found ${uniqueRoles.length} unique roles:`)
-    console.log("Unique roles data:", JSON.stringify(uniqueRoles, null, 2))
+    console.log(`✅ Found ${uniqueRoles.length} unique roles:`, uniqueRoles)
 
     return NextResponse.json({
       allRoles: allRoles,
