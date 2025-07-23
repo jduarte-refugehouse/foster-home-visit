@@ -86,7 +86,7 @@ export function Navigation() {
   ]
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-6 py-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-8">
       <Sheet>
         <SheetTrigger asChild>
           <Button size="icon" variant="outline" className="sm:hidden bg-transparent">
@@ -94,7 +94,7 @@ export function Navigation() {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs">
+        <SheetContent side="left" className="sm:max-w-xs p-6">
           <nav className="grid gap-6 text-lg font-medium">
             <Link
               href="#"
@@ -135,7 +135,7 @@ export function Navigation() {
       </Sheet>
       {getBreadcrumbs()}
       <div className="relative ml-auto flex-1 md:grow-0">{/* Search can go here if needed */}</div>
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-6">
         {/* System Admin Button - Desktop Only */}
         {isCurrentUserSystemAdmin && (
           <Link href="/system-admin">
