@@ -1,14 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Database, Users, Shield, Settings, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 
 interface SystemStatus {
   database: string
@@ -68,9 +66,6 @@ interface MicroserviceApp {
 }
 
 export default function SystemAdminPage() {
-  const { user } = useUser()
-  const router = useRouter()
-
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [users, setUsers] = useState<AppUser[]>([])
   const [userRoles, setUserRoles] = useState<UserRole[]>([])
@@ -79,26 +74,16 @@ export default function SystemAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Check if user is system admin - but this is just for UI, real auth is in API
   useEffect(() => {
-    if (user && user.primaryEmailAddress?.emailAddress !== "jduarte@refugehouse.org") {
-      router.push("/dashboard")
-      return
-    }
-  }, [user, router])
-
-  useEffect(() => {
-    if (user?.primaryEmailAddress?.emailAddress === "jduarte@refugehouse.org") {
-      fetchAllData()
-    }
-  }, [user])
+    fetchAllData()
+  }, [])
 
   const fetchAllData = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      console.log("🔄 Fetching all admin data (no filters)...")
+      console.log("🔄 Fetching all admin data (no auth, no filters)...")
 
       // Fetch system status
       const statusResponse = await fetch("/api/system-status")
@@ -166,21 +151,6 @@ export default function SystemAdminPage() {
     }
   }
 
-  if (!user || user.primaryEmailAddress?.emailAddress !== "jduarte@refugehouse.org") {
-    return (
-      <div className="container mx-auto p-6">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="py-6">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <AlertCircle className="h-5 w-5" />
-              <span className="font-medium">Access Denied: System Administrator Only</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -198,7 +168,7 @@ export default function SystemAdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
-          <p className="text-gray-600 dark:text-gray-300">All Database Tables - No Filters Applied</p>
+          <p className="text-gray-600 dark:text-gray-300">All Database Tables - No Auth, No Filters Applied</p>
         </div>
         <Link href="/dashboard">
           <Button variant="outline" className="dark:border-gray-600 dark:text-gray-300 bg-transparent">

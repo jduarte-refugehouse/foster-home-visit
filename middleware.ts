@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server"
 
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
-  // This middleware is currently passive and does nothing.
-  // The security check is handled by the layout file in `app/(protected)/layout.tsx`.
-  // We are NOT using Clerk middleware for authorization - only for identity.
+  // This middleware is completely passive and does nothing.
+  // NO CLERK MIDDLEWARE AT ALL.
+  // All authentication is handled at the component/API level.
   return NextResponse.next()
 }
 

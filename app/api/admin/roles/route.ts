@@ -1,36 +1,13 @@
 import { NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { currentUser } from "@clerk/nextjs/server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    // Get current user identity from Clerk (identity only, not authorization)
-    const clerkUser = await currentUser()
-    if (!clerkUser) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    console.log("🔍 Fetching ALL roles from user_roles table (no filters, no auth)...")
 
-    // Check authorization using our own database system
-    const appUser = await query("SELECT * FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1", [
-      clerkUser.id,
-    ])
-
-    if (appUser.length === 0) {
-      return NextResponse.json({ error: "User not found in system" }, { status: 403 })
-    }
-
-    // Check if user has system admin permissions in our database
-    const isSystemAdmin = appUser[0].core_role === "system_admin" || appUser[0].email === "jduarte@refugehouse.org"
-
-    if (!isSystemAdmin) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
-    }
-
-    console.log("🔍 Fetching ALL roles from user_roles table (no filters)...")
-
-    // Get ALL roles - no filters
+    // Get ALL roles - no filters, no auth checks
     const allRoles = await query(`
       SELECT 
         id,
