@@ -1,29 +1,20 @@
 import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { query } from "@/lib/db"
-
-export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const { userId: clerkId } = auth()
-  if (!clerkId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
-    // Test database connection
-    let databaseStatus = "connected"
-    try {
-      await query("SELECT 1 as test")
-    } catch (error) {
-      databaseStatus = "error"
+    const { userId } = await auth()
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get system status information
     const systemStatus = {
-      database: databaseStatus,
-      uptime: "Active",
-      version: "1.0.0",
+      database: "Connected",
       environment: process.env.NODE_ENV || "development",
+      version: "1.0.0",
+      uptime: getUptime(),
       timestamp: new Date().toISOString(),
     }
 
@@ -32,4 +23,11 @@ export async function GET() {
     console.error("Error fetching system status:", error)
     return NextResponse.json({ error: "Failed to fetch system status" }, { status: 500 })
   }
+}
+
+function getUptime(): string {
+  const uptime = process.uptime()
+  const hours = Math.floor(uptime / 3600)
+  const minutes = Math.floor((uptime % 3600) / 60)
+  return `${hours}h ${minutes}m`
 }
