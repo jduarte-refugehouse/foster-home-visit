@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 
@@ -11,9 +11,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("🔍 Fetching users from app_users table...")
+    console.log("🔍 Fetching ALL users from app_users table (no filters)...")
 
-    // Get all app users
+    // Get ALL app users - no filters
     const users = await query(`
       SELECT 
         id,
@@ -31,52 +31,87 @@ export async function GET() {
       ORDER BY created_at DESC
     `)
 
-    console.log(`✅ Found ${users.length} users in app_users table`)
+    console.log(`✅ Found ${users.length} users in app_users table:`, users)
 
-    // Get users with their roles and permissions for the home-visits microservice
-    const usersWithRoles = await query(`
+    // Get ALL user roles - no filters
+    const allUserRoles = await query(`
       SELECT 
-        au.id,
-        au.clerk_user_id,
-        au.email,
-        au.first_name,
-        au.last_name,
-        au.core_role,
-        au.is_active,
-        au.created_at,
-        au.updated_at,
-        au.department,
-        au.job_title,
-        STRING_AGG(DISTINCT ur.role_name, ', ') as roles,
-        STRING_AGG(DISTINCT p.permission_code, ', ') as permissions
-      FROM app_users au
-      LEFT JOIN user_roles ur ON au.id = ur.user_id 
-        AND ur.is_active = 1 
-        AND ur.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
-      LEFT JOIN user_permissions up ON au.id = up.user_id 
-        AND up.is_active = 1
-      LEFT JOIN permissions p ON up.permission_id = p.id
-        AND p.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
-      GROUP BY au.id, au.clerk_user_id, au.email, au.first_name, au.last_name, 
-               au.core_role, au.is_active, au.created_at, au.updated_at, 
-               au.department, au.job_title
-      ORDER BY au.created_at DESC
+        id,
+        user_id,
+        microservice_id,
+        role_name,
+        granted_by,
+        granted_at,
+        is_active
+      FROM user_roles
+      ORDER BY granted_at DESC
     `)
 
-    console.log(`✅ Found ${usersWithRoles.length} users with roles/permissions`)
+    console.log(`✅ Found ${allUserRoles.length} user roles:`, allUserRoles)
 
-    // Process the users with roles data
-    const processedUsersWithRoles = usersWithRoles.map((user) => ({
-      ...user,
-      roles: user.roles ? user.roles.split(", ").filter((r) => r) : [],
-      permissions: user.permissions ? user.permissions.split(", ").filter((p) => p) : [],
-      microservice_roles: [], // Will be populated separately if needed
-    }))
+    // Get ALL user permissions - no filters
+    const allUserPermissions = await query(`
+      SELECT 
+        id,
+        user_id,
+        permission_id,
+        granted_by,
+        granted_at,
+        expires_at,
+        is_active
+      FROM user_permissions
+      ORDER BY granted_at DESC
+    `)
+
+    console.log(`✅ Found ${allUserPermissions.length} user permissions:`, allUserPermissions)
+
+    // Get ALL permissions - no filters
+    const allPermissions = await query(`
+      SELECT 
+        id,
+        microservice_id,
+        permission_code,
+        permission_name,
+        description,
+        category,
+        created_at
+      FROM permissions
+      ORDER BY created_at DESC
+    `)
+
+    console.log(`✅ Found ${allPermissions.length} permissions:`, allPermissions)
+
+    // Get ALL microservice apps
+    const allApps = await query(`
+      SELECT 
+        id,
+        app_code,
+        app_name,
+        app_url,
+        description,
+        is_active,
+        created_at
+      FROM microservice_apps
+      ORDER BY created_at DESC
+    `)
+
+    console.log(`✅ Found ${allApps.length} microservice apps:`, allApps)
 
     return NextResponse.json({
       users: users,
-      usersWithRoles: processedUsersWithRoles,
+      usersWithRoles: users, // For now, just return the same users
+      userRoles: allUserRoles,
+      userPermissions: allUserPermissions,
+      permissions: allPermissions,
+      microserviceApps: allApps,
       total: users.length,
+      debug: {
+        totalUsers: users.length,
+        totalUserRoles: allUserRoles.length,
+        totalUserPermissions: allUserPermissions.length,
+        totalPermissions: allPermissions.length,
+        totalApps: allApps.length,
+      },
     })
   } catch (error) {
     console.error("❌ Error fetching users:", error)
@@ -90,31 +125,5 @@ export async function GET() {
       },
       { status: 500 },
     )
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { email, firstName, lastName, role = "user" } = body
-
-    if (!email || !firstName || !lastName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Create new user
-    const result = await query(
-      `
-      INSERT INTO app_users (email, first_name, last_name, core_role, is_active, created_at)
-      OUTPUT INSERTED.*
-      VALUES (@param0, @param1, @param2, @param3, 1, GETDATE())
-    `,
-      [email, firstName, lastName, role],
-    )
-
-    return NextResponse.json({ user: result[0] }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating user:", error)
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
   }
 }

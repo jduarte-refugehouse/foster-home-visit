@@ -11,62 +11,53 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("🔍 Fetching roles from user_roles table...")
+    console.log("🔍 Fetching ALL roles from user_roles table (no filters)...")
 
-    // Get all unique roles for the home-visits microservice using the actual GUID
-    const roles = await query(`
-      SELECT DISTINCT
-        ur.role_name,
-        ur.role_name as role_display_name,
-        1 as role_level,
-        'User-defined role for home-visits microservice' as description,
-        COUNT(ur.user_id) as user_count
-      FROM user_roles ur
-      WHERE ur.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7' 
-        AND ur.is_active = 1
-      GROUP BY ur.role_name
-      ORDER BY ur.role_name
+    // Get ALL roles - no filters
+    const allRoles = await query(`
+      SELECT 
+        id,
+        user_id,
+        microservice_id,
+        role_name,
+        granted_by,
+        granted_at,
+        is_active
+      FROM user_roles
+      ORDER BY granted_at DESC
     `)
 
-    console.log(`✅ Found ${roles.length} roles in user_roles table`)
+    console.log(`✅ Found ${allRoles.length} role assignments:`, allRoles)
 
-    // Get permissions for each role
-    const rolesWithPermissions = await Promise.all(
-      roles.map(async (role) => {
-        console.log(`🔍 Getting permissions for role: ${role.role_name}`)
+    // Get unique role names with counts
+    const uniqueRoles = await query(`
+      SELECT 
+        role_name,
+        COUNT(*) as user_count,
+        COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_user_count
+      FROM user_roles
+      GROUP BY role_name
+      ORDER BY role_name
+    `)
 
-        // Get common permissions for users with this role
-        const permissions = await query(
-          `
-          SELECT DISTINCT p.permission_code
-          FROM user_permissions up
-          INNER JOIN permissions p ON up.permission_id = p.id
-          INNER JOIN user_roles ur ON up.user_id = ur.user_id
-          WHERE ur.role_name = @param0 
-            AND ur.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
-            AND p.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
-            AND up.is_active = 1 
-            AND ur.is_active = 1
-        `,
-          [role.role_name],
-        )
+    console.log(`✅ Found ${uniqueRoles.length} unique roles:`, uniqueRoles)
 
-        console.log(`✅ Found ${permissions.length} permissions for role ${role.role_name}`)
-
-        return {
-          ...role,
-          permissions: permissions.map((p) => p.permission_code).join(", "),
-        }
-      }),
-    )
-
-    return NextResponse.json(rolesWithPermissions)
+    return NextResponse.json({
+      allRoles: allRoles,
+      uniqueRoles: uniqueRoles,
+      debug: {
+        totalRoleAssignments: allRoles.length,
+        uniqueRoleNames: uniqueRoles.length,
+      },
+    })
   } catch (error) {
     console.error("❌ Error fetching roles:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch roles",
         details: error instanceof Error ? error.message : "Unknown error",
+        allRoles: [],
+        uniqueRoles: [],
       },
       { status: 500 },
     )

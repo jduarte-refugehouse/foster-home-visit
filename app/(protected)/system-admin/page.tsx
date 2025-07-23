@@ -6,18 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import {
-  ArrowLeft,
-  Database,
-  Users,
-  Shield,
-  Settings,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock,
-  Activity,
-} from "lucide-react"
+import { ArrowLeft, Database, Users, Shield, Settings, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -26,9 +15,11 @@ interface SystemStatus {
   environment: string
   version: string
   uptime: string
+  totalUsers: number
   activeUsers: number
   totalRoles: number
   totalPermissions: number
+  totalApps: number
   lastCheck: string
 }
 
@@ -44,25 +35,35 @@ interface AppUser {
   updated_at: string
   department?: string
   job_title?: string
-  roles?: string[]
-  permissions?: string[]
 }
 
-interface Role {
+interface UserRole {
+  id: string
+  user_id: string
+  microservice_id: string
   role_name: string
-  role_display_name: string
-  role_level: number
-  description: string
-  user_count: number
-  permissions: string
+  granted_by: string
+  granted_at: string
+  is_active: boolean
 }
 
 interface Permission {
   id: string
+  microservice_id: string
   permission_code: string
   permission_name: string
   description: string
   category: string
+  created_at: string
+}
+
+interface MicroserviceApp {
+  id: string
+  app_code: string
+  app_name: string
+  app_url: string
+  description: string
+  is_active: boolean
   created_at: string
 }
 
@@ -72,9 +73,9 @@ export default function SystemAdminPage() {
 
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [users, setUsers] = useState<AppUser[]>([])
-  const [usersWithRoles, setUsersWithRoles] = useState<AppUser[]>([])
-  const [roles, setRoles] = useState<Role[]>([])
+  const [userRoles, setUserRoles] = useState<UserRole[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
+  const [microserviceApps, setMicroserviceApps] = useState<MicroserviceApp[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -97,7 +98,7 @@ export default function SystemAdminPage() {
     setError(null)
 
     try {
-      console.log("🔄 Fetching all admin data...")
+      console.log("🔄 Fetching all admin data (no filters)...")
 
       // Fetch system status
       const statusResponse = await fetch("/api/system-status")
@@ -107,6 +108,8 @@ export default function SystemAdminPage() {
         setSystemStatus(statusData)
       } else {
         console.error("❌ Failed to fetch system status:", statusResponse.status)
+        const errorText = await statusResponse.text()
+        console.error("Status error details:", errorText)
       }
 
       // Fetch users
@@ -115,11 +118,13 @@ export default function SystemAdminPage() {
         const usersData = await usersResponse.json()
         console.log("✅ Users data:", usersData)
         setUsers(usersData.users || [])
-        setUsersWithRoles(usersData.usersWithRoles || [])
+        setUserRoles(usersData.userRoles || [])
+        setPermissions(usersData.permissions || [])
+        setMicroserviceApps(usersData.microserviceApps || [])
       } else {
         console.error("❌ Failed to fetch users:", usersResponse.status)
-        const errorData = await usersResponse.json()
-        console.error("Error details:", errorData)
+        const errorData = await usersResponse.text()
+        console.error("Users error details:", errorData)
       }
 
       // Fetch roles
@@ -127,9 +132,14 @@ export default function SystemAdminPage() {
       if (rolesResponse.ok) {
         const rolesData = await rolesResponse.json()
         console.log("✅ Roles data:", rolesData)
-        setRoles(rolesData || [])
+        // Update userRoles if we got more data
+        if (rolesData.allRoles && rolesData.allRoles.length > 0) {
+          setUserRoles(rolesData.allRoles)
+        }
       } else {
         console.error("❌ Failed to fetch roles:", rolesResponse.status)
+        const errorText = await rolesResponse.text()
+        console.error("Roles error details:", errorText)
       }
 
       // Fetch permissions
@@ -137,9 +147,16 @@ export default function SystemAdminPage() {
       if (permissionsResponse.ok) {
         const permissionsData = await permissionsResponse.json()
         console.log("✅ Permissions data:", permissionsData)
-        setPermissions(permissionsData || [])
+        if (permissionsData.permissions && permissionsData.permissions.length > 0) {
+          setPermissions(permissionsData.permissions)
+        }
+        if (permissionsData.microserviceApps && permissionsData.microserviceApps.length > 0) {
+          setMicroserviceApps(permissionsData.microserviceApps)
+        }
       } else {
         console.error("❌ Failed to fetch permissions:", permissionsResponse.status)
+        const errorText = await permissionsResponse.text()
+        console.error("Permissions error details:", errorText)
       }
     } catch (err) {
       console.error("❌ Error fetching admin data:", err)
@@ -167,12 +184,9 @@ export default function SystemAdminPage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400 text-lg">Loading all system data...</p>
         </div>
       </div>
     )
@@ -184,7 +198,7 @@ export default function SystemAdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
-          <p className="text-gray-600 dark:text-gray-300">Home Visits Microservice Management</p>
+          <p className="text-gray-600 dark:text-gray-300">All Database Tables - No Filters Applied</p>
         </div>
         <Link href="/dashboard">
           <Button variant="outline" className="dark:border-gray-600 dark:text-gray-300 bg-transparent">
@@ -216,7 +230,7 @@ export default function SystemAdminPage() {
             </div>
             <div>
               <CardTitle className="text-xl text-gray-900 dark:text-gray-100">1. System Status</CardTitle>
-              <CardDescription className="dark:text-gray-400">Current system health and statistics</CardDescription>
+              <CardDescription className="dark:text-gray-400">Database connection and table counts</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -237,26 +251,27 @@ export default function SystemAdminPage() {
 
               <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-5 w-5 text-blue-500" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Environment</span>
+                  <Users className="h-5 w-5 text-green-500" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Total Users</span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{systemStatus.environment}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{systemStatus.totalUsers}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">({systemStatus.activeUsers} active)</p>
               </div>
 
               <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-purple-500" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Uptime</span>
+                  <Shield className="h-5 w-5 text-purple-500" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Total Roles</span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{systemStatus.uptime}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{systemStatus.totalRoles}</p>
               </div>
 
               <div className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
                 <div className="flex items-center gap-2 mb-2">
                   <Settings className="h-5 w-5 text-orange-500" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Version</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Total Permissions</span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{systemStatus.version}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{systemStatus.totalPermissions}</p>
               </div>
             </div>
           ) : (
@@ -267,7 +282,7 @@ export default function SystemAdminPage() {
         </CardContent>
       </Card>
 
-      {/* Current Users Section */}
+      {/* All Users Section */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -275,16 +290,16 @@ export default function SystemAdminPage() {
               <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">2. Current Users</CardTitle>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">2. All Users (app_users table)</CardTitle>
               <CardDescription className="dark:text-gray-400">
-                All users registered in this microservice ({users.length} total)
+                Complete list from app_users table ({users.length} total)
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {users.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {users.map((user) => (
                 <div key={user.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
                   <div className="flex items-center justify-between">
@@ -294,8 +309,12 @@ export default function SystemAdminPage() {
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-500">
-                        Core Role: {user.core_role} | Created: {new Date(user.created_at).toLocaleDateString()}
+                        ID: {user.id} | Core Role: {user.core_role} | Created:{" "}
+                        {new Date(user.created_at).toLocaleDateString()}
                       </p>
+                      {user.department && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500">Department: {user.department}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={user.is_active ? "default" : "secondary"}>
@@ -308,185 +327,140 @@ export default function SystemAdminPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">No users found</p>
+              <p className="text-gray-500 dark:text-gray-400">No users found in app_users table</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Permissions and Roles Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Roles */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <CardTitle className="text-xl text-gray-900 dark:text-gray-100">3a. Current Roles</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Role definitions ({roles.length} total)
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {roles.length > 0 ? (
-              <div className="space-y-3">
-                {roles.map((role, index) => (
-                  <div key={index} className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{role.role_name}</h4>
-                      <Badge variant="outline">{role.user_count} users</Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{role.description}</p>
-                    {role.permissions && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        Permissions: {role.permissions || "None"}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400">No roles found</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Permissions */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Settings className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div>
-                <CardTitle className="text-xl text-gray-900 dark:text-gray-100">3b. Current Permissions</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Permission definitions ({permissions.length} total)
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {permissions.length > 0 ? (
-              <div className="space-y-3">
-                {permissions.map((permission) => (
-                  <div
-                    key={permission.id}
-                    className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{permission.permission_name}</h4>
-                      <Badge variant="outline">{permission.category}</Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{permission.description}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">Code: {permission.permission_code}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400">No permissions found</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Current User Objects Section */}
+      {/* All User Roles Section */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <Users className="h-6 w-6 text-red-600 dark:text-red-400" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">4. Current User Objects</CardTitle>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">
+                3. All User Roles (user_roles table)
+              </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Detailed user information with roles and permissions ({usersWithRoles.length} total)
+                Complete list from user_roles table ({userRoles.length} total)
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {usersWithRoles.length > 0 ? (
+          {userRoles.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {userRoles.map((role) => (
+                <div key={role.id} className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">{role.role_name}</h4>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">User: {role.user_id.substring(0, 8)}...</Badge>
+                      <Badge variant={role.is_active ? "default" : "secondary"}>
+                        {role.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Microservice: {role.microservice_id.substring(0, 8)}... | Granted by: {role.granted_by} | Granted:{" "}
+                    {new Date(role.granted_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No user roles found in user_roles table</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* All Permissions Section */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <Settings className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">
+                4. All Permissions (permissions table)
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                Complete list from permissions table ({permissions.length} total)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {permissions.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {permissions.map((permission) => (
+                <div
+                  key={permission.id}
+                  className="bg-white dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">{permission.permission_name}</h4>
+                    <Badge variant="outline">{permission.category}</Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{permission.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Code: {permission.permission_code} | Microservice: {permission.microservice_id.substring(0, 8)}... |
+                    Created: {new Date(permission.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No permissions found in permissions table</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* All Microservice Apps Section */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <Database className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-gray-900 dark:text-gray-100">
+                5. All Microservice Apps (microservice_apps table)
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                Complete list from microservice_apps table ({microserviceApps.length} total)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {microserviceApps.length > 0 ? (
             <div className="space-y-4">
-              {usersWithRoles.map((user) => (
-                <div key={user.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* User Details */}
+              {microserviceApps.map((app) => (
+                <div key={app.id} className="bg-white dark:bg-gray-700 p-4 rounded-lg border dark:border-gray-600">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">User Details</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Name:</strong> {user.first_name} {user.last_name}
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">{app.app_name}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{app.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        Code: {app.app_code} | URL: {app.app_url} | ID: {app.id}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Email:</strong> {user.email}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Core Role:</strong> {user.core_role}
-                      </p>
-                      {user.department && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          <strong>Department:</strong> {user.department}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Activity */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Activity</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Status:</strong>
-                        <Badge variant={user.is_active ? "default" : "secondary"} className="ml-2">
-                          {user.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Created:</strong> {new Date(user.created_at).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Updated:</strong> {new Date(user.updated_at).toLocaleDateString()}
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        Created: {new Date(app.created_at).toLocaleDateString()}
                       </p>
                     </div>
-
-                    {/* Access Control */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Access Control</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        <strong>Microservice Roles:</strong> {user.roles?.length || 0}
-                      </p>
-                      {user.roles && user.roles.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {user.roles.map((role, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        <strong>Direct Permissions:</strong> {user.permissions?.length || 0}
-                      </p>
-                      {user.permissions && user.permissions.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {user.permissions.slice(0, 3).map((permission, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {permission}
-                            </Badge>
-                          ))}
-                          {user.permissions.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{user.permissions.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <Badge variant={app.is_active ? "default" : "secondary"}>
+                        {app.is_active ? "Active" : "Inactive"}
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -494,7 +468,7 @@ export default function SystemAdminPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">No user objects found</p>
+              <p className="text-gray-500 dark:text-gray-400">No microservice apps found</p>
             </div>
           )}
         </CardContent>

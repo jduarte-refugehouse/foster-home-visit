@@ -11,35 +11,56 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("🔍 Fetching permissions from permissions table...")
+    console.log("🔍 Fetching ALL permissions (no filters)...")
 
-    // Get all permissions for the home-visits microservice using the actual GUID
-    const permissions = await query(`
+    // Get ALL permissions - no filters
+    const allPermissions = await query(`
       SELECT 
-        p.id,
-        p.microservice_id,
-        p.permission_code,
-        p.permission_name,
-        p.description,
-        p.category,
-        p.created_at,
-        ma.app_name,
-        ma.app_code
-      FROM permissions p
-      INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-      WHERE p.microservice_id = '1A5F93AC-9286-48FD-849D-BB132E5031C7'
-      ORDER BY p.category, p.permission_name
+        id,
+        microservice_id,
+        permission_code,
+        permission_name,
+        description,
+        category,
+        created_at
+      FROM permissions
+      ORDER BY category, permission_name
     `)
 
-    console.log(`✅ Found ${permissions.length} permissions in permissions table`)
+    console.log(`✅ Found ${allPermissions.length} permissions:`, allPermissions)
 
-    return NextResponse.json(permissions)
+    // Get ALL microservice apps for reference
+    const allApps = await query(`
+      SELECT 
+        id,
+        app_code,
+        app_name,
+        app_url,
+        description,
+        is_active,
+        created_at
+      FROM microservice_apps
+      ORDER BY app_name
+    `)
+
+    console.log(`✅ Found ${allApps.length} microservice apps:`, allApps)
+
+    return NextResponse.json({
+      permissions: allPermissions,
+      microserviceApps: allApps,
+      debug: {
+        totalPermissions: allPermissions.length,
+        totalApps: allApps.length,
+      },
+    })
   } catch (error) {
     console.error("❌ Error fetching permissions:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch permissions",
         details: error instanceof Error ? error.message : "Unknown error",
+        permissions: [],
+        microserviceApps: [],
       },
       { status: 500 },
     )
