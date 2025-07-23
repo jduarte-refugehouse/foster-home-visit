@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server"
 export function middleware(request: NextRequest) {
   // This middleware is currently passive and does nothing.
   // The security check is handled by the layout file in `app/(protected)/layout.tsx`.
+  // We are NOT using Clerk middleware for authorization - only for identity.
   return NextResponse.next()
 }
 

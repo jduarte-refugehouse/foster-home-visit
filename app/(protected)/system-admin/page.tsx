@@ -79,7 +79,7 @@ export default function SystemAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Check if user is system admin
+  // Check if user is system admin - but this is just for UI, real auth is in API
   useEffect(() => {
     if (user && user.primaryEmailAddress?.emailAddress !== "jduarte@refugehouse.org") {
       router.push("/dashboard")

@@ -1,14 +1,31 @@
-import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Get current user identity from Clerk (identity only, not authorization)
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
+    // Check authorization using our own database system
+    const appUser = await query("SELECT * FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1", [
+      clerkUser.id,
+    ])
+
+    if (appUser.length === 0) {
+      return NextResponse.json({ error: "User not found in system" }, { status: 403 })
+    }
+
+    // Check if user has system admin permissions in our database
+    const isSystemAdmin = appUser[0].core_role === "system_admin" || appUser[0].email === "jduarte@refugehouse.org"
+
+    if (!isSystemAdmin) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
     console.log("🔍 Fetching ALL users from app_users table (no filters)...")
@@ -125,5 +142,53 @@ export async function GET() {
       },
       { status: 500 },
     )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get current user identity from Clerk (identity only, not authorization)
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
+    // Check authorization using our own database system
+    const appUser = await query("SELECT * FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1", [
+      clerkUser.id,
+    ])
+
+    if (appUser.length === 0) {
+      return NextResponse.json({ error: "User not found in system" }, { status: 403 })
+    }
+
+    // Check if user has system admin permissions in our database
+    const isSystemAdmin = appUser[0].core_role === "system_admin" || appUser[0].email === "jduarte@refugehouse.org"
+
+    if (!isSystemAdmin) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { email, firstName, lastName, role = "user" } = body
+
+    if (!email || !firstName || !lastName) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Create new user
+    const result = await query(
+      `
+      INSERT INTO app_users (email, first_name, last_name, core_role, is_active, created_at)
+      OUTPUT INSERTED.*
+      VALUES (@param0, @param1, @param2, @param3, 1, GETDATE())
+    `,
+      [email, firstName, lastName, role],
+    )
+
+    return NextResponse.json({ user: result[0] }, { status: 201 })
+  } catch (error) {
+    console.error("Error creating user:", error)
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
   }
 }
