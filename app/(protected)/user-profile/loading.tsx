@@ -6,7 +6,7 @@ export default function UserProfileLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-refuge-light-purple/5">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
+        {/* Navigation */}
         <div className="mb-8">
           <Button
             variant="ghost"
@@ -25,27 +25,29 @@ export default function UserProfileLoading() {
         {/* Loading Skeleton */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="space-y-8">
-            {/* Navigation Skeleton */}
-            <div className="flex space-x-4 border-b border-gray-200 pb-4">
-              <Skeleton className="h-10 w-24" />
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-28" />
+            {/* Header skeleton */}
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-96" />
             </div>
 
-            {/* Profile Picture Section */}
-            <div className="space-y-4">
-              <Skeleton className="h-6 w-32" />
-              <div className="flex items-center space-x-4">
+            {/* Navigation tabs skeleton */}
+            <div className="flex space-x-6 border-b border-gray-200 pb-4">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-16" />
+            </div>
+
+            {/* Profile form skeleton */}
+            <div className="space-y-6">
+              <div className="flex items-center space-x-6">
                 <Skeleton className="h-20 w-20 rounded-full" />
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-9 w-32" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-8 w-24" />
                 </div>
               </div>
-            </div>
 
-            {/* Form Fields */}
-            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-20" />
@@ -55,32 +57,18 @@ export default function UserProfileLoading() {
                   <Skeleton className="h-4 w-20" />
                   <Skeleton className="h-10 w-full" />
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
+              <div className="flex justify-end space-x-4">
+                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-24" />
               </div>
-
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-24" />
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            Changes to your profile will be reflected across the application immediately.
-          </p>
         </div>
       </div>
     </div>
