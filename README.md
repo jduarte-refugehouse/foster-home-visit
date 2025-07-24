@@ -47,6 +47,55 @@ These parameters are stable and functional. Do not revert to old configurations 
    - Dropdown components need `z-[9999]` or higher to appear above maps
    - This was a recurring issue that required multiple fixes
 
+### Visual Design System and Branding
+
+#### Brand Colors (Tailwind CSS Custom Colors)
+The application uses a custom branded color scheme defined in `tailwind.config.ts`:
+
+\`\`\`css
+--refuge-purple: #8B5CF6
+--refuge-magenta: #EC4899  
+--refuge-light-purple: #A78BFA
+\`\`\`
+
+These colors should be used consistently throughout the application:
+- **Primary Actions**: `bg-refuge-purple` with hover gradients
+- **Secondary Elements**: `text-refuge-purple` or `border-refuge-purple/20`
+- **Gradients**: `from-refuge-purple to-refuge-magenta` or `from-refuge-light-purple/10 to-refuge-magenta/10`
+- **Badges and Highlights**: `bg-refuge-purple/10 text-refuge-purple`
+
+#### Logo and Branding
+- **Primary Logo**: `/images/web logo with name.png` (used in sidebar header)
+- **Logo Sizing**: `h-14` for sidebar, with hover scale effect
+- **Background**: Gradient backgrounds using `from-refuge-light-purple/10 via-refuge-purple/5 to-refuge-magenta/10`
+
+#### Component Styling Standards
+
+**Headers and Titles**:
+- Page titles use gradient text: `bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent`
+- Card headers have gradient backgrounds: `bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5`
+
+**Buttons**:
+- Primary: `bg-refuge-purple hover:bg-gradient-to-r hover:from-refuge-purple hover:to-refuge-purple/90`
+- Outline: `border-refuge-purple/30 text-refuge-purple hover:bg-refuge-purple/5`
+- Loading states use `text-refuge-purple` for spinners
+
+**Form Elements**:
+- Inputs: `border-refuge-purple/20 focus:border-refuge-purple focus:ring-refuge-purple/20`
+- Select dropdowns: Same border styling as inputs
+- Search icons: `text-refuge-purple/60`
+
+**Cards and Containers**:
+- Border: `border-refuge-purple/20`
+- Selected states: `border-refuge-purple bg-refuge-purple/5`
+- Hover effects: `hover:border-refuge-purple/30 hover:bg-refuge-purple/5`
+
+#### Sidebar Design
+- **Header**: Fixed height `h-20` with logo and gradient background
+- **Navigation**: Hover effects with gradient backgrounds
+- **Admin Section**: Anchored to bottom with distinct styling and Shield icon
+- **User Avatar**: Gradient background `from-refuge-purple to-refuge-magenta`
+
 ### Common Issues and Solutions
 
 #### 1. Missing LastSync Data
@@ -78,6 +127,11 @@ These parameters are stable and functional. Do not revert to old configurations 
 **Problem**: Raw coordinates showing instead of user-friendly display
 **Solution**: Use "Map Status" badges instead of raw coordinate numbers
 **Files Affected**: `app/homes-list/page.tsx`
+
+#### 7. Admin Menu Missing
+**Problem**: Administration menu not appearing in sidebar
+**Solution**: Ensure admin section is anchored to bottom of sidebar with proper styling
+**Files Affected**: `components/app-sidebar.tsx`
 
 ### Database Query Guidelines
 
@@ -118,6 +172,18 @@ import HomesMap from "@/components/homes-map"
 // WRONG: Low z-index will appear behind map
 <SelectContent className="z-50">
 \`\`\`
+
+### Visual Consistency Checklist
+
+When making UI changes, ensure:
+- [ ] Brand colors are used consistently
+- [ ] Gradient backgrounds are applied to headers and cards
+- [ ] Hover effects use branded color transitions
+- [ ] Loading states use refuge-purple for spinners
+- [ ] Buttons follow the established styling patterns
+- [ ] Form elements have proper focus states
+- [ ] Admin section remains anchored to sidebar bottom
+- [ ] Logo sizing and positioning is maintained
 
 ## Development Workflow with v0
 
@@ -218,7 +284,7 @@ Ensure you have the following environment variables configured in your `.env.loc
 - `lib/db.ts`: Database connection logic, including Fixie proxy integration. **DO NOT MODIFY WITHOUT PERMISSION**.
 - `lib/db-extensions.ts`: Safe database query functions that extend functionality without modifying core connection.
 - `public/images/`: Static assets like logos.
-- `tailwind.config.ts`: Tailwind CSS configuration.
+- `tailwind.config.ts`: Tailwind CSS configuration with custom brand colors.
 - `app/globals.css`: Global CSS styles.
 
 ## Troubleshooting
@@ -238,6 +304,10 @@ Ensure you have the following environment variables configured in your `.env.loc
 - **Missing LastSync Data**: Verify that `[LastSync] as lastSync` is included in SQL queries in `lib/db-extensions.ts`.
 
 - **SQL Syntax Errors**: Use SQL Server syntax, not MySQL. Avoid functions like `current_time` - use `GETDATE()` instead.
+
+- **Visual Inconsistencies**: Ensure branded colors are used consistently. Check that gradients and hover effects follow the established patterns.
+
+- **Admin Menu Missing**: Verify that the administration section is properly anchored to the bottom of the sidebar with the correct styling.
 
 ### Diagnostic Pages
 
@@ -261,5 +331,6 @@ If you encounter issues not covered in this README:
 2. Review the build logs in Vercel for specific error messages
 3. Ensure all environment variables are properly configured
 4. Verify that the database and Key Vault are accessible from your deployment environment
+5. Check that visual styling follows the established brand guidelines
 
 For development support, provide full error messages and build logs when reporting issues.

@@ -1,9 +1,10 @@
 import { query, getDbConnection } from "./db"
 import { currentUser } from "@clerk/nextjs/server"
 import crypto from "crypto"
+import { MICROSERVICE_CONFIG, isInternalUser } from "./microservice-config"
 
-// Define the current microservice
-export const CURRENT_MICROSERVICE = "home-visits"
+// Use the configurable microservice
+export const CURRENT_MICROSERVICE = MICROSERVICE_CONFIG.code
 
 export interface AppUser {
   id: string
@@ -77,55 +78,9 @@ export const CORE_ROLES = {
   FOSTER_PARENT: "foster_parent",
 } as const
 
-// Home Visits specific roles
-export const HOME_VISITS_ROLES = {
-  // Administrative roles
-  SCHEDULING_ADMIN: "scheduling_admin",
-  QA_DIRECTOR: "qa_director",
-
-  // Operational roles
-  HOME_VISIT_LIAISON: "home_visit_liaison",
-  CASE_MANAGER: "case_manager",
-  SUPERVISOR: "supervisor",
-
-  // Limited access roles
-  VIEWER: "viewer",
-  FOSTER_PARENT: "foster_parent",
-} as const
-
-// Home Visits specific permissions
-export const HOME_VISITS_PERMISSIONS = {
-  // Scheduling permissions
-  SCHEDULE_CREATE: "schedule_create",
-  SCHEDULE_EDIT: "schedule_edit",
-  SCHEDULE_DELETE: "schedule_delete",
-  SCHEDULE_VIEW_ALL: "schedule_view_all",
-
-  // Home visit permissions
-  VISIT_CONDUCT: "visit_conduct",
-  VISIT_REPORT_CREATE: "visit_report_create",
-  VISIT_REPORT_EDIT: "visit_report_edit",
-  VISIT_REPORT_VIEW: "visit_report_view",
-  VISIT_REPORT_APPROVE: "visit_report_approve",
-
-  // Case management permissions
-  CASE_VIEW_ASSIGNED: "case_view_assigned",
-  CASE_VIEW_ALL: "case_view_all",
-  CASE_EDIT: "case_edit",
-
-  // Quality assurance permissions
-  QA_REVIEW_ALL: "qa_review_all",
-  QA_APPROVE: "qa_approve",
-  QA_REPORTS: "qa_reports",
-
-  // Administrative permissions
-  USER_MANAGE: "user_manage",
-  SYSTEM_CONFIG: "system_config",
-
-  // Basic permissions
-  HOME_VIEW: "home_view",
-  DASHBOARD_VIEW: "dashboard_view",
-} as const
+// Use configurable roles from microservice config
+export const MICROSERVICE_ROLES = MICROSERVICE_CONFIG.roles
+export const MICROSERVICE_PERMISSIONS = MICROSERVICE_CONFIG.permissions
 
 export async function getCurrentAppUser(): Promise<AppUser | null> {
   const user = await currentUser()
@@ -341,7 +296,7 @@ function determineCoreRole(email: string): string {
     return CORE_ROLES.SYSTEM_ADMIN
   }
 
-  if (email.endsWith("@refugehouse.org")) {
+  if (isInternalUser(email)) {
     return CORE_ROLES.STAFF
   }
 
@@ -362,23 +317,23 @@ async function assignDefaultMicroserviceRoles(userId: string, email: string, cor
 
     const microserviceId = microservice[0].id
 
-    // Assign roles based on specific email addresses (your examples)
+    // Assign roles based on specific email addresses (Refuge House specific)
     if (email === "jduarte@refugehouse.org") {
-      await assignUserToRole(userId, HOME_VISITS_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
     } else if (email === "mgorman@refugehouse.org") {
-      await assignUserToRole(userId, HOME_VISITS_ROLES.SCHEDULING_ADMIN, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.SCHEDULING_ADMIN, CURRENT_MICROSERVICE, "system")
     } else if (email === "ggroman@refugehouse.org") {
-      await assignUserToRole(userId, HOME_VISITS_ROLES.HOME_VISIT_LIAISON, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.HOME_VISIT_LIAISON, CURRENT_MICROSERVICE, "system")
     } else if (email === "hsartin@refugehouse.org") {
-      await assignUserToRole(userId, HOME_VISITS_ROLES.CASE_MANAGER, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.CASE_MANAGER, CURRENT_MICROSERVICE, "system")
     } else if (email === "smathis@refugehouse.org") {
-      await assignUserToRole(userId, HOME_VISITS_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.QA_DIRECTOR, CURRENT_MICROSERVICE, "system")
     } else if (coreRole === CORE_ROLES.STAFF) {
       // Default staff role
-      await assignUserToRole(userId, HOME_VISITS_ROLES.VIEWER, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.VIEWER, CURRENT_MICROSERVICE, "system")
     } else if (coreRole === CORE_ROLES.EXTERNAL) {
       // External users need invitation
-      await assignUserToRole(userId, HOME_VISITS_ROLES.FOSTER_PARENT, CURRENT_MICROSERVICE, "system")
+      await assignUserToRole(userId, MICROSERVICE_ROLES.FOSTER_PARENT, CURRENT_MICROSERVICE, "system")
     }
   } catch (error) {
     console.error("Error assigning default microservice roles:", error)
@@ -476,7 +431,7 @@ export async function canUserPerformAction(
 
 export async function isUserAuthorized(email: string): Promise<boolean> {
   // Internal users (refugehouse.org) are always authorized
-  if (email.endsWith("@refugehouse.org")) {
+  if (isInternalUser(email)) {
     return true
   }
 

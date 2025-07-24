@@ -1,10 +1,18 @@
-import { auth } from "@clerk/nextjs/server"
-
-const isClerkEnabled = !!process.env.CLERK_SECRET_KEY
+import { auth, currentUser } from "@clerk/nextjs/server"
 
 export async function getAuth() {
-  // In dev (v0 preview), return mock auth data
-  if (!isClerkEnabled) {
+  try {
+    // Get real Clerk auth data
+    const authData = await auth()
+    return {
+      userId: authData.userId,
+      sessionId: authData.sessionId,
+      isLoaded: true,
+      isSignedIn: !!authData.userId,
+    }
+  } catch (error) {
+    console.error("Error getting auth data:", error)
+    // Fallback to mock data only if Clerk fails
     return {
       userId: "mock-user-id-1234",
       sessionId: "mock-session-id-5678",
@@ -12,7 +20,26 @@ export async function getAuth() {
       isSignedIn: true,
     }
   }
+}
 
-  // In production, use real auth from Clerk
-  return auth()
+// Helper function to check if we're in a Clerk-enabled environment
+export function isClerkEnabled(): boolean {
+  return true // Enable Clerk
+}
+
+// Function that gets the current user from Clerk
+export async function getCurrentUser() {
+  try {
+    const user = await currentUser()
+    return user
+  } catch (error) {
+    console.error("Error getting current user:", error)
+    // Fallback to mock data only if Clerk fails
+    return {
+      id: "mock-user-id-1234",
+      emailAddresses: [{ emailAddress: "mock-user@example.com" }],
+      firstName: "Mock",
+      lastName: "User",
+    }
+  }
 }
