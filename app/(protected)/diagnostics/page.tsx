@@ -34,13 +34,27 @@ export default function DiagnosticsPage() {
   }, [])
 
   const runDiagnostics = async () => {
+    console.log("🔍 [Diagnostics Page] Starting diagnostics...")
     setRefreshing(true)
+
     try {
       const response = await fetch("/api/diagnostics")
+      console.log("📡 [Diagnostics Page] API response status:", response.status)
+
       if (response.ok) {
         const data = await response.json()
+        console.log("📊 [Diagnostics Page] Received data:", data)
         setSystemStatus(data)
+
+        toast({
+          title: "Diagnostics Complete",
+          description: `System status: ${data.overall}`,
+          variant: data.overall === "healthy" ? "default" : "destructive",
+        })
       } else {
+        const errorText = await response.text()
+        console.error("❌ [Diagnostics Page] API error:", response.status, errorText)
+
         toast({
           title: "Error",
           description: "Failed to run diagnostics",
@@ -48,7 +62,7 @@ export default function DiagnosticsPage() {
         })
       }
     } catch (error) {
-      console.error("Error running diagnostics:", error)
+      console.error("❌ [Diagnostics Page] Network error:", error)
       toast({
         title: "Error",
         description: "Failed to run diagnostics",
@@ -256,6 +270,16 @@ export default function DiagnosticsPage() {
             </Card>
           </div>
         </>
+      )}
+
+      {!systemStatus && !loading && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-muted-foreground">
+              <p>No diagnostic data available. Click refresh to run diagnostics.</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

@@ -20,9 +20,13 @@ interface SystemStatus {
 
 export async function GET() {
   try {
+    console.log("🔍 [Diagnostics] Starting system diagnostics...")
+
     const { userId } = await auth()
+    console.log("🔍 [Diagnostics] User ID:", userId ? "authenticated" : "not authenticated")
 
     if (!userId) {
+      console.log("❌ [Diagnostics] Unauthorized access attempt")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -31,7 +35,10 @@ export async function GET() {
     // Test database connection
     let databaseResult: DiagnosticResult
     try {
-      await query("SELECT 1 as test")
+      console.log("🔍 [Diagnostics] Testing database connection...")
+      const result = await query("SELECT 1 as test")
+      console.log("✅ [Diagnostics] Database connection successful:", result)
+
       databaseResult = {
         name: "Database Connection",
         status: "success",
@@ -40,6 +47,7 @@ export async function GET() {
         timestamp,
       }
     } catch (error) {
+      console.error("❌ [Diagnostics] Database connection failed:", error)
       databaseResult = {
         name: "Database Connection",
         status: "error",
@@ -50,6 +58,7 @@ export async function GET() {
     }
 
     // Test authentication
+    console.log("🔍 [Diagnostics] Testing authentication...")
     const authResult: DiagnosticResult = {
       name: "Authentication",
       status: "success",
@@ -61,8 +70,11 @@ export async function GET() {
     // Test permissions system
     let permissionsResult: DiagnosticResult
     try {
+      console.log("🔍 [Diagnostics] Testing permissions system...")
       // Test if we can query the permissions tables
-      await query("SELECT TOP 1 * FROM app_users WHERE clerk_id = @param0", [userId])
+      const userResult = await query("SELECT TOP 1 * FROM app_users WHERE clerk_id = @param0", [userId])
+      console.log("✅ [Diagnostics] Permissions system test successful")
+
       permissionsResult = {
         name: "Permissions System",
         status: "success",
@@ -71,6 +83,7 @@ export async function GET() {
         timestamp,
       }
     } catch (error) {
+      console.error("❌ [Diagnostics] Permissions system test failed:", error)
       permissionsResult = {
         name: "Permissions System",
         status: "warning",
@@ -81,6 +94,7 @@ export async function GET() {
     }
 
     // Test microservices configuration
+    console.log("🔍 [Diagnostics] Testing microservices configuration...")
     const microservicesResult: DiagnosticResult = {
       name: "Microservices",
       status: "success",
@@ -111,9 +125,12 @@ export async function GET() {
       overall,
     }
 
+    console.log("✅ [Diagnostics] System diagnostics completed successfully")
+    console.log("📊 [Diagnostics] Overall status:", overall)
+
     return NextResponse.json(systemStatus)
   } catch (error) {
-    console.error("Error in diagnostics API:", error)
+    console.error("❌ [Diagnostics] Critical error in diagnostics API:", error)
 
     const timestamp = new Date().toISOString()
     const errorResult: DiagnosticResult = {
