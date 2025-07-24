@@ -4,230 +4,253 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Home, Users, Calendar, MapPin, BarChart3, AlertCircle, CheckCircle, Clock } from "lucide-react"
-import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
+import { Home, Map, User, CheckCircle, BarChart3, Shield, ExternalLink } from "lucide-react"
+import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
+
+export const dynamic = "force-dynamic"
 
 interface DashboardData {
   totalHomes: number
   activeHomes: number
-  totalVisits: number
-  upcomingVisits: number
-  recentActivity: Array<{
-    id: string
-    type: string
-    description: string
-    timestamp: string
-    status: "completed" | "pending" | "overdue"
-  }>
-  systemStatus: {
-    database: "healthy" | "warning" | "error"
-    lastSync: string
-  }
+  totalUsers: number
+  systemStatus: string
+  userPermissions: string[]
+  userRoles: string[]
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null)
+  const { user } = useUser()
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        const response = await fetch("/api/dashboard-data")
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data")
-        }
-        const result = await response.json()
-        setData(result)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchDashboardData()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16 mb-2" />
-                <Skeleton className="h-3 w-32" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+  const fetchDashboardData = async () => {
+    try {
+      const response = await fetch("/api/dashboard-data")
+      const data = await response.json()
+      setDashboardData(data)
+      setLoading(false)
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      setLoading(false)
+    }
   }
 
-  if (error) {
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{MICROSERVICE_CONFIG.name}</h1>
-          <p className="text-muted-foreground">{MICROSERVICE_CONFIG.description}</p>
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-48 bg-refuge-gray rounded"></div>
+            <div className="h-48 bg-refuge-gray rounded"></div>
+          </div>
         </div>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Failed to load dashboard data: {error}</AlertDescription>
-        </Alert>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{MICROSERVICE_CONFIG.name}</h1>
-        <p className="text-muted-foreground">
-          Welcome to {MICROSERVICE_CONFIG.name}. {MICROSERVICE_CONFIG.description}
-        </p>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Welcome Message */}
+      <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta p-6 rounded-lg text-white">
+        <p className="text-lg font-medium">Welcome back, {user?.firstName || "User"}</p>
+        <p className="text-refuge-gray/90 mt-1">Access your foster homes information and system tools</p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Homes</CardTitle>
-            <Home className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.totalHomes || 0}</div>
-            <p className="text-xs text-muted-foreground">{data?.activeHomes || 0} currently active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.totalVisits || 0}</div>
-            <p className="text-xs text-muted-foreground">All time visits recorded</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Visits</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.upcomingVisits || 0}</div>
-            <p className="text-xs text-muted-foreground">Scheduled for next 30 days</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              {data?.systemStatus.database === "healthy" ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-500" />
-              )}
-              <Badge variant={data?.systemStatus.database === "healthy" ? "default" : "destructive"}>
-                {data?.systemStatus.database || "Unknown"}
-              </Badge>
+      {/* Main Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Foster Homes List */}
+        <Card className="border-refuge-light-purple/20 hover:shadow-lg hover:shadow-refuge-purple/10 transition-all duration-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-refuge-purple to-refuge-light-purple rounded-lg">
+                <Home className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-refuge-dark-blue">Foster Homes List</CardTitle>
+                <CardDescription className="text-refuge-dark-blue/70">
+                  View detailed information about all active foster homes in the system
+                </CardDescription>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Last sync: {data?.systemStatus.lastSync || "Unknown"}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-refuge-dark-blue/80">Browse homes, contact information, case managers, and more</p>
+            <Link href="/homes-list">
+              <Button className="w-full sm:w-auto bg-gradient-to-r from-refuge-purple to-refuge-light-purple hover:from-refuge-purple/90 hover:to-refuge-light-purple/90 text-white border-0">
+                View Access
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Geographic Map */}
+        <Card className="border-refuge-magenta/20 hover:shadow-lg hover:shadow-refuge-magenta/10 transition-all duration-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-refuge-magenta to-red-500 rounded-lg">
+                <Map className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-refuge-dark-blue">Geographic Map</CardTitle>
+                <CardDescription className="text-refuge-dark-blue/70">
+                  Interactive map showing the geographic locations of foster homes
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-refuge-dark-blue/80">Visual map with filtering, search, and detailed home information</p>
+            <Link href="/homes-map">
+              <Button className="w-full sm:w-auto bg-gradient-to-r from-refuge-magenta to-red-500 hover:from-refuge-magenta/90 hover:to-red-500/90 text-white border-0">
+                View Access
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates from the {MICROSERVICE_CONFIG.name.toLowerCase()} system</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {data?.recentActivity && data.recentActivity.length > 0 ? (
-                data.recentActivity.slice(0, 5).map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      {activity.status === "completed" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {activity.status === "pending" && <Clock className="h-4 w-4 text-yellow-500" />}
-                      {activity.status === "overdue" && <AlertCircle className="h-4 w-4 text-red-500" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{activity.description}</p>
-                      <p className="text-sm text-gray-500">{new Date(activity.timestamp).toLocaleDateString()}</p>
-                    </div>
-                    <Badge
-                      variant={
-                        activity.status === "completed"
-                          ? "default"
-                          : activity.status === "pending"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                    >
-                      {activity.status}
-                    </Badge>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No recent activity</p>
-              )}
+      {/* Account Status */}
+      <Card className="border-refuge-light-purple/30 bg-gradient-to-br from-white to-refuge-gray/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gradient-to-br from-refuge-light-purple to-refuge-purple rounded-lg">
+              <User className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-refuge-dark-blue">Your Account Status</CardTitle>
+              <CardDescription className="text-refuge-dark-blue/70">
+                Current permissions and access level
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
+              <div className="text-center">
+                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Email Domain</p>
+                <p className="text-lg font-semibold text-refuge-dark-blue">
+                  {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"}
+                </p>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
+              <div className="text-center">
+                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Account Status</p>
+                <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
+              <div className="text-center">
+                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Assigned Roles</p>
+                <p className="text-lg font-semibold text-refuge-dark-blue">{dashboardData?.userRoles?.length || 1}</p>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
+              <div className="text-center">
+                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Permissions</p>
+                <p className="text-lg font-semibold text-refuge-dark-blue">
+                  {dashboardData?.userPermissions?.length || 6}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Default Access Level */}
+      <Card className="border-refuge-purple/20 bg-gradient-to-br from-refuge-gray/20 to-white">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-lg">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-refuge-dark-blue">Default Access Level</CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-refuge-dark-blue/80">
+            As a {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"} domain user, you have
+            default access to view foster homes information:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-refuge-dark-blue/80">View foster homes list and details</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-refuge-dark-blue/80">Access interactive geographic map</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-refuge-dark-blue/80">Filter and search home information</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-refuge-dark-blue/80">View case manager contact details</span>
+            </div>
+          </div>
+          <div className="mt-6 p-4 bg-white rounded-lg border border-refuge-light-purple/20 shadow-sm">
+            <h4 className="font-medium text-refuge-dark-blue mb-2">Additional Role-Based Access:</h4>
+            <div className="flex items-center gap-2">
+              <input
+                type="radio"
+                id="admin-role"
+                name="additional-access"
+                className="text-refuge-purple"
+                disabled
+                checked={dashboardData?.userRoles?.includes("admin") || false}
+              />
+              <label htmlFor="admin-role" className="text-refuge-dark-blue/80">
+                admin in Home Visits Application
+              </label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-refuge-light-purple/20 text-center bg-gradient-to-br from-white to-refuge-light-purple/5">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-gradient-to-br from-refuge-light-purple to-refuge-purple rounded-full">
+                <BarChart3 className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-refuge-dark-blue">Active</h3>
+              <p className="text-sm text-refuge-dark-blue/70">System Status</p>
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks for {MICROSERVICE_CONFIG.name.toLowerCase()}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              <Button variant="outline" className="justify-start bg-transparent" asChild>
-                <a href="/visits-calendar">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  View Visits Calendar
-                </a>
-              </Button>
-              <Button variant="outline" className="justify-start bg-transparent" asChild>
-                <a href="/homes-map">
-                  <MapPin className="mr-2 h-4 w-4" />
-                  View Homes Map
-                </a>
-              </Button>
-              <Button variant="outline" className="justify-start bg-transparent" asChild>
-                <a href="/homes-list">
-                  <Users className="mr-2 h-4 w-4" />
-                  Browse Homes List
-                </a>
-              </Button>
-              <Button variant="outline" className="justify-start bg-transparent" asChild>
-                <a href="/reports">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Generate Reports
-                </a>
-              </Button>
+        <Card className="border-refuge-magenta/20 text-center bg-gradient-to-br from-white to-refuge-magenta/5">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-gradient-to-br from-refuge-magenta to-red-500 rounded-full">
+                <Home className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-refuge-dark-blue">Ready</h3>
+              <p className="text-sm text-refuge-dark-blue/70">Data Access</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 text-center bg-gradient-to-br from-white to-green-50">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-full">
+                <CheckCircle className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-refuge-dark-blue">Authorized</h3>
+              <p className="text-sm text-refuge-dark-blue/70">User Status</p>
             </div>
           </CardContent>
         </Card>
