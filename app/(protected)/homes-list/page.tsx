@@ -84,9 +84,9 @@ export default function HomesListPage() {
       {/* Action Bar */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Homes List</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Foster Homes</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
-            Active foster homes from SyncActiveHomes database
+            Active foster homes and contact information
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -131,9 +131,7 @@ export default function HomesListPage() {
 
           {!loading && data && data.success && data.homes.length === 0 && (
             <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/50">
-              <p className="text-slate-600 dark:text-slate-400 mb-4 font-medium">
-                No homes data available in SyncActiveHomes table.
-              </p>
+              <p className="text-slate-600 dark:text-slate-400 mb-4 font-medium">No homes data available.</p>
               <Button
                 onClick={fetchHomes}
                 className="px-4 py-2 bg-refuge-purple hover:bg-refuge-purple-dark text-white font-medium rounded-lg transition-all duration-200 active:scale-95 transform shadow-sm hover:shadow-md"
