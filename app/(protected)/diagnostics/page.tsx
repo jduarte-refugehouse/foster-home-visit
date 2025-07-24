@@ -1,282 +1,428 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { RefreshCw, Database, Server, Shield, AlertCircle, CheckCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { RefreshCw, Database, Key, Globe, Server, Eye, EyeOff } from "lucide-react"
 
-interface DiagnosticResult {
-  name: string
-  status: "success" | "warning" | "error"
-  message: string
-  details?: string
+interface DiagnosticsData {
   timestamp: string
-}
-
-interface SystemStatus {
-  database: DiagnosticResult
-  authentication: DiagnosticResult
-  permissions: DiagnosticResult
-  microservices: DiagnosticResult
-  overall: "healthy" | "warning" | "critical"
+  database: {
+    status: string
+    message: string
+    data?: any[]
+    passwordSource?: string
+    passwordError?: string
+  }
+  environment: {
+    azureKeyVault: {
+      configured: boolean
+      keyVaultName: string
+      keyVaultUrl: string
+      tenantId: string
+      clientId: string
+      secretName: string
+    }
+    proxy: {
+      configured: boolean
+      host: string
+    }
+    database: {
+      server: string
+      database: string
+      user: string
+      port: number
+      encryption: string
+      trustServerCertificate: string
+      connectTimeout: string
+      requestTimeout: string
+    }
+  }
+  system: {
+    nodeVersion: string
+    platform: string
+    environment: string
+  }
+  components: {
+    databaseConnection: {
+      status: string
+      message: string
+      details?: any
+    }
+    azureKeyVault: {
+      status: string
+      message: string
+    }
+    proxyConnection: {
+      status: string
+      message: string
+    }
+    serverEnvironment: {
+      status: string
+      message: string
+    }
+  }
 }
 
 export default function DiagnosticsPage() {
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
+  const [data, setData] = useState<DiagnosticsData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const { toast } = useToast()
+  const [error, setError] = useState<string | null>(null)
+  const [showSensitive, setShowSensitive] = useState(false)
 
-  useEffect(() => {
-    runDiagnostics()
-  }, [])
-
-  const runDiagnostics = async () => {
-    console.log("🔍 [Diagnostics Page] Starting diagnostics...")
-    setRefreshing(true)
+  const fetchDiagnostics = async () => {
+    setLoading(true)
+    setError(null)
 
     try {
       const response = await fetch("/api/diagnostics")
-      console.log("📡 [Diagnostics Page] API response status:", response.status)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log("📊 [Diagnostics Page] Received data:", data)
-        setSystemStatus(data)
-
-        toast({
-          title: "Diagnostics Complete",
-          description: `System status: ${data.overall}`,
-          variant: data.overall === "healthy" ? "default" : "destructive",
-        })
-      } else {
-        const errorText = await response.text()
-        console.error("❌ [Diagnostics Page] API error:", response.status, errorText)
-
-        toast({
-          title: "Error",
-          description: "Failed to run diagnostics",
-          variant: "destructive",
-        })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error("❌ [Diagnostics Page] Network error:", error)
-      toast({
-        title: "Error",
-        description: "Failed to run diagnostics",
-        variant: "destructive",
-      })
+
+      const result = await response.json()
+      setData(result)
+    } catch (err) {
+      console.error("Error fetching diagnostics:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch diagnostics")
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      case "warning":
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />
+  useEffect(() => {
+    fetchDiagnostics()
+  }, [])
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "connected":
+      case "healthy":
+      case "active":
+        return "bg-green-100 text-green-800"
+      case "disconnected":
       case "error":
-        return <AlertCircle className="h-5 w-5 text-red-500" />
+        return "bg-red-100 text-red-800"
+      case "warning":
+        return "bg-yellow-100 text-yellow-800"
       default:
-        return <AlertCircle className="h-5 w-5 text-gray-500" />
+        return "bg-gray-100 text-gray-800"
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "success":
-        return <Badge className="bg-green-100 text-green-800">Healthy</Badge>
-      case "warning":
-        return <Badge className="bg-yellow-100 text-yellow-800">Warning</Badge>
-      case "error":
-        return <Badge className="bg-red-100 text-red-800">Error</Badge>
-      default:
-        return <Badge variant="secondary">Unknown</Badge>
-    }
+  const maskSensitiveData = (value: string, show: boolean) => {
+    if (show || !value || value === "Not configured") return value
+    return value.replace(/./g, "•")
   }
 
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">System Diagnostics</h1>
-          <p className="text-muted-foreground">Monitor system health and performance</p>
-        </div>
-        <Button onClick={runDiagnostics} disabled={refreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-          {refreshing ? "Running..." : "Refresh"}
-        </Button>
-      </div>
-
-      {systemStatus && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                Overall System Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(systemStatus.overall === "healthy" ? "success" : "error")}
-                <span className="text-lg font-medium">
-                  {systemStatus.overall === "healthy" ? "System Healthy" : "Issues Detected"}
-                </span>
-                {getStatusBadge(systemStatus.overall === "healthy" ? "success" : "error")}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Database Connection
-                </CardTitle>
-                <CardDescription>Database connectivity and performance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Status</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(systemStatus.database.status)}
-                      {getStatusBadge(systemStatus.database.status)}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{systemStatus.database.message}</div>
-                  {systemStatus.database.details && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                      {systemStatus.database.details}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    Last checked: {new Date(systemStatus.database.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Authentication
-                </CardTitle>
-                <CardDescription>User authentication and authorization</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Status</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(systemStatus.authentication.status)}
-                      {getStatusBadge(systemStatus.authentication.status)}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{systemStatus.authentication.message}</div>
-                  {systemStatus.authentication.details && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                      {systemStatus.authentication.details}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    Last checked: {new Date(systemStatus.authentication.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Permissions System
-                </CardTitle>
-                <CardDescription>Role and permission management</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Status</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(systemStatus.permissions.status)}
-                      {getStatusBadge(systemStatus.permissions.status)}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{systemStatus.permissions.message}</div>
-                  {systemStatus.permissions.details && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                      {systemStatus.permissions.details}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    Last checked: {new Date(systemStatus.permissions.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Server className="h-5 w-5" />
-                  Microservices
-                </CardTitle>
-                <CardDescription>Microservice configuration and connectivity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Status</span>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(systemStatus.microservices.status)}
-                      {getStatusBadge(systemStatus.microservices.status)}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{systemStatus.microservices.message}</div>
-                  {systemStatus.microservices.details && (
-                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                      {systemStatus.microservices.details}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    Last checked: {new Date(systemStatus.microservices.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-
-      {!systemStatus && !loading && (
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
         <Card>
           <CardContent className="p-6">
-            <div className="text-center text-muted-foreground">
-              <p>No diagnostic data available. Click refresh to run diagnostics.</p>
+            <div className="text-center text-red-600">
+              <p className="font-semibold">Error loading diagnostics</p>
+              <p className="text-sm mt-2">{error}</p>
+              <Button onClick={fetchDiagnostics} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">System Diagnostics</h1>
+          <p className="text-muted-foreground">Real-time system health and configuration details</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowSensitive(!showSensitive)} size="sm">
+            {showSensitive ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showSensitive ? "Hide Details" : "Show Details"}
+          </Button>
+          <Button onClick={fetchDiagnostics} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Status Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Database Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              <div>
+                <div
+                  className={`text-lg font-semibold ${data.database.status === "connected" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {data.database.status === "connected" ? "Connected" : "Disconnected"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {data.database.status === "connected" ? "Azure SQL Database" : "RadiusBifrost"}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">System Health</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              <div>
+                <div
+                  className={`text-lg font-semibold ${data.database.status === "connected" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {data.database.status === "connected" ? "Healthy" : "Degraded"}
+                </div>
+                <div className="text-sm text-muted-foreground">All systems operational</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Last Check</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              <div>
+                <div className="text-lg font-semibold">{new Date(data.timestamp).toLocaleTimeString()}</div>
+                <div className="text-sm text-muted-foreground">Real-time monitoring</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Database Connection Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Database Connection Configuration
+            <Button variant="ghost" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
+              {showSensitive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Current database connection parameters being used</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Server</label>
+                <div className="text-sm">{data.environment.database.server}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Database</label>
+                <div className="text-sm">{data.environment.database.database}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">User</label>
+                <div className="text-sm">{data.environment.database.user}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Encryption</label>
+                <div className="text-sm">{data.environment.database.encryption}</div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Port</label>
+                <div className="text-sm">{data.environment.database.port}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Trust Server Certificate</label>
+                <div className="text-sm">{data.environment.database.trustServerCertificate}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Connect Timeout</label>
+                <div className="text-sm">{data.environment.database.connectTimeout}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Request Timeout</label>
+                <div className="text-sm">{data.environment.database.requestTimeout}</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Azure Key Vault Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Azure Key Vault Configuration</CardTitle>
+          <p className="text-sm text-muted-foreground">Key Vault settings and authentication details</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Key Vault Name</label>
+                <div className="text-sm">{data.environment.azureKeyVault.keyVaultName}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Key Vault URL</label>
+                <div className="text-sm">{data.environment.azureKeyVault.keyVaultUrl}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Secret Name</label>
+                <div className="text-sm">{data.environment.azureKeyVault.secretName}</div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Tenant ID</label>
+                <div className="text-sm">
+                  {maskSensitiveData(data.environment.azureKeyVault.tenantId, showSensitive)}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Client ID</label>
+                <div className="text-sm">
+                  {maskSensitiveData(data.environment.azureKeyVault.clientId, showSensitive)}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(data.components.azureKeyVault.status)}>
+                    {data.environment.azureKeyVault.configured ? "✓ Configured" : "⚠ Not Configured"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Proxy Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Proxy Configuration</CardTitle>
+          <p className="text-sm text-muted-foreground">SOCKS proxy settings for database connection</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Fixie SOCKS Host</label>
+                <div className="text-sm">{maskSensitiveData(data.environment.proxy.host, showSensitive)}</div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(data.components.proxyConnection.status)}>
+                    {data.environment.proxy.configured ? "✓ Configured" : "⚠ Not Configured"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System Components */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            System Components
+            <Button variant="outline" size="sm" onClick={fetchDiagnostics}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Run Tests
+            </Button>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Real-time status of all system components</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(data.components).map(([key, component]) => (
+              <div key={key} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  {key === "databaseConnection" && <Database className="h-5 w-5 text-muted-foreground" />}
+                  {key === "azureKeyVault" && <Key className="h-5 w-5 text-muted-foreground" />}
+                  {key === "proxyConnection" && <Globe className="h-5 w-5 text-muted-foreground" />}
+                  {key === "serverEnvironment" && <Server className="h-5 w-5 text-muted-foreground" />}
+                  <div>
+                    <div className="font-medium">
+                      {key === "databaseConnection" && "Database Connection"}
+                      {key === "azureKeyVault" && "Azure Key Vault"}
+                      {key === "proxyConnection" && "Proxy Connection"}
+                      {key === "serverEnvironment" && "Server Environment"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">{component.message}</div>
+                  </div>
+                </div>
+                <Badge className={getStatusColor(component.status)}>
+                  {component.status === "healthy" && "Healthy"}
+                  {component.status === "error" && "Error"}
+                  {component.status === "warning" && "Warning"}
+                  {component.status === "active" && "Active"}
+                  {component.status === "connected" && "Connected"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Connection Details */}
+      {data.database.data && showSensitive && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Live Connection Details</CardTitle>
+            <p className="text-sm text-muted-foreground">Real-time connection information from database</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.database.data.map((row: any, index: number) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-gray-50 rounded">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Login Name</label>
+                    <div className="text-sm">{row.login_name}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Database</label>
+                    <div className="text-sm">{row.db_name}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Client IP</label>
+                    <div className="text-sm">{row.client_ip}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
