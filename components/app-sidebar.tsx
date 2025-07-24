@@ -36,6 +36,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 // Icon mapping for dynamic icons
 const iconMap: Record<string, LucideIcon> = {
@@ -243,7 +244,7 @@ export function AppSidebar() {
           <div className="flex flex-col flex-1 min-w-0">
             {getFallbackBadge() && <div className="flex items-center gap-2 mb-1">{getFallbackBadge()}</div>}
             {process.env.NODE_ENV === "development" && (
-              <span className="text-xs text-refuge-purple font-medium">Development Mode</span>
+              <span className="text-xs text-refuge-purple font-medium">{MICROSERVICE_CONFIG.name} - Development</span>
             )}
           </div>
         </div>

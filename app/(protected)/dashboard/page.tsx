@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Home, Map, User, CheckCircle, BarChart3, Shield, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
@@ -57,8 +58,10 @@ export default function DashboardPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Welcome Message */}
       <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta p-6 rounded-lg text-white">
-        <p className="text-lg font-medium">Welcome back, {user?.firstName || "User"}</p>
-        <p className="text-refuge-gray/90 mt-1">Access your foster homes information and system tools</p>
+        <p className="text-lg font-medium">Welcome to {MICROSERVICE_CONFIG.name}</p>
+        <p className="text-refuge-gray/90 mt-1">
+          Welcome back, {user?.firstName || "User"} - {MICROSERVICE_CONFIG.description}
+        </p>
       </div>
 
       {/* Main Action Cards */}
@@ -126,7 +129,7 @@ export default function DashboardPage() {
             <div>
               <CardTitle className="text-xl text-refuge-dark-blue">Your Account Status</CardTitle>
               <CardDescription className="text-refuge-dark-blue/70">
-                Current permissions and access level
+                Current permissions and access level in {MICROSERVICE_CONFIG.name}
               </CardDescription>
             </div>
           </div>
@@ -214,7 +217,7 @@ export default function DashboardPage() {
                 checked={dashboardData?.userRoles?.includes("admin") || false}
               />
               <label htmlFor="admin-role" className="text-refuge-dark-blue/80">
-                admin in Home Visits Application
+                admin in {MICROSERVICE_CONFIG.name}
               </label>
             </div>
           </div>

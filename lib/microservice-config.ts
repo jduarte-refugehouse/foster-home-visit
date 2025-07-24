@@ -1,5 +1,6 @@
-// Microservice Configuration for Refuge House Template
-// This file defines the microservice-specific settings that can be customized for each app
+// Refuge House Microservice Configuration Template
+// This file defines the microservice-specific settings for Refuge House applications
+// IMPORTANT: The 'code' field must match the app_code in the microservice_apps database table
 
 export interface NavigationItem {
   code: string
@@ -16,7 +17,7 @@ export interface NavigationSection {
 }
 
 export interface MicroserviceConfig {
-  code: string
+  code: string // MUST match database microservice_apps.app_code
   name: string
   description: string
   url: string
@@ -27,8 +28,9 @@ export interface MicroserviceConfig {
 }
 
 // Current microservice configuration
+// NOTE: The code "home-visits" must match the database entry in microservice_apps table
 export const MICROSERVICE_CONFIG: MicroserviceConfig = {
-  code: "home-visits",
+  code: "home-visits", // CRITICAL: Must match database microservice_apps.app_code
   name: "Home Visits Application",
   description: "Foster care home visit scheduling and management",
   url: "/home-visits",
@@ -55,6 +57,7 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
   },
 
   // Default navigation structure (used as fallback when database is unavailable)
+  // NOTE: homes_map and homes_list are standard for all Refuge House microservices
   defaultNavigation: [
     {
       title: "Navigation",
@@ -76,6 +79,7 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
           permission: "generate_reports",
           order: 3,
         },
+        // Standard Refuge House components - keep in all microservices
         { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 4 },
         { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 5 },
       ],

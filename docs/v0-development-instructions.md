@@ -1,156 +1,155 @@
-# v0 Development Instructions
+# Refuge House Microservice Template - Development Instructions
 
-## 🚨 CRITICAL DEPLOYMENT REQUIREMENT 🚨
+## Overview
 
-**ALL FILES MUST BE WRITTEN COMPLETELY - NO PLACEHOLDERS ALLOWED**
+This is the **Refuge House Microservice Template** - a standardized foundation for building internal applications at Refuge House. This template is specifically designed for Refuge House's foster care operations and comes pre-loaded with essential components.
 
-When working with v0 on this project:
+## Template Philosophy
 
-### ✅ REQUIRED PRACTICES
+### What's Pre-Loaded (Standard Kit)
+- **Foster Homes Data Integration** - Working homes list and interactive map
+- **Refuge House Branding** - Logo, colors, and organizational identity
+- **Admin Infrastructure** - User management, permissions, diagnostics
+- **@refugehouse.org Domain Logic** - Automatic access for internal users
+- **jduarte@refugehouse.org Admin** - Default system administrator
 
-### File Content Requirements:
-- **Write complete file content** for every file being modified
-- **Include all imports, exports, and function implementations**
-- **Ensure all referenced functions and variables are included**
-- **Include all TypeScript types and interfaces**
-- **Write full component implementations with all props and handlers**
+### What's Configurable
+- **Microservice Identity** - Name, description, and business purpose
+- **Business-Specific Roles** - Tailored to each application's workflow
+- **Business-Specific Permissions** - Granular access control
+- **Custom Navigation** - Application-specific menu items (homes/map/admin always included)
 
-### Forbidden Practices:
-- ❌ **NEVER use placeholders** like "... This file was left out for brevity..."
-- ❌ **NEVER reference missing functions** or incomplete implementations
-- ❌ **NEVER make partial file updates** that break imports/exports
-- ❌ **NEVER skip writing complete implementations**
+## Creating a New Microservice
 
-### Deployment Process:
-1. Make changes through v0 with complete files
-2. Deploy to Vercel to test
-3. Verify functionality works
-4. Proceed to next change
+### Step 1: Database Setup
+1. Add your microservice to the `microservice_apps` table:
+\`\`\`sql
+INSERT INTO microservice_apps (app_code, app_name, app_url, description, is_active)
+VALUES ('your-app-code', 'Your App Name', '/your-app', 'Your app description', 1)
+\`\`\`
 
-### Common Issues:
-- Missing exports cause deployment failures
-- Incomplete files break the build
-- Placeholder content prevents proper deployment
+### Step 2: Configure Microservice Identity
+Edit `lib/microservice-config.ts`:
 
-## Project Context
+\`\`\`typescript
+export const MICROSERVICE_CONFIG: MicroserviceConfig = {
+  code: "your-app-code", // MUST match database entry
+  name: "Your Application Name",
+  description: "Your application description",
+  url: "/your-app",
+  organizationDomain: "refugehouse.org", // Keep as-is
+  
+  // Define your business-specific roles
+  roles: {
+    MANAGER: "your_manager",
+    WORKER: "your_worker", 
+    VIEWER: "your_viewer",
+  },
+  
+  // Define your business-specific permissions
+  permissions: {
+    VIEW_DATA: "view_your_data",
+    CREATE_DATA: "create_your_data",
+    EDIT_DATA: "edit_your_data",
+    DELETE_DATA: "delete_your_data",
+    // Keep these standard ones:
+    GENERATE_REPORTS: "generate_reports",
+    VIEW_DIAGNOSTICS: "view_diagnostics",
+    USER_MANAGEMENT: "user_management",
+    SYSTEM_CONFIG: "system_config",
+  },
+  
+  // Define your navigation (homes/map/admin will be included automatically)
+  defaultNavigation: [
+    {
+      title: "Navigation",
+      items: [
+        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+        { code: "your_feature", title: "Your Feature", url: "/your-feature", icon: "FileText", permission: "view_your_data", order: 2 },
+        // Standard items - keep these:
+        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 8 },
+        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 9 },
+      ],
+    },
+    // Administration section - keep as-is
+    {
+      title: "Administration",
+      items: [
+        { code: "user_invitations", title: "User Invitations", url: "/admin/invitations", icon: "Users", permission: "user_management", order: 1 },
+        { code: "user_management", title: "User Management", url: "/admin/users", icon: "UserCog", permission: "user_management", order: 2 },
+        { code: "system_admin", title: "System Admin", url: "/system-admin", icon: "Settings", permission: "system_config", order: 3 },
+        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 4 },
+      ],
+    },
+  ],
+}
+\`\`\`
 
-This is a production application that:
-- Uses Clerk for authentication
-- Has a complex role-based permission system
-- Integrates with SQL Server database
-- Must maintain backward compatibility
-- Requires careful handling of user management functions
+### Step 3: Update User Role Assignments
+Edit `lib/user-management.ts` in the `assignDefaultMicroserviceRoles` function to assign appropriate roles for your microservice.
 
-Always consider the full impact of changes on the authentication and permission systems.
+### Step 4: Create Your Business Logic
+- Add your application-specific pages in `app/(protected)/`
+- Create your API routes in `app/api/`
+- Build your components in `components/`
+
+## What You Get Out of the Box
+
+### Standard Components (Don't Modify)
+- **Foster Homes List** (`/homes-list`) - Complete homes management interface
+- **Interactive Map** (`/homes-map`) - Geographic visualization of homes
+- **User Management** (`/admin/users`) - Role and permission management
+- **System Diagnostics** (`/diagnostics`) - Database and system health
+- **Authentication** - Clerk integration with Refuge House domain logic
+
+### Template Infrastructure (Don't Modify)
+- Database connection management with Azure Key Vault
+- Permission middleware and role-based access control
+- Sidebar navigation with automatic fallbacks
+- Refuge House branding and styling
+- Development vs production environment handling
+
+## Environment Variables Required
+
+\`\`\`env
+# Database (Azure SQL)
+DATABASE_SERVER=your-server.database.windows.net
+DATABASE_NAME=your-database
+DATABASE_USER=your-user
+DATABASE_PORT=1433
+
+# Azure Key Vault
+AZURE_KEY_VAULT_NAME=your-keyvault
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-key
+CLERK_SECRET_KEY=your-clerk-secret
+CLERK_WEBHOOK_SECRET=your-webhook-secret
+
+# Proxy (if needed)
+FIXIE_SOCKS_HOST=your-proxy-host
+\`\`\`
 
 ## Development Workflow
 
-### Step-by-Step Process:
-1. **User requests changes** with explicit instruction: "Write complete file contents - no placeholders"
-2. **v0 provides complete files** with all necessary code
-3. **User applies changes** to GitHub repository manually
-4. **User deploys to Vercel** to test functionality
-5. **User verifies everything works** before proceeding
-6. **Repeat process** for next change
+1. **Clone this template** for your new microservice
+2. **Update microservice config** with your application details
+3. **Create database entry** for your microservice
+4. **Build your business logic** on top of the foundation
+5. **Test with standard components** (homes, map, admin work automatically)
+6. **Deploy** - all infrastructure is ready
 
-### Deployment Context:
-- **Vercel builds from GitHub** - changes in v0 chat are not automatically synced
-- **Build failures are expensive** - they waste development time
-- **Complete files prevent deployment issues** - partial implementations cause build errors
-- **Manual application required** - user must copy code to GitHub manually
+## Key Principles
 
-## Project-Specific Requirements
+- **Refuge House Specific** - This is internal tooling, not generic software
+- **Foster Care Context** - All applications support foster care operations
+- **Pre-loaded Data** - New microservices get working homes data immediately
+- **Consistent Admin** - jduarte@refugehouse.org is always system admin
+- **Standard Navigation** - Homes and admin sections are consistent across apps
 
-### Authentication System:
-- Uses **Clerk for authentication**
-- Has **complex role-based permission system**
-- Requires **careful handling of user management functions**
-- **Backward compatibility is critical**
+## Support
 
-### Database Integration:
-- **SQL Server database** with Azure integration
-- **Specific table names** must be used (e.g., `SyncActiveHomes`, not `Homes`)
-- **Connection parameters are locked** - do not modify `lib/db.ts` without permission
-- **Query syntax must be SQL Server compatible**
-
-### UI/UX Standards:
-- **Custom brand colors** defined in `tailwind.config.ts`
-- **Consistent styling patterns** for components
-- **Specific z-index requirements** for map components
-- **Dynamic imports required** for Leaflet maps
-
-## Common Deployment Failures
-
-### Missing Exports:
-\`\`\`typescript
-// ❌ WRONG - Missing export
-function getUserById(id: string) { ... }
-
-// ✅ CORRECT - Proper export
-export function getUserById(id: string) { ... }
-\`\`\`
-
-### Incomplete Implementations:
-\`\`\`typescript
-// ❌ WRONG - Placeholder content
-export function processData() {
-  // ... implementation details ...
-}
-
-// ✅ CORRECT - Complete implementation
-export function processData(data: UserData[]): ProcessedData[] {
-  return data.map(item => ({
-    id: item.id,
-    name: item.name,
-    processed: true
-  }));
-}
-\`\`\`
-
-### Missing Imports:
-\`\`\`typescript
-// ❌ WRONG - Missing imports
-export function MyComponent() {
-  return <Button>Click me</Button>; // Button not imported
-}
-
-// ✅ CORRECT - All imports included
-import { Button } from '@/components/ui/button';
-
-export function MyComponent() {
-  return <Button>Click me</Button>;
-}
-\`\`\`
-
-## Quality Checklist
-
-Before providing any code, verify:
-- [ ] All files are complete with no placeholders
-- [ ] All imports and exports are included
-- [ ] All referenced functions are implemented
-- [ ] TypeScript types are properly defined
-- [ ] Component props and handlers are complete
-- [ ] Database queries use correct table names
-- [ ] Styling follows brand guidelines
-- [ ] No deprecated or removed functions are referenced
-
-## Emergency Procedures
-
-If deployment fails:
-1. **Provide full build log** to v0 for analysis
-2. **Request complete file rewrites** rather than patches
-3. **Test each change individually** before combining
-4. **Verify all dependencies** are properly installed
-5. **Check environment variables** are correctly configured
-
-## Success Metrics
-
-A successful v0 interaction should result in:
-- ✅ **Clean deployment** to Vercel without build errors
-- ✅ **Functional application** with all features working
-- ✅ **No missing dependencies** or import errors
-- ✅ **Consistent styling** following brand guidelines
-- ✅ **Proper error handling** and user feedback
-- ✅ **Maintained backward compatibility** with existing features
-
-Remember: **Complete files prevent deployment failures and save development time.**
+For questions about this template or creating new microservices, contact the development team or check the diagnostics page for system health information.
