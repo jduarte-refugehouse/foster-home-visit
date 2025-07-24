@@ -1,56 +1,65 @@
-// MICROSERVICE CONFIGURATION
-// This file defines the identity and configuration for this specific microservice
-// within the Refuge House ecosystem.
+// Microservice Configuration for Refuge House Template
+// This file defines the microservice-specific settings that can be customized for each app
 
-// ⚠️ CRITICAL: The 'code' field MUST match the 'app_code' in the database table 'microservice_apps'
-// This ensures proper database connectivity and user permissions mapping.
-// Current database entry: app_code = 'home-visits'
+export interface NavigationItem {
+  code: string
+  title: string
+  url: string
+  icon: string
+  permission?: string
+  order: number
+}
 
-export const MICROSERVICE_CONFIG = {
-  // Database identifier - MUST match microservice_apps.app_code
+export interface NavigationSection {
+  title: string
+  items: NavigationItem[]
+}
+
+export interface MicroserviceConfig {
+  code: string
+  name: string
+  description: string
+  url: string
+  organizationDomain: string
+  roles: Record<string, string>
+  permissions: Record<string, string>
+  defaultNavigation: NavigationSection[]
+}
+
+// Current microservice configuration
+export const MICROSERVICE_CONFIG: MicroserviceConfig = {
   code: "home-visits",
-
-  // Display name used throughout the application UI
   name: "Home Visits Application",
+  description: "Foster care home visit scheduling and management",
+  url: "/home-visits",
+  organizationDomain: "refugehouse.org",
 
-  // Brief description for dashboard and admin interfaces
-  description: "Manage and track foster home visits and inspections",
-
-  // Version for tracking deployments
-  version: "1.0.0",
-
-  // Microservice-specific roles (these get stored in user_roles table)
+  // Define microservice-specific roles
   roles: {
-    QA_DIRECTOR: "qa_director",
-    SCHEDULING_ADMIN: "scheduling_admin",
-    HOME_VISIT_LIAISON: "home_visit_liaison",
-    CASE_MANAGER: "case_manager",
-    VIEWER: "viewer",
-    FOSTER_PARENT: "foster_parent",
+    MANAGER: "visit_manager",
+    COORDINATOR: "visit_coordinator",
+    WORKER: "visit_worker",
+    VIEWER: "visit_viewer",
   },
 
-  // Microservice-specific permissions (these get stored in permissions table)
+  // Define microservice-specific permissions
   permissions: {
-    VIEW_HOMES: "view_homes",
-    MANAGE_VISITS: "manage_visits",
-    VIEW_REPORTS: "view_reports",
-    ADMIN_ACCESS: "admin_access",
-    USER_MANAGE: "user_manage",
-    SYSTEM_ADMIN: "system_admin",
+    VIEW_VISITS: "view_visits",
+    CREATE_VISITS: "create_visits",
+    EDIT_VISITS: "edit_visits",
+    DELETE_VISITS: "delete_visits",
+    GENERATE_REPORTS: "generate_reports",
+    VIEW_DIAGNOSTICS: "view_diagnostics",
+    USER_MANAGEMENT: "user_management",
+    SYSTEM_CONFIG: "system_config",
   },
 
-  // Default navigation structure (fallback when database is unavailable)
+  // Default navigation structure (used as fallback when database is unavailable)
   defaultNavigation: [
     {
       title: "Navigation",
       items: [
-        {
-          code: "dashboard",
-          title: "Dashboard",
-          url: "/dashboard",
-          icon: "Home",
-          order: 1,
-        },
+        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
         {
           code: "visits_calendar",
           title: "Visits Calendar",
@@ -67,20 +76,8 @@ export const MICROSERVICE_CONFIG = {
           permission: "generate_reports",
           order: 3,
         },
-        {
-          code: "homes_map",
-          title: "Homes Map",
-          url: "/homes-map",
-          icon: "Map",
-          order: 4,
-        },
-        {
-          code: "homes_list",
-          title: "Homes List",
-          url: "/homes-list",
-          icon: "List",
-          order: 5,
-        },
+        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 4 },
+        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 5 },
       ],
     },
     {
@@ -123,18 +120,81 @@ export const MICROSERVICE_CONFIG = {
   ],
 }
 
-// Standard Refuge House domain for internal user identification
-export const INTERNAL_DOMAIN = "refugehouse.org"
-
-// Helper function to determine if user is internal Refuge House staff
+// Helper functions
 export function isInternalUser(email: string): boolean {
-  return email.toLowerCase().endsWith(`@${INTERNAL_DOMAIN}`)
+  return email.endsWith(`@${MICROSERVICE_CONFIG.organizationDomain}`)
 }
 
-// Template guidance for new microservices:
-// 1. Update the 'code' field to match your database entry
-// 2. Update 'name' and 'description' for your microservice
-// 3. Define your business-specific roles and permissions
-// 4. Customize the defaultNavigation items for your microservice
-// 5. Keep INTERNAL_DOMAIN and isInternalUser as-is
-// 6. All Refuge House branding and foster care context stays the same
+export function getRoleDisplayName(roleCode: string): string {
+  const roleMap: Record<string, string> = {
+    [MICROSERVICE_CONFIG.roles.MANAGER]: "Visit Manager",
+    [MICROSERVICE_CONFIG.roles.COORDINATOR]: "Visit Coordinator",
+    [MICROSERVICE_CONFIG.roles.WORKER]: "Visit Worker",
+    [MICROSERVICE_CONFIG.roles.VIEWER]: "Visit Viewer",
+  }
+  return roleMap[roleCode] || roleCode
+}
+
+export function getPermissionDisplayName(permissionCode: string): string {
+  const permissionMap: Record<string, string> = {
+    [MICROSERVICE_CONFIG.permissions.VIEW_VISITS]: "View Visits",
+    [MICROSERVICE_CONFIG.permissions.CREATE_VISITS]: "Create Visits",
+    [MICROSERVICE_CONFIG.permissions.EDIT_VISITS]: "Edit Visits",
+    [MICROSERVICE_CONFIG.permissions.DELETE_VISITS]: "Delete Visits",
+    [MICROSERVICE_CONFIG.permissions.GENERATE_REPORTS]: "Generate Reports",
+    [MICROSERVICE_CONFIG.permissions.VIEW_DIAGNOSTICS]: "View Diagnostics",
+    [MICROSERVICE_CONFIG.permissions.USER_MANAGEMENT]: "User Management",
+    [MICROSERVICE_CONFIG.permissions.SYSTEM_CONFIG]: "System Configuration",
+  }
+  return permissionMap[permissionCode] || permissionCode
+}
+
+// Template example for new microservices:
+/*
+export const MICROSERVICE_CONFIG: MicroserviceConfig = {
+  code: "case-management", // CHANGE: Unique identifier
+  name: "Case Management System", // CHANGE: Display name
+  description: "Child welfare case management and tracking", // CHANGE: Description
+  url: "/case-management", // CHANGE: Base URL path
+  organizationDomain: "refugehouse.org", // KEEP: Organization domain
+  
+  // CHANGE: Define your roles
+  roles: {
+    MANAGER: "case_manager",
+    WORKER: "case_worker", 
+    VIEWER: "case_viewer",
+  },
+  
+  // CHANGE: Define your permissions
+  permissions: {
+    VIEW_CASES: "view_cases",
+    CREATE_CASES: "create_cases",
+    EDIT_CASES: "edit_cases",
+    CLOSE_CASES: "close_cases",
+  },
+  
+  // CHANGE: Define your navigation
+  defaultNavigation: [
+    {
+      title: "Case Management",
+      items: [
+        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+        { code: "active_cases", title: "Active Cases", url: "/cases/active", icon: "FileText", permission: "view_cases", order: 2 },
+        // Keep these for connection validation:
+        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 8 },
+        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 9 },
+      ],
+    },
+    // KEEP: Administration section (consistent across microservices)
+    {
+      title: "Administration",
+      items: [
+        { code: "user_invitations", title: "User Invitations", url: "/admin/invitations", icon: "Users", permission: "user_management", order: 1 },
+        { code: "user_management", title: "User Management", url: "/admin/users", icon: "UserCog", permission: "user_management", order: 2 },
+        { code: "system_admin", title: "System Admin", url: "/system-admin", icon: "Settings", permission: "system_config", order: 3 },
+        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 4 },
+      ],
+    },
+  ],
+}
+*/

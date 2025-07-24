@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export interface UserPermissions {
   userId: string | null
@@ -51,11 +50,11 @@ export function usePermissions(): UserPermissions {
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
-    const hasRole = (roleName: string, microservice = MICROSERVICE_CONFIG.code): boolean => {
+    const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
       return data.roles?.some((role: any) => role.roleName === roleName && role.microservice === microservice)
     }
 
-    const hasPermission = (permissionCode: string, microservice = MICROSERVICE_CONFIG.code): boolean => {
+    const hasPermission = (permissionCode: string, microservice = "home-visits"): boolean => {
       return data.permissions?.some(
         (perm: any) => perm.permissionCode === permissionCode && perm.microservice === microservice,
       )

@@ -182,6 +182,7 @@ export default function DashboardPage() {
             As a {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"} domain user, you have
             default access to view foster homes information:
           </p>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center gap-3">
               <CheckCircle className="h-5 w-5 text-green-500" />
@@ -200,6 +201,7 @@ export default function DashboardPage() {
               <span className="text-refuge-dark-blue/80">View case manager contact details</span>
             </div>
           </div>
+
           <div className="mt-6 p-4 bg-white rounded-lg border border-refuge-light-purple/20 shadow-sm">
             <h4 className="font-medium text-refuge-dark-blue mb-2">Additional Role-Based Access:</h4>
             <div className="flex items-center gap-2">
@@ -232,6 +234,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
         <Card className="border-refuge-magenta/20 text-center bg-gradient-to-br from-white to-refuge-magenta/5">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center space-y-2">
@@ -243,6 +246,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
         <Card className="border-green-200 text-center bg-gradient-to-br from-white to-green-50">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center space-y-2">

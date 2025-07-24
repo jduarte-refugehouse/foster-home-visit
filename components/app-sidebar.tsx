@@ -1,33 +1,386 @@
-import type React from "react"
-import { Home } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
-import { MainNav } from "@/components/main-nav"
-import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
+"use client"
 
-interface DashboardShellProps {
-  children?: React.ReactNode
+import { useUser } from "@clerk/nextjs"
+import { useEffect, useState } from "react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { SignOutButton } from "@clerk/nextjs"
+import {
+  Home,
+  Calendar,
+  BarChart3,
+  Map,
+  List,
+  Users,
+  Settings,
+  Database,
+  ChevronUp,
+  LogOut,
+  UserCog,
+  FileText,
+  Shield,
+  Plus,
+  type LucideIcon,
+} from "lucide-react"
+import Link from "next/link"
+
+// Icon mapping for dynamic icons
+const iconMap: Record<string, LucideIcon> = {
+  Home,
+  Calendar,
+  BarChart3,
+  Map,
+  List,
+  Users,
+  Settings,
+  Database,
+  UserCog,
+  FileText,
+  Shield,
+  Plus,
 }
 
-export const AppSidebar = ({ children }: DashboardShellProps) => {
-  return (
-    <div className="flex h-full flex-col border-r bg-secondary">
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="flex flex-col items-start gap-2">
-          <div className="flex items-center gap-2 px-4 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Home className="h-4 w-4" />
-            </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{MICROSERVICE_CONFIG.name}</span>
-              {process.env.NODE_ENV === "development" && (
-                <span className="truncate text-xs text-muted-foreground">{MICROSERVICE_CONFIG.code}</span>
-              )}
+interface NavigationItem {
+  code: string
+  title: string
+  url: string
+  icon: string
+  order: number
+}
+
+interface NavigationCategory {
+  title: string
+  items: NavigationItem[]
+}
+
+interface NavigationMetadata {
+  source: string
+  totalItems: number
+  visibleItems: number
+  microservice: {
+    code: string
+    name: string
+    description: string
+  }
+  timestamp: string
+  dbError?: string
+  userPermissions?: string[]
+  userInfo?: any
+  error?: string
+}
+
+// Emergency fallback navigation if everything fails
+const EMERGENCY_NAVIGATION: NavigationCategory[] = [
+  {
+    title: "Navigation",
+    items: [
+      { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+      { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 2 },
+      { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 3 },
+    ],
+  },
+  {
+    title: "Administration",
+    items: [{ code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", order: 1 }],
+  },
+]
+
+export function AppSidebar() {
+  const { user, isLoaded } = useUser()
+  const [navigationItems, setNavigationItems] = useState<NavigationCategory[]>([])
+  const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
+  const [isLoadingNav, setIsLoadingNav] = useState(true)
+  const [navError, setNavError] = useState<string | null>(null)
+
+  // Load navigation items
+  useEffect(() => {
+    const loadNavigation = async () => {
+      if (!isLoaded || !user) return
+
+      try {
+        console.log("🔄 Loading navigation from API...")
+
+        // Create headers with user identity
+        const headers: HeadersInit = {
+          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+          "x-user-clerk-id": user.id,
+          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        }
+
+        const response = await fetch("/api/navigation", { headers })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("📥 Navigation API response:", data.metadata)
+
+          setNavigationItems(data.navigation || [])
+          setNavigationMetadata(data.metadata)
+          setNavError(null)
+
+          // Log navigation source for debugging
+          const source = data.metadata?.source || "unknown"
+          const sourceEmoji =
+            {
+              database: "🗄️",
+              config_fallback: "✱",
+              config_default: "✱",
+              error_fallback: "❌",
+            }[source] || "❓"
+
+          console.log(`${sourceEmoji} Navigation loaded from: ${source}`)
+          if (data.metadata?.dbError) {
+            console.warn("⚠️ Database error:", data.metadata.dbError)
+          }
+
+          // Log user info for debugging
+          if (data.metadata?.userInfo) {
+            console.log("👤 User info:", data.metadata.userInfo)
+          }
+          if (data.metadata?.userPermissions) {
+            console.log("🔑 User permissions:", data.metadata.userPermissions)
+          }
+        } else {
+          console.error("❌ Failed to load navigation from API, using emergency fallback")
+          setNavigationItems(EMERGENCY_NAVIGATION)
+          setNavError(`API Error: ${response.status}`)
+        }
+      } catch (error) {
+        console.error("❌ Error loading navigation:", error)
+        setNavigationItems(EMERGENCY_NAVIGATION)
+        setNavError(error.message)
+      } finally {
+        setIsLoadingNav(false)
+      }
+    }
+
+    loadNavigation()
+  }, [isLoaded, user])
+
+  if (!isLoaded || isLoadingNav) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="h-20 p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-gray-200 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+              <div className="h-3 w-24 rounded bg-gray-200 animate-pulse" />
             </div>
           </div>
+        </SidebarHeader>
+        <SidebarContent className="p-4">
+          <div className="space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 w-full rounded-lg bg-gray-200 animate-pulse" />
+            ))}
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    )
+  }
+
+  const userInitials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0]}${user.lastName[0]}`
+      : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"
+
+  const displayName =
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.emailAddresses?.[0]?.emailAddress || "User"
+
+  // Check if user has admin permissions
+  const isAdmin = navigationMetadata?.userPermissions?.some((p) => p.includes("admin") || p.includes("system")) || false
+
+  // Only show badge for fallback modes (not database)
+  const getFallbackBadge = () => {
+    if (!navigationMetadata || navigationMetadata.source === "database") return null
+
+    const sourceConfig = {
+      config_fallback: { label: "✱ Fallback", variant: "secondary" as const },
+      config_default: { label: "✱ Default", variant: "outline" as const },
+      error_fallback: { label: "✱ Error", variant: "destructive" as const },
+    }
+
+    const config = sourceConfig[navigationMetadata.source]
+    if (!config) return null
+
+    return (
+      <Badge variant={config.variant} className="text-xs">
+        {config.label}
+      </Badge>
+    )
+  }
+
+  // Separate navigation and administration items
+  const navigationGroups = navigationItems.filter((group) => group.title !== "Administration")
+  const administrationGroup = navigationItems.find((group) => group.title === "Administration")
+
+  return (
+    <Sidebar className="border-r border-gray-200 flex flex-col">
+      <SidebarHeader className="h-20 p-4 border-b bg-gradient-to-r from-refuge-light-purple/10 via-refuge-purple/5 to-refuge-magenta/10 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center">
+            <img
+              src="/images/web logo with name.png"
+              alt="Refuge House Logo"
+              className="h-14 object-contain hover:scale-105 transition-transform duration-200"
+            />
+          </div>
+          <div className="flex flex-col flex-1 min-w-0">
+            {getFallbackBadge() && <div className="flex items-center gap-2 mb-1">{getFallbackBadge()}</div>}
+            {process.env.NODE_ENV === "development" && (
+              <span className="text-xs text-refuge-purple font-medium">Development Mode</span>
+            )}
+          </div>
         </div>
-        <Separator />
-        <MainNav className="flex flex-col gap-4" />
-      </div>
-    </div>
+      </SidebarHeader>
+
+      <SidebarContent className="flex-1 p-4">
+        {navigationItems.length === 0 ? (
+          <div className="p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-refuge-light-purple/20 to-refuge-magenta/20 rounded-full flex items-center justify-center">
+              <Database className="w-8 h-8 text-refuge-purple" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 mb-2">No navigation items available</p>
+            {navError && <p className="text-xs text-red-600 mb-3">Error: {navError}</p>}
+            {navigationMetadata?.dbError && (
+              <p className="text-xs text-gray-600 mb-3">Database: {navigationMetadata.dbError}</p>
+            )}
+            <Link
+              href="/diagnostics"
+              className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
+            >
+              <Database className="w-3 h-3 mr-1" />
+              Check diagnostics
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Regular Navigation Groups */}
+            {navigationGroups.map((group, groupIndex) => (
+              <SidebarGroup key={group.title}>
+                <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {group.title}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {group.items.map((item) => {
+                      const IconComponent = iconMap[item.icon] || Home
+                      return (
+                        <SidebarMenuItem key={item.code}>
+                          <SidebarMenuButton asChild className="group">
+                            <Link
+                              href={item.url}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                            >
+                              <IconComponent className="h-5 w-5 text-gray-500 group-hover:text-refuge-purple transition-colors" />
+                              <span className="font-medium">{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
+          </div>
+        )}
+      </SidebarContent>
+
+      {/* Administration Section - Anchored to Bottom */}
+      {administrationGroup && administrationGroup.items.length > 0 && (
+        <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Shield className="h-3 w-3" />
+              {administrationGroup.title}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {administrationGroup.items.map((item) => {
+                  const IconComponent = iconMap[item.icon] || Settings
+                  return (
+                    <SidebarMenuItem key={item.code}>
+                      <SidebarMenuButton asChild className="group">
+                        <Link
+                          href={item.url}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                        >
+                          <IconComponent className="h-5 w-5 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
+                          <span className="font-medium">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </div>
+      )}
+
+      <SidebarFooter className="p-4 border-t bg-gradient-to-r from-gray-50 to-refuge-light-purple/10">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton className="w-full hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200">
+                  <Avatar className="h-8 w-8 ring-2 ring-refuge-light-purple/30">
+                    <AvatarImage src={user?.imageUrl || "/placeholder.svg"} />
+                    <AvatarFallback className="bg-gradient-to-br from-refuge-purple to-refuge-magenta text-white text-xs font-semibold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-900 truncate">{displayName}</span>
+                    {isAdmin && <span className="text-xs text-refuge-purple font-medium">Administrator</span>}
+                  </div>
+                  <ChevronUp className="ml-auto h-4 w-4 text-gray-400" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" className="w-56">
+                {navigationMetadata && process.env.NODE_ENV === "development" && (
+                  <>
+                    <DropdownMenuItem disabled className="text-xs text-gray-500">
+                      Navigation: {navigationMetadata.source} ({navigationMetadata.visibleItems}/
+                      {navigationMetadata.totalItems})
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled className="text-xs text-gray-500">
+                      Service: {navigationMetadata.microservice.code}
+                    </DropdownMenuItem>
+                    {navigationMetadata.userPermissions && (
+                      <DropdownMenuItem disabled className="text-xs text-gray-500">
+                        Permissions: {navigationMetadata.userPermissions.length}
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+                <SignOutButton>
+                  <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-700">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </SignOutButton>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   )
 }
