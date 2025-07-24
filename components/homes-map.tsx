@@ -57,6 +57,26 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     [onHomeSelect],
   )
 
+  // Create custom marker icon with brand colors
+  const createMarkerIcon = useCallback((unit: string, isSelected = false) => {
+    const color = unit === "DAL" ? "#5E3989" : "#A90533" // Brand purple for Dallas, brand magenta for San Antonio
+    const size = isSelected ? 32 : 24
+
+    const svgMarker = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${size}" height="${size * 1.5}">
+        <path fill="${color}" stroke="white" strokeWidth="2" 
+              d="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13C19,5.13 15.87,2 12,2z"/>
+        <circle fill="white" cx="12" cy="9" r="3"/>
+      </svg>
+    `
+
+    return {
+      url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svgMarker),
+      scaledSize: new window.google.maps.Size(size, size * 1.5),
+      anchor: new window.google.maps.Point(size / 2, size * 1.5),
+    }
+  }, [])
+
   const initializeMap = useCallback(async () => {
     if (!window.google || !window.google.maps || !mapRef.current || homes.length === 0) {
       console.log("⏳ Google Maps not ready or no homes to display")
@@ -93,48 +113,16 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         window.google.maps.event.addListenerOnce(mapInstance, "idle", resolve)
       })
 
-      // Import AdvancedMarkerElement
-      const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker")
-
-      // Create markers
+      // Create markers using custom brand-colored pins
       const newMarkers = homes.map((home) => {
-        // Create custom marker content
-        const markerContent = document.createElement("div")
-        markerContent.innerHTML = `
-          <div style="
-            width: 32px; 
-            height: 32px; 
-            background-color: ${home.Unit === "DAL" ? "#22c55e" : "#ef4444"}; 
-            border: 3px solid white; 
-            border-radius: 50%; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-          ">
-            🏠
-          </div>
-        `
-
-        // Add hover effect
-        markerContent.addEventListener("mouseenter", () => {
-          markerContent.style.transform = "scale(1.1)"
-        })
-        markerContent.addEventListener("mouseleave", () => {
-          markerContent.style.transform = "scale(1)"
-        })
-
-        const marker = new AdvancedMarkerElement({
+        const marker = new window.google.maps.Marker({
           map: mapInstance,
           position: { lat: home.latitude, lng: home.longitude },
-          content: markerContent,
           title: home.name,
+          icon: createMarkerIcon(home.Unit, false),
         })
 
-        // Only use the custom card component, no Google Maps InfoWindow
+        // Add click listener
         marker.addListener("click", () => {
           handleMarkerClick(home)
         })
@@ -170,7 +158,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     } finally {
       setIsLoading(false)
     }
-  }, [homes, handleMarkerClick])
+  }, [homes, handleMarkerClick, createMarkerIcon])
 
   // Load Google Maps API
   useEffect(() => {
@@ -216,19 +204,9 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     if (markers.length > 0 && map) {
       markers.forEach((markerData) => {
         const isSelected = selectedHome && markerData.home.id === selectedHome.id
-        const markerElement = markerData.marker.content.querySelector("div")
 
-        if (markerElement) {
-          if (isSelected) {
-            markerElement.style.transform = "scale(1.2)"
-            markerElement.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)"
-            markerElement.style.zIndex = "1000"
-          } else {
-            markerElement.style.transform = "scale(1)"
-            markerElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)"
-            markerElement.style.zIndex = "auto"
-          }
-        }
+        // Update marker icon based on selection
+        markerData.marker.setIcon(createMarkerIcon(markerData.home.Unit, isSelected))
       })
 
       // Center map on selected marker
@@ -236,7 +214,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         map.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
       }
     }
-  }, [selectedHome, markers, map])
+  }, [selectedHome, markers, map, createMarkerIcon])
 
   if (mapError) {
     return (

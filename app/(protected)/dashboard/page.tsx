@@ -1,32 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Home, Map, User, CheckCircle, BarChart3, Shield, ExternalLink } from "lucide-react"
-import Link from "next/link"
-import { useUser } from "@clerk/nextjs"
-
-export const dynamic = "force-dynamic"
+import { Home, Map, Users, Shield, ExternalLink } from "lucide-react"
 
 interface DashboardData {
   totalHomes: number
-  activeHomes: number
-  totalUsers: number
-  systemStatus: string
-  userPermissions: string[]
-  userRoles: string[]
+  activeCaseManagers: number
+  recentActivity: string
+  systemStatus: "healthy" | "warning" | "error"
 }
 
 export default function DashboardPage() {
   const { user } = useUser()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -40,13 +31,18 @@ export default function DashboardPage() {
     }
   }
 
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-48 bg-refuge-gray rounded"></div>
-            <div className="h-48 bg-refuge-gray rounded"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="animate-pulse space-y-8">
+          <div className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
+            <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -54,211 +50,177 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Welcome Message */}
-      <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta p-6 rounded-lg text-white">
-        <p className="text-lg font-medium">Welcome back, {user?.firstName || "User"}</p>
-        <p className="text-refuge-gray/90 mt-1">Access your foster homes information and system tools</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-br from-refuge-purple/10 via-transparent to-refuge-magenta/10 border border-slate-200 dark:border-slate-800 p-8 rounded-xl">
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+          Welcome to Home Visits Application
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+          Welcome back, {user?.firstName || "User"} - Foster care home visit scheduling and management
+        </p>
       </div>
 
       {/* Main Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Foster Homes List */}
-        <Card className="border-refuge-light-purple/20 hover:shadow-lg hover:shadow-refuge-purple/10 transition-all duration-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-refuge-purple to-refuge-light-purple rounded-lg">
-                <Home className="h-6 w-6 text-white" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Foster Homes List Card */}
+        <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-refuge-purple/20">
+          <CardHeader className="p-0 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-refuge-purple/10 dark:bg-refuge-purple/20 rounded-xl">
+                <Home className="h-6 w-6 text-refuge-purple dark:text-refuge-light-purple" />
               </div>
               <div>
-                <CardTitle className="text-xl text-refuge-dark-blue">Foster Homes List</CardTitle>
-                <CardDescription className="text-refuge-dark-blue/70">
+                <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Foster Homes List
+                </CardTitle>
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
                   View detailed information about all active foster homes in the system
-                </CardDescription>
+                </p>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-refuge-dark-blue/80">Browse homes, contact information, case managers, and more</p>
-            <Link href="/homes-list">
-              <Button className="w-full sm:w-auto bg-gradient-to-r from-refuge-purple to-refuge-light-purple hover:from-refuge-purple/90 hover:to-refuge-light-purple/90 text-white border-0">
+          <CardContent className="p-0 space-y-4">
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              Browse homes, contact information, case managers, and more
+            </p>
+            <Button
+              asChild
+              className="px-4 py-2 bg-refuge-purple hover:bg-refuge-purple/90 text-white font-medium rounded-lg transition-all duration-200 active:scale-95 transform shadow-sm hover:shadow-md"
+            >
+              <a href="/homes-list" className="inline-flex items-center gap-2">
                 View Access
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Geographic Map */}
-        <Card className="border-refuge-magenta/20 hover:shadow-lg hover:shadow-refuge-magenta/10 transition-all duration-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-refuge-magenta to-red-500 rounded-lg">
-                <Map className="h-6 w-6 text-white" />
+        {/* Geographic Map Card */}
+        <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-refuge-magenta/20">
+          <CardHeader className="p-0 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-refuge-magenta/10 dark:bg-refuge-magenta/20 rounded-xl">
+                <Map className="h-6 w-6 text-refuge-magenta" />
               </div>
               <div>
-                <CardTitle className="text-xl text-refuge-dark-blue">Geographic Map</CardTitle>
-                <CardDescription className="text-refuge-dark-blue/70">
+                <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Geographic Map
+                </CardTitle>
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
                   Interactive map showing the geographic locations of foster homes
-                </CardDescription>
+                </p>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-refuge-dark-blue/80">Visual map with filtering, search, and detailed home information</p>
-            <Link href="/homes-map">
-              <Button className="w-full sm:w-auto bg-gradient-to-r from-refuge-magenta to-red-500 hover:from-refuge-magenta/90 hover:to-red-500/90 text-white border-0">
+          <CardContent className="p-0 space-y-4">
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              Visual map with filtering, search, and detailed home information
+            </p>
+            <Button
+              asChild
+              className="px-4 py-2 bg-refuge-magenta hover:bg-refuge-magenta/90 text-white font-medium rounded-lg transition-all duration-200 active:scale-95 transform shadow-sm hover:shadow-md"
+            >
+              <a href="/homes-map" className="inline-flex items-center gap-2">
                 View Access
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Account Status */}
-      <Card className="border-refuge-light-purple/30 bg-gradient-to-br from-white to-refuge-gray/30">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-refuge-light-purple to-refuge-purple rounded-lg">
-              <User className="h-6 w-6 text-white" />
+      {/* Account Status Section */}
+      <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+        <CardHeader className="p-0 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <CardTitle className="text-xl text-refuge-dark-blue">Your Account Status</CardTitle>
-              <CardDescription className="text-refuge-dark-blue/70">
-                Current permissions and access level
-              </CardDescription>
+              <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Your Account Status
+              </CardTitle>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">
+                Current permissions and access level in Home Visits Application
+              </p>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
-              <div className="text-center">
-                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Email Domain</p>
-                <p className="text-lg font-semibold text-refuge-dark-blue">
-                  {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"}
-                </p>
-              </div>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-700">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Email Domain</div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">refugehouse.org</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
-              <div className="text-center">
-                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Account Status</p>
-                <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
-              </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-700">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Account Status</div>
+              <Badge className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                Active
+              </Badge>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
-              <div className="text-center">
-                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Assigned Roles</p>
-                <p className="text-lg font-semibold text-refuge-dark-blue">{dashboardData?.userRoles?.length || 1}</p>
-              </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-700">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Assigned Roles</div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">1</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-refuge-light-purple/20 shadow-sm">
-              <div className="text-center">
-                <p className="text-sm font-medium text-refuge-dark-blue/70 mb-1">Permissions</p>
-                <p className="text-lg font-semibold text-refuge-dark-blue">
-                  {dashboardData?.userPermissions?.length || 6}
-                </p>
-              </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center border border-slate-200 dark:border-slate-700">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Permissions</div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">6</div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Default Access Level */}
-      <Card className="border-refuge-purple/20 bg-gradient-to-br from-refuge-gray/20 to-white">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-lg">
-              <Shield className="h-6 w-6 text-white" />
+      {/* Default Access Level Section */}
+      <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+        <CardHeader className="p-0 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
+              <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <CardTitle className="text-xl text-refuge-dark-blue">Default Access Level</CardTitle>
+              <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Default Access Level
+              </CardTitle>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-refuge-dark-blue/80">
-            As a {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"} domain user, you have
-            default access to view foster homes information:
+        <CardContent className="p-0 space-y-6">
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            As a refugehouse.org domain user, you have default access to view foster homes information:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-refuge-dark-blue/80">View foster homes list and details</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-slate-700 dark:text-slate-300">View foster homes list and details</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-slate-700 dark:text-slate-300">Filter and search home information</span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-refuge-dark-blue/80">Access interactive geographic map</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-refuge-dark-blue/80">Filter and search home information</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-refuge-dark-blue/80">View case manager contact details</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-slate-700 dark:text-slate-300">Access interactive geographic map</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-slate-700 dark:text-slate-300">View case manager contact details</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-white rounded-lg border border-refuge-light-purple/20 shadow-sm">
-            <h4 className="font-medium text-refuge-dark-blue mb-2">Additional Role-Based Access:</h4>
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id="admin-role"
-                name="additional-access"
-                className="text-refuge-purple"
-                disabled
-                checked={dashboardData?.userRoles?.includes("admin") || false}
-              />
-              <label htmlFor="admin-role" className="text-refuge-dark-blue/80">
-                admin in Home Visits Application
-              </label>
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
+              Additional Role-Based Access:
             </div>
+            <div className="text-slate-700 dark:text-slate-300">admin in Home Visits Application</div>
           </div>
         </CardContent>
       </Card>
-
-      {/* System Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-refuge-light-purple/20 text-center bg-gradient-to-br from-white to-refuge-light-purple/5">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-gradient-to-br from-refuge-light-purple to-refuge-purple rounded-full">
-                <BarChart3 className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-refuge-dark-blue">Active</h3>
-              <p className="text-sm text-refuge-dark-blue/70">System Status</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-refuge-magenta/20 text-center bg-gradient-to-br from-white to-refuge-magenta/5">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-gradient-to-br from-refuge-magenta to-red-500 rounded-full">
-                <Home className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-refuge-dark-blue">Ready</h3>
-              <p className="text-sm text-refuge-dark-blue/70">Data Access</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-green-200 text-center bg-gradient-to-br from-white to-green-50">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-full">
-                <CheckCircle className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-refuge-dark-blue">Authorized</h3>
-              <p className="text-sm text-refuge-dark-blue/70">User Status</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

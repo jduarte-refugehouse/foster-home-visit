@@ -53,12 +53,43 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom brand colors
-        "refuge-purple": "#5E3989", // A deep purple
-        "refuge-magenta": "#A90533", // A strong red/magenta
-        "refuge-light-purple": "#8A6FAD", // Lighter shade of purple
-        "refuge-dark-blue": "#2C3E50", // Dark blue for text/accents
-        "refuge-gray": "#ECF0F1", // Light gray for backgrounds
+        // Custom brand colors with opacity variants
+        "refuge-purple": {
+          DEFAULT: "#5E3989",
+          50: "#F4F1F8",
+          100: "#E9E2F1",
+          200: "#D3C5E3",
+          300: "#BDA8D5",
+          400: "#A78BC7",
+          500: "#916EB9",
+          600: "#7B51AB",
+          700: "#65349D",
+          800: "#5E3989",
+          900: "#4A2C6B",
+          950: "#361F4D",
+        },
+        "refuge-magenta": {
+          DEFAULT: "#A90533",
+          50: "#FDF2F4",
+          100: "#FCE4E9",
+          200: "#F8C9D3",
+          300: "#F4AEBD",
+          400: "#F093A7",
+          500: "#EC7891",
+          600: "#E85D7B",
+          700: "#E44265",
+          800: "#E0274F",
+          900: "#A90533",
+          950: "#8B0429",
+        },
+        "refuge-light-purple": "#8A6FAD",
+        "refuge-dark-blue": "#2C3E50",
+        "refuge-gray": "#ECF0F1",
+        // Style guide additions
+        "refuge-purple-light": "#7B4FA2",
+        "refuge-purple-dark": "#4A2C6E",
+        "refuge-magenta-light": "#C41E3A",
+        "refuge-magenta-dark": "#8B0228",
       },
       borderRadius: {
         lg: "var(--radius)",

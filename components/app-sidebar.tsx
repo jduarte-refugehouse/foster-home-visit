@@ -33,6 +33,7 @@ import {
   FileText,
   Shield,
   Plus,
+  User,
   type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
@@ -354,6 +355,12 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
+                <DropdownMenuItem asChild>
+                  <a href="/user-profile" className="cursor-pointer flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile Settings
+                  </a>
+                </DropdownMenuItem>
                 {navigationMetadata && process.env.NODE_ENV === "development" && (
                   <>
                     <DropdownMenuItem disabled className="text-xs text-gray-500">

@@ -16,7 +16,7 @@ const HomesMap = dynamic(() => import("@/components/homes-map"), {
     <div className="flex items-center justify-center h-96">
       <div className="flex items-center gap-2">
         <RefreshCw className="h-6 w-6 animate-spin text-refuge-purple" />
-        <span className="text-refuge-dark-blue">Loading homes map...</span>
+        <span className="text-slate-700 dark:text-slate-300">Loading homes map...</span>
       </div>
     </div>
   ),
@@ -146,10 +146,12 @@ export default function HomesMapPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="h-6 w-6 animate-spin text-refuge-purple" />
-          <span className="text-refuge-dark-blue">Loading homes map...</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-96">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-6 w-6 animate-spin text-refuge-purple" />
+            <span className="text-slate-700 dark:text-slate-300">Loading homes map...</span>
+          </div>
         </div>
       </div>
     )
@@ -157,61 +159,81 @@ export default function HomesMapPage() {
 
   if (error) {
     return (
-      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-red-100/50">
-        <CardContent className="p-6">
-          <div className="text-center text-red-600">
-            <p className="font-semibold">Error loading homes map</p>
-            <p className="text-sm mt-2">{error}</p>
-            <Button
-              onClick={fetchHomes}
-              className="mt-4 bg-gradient-to-r from-refuge-purple to-refuge-magenta hover:from-refuge-purple/90 hover:to-refuge-magenta/90 text-white transition-all duration-200"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 rounded-xl shadow-sm">
+          <CardContent className="p-6">
+            <div className="text-center text-red-600 dark:text-red-400">
+              <p className="font-semibold">Error loading homes map</p>
+              <p className="text-sm mt-2">{error}</p>
+              <Button
+                onClick={fetchHomes}
+                className="mt-4 bg-refuge-purple hover:bg-refuge-purple-dark text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 transform shadow-sm hover:shadow-md"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Foster Homes Map</h1>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+            Interactive map showing geographic locations of foster homes
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="secondary"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full"
+          >
+            {filteredHomes.length} homes found
+          </Badge>
+        </div>
+      </div>
+
       {/* Filters */}
-      <Card className="border-refuge-light-purple/30 bg-gradient-to-br from-refuge-gray/30 to-white backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-refuge-purple/10 to-refuge-magenta/10 border-b border-refuge-light-purple/20">
-          <CardTitle className="flex items-center gap-2 text-refuge-purple">
-            <Search className="h-5 w-5" />
+      <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <Search className="h-5 w-5 text-refuge-purple" />
             Filters
             {activeFiltersCount > 0 && (
               <Badge
                 variant="secondary"
-                className="bg-gradient-to-r from-refuge-purple/20 to-refuge-magenta/20 text-refuge-purple border-refuge-light-purple/30"
+                className="bg-refuge-purple/10 text-refuge-purple dark:bg-refuge-purple/20 dark:text-refuge-purple-light border-refuge-purple/20 px-2 py-0.5 rounded-full text-xs"
               >
                 {activeFiltersCount} active
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="pt-0">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-refuge-light-purple" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search homes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-refuge-light-purple/30 focus:border-refuge-purple focus:ring-refuge-purple/20 bg-white/80 backdrop-blur-sm"
+                className="pl-10 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-refuge-purple focus:border-transparent transition-all duration-200"
               />
             </div>
 
             {/* Unit Filter */}
             <Select value={unitFilter} onValueChange={setUnitFilter}>
-              <SelectTrigger className="border-refuge-light-purple/30 focus:border-refuge-purple focus:ring-refuge-purple/20 bg-white/80 backdrop-blur-sm">
+              <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-refuge-purple focus:border-transparent transition-all duration-200">
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>
-              <SelectContent className="z-[9999]">
+              <SelectContent className="z-[9999] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-lg">
                 <SelectItem value="ALL">All Units</SelectItem>
                 <SelectItem value="DAL">Dallas</SelectItem>
                 <SelectItem value="SAN">San Antonio</SelectItem>
@@ -220,10 +242,10 @@ export default function HomesMapPage() {
 
             {/* Case Manager Filter */}
             <Select value={caseManagerFilter} onValueChange={setCaseManagerFilter}>
-              <SelectTrigger className="border-refuge-light-purple/30 focus:border-refuge-purple focus:ring-refuge-purple/20 bg-white/80 backdrop-blur-sm">
+              <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-refuge-purple focus:border-transparent transition-all duration-200">
                 <SelectValue placeholder="Select case manager" />
               </SelectTrigger>
-              <SelectContent className="z-[9999] max-h-60 overflow-y-auto">
+              <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg shadow-lg">
                 <SelectItem value="ALL">All Case Managers</SelectItem>
                 {caseManagers.map((manager) => (
                   <SelectItem key={manager} value={manager}>
@@ -238,7 +260,7 @@ export default function HomesMapPage() {
               <Button
                 variant="outline"
                 onClick={clearFilters}
-                className="border-refuge-light-purple/40 text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-purple/10 hover:to-refuge-magenta/10 hover:border-refuge-purple transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg font-medium transition-all duration-200 bg-transparent"
               >
                 <X className="h-4 w-4 mr-2" />
                 Clear Filters
@@ -249,7 +271,7 @@ export default function HomesMapPage() {
             <Button
               onClick={fetchHomes}
               disabled={loading}
-              className="bg-gradient-to-r from-refuge-purple to-refuge-magenta hover:from-refuge-purple/90 hover:to-refuge-magenta/90 text-white transition-all duration-200 shadow-lg"
+              className="bg-refuge-purple hover:bg-refuge-purple-dark text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 transform shadow-sm hover:shadow-md"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
@@ -261,10 +283,10 @@ export default function HomesMapPage() {
       {/* Map and List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Map - Takes 2/3 of the space */}
-        <Card className="lg:col-span-2 border-refuge-light-purple/30 bg-gradient-to-br from-refuge-gray/20 to-white backdrop-blur-sm">
-          <CardHeader className="pb-2 bg-gradient-to-r from-refuge-purple/10 to-refuge-magenta/10 border-b border-refuge-light-purple/20">
-            <CardTitle className="flex items-center gap-2 text-refuge-purple">
-              <MapPin className="h-5 w-5" />
+        <Card className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <MapPin className="h-5 w-5 text-refuge-purple" />
               Geographic Map View
             </CardTitle>
           </CardHeader>
@@ -272,11 +294,11 @@ export default function HomesMapPage() {
             {filteredHomes.length > 0 ? (
               <HomesMap homes={filteredHomes} onHomeSelect={handleHomeSelect} selectedHome={selectedHome} />
             ) : (
-              <div className="flex items-center justify-center h-full bg-gradient-to-br from-refuge-purple/5 to-refuge-magenta/5 rounded-lg">
+              <div className="flex items-center justify-center h-full bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                 <div className="text-center">
-                  <MapPin className="h-12 w-12 text-refuge-light-purple mx-auto mb-4" />
-                  <p className="text-refuge-dark-blue font-medium">No Homes with Valid Coordinates</p>
-                  <p className="text-sm text-refuge-dark-blue/70 mt-1">
+                  <MapPin className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-700 dark:text-slate-300 font-medium">No Homes with Valid Coordinates</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     {homes.length > 0
                       ? "No homes match your current filters"
                       : "No homes found with latitude/longitude data"}
@@ -288,10 +310,10 @@ export default function HomesMapPage() {
         </Card>
 
         {/* Homes List - Takes 1/3 of the space */}
-        <Card className="border-refuge-light-purple/30 bg-gradient-to-br from-refuge-gray/20 to-white backdrop-blur-sm">
-          <CardHeader className="pb-2 bg-gradient-to-r from-refuge-purple/10 to-refuge-magenta/10 border-b border-refuge-light-purple/20">
-            <CardTitle className="flex items-center gap-2 text-refuge-purple">
-              <List className="h-5 w-5" />
+        <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <List className="h-5 w-5 text-refuge-purple" />
               Homes List ({filteredHomes.length})
             </CardTitle>
           </CardHeader>
@@ -300,30 +322,30 @@ export default function HomesMapPage() {
               {filteredHomes.map((home) => (
                 <div
                   key={home.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm ${
                     selectedHome?.id === home.id
-                      ? "border-refuge-purple bg-gradient-to-r from-refuge-purple/10 to-refuge-magenta/10 shadow-md backdrop-blur-sm"
-                      : "border-refuge-light-purple/20 hover:border-refuge-purple/40 hover:bg-gradient-to-r hover:from-refuge-purple/5 hover:to-refuge-magenta/5 bg-white/60 backdrop-blur-sm"
+                      ? "border-refuge-purple bg-refuge-purple/5 dark:bg-refuge-purple/10 shadow-sm"
+                      : "border-slate-200 dark:border-slate-700 hover:border-refuge-purple/40 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
                   onClick={() => handleHomeSelect(home)}
                 >
                   <div className="space-y-1">
-                    <div className="font-semibold text-sm text-refuge-dark-blue">{home.name}</div>
-                    <div className="text-xs text-refuge-dark-blue/70">{home.address}</div>
-                    <div className="text-xs text-refuge-dark-blue/70">
+                    <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">{home.name}</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">{home.address}</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
                       {home.City}, {home.State} {home.zipCode}
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <Badge
-                        className={`text-xs ${
+                        className={`text-xs px-2 py-0.5 rounded-full ${
                           home.Unit === "DAL"
-                            ? "bg-gradient-to-r from-refuge-purple to-refuge-purple/80 text-white border-refuge-purple/20"
-                            : "bg-gradient-to-r from-refuge-magenta to-refuge-magenta/80 text-white border-refuge-magenta/20"
+                            ? "bg-refuge-purple/10 text-refuge-purple dark:bg-refuge-purple/20 dark:text-refuge-purple-light border-refuge-purple/20"
+                            : "bg-refuge-magenta/10 text-refuge-magenta dark:bg-refuge-magenta/20 dark:text-refuge-magenta-light border-refuge-magenta/20"
                         }`}
                       >
                         {home.Unit === "DAL" ? "Dallas" : "San Antonio"}
                       </Badge>
-                      <div className="text-xs text-refuge-dark-blue/50">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         {home.latitude.toFixed(4)}, {home.longitude.toFixed(4)}
                       </div>
                     </div>
@@ -331,8 +353,8 @@ export default function HomesMapPage() {
                 </div>
               ))}
               {filteredHomes.length === 0 && (
-                <div className="text-center py-8 text-refuge-dark-blue/70">
-                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50 text-refuge-light-purple" />
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No homes found matching your filters</p>
                 </div>
               )}
