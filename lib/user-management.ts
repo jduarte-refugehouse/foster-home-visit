@@ -157,18 +157,8 @@ export async function hasPermission(
     }
 
     // Check role-based permissions (roles can inherit permissions)
-    const rolePermission = await query<{ count: number }>(
-      `SELECT COUNT(*) as count
-       FROM user_roles ur
-       INNER JOIN role_permissions rp ON ur.role_name = rp.role_name
-       INNER JOIN permissions p ON rp.permission_id = p.id
-       INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-       WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND p.permission_code = @param2
-       AND ur.is_active = 1`,
-      [userId, microserviceCode, permissionCode],
-    )
-
-    return rolePermission[0]?.count > 0
+    // For now, only check direct permissions until role-permission mapping is implemented
+    return false
   } catch (error) {
     console.error("Error checking permission:", error)
     return false
@@ -193,56 +183,30 @@ export async function assignUserToRole(
 
     const microserviceId = microservice[0].id
 
-    // Get role details
-    const roleDetails = await query<{ role_level: number; role_display_name: string }>(
-      `SELECT role_level, role_display_name FROM role_definitions 
-       WHERE role_name = @param0 AND microservice_id = @param1`,
-      [roleName, microserviceId],
-    )
-
-    if (roleDetails.length === 0) {
+    // Get role details from microservice config
+    const roleConfig = Object.entries(MICROSERVICE_ROLES).find(([key, value]) => value === roleName)
+    if (!roleConfig) {
       throw new Error(`Role ${roleName} not found for microservice ${microserviceCode}`)
     }
+
+    // Determine role level and display name
+    const roleLevel = roleName.includes("admin")
+      ? 4
+      : roleName.includes("director")
+        ? 3
+        : roleName.includes("liaison")
+          ? 2
+          : 1
+    const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
 
     // Assign role
     await query(
       `INSERT INTO user_roles (user_id, microservice_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active)
        VALUES (@param0, @param1, @param2, @param3, @param4, @param5, GETDATE(), 1)`,
-      [userId, microserviceId, roleName, roleDetails[0].role_display_name, roleDetails[0].role_level, grantedBy],
+      [userId, microserviceId, roleName, roleDisplayName, roleLevel, grantedBy],
     )
-
-    // Auto-assign role-based permissions
-    await assignRolePermissions(userId, roleName, microserviceId, grantedBy)
   } catch (error) {
     console.error("Error assigning user to role:", error)
-    throw error
-  }
-}
-
-async function assignRolePermissions(
-  userId: string,
-  roleName: string,
-  microserviceId: string,
-  grantedBy: string,
-): Promise<void> {
-  try {
-    // Get all permissions for this role
-    const rolePermissions = await query<{ permission_id: string }>(
-      `SELECT permission_id FROM role_permissions 
-       WHERE role_name = @param0 AND microservice_id = @param1`,
-      [roleName, microserviceId],
-    )
-
-    // Assign each permission
-    for (const perm of rolePermissions) {
-      await query(
-        `INSERT INTO user_permissions (user_id, permission_id, granted_by, granted_at, is_active)
-         VALUES (@param0, @param1, @param2, GETDATE(), 1)`,
-        [userId, perm.permission_id, grantedBy],
-      )
-    }
-  } catch (error) {
-    console.error("Error assigning role permissions:", error)
     throw error
   }
 }
@@ -494,107 +458,25 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
   }
 }
 
-// Legacy functions for backward compatibility
-export async function createUser(userData: {
-  clerk_user_id: string
-  email: string
-  first_name?: string
-  last_name?: string
-  role?: string
-}): Promise<string> {
-  const pool = await getDbConnection()
-
-  const userId = crypto.randomUUID()
-
-  await pool
-    .request()
-    .input("id", userId)
-    .input("clerk_user_id", userData.clerk_user_id)
-    .input("email", userData.email)
-    .input("first_name", userData.first_name || null)
-    .input("last_name", userData.last_name || null)
-    .input("role", userData.role || "user")
-    .input("status", "active")
-    .query(`
-      INSERT INTO users (id, clerk_user_id, email, first_name, last_name, role, status, created_at, updated_at)
-      VALUES (@id, @clerk_user_id, @email, @first_name, @last_name, @role, @status, GETDATE(), GETDATE())
-    `)
-
-  return userId
-}
-
-export async function getUserByClerkId(clerkUserId: string): Promise<any | null> {
-  const pool = await getDbConnection()
-
-  const result = await pool
-    .request()
-    .input("clerk_user_id", clerkUserId)
-    .query("SELECT * FROM users WHERE clerk_user_id = @clerk_user_id")
-
-  return result.recordset[0] || null
-}
-
-export async function updateUserLastLogin(clerkUserId: string): Promise<void> {
-  const pool = await getDbConnection()
-
-  await pool
-    .request()
-    .input("clerk_user_id", clerkUserId)
-    .query("UPDATE users SET last_login = GETDATE(), updated_at = GETDATE() WHERE clerk_user_id = @clerk_user_id")
-}
-
-export async function getAllUsers(): Promise<any[]> {
-  const pool = await getDbConnection()
-
-  const result = await pool.request().query("SELECT * FROM users ORDER BY created_at DESC")
-
-  return result.recordset
-}
-
-export async function updateUserRole(userId: string, role: string): Promise<void> {
-  const pool = await getDbConnection()
-
-  await pool
-    .request()
-    .input("id", userId)
-    .input("role", role)
-    .query("UPDATE users SET role = @role, updated_at = GETDATE() WHERE id = @id")
-}
-
-export async function deactivateUser(userId: string): Promise<void> {
-  const pool = await getDbConnection()
-
-  await pool
-    .request()
-    .input("id", userId)
-    .query("UPDATE users SET status = 'inactive', updated_at = GETDATE() WHERE id = @id")
-}
-
-// New functions for Admin UI
-
 export async function getAllDefinedRoles(microserviceCode: string = CURRENT_MICROSERVICE): Promise<any[]> {
   try {
-    const result = await query(
-      `
-      SELECT 
-        rd.id,
-        rd.role_name,
-        rd.role_display_name,
-        rd.role_level,
-        rd.description,
-        ma.app_code as microservice_code,
-        STRING_AGG(p.permission_code, ', ') as permissions
-      FROM role_definitions rd
-      INNER JOIN microservice_apps ma ON rd.microservice_id = ma.id
-      LEFT JOIN role_permissions rp ON rd.id = rp.role_definition_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id
-      WHERE ma.app_code = @param0
-      GROUP BY rd.id, rd.role_name, rd.role_display_name, rd.role_level, rd.description, ma.app_code
-      ORDER BY rd.role_level DESC, rd.role_name ASC
-    `,
-      [microserviceCode],
-    )
-    return result
+    const roles = Object.entries(MICROSERVICE_ROLES).map(([key, roleName]) => {
+      const roleLevel = roleName.includes("admin")
+        ? 4
+        : roleName.includes("director")
+          ? 3
+          : roleName.includes("liaison")
+            ? 2
+            : 1
+      const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      return {
+        role_name: roleName,
+        role_display_name: roleDisplayName,
+        role_level: roleLevel,
+        microservice_code: microserviceCode,
+      }
+    })
+    return roles
   } catch (error) {
     console.error("Error fetching defined roles:", error)
     return []
@@ -647,48 +529,130 @@ export async function updateUserRoles(
 
     // Grant new roles
     for (const roleName of roleNames) {
-      const roleDef = await query<{ id: string; role_display_name: string; role_level: number }>(
-        "SELECT id, role_display_name, role_level FROM role_definitions WHERE role_name = @param0 AND microservice_id = @param1",
-        [roleName, microserviceId],
-      )
+      const roleConfig = Object.entries(MICROSERVICE_ROLES).find(([key, value]) => value === roleName)
+      if (!roleConfig) {
+        console.warn(`Role ${roleName} not found in MICROSERVICE_ROLES`)
+        continue
+      }
 
-      if (roleDef.length > 0) {
-        // Check if role assignment already exists but is inactive
-        const existingRole = await transaction
+      const roleLevel = roleName.includes("admin")
+        ? 4
+        : roleName.includes("director")
+          ? 3
+          : roleName.includes("liaison")
+            ? 2
+            : 1
+      const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+
+      // Check if role assignment already exists but is inactive
+      const existingRole = await transaction
+        .request()
+        .input("user_id", userId)
+        .input("role_name", roleName)
+        .input("microservice_id", microserviceId)
+        .query(
+          "SELECT id FROM user_roles WHERE user_id = @user_id AND role_name = @role_name AND microservice_id = @microservice_id",
+        )
+
+      if (existingRole.recordset.length > 0) {
+        // Reactivate it
+        await transaction
+          .request()
+          .input("id", existingRole.recordset[0].id)
+          .input("granted_by", grantedBy)
+          .query("UPDATE user_roles SET is_active = 1, granted_by = @granted_by, granted_at = GETDATE() WHERE id = @id")
+      } else {
+        // Insert new role assignment
+        await transaction
           .request()
           .input("user_id", userId)
-          .input("role_definition_id", roleDef[0].id)
-          .query("SELECT id FROM user_roles WHERE user_id = @user_id AND role_definition_id = @role_definition_id")
-
-        if (existingRole.recordset.length > 0) {
-          // Reactivate it
-          await transaction
-            .request()
-            .input("id", existingRole.recordset[0].id)
-            .input("granted_by", grantedBy)
-            .query(
-              "UPDATE user_roles SET is_active = 1, granted_by = @granted_by, granted_at = GETDATE() WHERE id = @id",
-            )
-        } else {
-          // Insert new role assignment
-          await transaction
-            .request()
-            .input("user_id", userId)
-            .input("microservice_id", microserviceId)
-            .input("role_definition_id", roleDef[0].id)
-            .input("role_name", roleName)
-            .input("role_display_name", roleDef[0].role_display_name)
-            .input("role_level", roleDef[0].role_level)
-            .input("granted_by", grantedBy)
-            .query(`INSERT INTO user_roles (user_id, microservice_id, role_definition_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active) 
-                                VALUES (@user_id, @microservice_id, @role_definition_id, @role_name, @role_display_name, @role_level, @granted_by, GETDATE(), 1)`)
-        }
+          .input("microservice_id", microserviceId)
+          .input("role_name", roleName)
+          .input("role_display_name", roleDisplayName)
+          .input("role_level", roleLevel)
+          .input("granted_by", grantedBy)
+          .query(`INSERT INTO user_roles (user_id, microservice_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active) 
+                              VALUES (@user_id, @microservice_id, @role_name, @role_display_name, @role_level, @granted_by, GETDATE(), 1)`)
       }
     }
     await transaction.commit()
   } catch (error) {
     await transaction.rollback()
     console.error("Error updating user roles:", error)
+    throw error
+  }
+}
+
+// Legacy functions for backward compatibility - these bridge to the new app_users table
+export async function createUser(userData: {
+  clerk_user_id: string
+  email: string
+  first_name?: string
+  last_name?: string
+  role?: string
+}): Promise<string> {
+  try {
+    const coreRole = determineCoreRole(userData.email)
+    const userId = crypto.randomUUID()
+
+    await query(
+      `INSERT INTO app_users (id, clerk_user_id, email, first_name, last_name, core_role, is_active, created_at, updated_at)
+       VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
+      [userId, userData.clerk_user_id, userData.email, userData.first_name || "", userData.last_name || "", coreRole],
+    )
+
+    // Assign default microservice roles
+    await assignDefaultMicroserviceRoles(userId, userData.email, coreRole)
+
+    return userId
+  } catch (error) {
+    console.error("Error creating user:", error)
+    throw error
+  }
+}
+
+export async function getUserByClerkId(clerkUserId: string): Promise<any | null> {
+  try {
+    const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [clerkUserId])
+    return result[0] || null
+  } catch (error) {
+    console.error("Error getting user by clerk ID:", error)
+    return null
+  }
+}
+
+export async function updateUserLastLogin(clerkUserId: string): Promise<void> {
+  try {
+    await query("UPDATE app_users SET updated_at = GETDATE() WHERE clerk_user_id = @param0", [clerkUserId])
+  } catch (error) {
+    console.error("Error updating user last login:", error)
+  }
+}
+
+export async function getAllUsers(): Promise<any[]> {
+  try {
+    const result = await query("SELECT * FROM app_users ORDER BY created_at DESC")
+    return result
+  } catch (error) {
+    console.error("Error getting all users:", error)
+    return []
+  }
+}
+
+export async function updateUserRole(userId: string, role: string): Promise<void> {
+  try {
+    await query("UPDATE app_users SET core_role = @param1, updated_at = GETDATE() WHERE id = @param0", [userId, role])
+  } catch (error) {
+    console.error("Error updating user role:", error)
+    throw error
+  }
+}
+
+export async function deactivateUser(userId: string): Promise<void> {
+  try {
+    await query("UPDATE app_users SET is_active = 0, updated_at = GETDATE() WHERE id = @param0", [userId])
+  } catch (error) {
+    console.error("Error deactivating user:", error)
     throw error
   }
 }
