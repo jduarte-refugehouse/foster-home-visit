@@ -362,12 +362,7 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
                 <DropdownMenuItem asChild>
-                  <a
-                    href="https://accounts.clerk.dev/user"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="cursor-pointer flex items-center"
-                  >
+                  <a href="/user-profile" className="cursor-pointer flex items-center">
                     <User className="mr-2 h-4 w-4" />
                     Profile Settings
                   </a>
