@@ -38,7 +38,7 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -90,5 +90,83 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Refuge House Design System Components */
+@layer components {
+  /* Page Layout */
+  .refuge-page {
+    @apply p-8 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen;
+  }
+
+  /* Card System */
+  .refuge-card {
+    @apply border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700;
+  }
+
+  .refuge-card-hover {
+    @apply hover:shadow-xl transition-all duration-300;
+  }
+
+  /* Header Banners */
+  .refuge-banner {
+    @apply bg-gradient-to-r from-refuge-purple-100 to-refuge-magenta-100 dark:from-refuge-purple-900/30 dark:to-refuge-magenta-900/30 border border-refuge-purple-200 dark:border-refuge-purple-700 p-8 rounded-xl;
+  }
+
+  .refuge-banner-title {
+    @apply text-2xl font-semibold mb-2 text-refuge-purple-800 dark:text-refuge-purple-300;
+  }
+
+  .refuge-banner-subtitle {
+    @apply text-refuge-purple-700 dark:text-gray-300;
+  }
+
+  /* Button System */
+  .refuge-btn-primary {
+    @apply bg-refuge-purple-600 hover:bg-refuge-purple-700 dark:bg-refuge-purple-500 dark:hover:bg-refuge-purple-600 text-white rounded-xl px-6 py-2.5 font-medium transition-colors duration-200 shadow-sm;
+  }
+
+  .refuge-btn-secondary {
+    @apply bg-refuge-magenta-600 hover:bg-refuge-magenta-700 dark:bg-refuge-magenta-500 dark:hover:bg-refuge-magenta-600 text-white rounded-xl px-6 py-2.5 font-medium transition-colors duration-200 shadow-sm;
+  }
+
+  /* Icon Containers */
+  .refuge-icon-primary {
+    @apply p-3 bg-refuge-purple-100 dark:bg-refuge-purple-900/30 rounded-xl;
+  }
+
+  .refuge-icon-secondary {
+    @apply p-3 bg-refuge-magenta-100 dark:bg-refuge-magenta-900/30 rounded-xl;
+  }
+
+  .refuge-icon-success {
+    @apply p-3 bg-green-100 dark:bg-green-900/30 rounded-xl;
+  }
+
+  .refuge-icon-info {
+    @apply p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl;
+  }
+
+  /* Status Cards */
+  .refuge-status-card {
+    @apply bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center border border-gray-200 dark:border-gray-600;
+  }
+
+  /* Typography */
+  .refuge-heading {
+    @apply text-xl text-gray-900 dark:text-gray-100 font-semibold;
+  }
+
+  .refuge-subheading {
+    @apply text-gray-600 dark:text-gray-400;
+  }
+
+  .refuge-body {
+    @apply text-gray-700 dark:text-gray-300;
+  }
+
+  .refuge-caption {
+    @apply text-sm text-gray-600 dark:text-gray-400;
   }
 }
