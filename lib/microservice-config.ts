@@ -38,6 +38,89 @@ export const MICROSERVICE_CONFIG = {
     USER_MANAGE: "user_manage",
     SYSTEM_ADMIN: "system_admin",
   },
+
+  // Default navigation structure (fallback when database is unavailable)
+  defaultNavigation: [
+    {
+      title: "Navigation",
+      items: [
+        {
+          code: "dashboard",
+          title: "Dashboard",
+          url: "/dashboard",
+          icon: "Home",
+          order: 1,
+        },
+        {
+          code: "visits_calendar",
+          title: "Visits Calendar",
+          url: "/visits-calendar",
+          icon: "Calendar",
+          permission: "view_visits",
+          order: 2,
+        },
+        {
+          code: "reports",
+          title: "Reports",
+          url: "/reports",
+          icon: "BarChart3",
+          permission: "generate_reports",
+          order: 3,
+        },
+        {
+          code: "homes_map",
+          title: "Homes Map",
+          url: "/homes-map",
+          icon: "Map",
+          order: 4,
+        },
+        {
+          code: "homes_list",
+          title: "Homes List",
+          url: "/homes-list",
+          icon: "List",
+          order: 5,
+        },
+      ],
+    },
+    {
+      title: "Administration",
+      items: [
+        {
+          code: "user_invitations",
+          title: "User Invitations",
+          url: "/admin/invitations",
+          icon: "Users",
+          permission: "user_management",
+          order: 1,
+        },
+        {
+          code: "user_management",
+          title: "User Management",
+          url: "/admin/users",
+          icon: "UserCog",
+          permission: "user_management",
+          order: 2,
+        },
+        {
+          code: "system_admin",
+          title: "System Admin",
+          url: "/system-admin",
+          icon: "Settings",
+          permission: "system_config",
+          order: 3,
+        },
+        {
+          code: "diagnostics",
+          title: "Diagnostics",
+          url: "/diagnostics",
+          icon: "Database",
+          permission: "view_diagnostics",
+          order: 4,
+        },
+      ],
+    },
+  ],
 }
 
 // Standard Refuge House domain for internal user identification
@@ -52,5 +135,6 @@ export function isInternalUser(email: string): boolean {
 // 1. Update the 'code' field to match your database entry
 // 2. Update 'name' and 'description' for your microservice
 // 3. Define your business-specific roles and permissions
-// 4. Keep INTERNAL_DOMAIN and isInternalUser as-is
-// 5. All Refuge House branding and foster care context stays the same
+// 4. Customize the defaultNavigation items for your microservice
+// 5. Keep INTERNAL_DOMAIN and isInternalUser as-is
+// 6. All Refuge House branding and foster care context stays the same
