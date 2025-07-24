@@ -39,11 +39,11 @@ interface User {
 
 interface Role {
   role_name: string
-  role_display_name: string
-  description: string
+  role_display_name?: string
+  description?: string
   user_count: number
-  active_user_count: number
-  permissions: string
+  active_user_count?: number
+  permissions?: string
 }
 
 interface Permission {
@@ -100,7 +100,8 @@ export default function SystemAdminPage() {
       if (rolesResponse.ok) {
         const rolesData = await rolesResponse.json()
         console.log("✅ Roles data:", rolesData)
-        setRoles(rolesData.uniqueRoles || [])
+        // Fix: Use rolesData.roles instead of rolesData.uniqueRoles
+        setRoles(rolesData.roles || [])
       } else {
         const errorData = await rolesResponse.json()
         console.error("❌ Failed to fetch roles:", rolesResponse.status)
@@ -348,12 +349,12 @@ export default function SystemAdminPage() {
                     {roles.map((role, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{role.role_name}</TableCell>
-                        <TableCell>{role.description}</TableCell>
+                        <TableCell>{role.description || "No description available"}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{role.user_count}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="default">{role.active_user_count}</Badge>
+                          <Badge variant="default">{role.active_user_count || role.user_count}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
