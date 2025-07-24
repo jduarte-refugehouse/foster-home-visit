@@ -1,43 +1,42 @@
 import { NextResponse } from "next/server"
 import { query } from "@/lib/db"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
-// Use the same microservice ID as system-status API
-const HOME_VISITS_MICROSERVICE_ID = "1A5F93AC-9286-48FD-849D-BB132E5031C7"
+const CURRENT_MICROSERVICE_CODE = MICROSERVICE_CONFIG.code
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching roles for home-visits microservice...")
+    console.log(`🔍 Fetching roles for ${CURRENT_MICROSERVICE_CODE} microservice...`)
 
-    // Use the EXACT same query logic as system-status API that shows "2" in the card
-    // Removed role_level since it doesn't exist in the database
+    // Use only columns that actually exist in user_roles table
     const roles = await query(
       `
       SELECT DISTINCT 
-        role_name,
-        role_display_name,
-        COUNT(user_id) as user_count
-      FROM user_roles 
-      WHERE microservice_id = @param0 AND is_active = 1
-      GROUP BY role_name, role_display_name
-      ORDER BY role_name
+        ur.role_name,
+        COUNT(ur.user_id) as user_count
+      FROM user_roles ur
+      INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
+      WHERE ma.app_code = @param0 AND ur.is_active = 1
+      GROUP BY ur.role_name
+      ORDER BY ur.role_name
     `,
-      [HOME_VISITS_MICROSERVICE_ID],
+      [CURRENT_MICROSERVICE_CODE],
     )
 
-    console.log(`✅ Found ${roles.length} roles for home-visits microservice`)
+    console.log(`✅ Found ${roles.length} roles for ${CURRENT_MICROSERVICE_CODE} microservice`)
 
     return NextResponse.json({
       roles,
       total: roles.length,
       microservice: {
-        code: "home-visits",
-        name: "Home Visits Application",
+        code: MICROSERVICE_CONFIG.code,
+        name: MICROSERVICE_CONFIG.name,
       },
     })
   } catch (error) {
-    console.error("❌ Error fetching roles:", error)
+    console.error(`❌ Error fetching roles for ${MICROSERVICE_CONFIG.name}:`, error)
     return NextResponse.json(
       {
         error: "Failed to fetch roles",

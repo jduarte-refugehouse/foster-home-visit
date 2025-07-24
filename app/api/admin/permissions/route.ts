@@ -4,40 +4,32 @@ import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
-// Use the same microservice ID as system-status API
-const HOME_VISITS_MICROSERVICE_ID = "1A5F93AC-9286-48FD-849D-BB132E5031C7"
+const CURRENT_MICROSERVICE_CODE = MICROSERVICE_CONFIG.code
 
 export async function GET() {
   try {
-    console.log("🔍 Fetching permissions for home-visits microservice...")
+    console.log(`🔍 Fetching permissions for ${CURRENT_MICROSERVICE_CODE} microservice...`)
 
-    // Get permissions from the database
-    const dbPermissions = await query(
+    // Use the same query pattern as system-status for permissions
+    const permissions = await query(
       `
-      SELECT DISTINCT 
-        permission_name,
-        permission_display_name,
-        COUNT(user_id) as user_count
-      FROM user_permissions up
-      WHERE microservice_id = @param0 AND is_active = 1
-      GROUP BY permission_name, permission_display_name
-      ORDER BY permission_name
+      SELECT 
+        p.[id],
+        p.[microservice_id],
+        p.[permission_code],
+        p.[permission_name],
+        p.[description],
+        p.[category],
+        p.[created_at]
+      FROM permissions p
+      INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+      WHERE ma.app_code = @param0
+      ORDER BY p.category, p.permission_name
     `,
-      [HOME_VISITS_MICROSERVICE_ID],
+      [CURRENT_MICROSERVICE_CODE],
     )
 
-    console.log(`✅ Found ${dbPermissions.length} permissions in database`)
-
-    // If no permissions in database, fall back to configured permissions
-    let permissions = dbPermissions
-    if (permissions.length === 0) {
-      console.log("📋 No permissions in database, using configured permissions...")
-      permissions = MICROSERVICE_CONFIG.permissions.map((perm: any) => ({
-        permission_name: perm.code,
-        permission_display_name: perm.name,
-        user_count: 0,
-      }))
-    }
+    console.log(`✅ Found ${permissions.length} permissions for ${CURRENT_MICROSERVICE_CODE} microservice`)
 
     return NextResponse.json({
       permissions,
@@ -48,7 +40,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("❌ Error fetching permissions:", error)
+    console.error(`❌ Error fetching permissions for ${MICROSERVICE_CONFIG.name}:`, error)
     return NextResponse.json(
       {
         error: "Failed to fetch permissions",
