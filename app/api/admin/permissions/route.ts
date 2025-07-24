@@ -1,43 +1,46 @@
 import { NextResponse } from "next/server"
 import { query } from "@/lib/db"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
+const CURRENT_MICROSERVICE_CODE = MICROSERVICE_CONFIG.code
+
 export async function GET() {
   try {
-    console.log("🔍 Fetching permissions for admin panel...")
+    console.log(`🔍 Fetching permissions for ${CURRENT_MICROSERVICE_CODE} microservice...`)
 
+    // Use the same query pattern as system-status for permissions
     const permissions = await query(
       `
-      SELECT DISTINCT
-        p.id,
-        p.permission_code,
-        p.permission_name,
-        p.permission_description,
-        COUNT(rp.role_name) as role_count
+      SELECT 
+        p.[id],
+        p.[microservice_id],
+        p.[permission_code],
+        p.[permission_name],
+        p.[description],
+        p.[category],
+        p.[created_at]
       FROM permissions p
-      LEFT JOIN role_permissions rp ON p.id = rp.permission_id
-      LEFT JOIN user_roles ur ON rp.role_name = ur.role_name
-      LEFT JOIN microservice_apps ma ON ur.microservice_id = ma.id
-      WHERE ma.app_code = 'home-visits' OR ma.app_code IS NULL
-      GROUP BY p.id, p.permission_code, p.permission_name, p.permission_description
-      ORDER BY p.permission_code
+      INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+      WHERE ma.app_code = @param0
+      ORDER BY p.category, p.permission_name
     `,
-      [],
+      [CURRENT_MICROSERVICE_CODE],
     )
 
-    console.log(`✅ Found ${permissions.length} permissions for home-visits microservice`)
+    console.log(`✅ Found ${permissions.length} permissions for ${CURRENT_MICROSERVICE_CODE} microservice`)
 
     return NextResponse.json({
       permissions,
       total: permissions.length,
       microservice: {
-        code: "home-visits",
-        name: "Home Visits Application",
+        code: MICROSERVICE_CONFIG.code,
+        name: MICROSERVICE_CONFIG.name,
       },
     })
   } catch (error) {
-    console.error("❌ Error fetching permissions:", error)
+    console.error(`❌ Error fetching permissions for ${MICROSERVICE_CONFIG.name}:`, error)
     return NextResponse.json(
       {
         error: "Failed to fetch permissions",
