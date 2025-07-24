@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 type User = {
   id: string
@@ -134,7 +135,7 @@ export function UsersTable({ initialUsers, allRoles }: { initialUsers: User[]; a
                         <DialogHeader>
                           <DialogTitle>Manage Roles for {selectedUser.email}</DialogTitle>
                           <DialogDescription>
-                            Assign roles to this user for the Home Visits application.
+                            Assign roles to this user for the {MICROSERVICE_CONFIG.name}.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
