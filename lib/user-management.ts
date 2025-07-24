@@ -5,6 +5,9 @@ import { MICROSERVICE_CONFIG, isInternalUser } from "./microservice-config"
 // Use the configurable microservice
 export const CURRENT_MICROSERVICE = MICROSERVICE_CONFIG.code
 
+// Home Visits microservice GUID - keeping for backward compatibility
+const HOME_VISITS_MICROSERVICE_ID = "1A5F93AC-9286-48FD-849D-BB132E5031C7"
+
 export interface AppUser {
   id: string
   clerk_user_id: string
@@ -97,7 +100,7 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
 export async function getUserRolesForMicroservice(userId: string, microserviceCode: string): Promise<UserRole[]> {
   try {
     const result = await query<UserRole>(
-      `SELECT ur.*, ma.app_code, ma.app_name 
+      `SELECT ur.*, ma.app_name as microservice_name, ma.app_code as microservice_code 
        FROM user_roles ur
        INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
        WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND ur.is_active = 1
@@ -123,7 +126,7 @@ export async function getUserPermissionsForMicroservice(
        INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
        WHERE up.user_id = @param0 AND ma.app_code = @param1 
        AND up.is_active = 1 AND (up.expires_at IS NULL OR up.expires_at > GETDATE())
-       ORDER BY p.category, p.permission_code`,
+       ORDER BY p.category, p.permission_name`,
       [userId, microserviceCode],
     )
     return result
