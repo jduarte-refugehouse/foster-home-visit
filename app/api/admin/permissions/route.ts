@@ -1,16 +1,33 @@
 import { NextResponse } from "next/server"
 import { query } from "@/lib/db"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
-// Home Visits microservice GUID
-const HOME_VISITS_MICROSERVICE_ID = "1A5F93AC-9286-48FD-849D-BB132E5031C7"
-
 export async function GET() {
   try {
-    console.log("🔍 Fetching permissions filtered by home-visits microservice...")
+    console.log("🔍 Fetching permissions filtered by current microservice...")
 
-    // Get permissions filtered by home-visits microservice only
+    // Get the microservice ID from the database using the configurable code
+    const microserviceResult = await query(`SELECT id FROM microservice_apps WHERE app_code = @param0`, [
+      MICROSERVICE_CONFIG.code,
+    ])
+
+    if (microserviceResult.length === 0) {
+      console.error(`❌ Microservice with code '${MICROSERVICE_CONFIG.code}' not found`)
+      return NextResponse.json(
+        {
+          error: `Microservice '${MICROSERVICE_CONFIG.code}' not found`,
+          permissions: [],
+          microserviceApps: [],
+        },
+        { status: 404 },
+      )
+    }
+
+    const microserviceId = microserviceResult[0].id
+
+    // Get permissions filtered by current microservice only
     const permissions = await query(
       `
       SELECT 
@@ -25,12 +42,12 @@ export async function GET() {
       WHERE microservice_id = @param0
       ORDER BY category, permission_name
     `,
-      [HOME_VISITS_MICROSERVICE_ID],
+      [microserviceId],
     )
 
-    console.log(`✅ Found ${permissions.length} permissions for home-visits microservice`)
+    console.log(`✅ Found ${permissions.length} permissions for ${MICROSERVICE_CONFIG.name} microservice`)
 
-    // Get the home-visits microservice app info
+    // Get the current microservice app info
     const microserviceApp = await query(
       `
       SELECT 
@@ -44,7 +61,7 @@ export async function GET() {
       FROM microservice_apps
       WHERE id = @param0
     `,
-      [HOME_VISITS_MICROSERVICE_ID],
+      [microserviceId],
     )
 
     console.log(`✅ Found microservice app:`, microserviceApp[0])
@@ -53,8 +70,8 @@ export async function GET() {
       permissions: permissions,
       microserviceApps: microserviceApp,
       total: permissions.length,
-      microserviceId: HOME_VISITS_MICROSERVICE_ID,
-      microserviceName: microserviceApp[0]?.app_name || "Home Visits",
+      microserviceId: microserviceId,
+      microserviceName: microserviceApp[0]?.app_name || MICROSERVICE_CONFIG.name,
     })
   } catch (error) {
     console.error("❌ Error fetching permissions:", error)

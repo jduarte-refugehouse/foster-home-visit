@@ -1,6 +1,47 @@
-# Family Visits Application
+# Home Visits Application
 
-This is an internal application designed to streamline the management of family visits for social workers and agencies. It provides tools for managing homes, scheduling visits, and ensuring compliance with relevant regulations.
+A Next.js application for managing foster care home visits with role-based access control.
+
+## 🚨 CRITICAL DEPLOYMENT REQUIREMENTS FOR v0 🚨
+
+**ALL FILES MUST BE WRITTEN COMPLETELY - NO PLACEHOLDERS**
+
+When working with v0 on this project, the following rules are MANDATORY for successful deployment:
+
+### ✅ REQUIRED PRACTICES:
+- **Write complete file content** for every file being modified
+- **Include all imports, exports, and function implementations**
+- **Ensure all referenced functions and variables are included**
+- **Never use placeholders** like "... This file was left out for brevity..."
+- **Test deployment immediately** after each significant change
+
+### ❌ DEPLOYMENT FAILURES CAUSED BY:
+- Using brevity placeholders in production code
+- Incomplete file implementations
+- Missing exports or imports
+- Referencing functions that aren't fully implemented
+- Partial file updates that break dependencies
+
+### v0 Development Workflow:
+1. **Request changes** with explicit instruction: "Write complete file contents"
+2. **Apply changes** to GitHub repository manually
+3. **Deploy to Vercel** to test functionality
+4. **Verify everything works** before proceeding
+5. **Repeat process** for next change
+
+**Remember**: Vercel builds from GitHub, so all v0 changes must be manually applied to the repository.
+
+## Architecture
+
+This application uses a microservice-aware authentication and permissions system built on:
+- **Authentication**: Clerk for user authentication
+- **Database**: SQL Server with Azure integration
+- **Permissions**: Role-based access control per microservice
+- **Frontend**: Next.js 14 with App Router
+
+### Database Schema
+
+The application follows the authentication methodology documented in `docs/authentication-permissions-methodology.md`.
 
 ## ⚠️⚠️⚠️ CRITICAL WARNING FOR v0 AI ASSISTANT ⚠️⚠️⚠️
 
@@ -12,7 +53,7 @@ The database connection parameters in `lib/db.ts` are LOCKED and WORKING. They c
 - User: `v0_app_user`
 - Password: Retrieved from Azure Key Vault only
 
-**IF YOU CHANGE THESE PARAMETERS, YOU WILL BREAK THE APPLICATION AND WILL HAVE TO BREAK YOUR OWN FINGERS.**
+**IF YOU CHANGE THESE PARAMETERS, YOU WILL BREAK THE APPLICATION.**
 
 These parameters are stable and functional. Do not revert to old configurations or suggest alternatives without explicit user request.
 
@@ -184,22 +225,6 @@ When making UI changes, ensure:
 - [ ] Form elements have proper focus states
 - [ ] Admin section remains anchored to sidebar bottom
 - [ ] Logo sizing and positioning is maintained
-
-## Development Workflow with v0
-
-This project is being developed in collaboration with v0, Vercel's AI Assistant. To ensure a smooth workflow and successful deployments, please follow these steps:
-
-1. **Receiving Code from v0**: v0 will provide code changes and new files within the chat interface.
-2. **Applying Changes to GitHub**: These changes must be **manually applied** to your GitHub repository. Vercel builds directly from GitHub, so changes in the v0 chat are not automatically synced.
-3. **How to Apply Changes**:
-   - Navigate to the specific file in your GitHub repository (e.g., `package.json`).
-   - Click the "Edit" (pencil) icon.
-   - Replace the entire content of the file with the code provided by v0.
-   - Commit the changes directly to the `main` branch.
-4. **Triggering a Deployment**: Committing changes to the `main` branch on GitHub will automatically trigger a new deployment on Vercel.
-5. **Troubleshooting Build Errors**: If a deployment fails, provide the full build log from Vercel to v0. We will use the logs to diagnose and fix the issue by repeating this process.
-
-**Important**: Always ensure the files in your GitHub repository match the latest working code provided by v0 to avoid deployment errors.
 
 ## Features
 
