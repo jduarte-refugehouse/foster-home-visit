@@ -11,17 +11,17 @@ export async function GET() {
     console.log("🔍 Fetching roles for home-visits microservice...")
 
     // Use the EXACT same query logic as system-status API that shows "2" in the card
+    // Removed role_level since it doesn't exist in the database
     const roles = await query(
       `
       SELECT DISTINCT 
         role_name,
         role_display_name,
-        role_level,
         COUNT(user_id) as user_count
       FROM user_roles 
       WHERE microservice_id = @param0 AND is_active = 1
-      GROUP BY role_name, role_display_name, role_level
-      ORDER BY role_level DESC, role_name
+      GROUP BY role_name, role_display_name
+      ORDER BY role_name
     `,
       [HOME_VISITS_MICROSERVICE_ID],
     )
