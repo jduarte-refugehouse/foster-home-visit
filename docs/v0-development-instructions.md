@@ -1,155 +1,115 @@
 # Refuge House Microservice Template - Development Instructions
 
-## Overview
+This is a **Refuge House-specific** microservice template designed for internal foster care operations. It comes pre-loaded with working foster home data, mapping capabilities, and admin infrastructure.
 
-This is the **Refuge House Microservice Template** - a standardized foundation for building internal applications at Refuge House. This template is specifically designed for Refuge House's foster care operations and comes pre-loaded with essential components.
+## 🏠 Template Philosophy
 
-## Template Philosophy
+This template is **NOT** a generic framework. It's specifically designed for Refuge House operations and includes:
 
-### What's Pre-Loaded (Standard Kit)
-- **Foster Homes Data Integration** - Working homes list and interactive map
-- **Refuge House Branding** - Logo, colors, and organizational identity
-- **Admin Infrastructure** - User management, permissions, diagnostics
-- **@refugehouse.org Domain Logic** - Automatic access for internal users
-- **jduarte@refugehouse.org Admin** - Default system administrator
+- **Pre-loaded Foster Home Data**: Working homes list and interactive map
+- **Refuge House Branding**: All @refugehouse.org domain logic and branding
+- **Standard Admin Kit**: User management, permissions, diagnostics
+- **Foster Care Context**: Terminology and workflows specific to foster care operations
 
-### What's Configurable
-- **Microservice Identity** - Name, description, and business purpose
-- **Business-Specific Roles** - Tailored to each application's workflow
-- **Business-Specific Permissions** - Granular access control
-- **Custom Navigation** - Application-specific menu items (homes/map/admin always included)
+## 🚀 Creating a New Microservice
 
-## Creating a New Microservice
+### Step 1: Configure Your Microservice Identity
 
-### Step 1: Database Setup
-1. Add your microservice to the `microservice_apps` table:
-\`\`\`sql
-INSERT INTO microservice_apps (app_code, app_name, app_url, description, is_active)
-VALUES ('your-app-code', 'Your App Name', '/your-app', 'Your app description', 1)
-\`\`\`
-
-### Step 2: Configure Microservice Identity
 Edit `lib/microservice-config.ts`:
 
 \`\`\`typescript
-export const MICROSERVICE_CONFIG: MicroserviceConfig = {
-  code: "your-app-code", // MUST match database entry
-  name: "Your Application Name",
-  description: "Your application description",
-  url: "/your-app",
-  organizationDomain: "refugehouse.org", // Keep as-is
+export const MICROSERVICE_CONFIG = {
+  code: "your-microservice-code",        // MUST match database app_code
+  name: "Your Microservice Name",        // Display name in UI
+  description: "Brief description",      // Shown on dashboard
+  version: "1.0.0",
   
   // Define your business-specific roles
   roles: {
-    MANAGER: "your_manager",
-    WORKER: "your_worker", 
-    VIEWER: "your_viewer",
+    MANAGER: "manager",
+    COORDINATOR: "coordinator", 
+    VIEWER: "viewer",
+    // Add your roles here
   },
   
   // Define your business-specific permissions
   permissions: {
-    VIEW_DATA: "view_your_data",
-    CREATE_DATA: "create_your_data",
-    EDIT_DATA: "edit_your_data",
-    DELETE_DATA: "delete_your_data",
-    // Keep these standard ones:
-    GENERATE_REPORTS: "generate_reports",
-    VIEW_DIAGNOSTICS: "view_diagnostics",
-    USER_MANAGEMENT: "user_management",
-    SYSTEM_CONFIG: "system_config",
+    VIEW_DATA: "view_data",
+    MANAGE_CASES: "manage_cases",
+    // Add your permissions here
   },
-  
-  // Define your navigation (homes/map/admin will be included automatically)
-  defaultNavigation: [
-    {
-      title: "Navigation",
-      items: [
-        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
-        { code: "your_feature", title: "Your Feature", url: "/your-feature", icon: "FileText", permission: "view_your_data", order: 2 },
-        // Standard items - keep these:
-        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 8 },
-        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 9 },
-      ],
-    },
-    // Administration section - keep as-is
-    {
-      title: "Administration",
-      items: [
-        { code: "user_invitations", title: "User Invitations", url: "/admin/invitations", icon: "Users", permission: "user_management", order: 1 },
-        { code: "user_management", title: "User Management", url: "/admin/users", icon: "UserCog", permission: "user_management", order: 2 },
-        { code: "system_admin", title: "System Admin", url: "/system-admin", icon: "Settings", permission: "system_config", order: 3 },
-        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 4 },
-      ],
-    },
-  ],
 }
 \`\`\`
 
-### Step 3: Update User Role Assignments
-Edit `lib/user-management.ts` in the `assignDefaultMicroserviceRoles` function to assign appropriate roles for your microservice.
+### Step 2: Database Setup
 
-### Step 4: Create Your Business Logic
-- Add your application-specific pages in `app/(protected)/`
-- Create your API routes in `app/api/`
-- Build your components in `components/`
-
-## What You Get Out of the Box
-
-### Standard Components (Don't Modify)
-- **Foster Homes List** (`/homes-list`) - Complete homes management interface
-- **Interactive Map** (`/homes-map`) - Geographic visualization of homes
-- **User Management** (`/admin/users`) - Role and permission management
-- **System Diagnostics** (`/diagnostics`) - Database and system health
-- **Authentication** - Clerk integration with Refuge House domain logic
-
-### Template Infrastructure (Don't Modify)
-- Database connection management with Azure Key Vault
-- Permission middleware and role-based access control
-- Sidebar navigation with automatic fallbacks
-- Refuge House branding and styling
-- Development vs production environment handling
-
-## Environment Variables Required
-
-\`\`\`env
-# Database (Azure SQL)
-DATABASE_SERVER=your-server.database.windows.net
-DATABASE_NAME=your-database
-DATABASE_USER=your-user
-DATABASE_PORT=1433
-
-# Azure Key Vault
-AZURE_KEY_VAULT_NAME=your-keyvault
-AZURE_TENANT_ID=your-tenant-id
-AZURE_CLIENT_ID=your-client-id
-AZURE_CLIENT_SECRET=your-client-secret
-
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-key
-CLERK_SECRET_KEY=your-clerk-secret
-CLERK_WEBHOOK_SECRET=your-webhook-secret
-
-# Proxy (if needed)
-FIXIE_SOCKS_HOST=your-proxy-host
+1. Add your microservice to the database:
+\`\`\`sql
+INSERT INTO microservice_apps (app_code, app_name, app_url, description, is_active)
+VALUES ('your-microservice-code', 'Your Microservice Name', '/your-url', 'Description', 1)
 \`\`\`
 
-## Development Workflow
+2. Run the setup scripts:
+- `scripts/create-navigation-table.sql`
+- `scripts/setup-user-permissions.sql`
 
-1. **Clone this template** for your new microservice
-2. **Update microservice config** with your application details
-3. **Create database entry** for your microservice
-4. **Build your business logic** on top of the foundation
-5. **Test with standard components** (homes, map, admin work automatically)
-6. **Deploy** - all infrastructure is ready
+### Step 3: What You Get Out of the Box
 
-## Key Principles
+✅ **Working Foster Home Data**: Immediate access to homes list and map
+✅ **Admin Interface**: User management, roles, permissions
+✅ **Authentication**: Clerk integration with @refugehouse.org logic
+✅ **Diagnostics**: Database connection testing and system status
+✅ **Responsive UI**: shadcn/ui components with Refuge House styling
 
-- **Refuge House Specific** - This is internal tooling, not generic software
-- **Foster Care Context** - All applications support foster care operations
-- **Pre-loaded Data** - New microservices get working homes data immediately
-- **Consistent Admin** - jduarte@refugehouse.org is always system admin
-- **Standard Navigation** - Homes and admin sections are consistent across apps
+### Step 4: Build Your Business Logic
 
-## Support
+Focus on your specific business requirements. The foundation is already solid:
 
-For questions about this template or creating new microservices, contact the development team or check the diagnostics page for system health information.
+- Add your pages to `app/(protected)/your-feature/`
+- Create your API routes in `app/api/your-endpoints/`
+- Extend the navigation in `components/app-sidebar.tsx`
+- Add your database queries to `lib/db-extensions.ts`
+
+## 🔒 What NOT to Change
+
+**Keep These As-Is:**
+- All Refuge House references and branding
+- @refugehouse.org domain logic
+- jduarte@refugehouse.org admin assignments
+- Foster care terminology (homes, case managers, etc.)
+- Core admin and diagnostic infrastructure
+- Database connection patterns
+
+**Customize These:**
+- Microservice name and description
+- Business-specific roles and permissions
+- Your feature pages and API endpoints
+- Navigation items (while keeping homes/map/admin)
+
+## 🛠️ Development Workflow
+
+1. **Clone this template**
+2. **Update microservice config** (Step 1 above)
+3. **Set up database entry** (Step 2 above)
+4. **Build your features** using the standard kit
+5. **Deploy** - everything works together
+
+## 📋 Standard Kit Components
+
+Every microservice includes:
+
+- **Homes List & Map**: `/homes-list` and `/homes-map`
+- **Dashboard**: Configurable overview page
+- **Admin Panel**: `/admin` with user management
+- **Diagnostics**: `/diagnostics` for system health
+- **Reports**: `/reports` framework ready to extend
+
+## 🎯 Best Practices
+
+- Use the permission system for access control
+- Extend `lib/db-extensions.ts` for data queries
+- Follow the established API patterns
+- Keep Refuge House context and terminology
+- Build on the existing admin infrastructure
+
+This template gives you a production-ready foundation with working foster care data from day one. Focus on your business logic, not infrastructure.
