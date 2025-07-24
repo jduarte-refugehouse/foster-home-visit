@@ -58,11 +58,9 @@ export default function DashboardPage() {
     <div className="p-8 space-y-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Welcome Banner - More Subtle */}
       <Card className="border-0 shadow-lg rounded-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-refuge-purple/20 to-refuge-magenta/20 dark:from-refuge-purple/30 dark:to-refuge-magenta/30 border border-refuge-purple/20 dark:border-refuge-purple/30 p-8">
-          <h1 className="text-2xl font-semibold mb-2 text-refuge-purple dark:text-refuge-light-purple">
-            Welcome to Home Visits Application
-          </h1>
-          <p className="text-refuge-dark-blue/80 dark:text-gray-300">
+        <div className="bg-gradient-to-r from-refuge-purple/80 to-refuge-magenta/80 dark:from-refuge-purple/60 dark:to-refuge-magenta/60 p-8 text-white">
+          <h1 className="text-2xl font-semibold mb-2">Welcome to Home Visits Application</h1>
+          <p className="text-white/90 dark:text-white/80">
             Welcome back, {user?.firstName || "User"} - Foster care home visit scheduling and management
           </p>
         </div>
@@ -71,7 +69,7 @@ export default function DashboardPage() {
       {/* Main Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Foster Homes List */}
-        <Card className="border-0 shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="border-0 shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800">
           <CardHeader className="p-6">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-refuge-purple/10 dark:bg-refuge-purple/20 rounded-xl">
@@ -90,7 +88,7 @@ export default function DashboardPage() {
               Browse homes, contact information, case managers, and more
             </p>
             <Link href="/homes-list">
-              <Button className="bg-refuge-purple/80 hover:bg-refuge-purple dark:bg-refuge-purple/70 dark:hover:bg-refuge-purple/90 text-white rounded-lg px-6 py-2.5 font-medium transition-colors duration-200 shadow-sm">
+              <Button className="bg-refuge-purple/90 hover:bg-refuge-purple dark:bg-refuge-purple/80 dark:hover:bg-refuge-purple/90 text-white rounded-lg px-6 py-2.5 font-medium transition-colors duration-200">
                 View Access
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
@@ -99,7 +97,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Geographic Map */}
-        <Card className="border-0 shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <Card className="border-0 shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800">
           <CardHeader className="p-6">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-refuge-magenta/10 dark:bg-refuge-magenta/20 rounded-xl">
@@ -118,7 +116,7 @@ export default function DashboardPage() {
               Visual map with filtering, search, and detailed home information
             </p>
             <Link href="/homes-map">
-              <Button className="bg-refuge-magenta/80 hover:bg-refuge-magenta dark:bg-refuge-magenta/70 dark:hover:bg-refuge-magenta/90 text-white rounded-lg px-6 py-2.5 font-medium transition-colors duration-200 shadow-sm">
+              <Button className="bg-refuge-magenta/90 hover:bg-refuge-magenta dark:bg-refuge-magenta/80 dark:hover:bg-refuge-magenta/90 text-white rounded-lg px-6 py-2.5 font-medium transition-colors duration-200">
                 View Access
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
@@ -128,7 +126,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Account Status */}
-      <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
         <CardHeader className="p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
@@ -144,25 +142,25 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="p-6 pt-0">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center border border-gray-200 dark:border-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Email Domain</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {user?.primaryEmailAddress?.emailAddress?.split("@")[1] || "refugehouse.org"}
               </p>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center border border-gray-200 dark:border-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Account Status</p>
-              <Badge className="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border-0 rounded-lg px-3 py-1">
+              <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-0 rounded-lg px-3 py-1">
                 Active
               </Badge>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center border border-gray-200 dark:border-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Assigned Roles</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {dashboardData?.userRoles?.length || 1}
               </p>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center border border-gray-200 dark:border-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Permissions</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {dashboardData?.userPermissions?.length || 6}
@@ -173,7 +171,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* Default Access Level */}
-      <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
         <CardHeader className="p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
@@ -209,14 +207,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
+          <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl">
             <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Additional Role-Based Access:</h4>
             <div className="flex items-center gap-3">
               <input
                 type="radio"
                 id="admin-role"
                 name="additional-access"
-                className="text-refuge-purple focus:ring-refuge-purple dark:text-refuge-light-purple dark:focus:ring-refuge-light-purple"
+                className="text-refuge-purple focus:ring-refuge-purple dark:bg-gray-600 dark:border-gray-500"
                 disabled
                 checked={dashboardData?.userRoles?.includes("admin") || false}
               />
@@ -230,7 +228,7 @@ export default function DashboardPage() {
 
       {/* System Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center border border-gray-200 dark:border-gray-700">
+        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center">
           <CardContent className="p-6">
             <div className="flex flex-col items-center space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
@@ -244,7 +242,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center border border-gray-200 dark:border-gray-700">
+        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center">
           <CardContent className="p-6">
             <div className="flex flex-col items-center space-y-4">
               <div className="p-4 bg-refuge-purple/10 dark:bg-refuge-purple/20 rounded-xl">
@@ -258,7 +256,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center border border-gray-200 dark:border-gray-700">
+        <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800 text-center">
           <CardContent className="p-6">
             <div className="flex flex-col items-center space-y-4">
               <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-xl">
