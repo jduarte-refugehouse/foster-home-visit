@@ -33,6 +33,7 @@ import {
   FileText,
   Shield,
   Plus,
+  User,
   type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
@@ -229,6 +230,12 @@ export function AppSidebar() {
   const navigationGroups = navigationItems.filter((group) => group.title !== "Administration")
   const administrationGroup = navigationItems.find((group) => group.title === "Administration")
 
+  // Get Clerk's hosted profile URL
+  const getProfileUrl = () => {
+    // This will be the Clerk hosted account page
+    return `${window.location.origin}/user`
+  }
+
   return (
     <Sidebar className="border-r border-gray-200 flex flex-col">
       <SidebarHeader className="h-20 p-4 border-b bg-gradient-to-r from-refuge-light-purple/10 via-refuge-purple/5 to-refuge-magenta/10 flex items-center justify-center">
@@ -354,6 +361,17 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
+                <DropdownMenuItem asChild>
+                  <a
+                    href="https://accounts.clerk.dev/user"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer flex items-center"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile Settings
+                  </a>
+                </DropdownMenuItem>
                 {navigationMetadata && process.env.NODE_ENV === "development" && (
                   <>
                     <DropdownMenuItem disabled className="text-xs text-gray-500">
