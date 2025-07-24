@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -107,11 +107,6 @@ export default function HomesListPage() {
       </div>
 
       <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-refuge-purple/10 to-refuge-magenta/10 border-b border-slate-200 dark:border-slate-700 p-6">
-          <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-            Active Homes from SyncActiveHomes
-          </CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           {loading && (
             <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/50">
