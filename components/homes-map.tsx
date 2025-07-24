@@ -57,6 +57,26 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     [onHomeSelect],
   )
 
+  // Create custom marker icon with brand colors
+  const createMarkerIcon = useCallback((unit: string, isSelected = false) => {
+    const color = unit === "DAL" ? "#5E3989" : "#A90533" // Brand purple for Dallas, brand magenta for San Antonio
+    const size = isSelected ? 32 : 24
+
+    const svgMarker = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${size}" height="${size * 1.5}">
+        <path fill="${color}" stroke="white" strokeWidth="2" 
+              d="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13C19,5.13 15.87,2 12,2z"/>
+        <circle fill="white" cx="12" cy="9" r="3"/>
+      </svg>
+    `
+
+    return {
+      url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svgMarker),
+      scaledSize: new window.google.maps.Size(size, size * 1.5),
+      anchor: new window.google.maps.Point(size / 2, size * 1.5),
+    }
+  }, [])
+
   const initializeMap = useCallback(async () => {
     if (!window.google || !window.google.maps || !mapRef.current || homes.length === 0) {
       console.log("⏳ Google Maps not ready or no homes to display")
@@ -93,15 +113,13 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         window.google.maps.event.addListenerOnce(mapInstance, "idle", resolve)
       })
 
-      // Create markers using Google's default pins with brand colors
+      // Create markers using custom brand-colored pins
       const newMarkers = homes.map((home) => {
         const marker = new window.google.maps.Marker({
           map: mapInstance,
           position: { lat: home.latitude, lng: home.longitude },
           title: home.name,
-          icon: {
-            url: `https://maps.google.com/mapfiles/ms/icons/${home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
-          },
+          icon: createMarkerIcon(home.Unit, false),
         })
 
         // Add click listener
@@ -140,7 +158,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     } finally {
       setIsLoading(false)
     }
-  }, [homes, handleMarkerClick])
+  }, [homes, handleMarkerClick, createMarkerIcon])
 
   // Load Google Maps API
   useEffect(() => {
@@ -188,16 +206,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         const isSelected = selectedHome && markerData.home.id === selectedHome.id
 
         // Update marker icon based on selection
-        if (isSelected) {
-          markerData.marker.setIcon({
-            url: `https://maps.google.com/mapfiles/ms/icons/${markerData.home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
-            scaledSize: new window.google.maps.Size(40, 40), // Slightly larger when selected
-          })
-        } else {
-          markerData.marker.setIcon({
-            url: `https://maps.google.com/mapfiles/ms/icons/${markerData.home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
-          })
-        }
+        markerData.marker.setIcon(createMarkerIcon(markerData.home.Unit, isSelected))
       })
 
       // Center map on selected marker
@@ -205,7 +214,7 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         map.panTo({ lat: selectedHome.latitude, lng: selectedHome.longitude })
       }
     }
-  }, [selectedHome, markers, map])
+  }, [selectedHome, markers, map, createMarkerIcon])
 
   if (mapError) {
     return (
