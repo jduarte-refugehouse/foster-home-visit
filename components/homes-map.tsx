@@ -93,48 +93,18 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
         window.google.maps.event.addListenerOnce(mapInstance, "idle", resolve)
       })
 
-      // Import AdvancedMarkerElement
-      const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker")
-
-      // Create markers
+      // Create markers using Google's default pins with brand colors
       const newMarkers = homes.map((home) => {
-        // Create custom marker content
-        const markerContent = document.createElement("div")
-        markerContent.innerHTML = `
-          <div style="
-            width: 32px; 
-            height: 32px; 
-            background-color: ${home.Unit === "DAL" ? "#22c55e" : "#ef4444"}; 
-            border: 3px solid white; 
-            border-radius: 50%; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-          ">
-            🏠
-          </div>
-        `
-
-        // Add hover effect
-        markerContent.addEventListener("mouseenter", () => {
-          markerContent.style.transform = "scale(1.1)"
-        })
-        markerContent.addEventListener("mouseleave", () => {
-          markerContent.style.transform = "scale(1)"
-        })
-
-        const marker = new AdvancedMarkerElement({
+        const marker = new window.google.maps.Marker({
           map: mapInstance,
           position: { lat: home.latitude, lng: home.longitude },
-          content: markerContent,
           title: home.name,
+          icon: {
+            url: `https://maps.google.com/mapfiles/ms/icons/${home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
+          },
         })
 
-        // Only use the custom card component, no Google Maps InfoWindow
+        // Add click listener
         marker.addListener("click", () => {
           handleMarkerClick(home)
         })
@@ -216,18 +186,17 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
     if (markers.length > 0 && map) {
       markers.forEach((markerData) => {
         const isSelected = selectedHome && markerData.home.id === selectedHome.id
-        const markerElement = markerData.marker.content.querySelector("div")
 
-        if (markerElement) {
-          if (isSelected) {
-            markerElement.style.transform = "scale(1.2)"
-            markerElement.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)"
-            markerElement.style.zIndex = "1000"
-          } else {
-            markerElement.style.transform = "scale(1)"
-            markerElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)"
-            markerElement.style.zIndex = "auto"
-          }
+        // Update marker icon based on selection
+        if (isSelected) {
+          markerData.marker.setIcon({
+            url: `https://maps.google.com/mapfiles/ms/icons/${markerData.home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
+            scaledSize: new window.google.maps.Size(40, 40), // Slightly larger when selected
+          })
+        } else {
+          markerData.marker.setIcon({
+            url: `https://maps.google.com/mapfiles/ms/icons/${markerData.home.Unit === "DAL" ? "purple" : "red"}-dot.png`,
+          })
         }
       })
 
