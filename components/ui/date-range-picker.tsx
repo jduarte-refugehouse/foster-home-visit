@@ -17,21 +17,19 @@ interface DatePickerWithRangeProps {
 }
 
 export function DatePickerWithRange({ className, date, onDateChange }: DatePickerWithRangeProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(
+  const [internalDate, setInternalDate] = React.useState<DateRange | undefined>(
     date || {
-      from: new Date(),
-      to: addDays(new Date(), 20),
+      from: new Date(2022, 0, 20),
+      to: addDays(new Date(2022, 0, 20), 20),
     },
   )
 
-  React.useEffect(() => {
-    if (date) {
-      setDateRange(date)
-    }
-  }, [date])
+  const selectedDate = date || internalDate
 
   const handleDateChange = (newDate: DateRange | undefined) => {
-    setDateRange(newDate)
+    if (!date) {
+      setInternalDate(newDate)
+    }
     onDateChange?.(newDate)
   }
 
@@ -42,16 +40,16 @@ export function DatePickerWithRange({ className, date, onDateChange }: DatePicke
           <Button
             id="date"
             variant={"outline"}
-            className={cn("w-[300px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+            className={cn("w-[300px] justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {dateRange?.from ? (
-              dateRange.to ? (
+            {selectedDate?.from ? (
+              selectedDate.to ? (
                 <>
-                  {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                  {format(selectedDate.from, "LLL dd, y")} - {format(selectedDate.to, "LLL dd, y")}
                 </>
               ) : (
-                format(dateRange.from, "LLL dd, y")
+                format(selectedDate.from, "LLL dd, y")
               )
             ) : (
               <span>Pick a date</span>
@@ -62,8 +60,8 @@ export function DatePickerWithRange({ className, date, onDateChange }: DatePicke
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={dateRange?.from}
-            selected={dateRange}
+            defaultMonth={selectedDate?.from}
+            selected={selectedDate}
             onSelect={handleDateChange}
             numberOfMonths={2}
           />
