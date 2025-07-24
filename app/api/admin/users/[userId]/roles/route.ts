@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { updateUserRoles, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@/lib/user-management"
 import { auth } from "@clerk/nextjs/server"
-import { hasPermission } from "@/lib/user-management"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
   const { userId: clerkId } = auth()
@@ -9,8 +9,13 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const internalUserId = "user-1" // Admin performing the action
-  const canManageUsers = await hasPermission(internalUserId, "user_manage")
+  // Get the actual user performing the action
+  const adminUser = await getUserByClerkId(clerkId)
+  if (!adminUser) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 })
+  }
+
+  const canManageUsers = await hasPermission(adminUser.id, "user_manage", CURRENT_MICROSERVICE)
   if (!canManageUsers) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
@@ -23,11 +28,28 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
     }
 
-    await updateUserRoles(targetUserId, roles, CURRENT_MICROSERVICE, internalUserId)
+    // Validate that all roles exist in the microservice configuration
+    const validRoles = Object.values(MICROSERVICE_CONFIG.roles)
+    const invalidRoles = roles.filter((role) => !validRoles.includes(role))
 
-    return NextResponse.json({ message: "User roles updated successfully" })
+    if (invalidRoles.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Invalid roles",
+          details: `Invalid roles for ${MICROSERVICE_CONFIG.name}: ${invalidRoles.join(", ")}`,
+        },
+        { status: 400 },
+      )
+    }
+
+    await updateUserRoles(targetUserId, roles, CURRENT_MICROSERVICE, adminUser.id)
+
+    return NextResponse.json({
+      message: "User roles updated successfully",
+      microservice: MICROSERVICE_CONFIG.name,
+    })
   } catch (error) {
-    console.error("Error updating user roles:", error)
+    console.error(`Error updating user roles for ${MICROSERVICE_CONFIG.name}:`, error)
     return NextResponse.json({ error: "Failed to update user roles" }, { status: 500 })
   }
 }
