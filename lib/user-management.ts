@@ -1,6 +1,5 @@
 import { query, getDbConnection } from "./db"
 import { currentUser } from "@clerk/nextjs/server"
-import crypto from "crypto"
 import { MICROSERVICE_CONFIG, isInternalUser } from "./microservice-config"
 
 // Use the configurable microservice
@@ -583,7 +582,7 @@ export async function updateUserRoles(
   }
 }
 
-// Legacy functions for backward compatibility - these bridge to the new app_users table
+// Current functions for Clerk webhook integration
 export async function createUser(userData: {
   clerk_user_id: string
   email: string
@@ -592,16 +591,19 @@ export async function createUser(userData: {
   role?: string
 }): Promise<string> {
   try {
+    // Use the same logic as createOrUpdateAppUser for consistency
     const coreRole = determineCoreRole(userData.email)
-    const userId = crypto.randomUUID()
 
-    await query(
-      `INSERT INTO app_users (id, clerk_user_id, email, first_name, last_name, core_role, is_active, created_at, updated_at)
-       VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
-      [userId, userData.clerk_user_id, userData.email, userData.first_name || "", userData.last_name || "", coreRole],
+    const newUserResult = await query<{ id: string }>(
+      `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, core_role, is_active, created_at, updated_at)
+       OUTPUT INSERTED.id
+       VALUES (@param0, @param1, @param2, @param3, @param4, 1, GETDATE(), GETDATE())`,
+      [userData.clerk_user_id, userData.email, userData.first_name || "", userData.last_name || "", coreRole],
     )
 
-    // Assign default microservice roles
+    const userId = newUserResult[0].id
+
+    // Assign default microservice roles based on email and core role
     await assignDefaultMicroserviceRoles(userId, userData.email, coreRole)
 
     return userId
@@ -611,7 +613,7 @@ export async function createUser(userData: {
   }
 }
 
-export async function getUserByClerkId(clerkUserId: string): Promise<any | null> {
+export async function getUserByClerkId(clerkUserId: string): Promise<AppUser | null> {
   try {
     const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [clerkUserId])
     return result[0] || null
@@ -623,15 +625,18 @@ export async function getUserByClerkId(clerkUserId: string): Promise<any | null>
 
 export async function updateUserLastLogin(clerkUserId: string): Promise<void> {
   try {
+    // Update the updated_at timestamp to track last activity
     await query("UPDATE app_users SET updated_at = GETDATE() WHERE clerk_user_id = @param0", [clerkUserId])
   } catch (error) {
     console.error("Error updating user last login:", error)
+    // Don't throw - this is not critical functionality
   }
 }
 
-export async function getAllUsers(): Promise<any[]> {
+// Additional current functions for admin management
+export async function getAllUsers(): Promise<AppUser[]> {
   try {
-    const result = await query("SELECT * FROM app_users ORDER BY created_at DESC")
+    const result = await query<AppUser>("SELECT * FROM app_users ORDER BY created_at DESC")
     return result
   } catch (error) {
     console.error("Error getting all users:", error)
@@ -639,18 +644,24 @@ export async function getAllUsers(): Promise<any[]> {
   }
 }
 
-export async function updateUserRole(userId: string, role: string): Promise<void> {
+export async function updateUserRole(userId: string, coreRole: string): Promise<void> {
   try {
-    await query("UPDATE app_users SET core_role = @param1, updated_at = GETDATE() WHERE id = @param0", [userId, role])
+    await query("UPDATE app_users SET core_role = @param1, updated_at = GETDATE() WHERE id = @param0", [
+      userId,
+      coreRole,
+    ])
   } catch (error) {
-    console.error("Error updating user role:", error)
+    console.error("Error updating user core role:", error)
     throw error
   }
 }
 
 export async function deactivateUser(userId: string): Promise<void> {
   try {
+    // Deactivate user and all their roles
     await query("UPDATE app_users SET is_active = 0, updated_at = GETDATE() WHERE id = @param0", [userId])
+    await query("UPDATE user_roles SET is_active = 0 WHERE user_id = @param0", [userId])
+    await query("UPDATE user_permissions SET is_active = 0 WHERE user_id = @param0", [userId])
   } catch (error) {
     console.error("Error deactivating user:", error)
     throw error
