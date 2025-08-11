@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
 
 export async function POST(request: NextRequest) {
+  let logId: string | null = null
+
   try {
     const { to, body } = await request.json()
 
@@ -33,6 +36,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    try {
+      const microserviceId = await getMicroserviceId()
+      logId = await logCommunication({
+        microservice_id: microserviceId,
+        communication_type: "test",
+        delivery_method: "sms",
+        recipient_phone: to,
+        message_text: `[DEV TEST] ${body}`,
+        sender_name: "Development Test",
+        status: "pending",
+      })
+    } catch (logError) {
+      console.error("Failed to log communication:", logError)
+      // Continue with SMS sending even if logging fails
+    }
+
     // Initialize Twilio client exactly as Twilio shows
     const client = require("twilio")(accountSid, authToken)
 
@@ -42,6 +61,14 @@ export async function POST(request: NextRequest) {
       messagingServiceSid: messagingServiceSid,
       to: to,
     })
+
+    if (logId) {
+      try {
+        await updateCommunicationStatus(logId, "sent", undefined, message.sid, "twilio")
+      } catch (updateError) {
+        console.error("Failed to update log status:", updateError)
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -85,7 +112,23 @@ export async function POST(request: NextRequest) {
           break
       }
 
+      if (logId) {
+        try {
+          await updateCommunicationStatus(logId, "failed", errorMessage)
+        } catch (updateError) {
+          console.error("Failed to update log status:", updateError)
+        }
+      }
+
       return NextResponse.json({ error: errorMessage, code: error.code }, { status: 400 })
+    }
+
+    if (logId) {
+      try {
+        await updateCommunicationStatus(logId, "failed", error.message)
+      } catch (updateError) {
+        console.error("Failed to update log status:", updateError)
+      }
     }
 
     return NextResponse.json({ error: "Failed to send SMS: " + error.message }, { status: 500 })

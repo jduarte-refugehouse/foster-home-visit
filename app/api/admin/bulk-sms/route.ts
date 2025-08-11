@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
 
 interface SMSResult {
   to: string
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const microserviceId = await getMicroserviceId()
+
     // Initialize Twilio client
     const client = require("twilio")(accountSid, authToken)
 
@@ -52,6 +55,22 @@ export async function POST(request: NextRequest) {
     const cleanedNumbers = phoneNumbers.map((num: string) => num.trim()).filter((num: string) => num.length > 0)
 
     for (const phoneNumber of cleanedNumbers) {
+      let logId: string | null = null
+      try {
+        logId = await logCommunication({
+          microservice_id: microserviceId,
+          communication_type: "bulk_sms",
+          delivery_method: "sms",
+          recipient_phone: phoneNumber,
+          message_text: `[ADMIN] ${message}`,
+          sender_name: "Admin Bulk SMS",
+          status: "pending",
+        })
+      } catch (logError) {
+        console.error(`Failed to log communication for ${phoneNumber}:`, logError)
+        // Continue with SMS sending even if logging fails
+      }
+
       try {
         // Create message for each phone number
         const twilioMessage = await client.messages.create({
@@ -59,6 +78,14 @@ export async function POST(request: NextRequest) {
           messagingServiceSid: messagingServiceSid,
           to: phoneNumber,
         })
+
+        if (logId) {
+          try {
+            await updateCommunicationStatus(logId, "sent", undefined, twilioMessage.sid, "twilio")
+          } catch (updateError) {
+            console.error(`Failed to update log status for ${phoneNumber}:`, updateError)
+          }
+        }
 
         results.push({
           to: phoneNumber,
@@ -88,6 +115,14 @@ export async function POST(request: NextRequest) {
               break
             default:
               errorMessage = error.message || "SMS delivery failed"
+          }
+        }
+
+        if (logId) {
+          try {
+            await updateCommunicationStatus(logId, "failed", errorMessage)
+          } catch (updateError) {
+            console.error(`Failed to update log status for ${phoneNumber}:`, updateError)
           }
         }
 
