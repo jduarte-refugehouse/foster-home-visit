@@ -1,26 +1,9 @@
-CREATE TABLE communication_logs (
-    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    microservice_id UNIQUEIDENTIFIER NOT NULL,
-    communication_type NVARCHAR(50) NOT NULL,
-    delivery_method NVARCHAR(20) NOT NULL,
-    recipient_email NVARCHAR(255),
-    recipient_phone NVARCHAR(20),
-    recipient_name NVARCHAR(255),
-    sender_name NVARCHAR(255),
-    sender_email NVARCHAR(255),
-    subject NVARCHAR(500),
-    message_content NTEXT,
-    template_id UNIQUEIDENTIFIER,
-    status NVARCHAR(50) NOT NULL DEFAULT 'pending',
-    provider_message_id NVARCHAR(255),
-    error_message NTEXT,
-    sent_at DATETIME2,
-    delivered_at DATETIME2,
-    created_at DATETIME2 DEFAULT GETDATE(),
-    updated_at DATETIME2 DEFAULT GETDATE()
-);
-
 -- Add missing columns if they don't exist
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'user_id')
+BEGIN
+    ALTER TABLE communication_logs ADD user_id UNIQUEIDENTIFIER;
+END
+
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'sender_name')
 BEGIN
     ALTER TABLE communication_logs ADD sender_name NVARCHAR(255);
@@ -31,24 +14,61 @@ BEGIN
     ALTER TABLE communication_logs ADD sender_email NVARCHAR(255);
 END
 
+-- Adding sender_phone column that was missing
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'sender_phone')
+BEGIN
+    ALTER TABLE communication_logs ADD sender_phone NVARCHAR(20);
+END
+
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'subject')
 BEGIN
     ALTER TABLE communication_logs ADD subject NVARCHAR(500);
 END
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'template_id')
+-- Adding message_text column (service expects this name, not message_content)
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'message_text')
 BEGIN
-    ALTER TABLE communication_logs ADD template_id UNIQUEIDENTIFIER;
+    ALTER TABLE communication_logs ADD message_text NTEXT;
 END
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'provider_message_id')
+-- Adding message_html column for email HTML content
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'message_html')
 BEGIN
-    ALTER TABLE communication_logs ADD provider_message_id NVARCHAR(255);
+    ALTER TABLE communication_logs ADD message_html NTEXT;
+END
+
+-- Adding template_used column (service expects string template name, not ID)
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'template_used')
+BEGIN
+    ALTER TABLE communication_logs ADD template_used NVARCHAR(255);
+END
+
+-- Adding template_variables column for JSON template data
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'template_variables')
+BEGIN
+    ALTER TABLE communication_logs ADD template_variables NTEXT;
+END
+
+-- Adding provider-specific message ID columns
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'sendgrid_message_id')
+BEGIN
+    ALTER TABLE communication_logs ADD sendgrid_message_id NVARCHAR(255);
+END
+
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'twilio_message_sid')
+BEGIN
+    ALTER TABLE communication_logs ADD twilio_message_sid NVARCHAR(255);
 END
 
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'error_message')
 BEGIN
     ALTER TABLE communication_logs ADD error_message NTEXT;
+END
+
+-- Adding scheduled_for column for future message scheduling
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'scheduled_for')
+BEGIN
+    ALTER TABLE communication_logs ADD scheduled_for DATETIME2;
 END
 
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'communication_logs' AND COLUMN_NAME = 'delivered_at')
