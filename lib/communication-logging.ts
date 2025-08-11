@@ -5,8 +5,13 @@ import { query } from "./db"
 
 export interface CommunicationLogEntry {
   id?: string
-  microservice_id: string
-  user_id?: string
+  source_application: string
+  source_feature?: string
+  source_reference_id?: string
+  sent_by_user_id?: string
+  sent_by_user_name?: string
+  sent_by_user_email?: string
+  sent_by_role?: string
   communication_type: "appointment_reminder" | "invitation" | "notification" | "direct" | "bulk_sms" | "test"
   delivery_method: "email" | "sms" | "both"
 
@@ -16,9 +21,9 @@ export interface CommunicationLogEntry {
   recipient_name?: string
 
   // Sender info
-  sender_email?: string
-  sender_phone?: string
-  sender_name?: string
+  email_sent_from?: string
+  email_sent_from_name?: string
+  sms_sent_from?: string
 
   // Content
   subject?: string // For email
@@ -43,6 +48,14 @@ export interface CommunicationLogEntry {
   delivered_at?: Date
   created_at?: Date
   updated_at?: Date
+
+  // Legacy fields that exist in DB
+  sender_name?: string
+  sender_email?: string
+  template_id?: string
+  provider_message_id?: string
+  user_id?: string
+  sender_phone?: string
 }
 
 export interface CommunicationLogFilters {
@@ -67,9 +80,11 @@ export async function logCommunication(
 
   const queryText = `
     INSERT INTO communication_logs (
-      microservice_id, user_id, communication_type, delivery_method,
+      source_application, source_feature, source_reference_id,
+      sent_by_user_id, sent_by_user_name, sent_by_user_email, sent_by_role,
+      communication_type, delivery_method,
       recipient_email, recipient_phone, recipient_name,
-      sender_email, sender_phone, sender_name,
+      email_sent_from, email_sent_from_name, sms_sent_from,
       subject, message_text, message_html,
       template_used, template_variables,
       sendgrid_message_id, twilio_message_sid,
@@ -78,28 +93,35 @@ export async function logCommunication(
     )
     OUTPUT INSERTED.id
     VALUES (
-      @param0, @param1, @param2, @param3,
-      @param4, @param5, @param6,
-      @param7, @param8, @param9,
-      @param10, @param11, @param12,
-      @param13, @param14,
-      @param15, @param16,
-      @param17, @param18,
-      @param19, @param20, @param21
+      @param0, @param1, @param2,
+      @param3, @param4, @param5, @param6,
+      @param7, @param8,
+      @param9, @param10, @param11,
+      @param12, @param13, @param14,
+      @param15, @param16, @param17,
+      @param18, @param19,
+      @param20, @param21,
+      @param22, @param23,
+      @param24, @param25, @param26
     )
   `
 
   const params = [
-    entry.microservice_id,
-    entry.user_id || null,
+    entry.source_application || "home-visit-app",
+    entry.source_feature || null,
+    entry.source_reference_id || null,
+    entry.sent_by_user_id || null,
+    entry.sent_by_user_name || null,
+    entry.sent_by_user_email || null,
+    entry.sent_by_role || null,
     entry.communication_type,
     entry.delivery_method,
     entry.recipient_email || null,
     entry.recipient_phone || null,
     entry.recipient_name || null,
-    entry.sender_email || null,
-    entry.sender_phone || null,
-    entry.sender_name || null,
+    entry.email_sent_from || null,
+    entry.email_sent_from_name || null,
+    entry.sms_sent_from || null,
     entry.subject || null,
     entry.message_text,
     entry.message_html || null,
@@ -237,14 +259,17 @@ export async function getCommunicationHistory(filters: CommunicationLogFilters =
 
   const queryText = `
     SELECT 
-      id, microservice_id, user_id, communication_type, delivery_method,
+      id, source_application, source_feature, source_reference_id,
+      sent_by_user_id, sent_by_user_name, sent_by_user_email, sent_by_role,
+      communication_type, delivery_method,
       recipient_email, recipient_phone, recipient_name,
-      sender_email, sender_phone, sender_name,
+      email_sent_from, email_sent_from_name, sms_sent_from,
       subject, message_text, message_html,
       template_used, template_variables,
       sendgrid_message_id, twilio_message_sid,
       status, error_message,
-      scheduled_for, sent_at, delivered_at, created_at, updated_at
+      scheduled_for, sent_at, delivered_at, created_at, updated_at,
+      sender_name, sender_email, template_id, provider_message_id, user_id, sender_phone
     FROM communication_logs 
     ${whereClause}
     ORDER BY created_at DESC
@@ -261,16 +286,21 @@ export async function getCommunicationHistory(filters: CommunicationLogFilters =
     return results.map(
       (row): CommunicationLogEntry => ({
         id: row.id,
-        microservice_id: row.microservice_id,
-        user_id: row.user_id,
+        source_application: row.source_application,
+        source_feature: row.source_feature,
+        source_reference_id: row.source_reference_id,
+        sent_by_user_id: row.sent_by_user_id,
+        sent_by_user_name: row.sent_by_user_name,
+        sent_by_user_email: row.sent_by_user_email,
+        sent_by_role: row.sent_by_role,
         communication_type: row.communication_type,
         delivery_method: row.delivery_method,
         recipient_email: row.recipient_email,
         recipient_phone: row.recipient_phone,
         recipient_name: row.recipient_name,
-        sender_email: row.sender_email,
-        sender_phone: row.sender_phone,
-        sender_name: row.sender_name,
+        email_sent_from: row.email_sent_from,
+        email_sent_from_name: row.email_sent_from_name,
+        sms_sent_from: row.sms_sent_from,
         subject: row.subject,
         message_text: row.message_text,
         message_html: row.message_html,
@@ -285,6 +315,13 @@ export async function getCommunicationHistory(filters: CommunicationLogFilters =
         delivered_at: row.delivered_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        // Legacy fields
+        sender_name: row.sender_name,
+        sender_email: row.sender_email,
+        template_id: row.template_id,
+        provider_message_id: row.provider_message_id,
+        user_id: row.user_id,
+        sender_phone: row.sender_phone,
       }),
     )
   } catch (error) {
