@@ -3,7 +3,14 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -161,7 +168,7 @@ export function CreateAppointmentDialog({
         assignedToRole: formData.assignedToRole,
         priority: formData.priority,
         preparationNotes: formData.preparationNotes,
-        createdByName: "Current User", // This should come from auth context
+        createdByName: "System User",
       }
 
       const response = await fetch("/api/appointments", {
@@ -248,6 +255,7 @@ export function CreateAppointmentDialog({
             <Plus className="h-5 w-5" />
             Create New Appointment
           </DialogTitle>
+          <DialogDescription>Schedule a new appointment with foster homes and assign staff members.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
