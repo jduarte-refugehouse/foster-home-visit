@@ -10,6 +10,18 @@ export async function GET(request: NextRequest) {
   return withPermissionCheck(
     async (user) => {
       try {
+        console.log("🔍 [API] User attempting to fetch appointments:", {
+          userId: user.id,
+          clerkId: user.clerk_id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          permissions: user.permissions || [],
+          permissionCount: user.permissions?.length || 0,
+          hasViewAppointments: user.permissions?.includes("view_appointments"),
+          hasSystemAdmin: user.permissions?.includes("system_admin"),
+        })
+
         const { searchParams } = new URL(request.url)
         const startDate = searchParams.get("startDate")
         const endDate = searchParams.get("endDate")
