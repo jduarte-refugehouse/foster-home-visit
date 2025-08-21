@@ -150,10 +150,24 @@ const BasicHomeVisitForm = ({
         return field || {}
       }
 
-      setFormData({
-        visitInfo: parseField(existingForm.visit_info) || formData.visitInfo,
-        family: parseField(existingForm.family_info) || formData.family,
-        attendees: parseField(existingForm.attendees) || formData.attendees,
+      const parsedVisitInfo = parseField(existingForm.visit_info)
+      const parsedFamilyInfo = parseField(existingForm.family_info)
+      const parsedAttendees = parseField(existingForm.attendees)
+
+      console.log("[v0] Parsed visit info:", parsedVisitInfo)
+      console.log("[v0] Parsed family info:", parsedFamilyInfo)
+      console.log("[v0] Current form data before update:", formData)
+
+      const newFormData = {
+        visitInfo: {
+          ...formData.visitInfo,
+          ...parsedVisitInfo,
+        },
+        family: {
+          ...formData.family,
+          ...parsedFamilyInfo,
+        },
+        attendees: parsedAttendees || formData.attendees,
         homeEnvironment: parseField(existingForm.home_environment) || formData.homeEnvironment,
         childInterviews: parseField(existingForm.child_interviews) || formData.childInterviews,
         parentInterviews: parseField(existingForm.parent_interviews) || formData.parentInterviews,
@@ -162,15 +176,21 @@ const BasicHomeVisitForm = ({
         recommendations: existingForm.recommendations || formData.recommendations,
         nextSteps: parseField(existingForm.next_steps) || formData.nextSteps,
         signatures: parseField(existingForm.signatures) || formData.signatures,
-      })
+      }
+
+      console.log("[v0] New form data to set:", newFormData)
+      setFormData(newFormData)
 
       setVisitFormId(existingForm.visit_form_id)
       setLastSaved(new Date(existingForm.updated_at))
 
-      toast({
-        title: "Form Loaded",
-        description: `Loaded ${existingForm.status} form from ${new Date(existingForm.updated_at).toLocaleString()}`,
-      })
+      setTimeout(() => {
+        console.log("[v0] Form data after state update:", formData)
+        toast({
+          title: "Form Loaded",
+          description: `Loaded ${existingForm.status} form from ${new Date(existingForm.updated_at).toLocaleString()}`,
+        })
+      }, 100)
     } catch (error) {
       console.error("[v0] Error loading form data from props:", error)
       toast({
