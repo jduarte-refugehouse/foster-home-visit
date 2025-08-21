@@ -168,6 +168,8 @@ const BasicHomeVisitForm = ({
 
       console.log("[v0] Parsed family info:", parsedFamilyInfo)
       console.log("[v0] Parsed visit info:", parsedVisitInfo)
+      console.log("[v0] Parsed attendees:", parsedAttendees)
+      console.log("[v0] Parsed recommendations:", parsedRecommendations)
 
       // Map database fields to form fields with proper property names
       const mappedFamilyInfo = parsedFamilyInfo
@@ -180,6 +182,15 @@ const BasicHomeVisitForm = ({
         : {}
 
       console.log("[v0] Mapped family info:", mappedFamilyInfo)
+
+      const attendeesList = parsedAttendees?.list || parsedAttendees || []
+      const recommendationsText =
+        typeof parsedRecommendations === "string"
+          ? parsedRecommendations
+          : parsedRecommendations?.text || parsedRecommendations?.recommendations || ""
+
+      console.log("[v0] Extracted attendees list:", attendeesList)
+      console.log("[v0] Extracted recommendations text:", recommendationsText)
 
       setFormData((prevData) => {
         const newFormData = {
@@ -196,12 +207,12 @@ const BasicHomeVisitForm = ({
             ...prevData.family,
             ...mappedFamilyInfo,
           },
-          attendees: Array.isArray(parsedAttendees) ? parsedAttendees : prevData.attendees || [], // Ensure attendees is always an array when loading existing data
+          attendees: Array.isArray(attendeesList) ? attendeesList : prevData.attendees || [],
           observations: {
             ...prevData.observations,
             ...(parsedObservations || {}),
           },
-          recommendations: parsedRecommendations || prevData.recommendations,
+          recommendations: recommendationsText || prevData.recommendations,
           signatures: {
             ...prevData.signatures,
             ...(parsedSignatures || {}),
@@ -210,6 +221,8 @@ const BasicHomeVisitForm = ({
 
         console.log("[v0] Final form data after loading:", newFormData)
         console.log("[v0] Family name in final data:", newFormData.family.familyName)
+        console.log("[v0] Final attendees:", newFormData.attendees)
+        console.log("[v0] Final recommendations:", newFormData.recommendations)
 
         return newFormData
       })
@@ -575,13 +588,24 @@ const BasicHomeVisitForm = ({
 
   // Input change handler
   const handleInputChange = (section: string, field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section as keyof typeof prev],
-        [field]: value,
-      },
-    }))
+    setFormData((prev) => {
+      // If field is empty, update the section directly (for top-level fields like recommendations)
+      if (!field) {
+        return {
+          ...prev,
+          [section]: value,
+        }
+      }
+
+      // Otherwise, update nested field structure
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section as keyof typeof prev],
+          [field]: value,
+        },
+      }
+    })
   }
 
   const renderSection = () => {
