@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@/lib/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   console.log("🔍 Navigation API called")
 
