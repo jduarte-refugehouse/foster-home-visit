@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log("🔍 [API] Fetching visit forms")
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const appointmentId = searchParams.get("appointmentId")
     const status = searchParams.get("status")
     const userId = searchParams.get("userId")
