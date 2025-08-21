@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
 
     // Check if appointment exists
     const appointmentExists = await query(
-      "SELECT COUNT(*) as count FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
+      "SELECT COUNT(*) as count FROM dbo.appointments WHERE appointment_id = @param0 AND is_deleted = 0",
       [appointmentId],
     )
 
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     // Check if visit form already exists for this appointment
     const existingForm = await query(
-      "SELECT visit_form_id FROM visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
+      "SELECT visit_form_id FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
       [appointmentId],
     )
 
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
       await query(
         `
-        UPDATE visit_forms SET
+        UPDATE dbo.visit_forms SET
           status = @param1,
           visit_date = @param2,
           visit_time = @param3,
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       // Create new form
       const result = await query(
         `
-        INSERT INTO visit_forms (
+        INSERT INTO dbo.visit_forms (
           appointment_id,
           form_type,
           form_version,

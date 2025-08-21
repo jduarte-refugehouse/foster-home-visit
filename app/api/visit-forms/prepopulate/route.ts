@@ -1,15 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "userId parameter required" }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
     const appointmentId = searchParams.get("appointmentId")
     let homeXref = searchParams.get("homeXref")
 
@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
           a.assigned_to_role,
           a.preparation_notes,
           a.appointment_type
-        FROM appointments a
-        WHERE a.appointment_id = @appointmentId AND a.is_deleted = 0
+        FROM dbo.appointments a
+        WHERE a.appointment_id = @param0 AND a.is_deleted = 0
       `
 
       const appointments = await query(appointmentQuery, [appointmentId])
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
           Longitude as longitude,
           LastSync as lastSync
         FROM SyncActiveHomes 
-        WHERE Xref = @homeXref
+        WHERE Xref = @param0
       `
 
       const homes = await query(homeQuery, [homeXref])
@@ -101,9 +101,9 @@ export async function GET(request: NextRequest) {
           vf.attendees,
           vf.visit_info,
           vf.status
-        FROM visit_forms vf
-        INNER JOIN appointments a ON vf.appointment_id = a.appointment_id
-        WHERE a.home_xref = @homeXref 
+        FROM dbo.visit_forms vf
+        INNER JOIN dbo.appointments a ON vf.appointment_id = a.appointment_id
+        WHERE a.home_xref = @param0 
           AND vf.is_deleted = 0 
           AND vf.status = 'completed'
         ORDER BY vf.visit_date DESC
@@ -121,17 +121,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get lookup data for dropdowns
-    const lookupQueries = await Promise.all([
-      query("SELECT id, type_name as name FROM visit_types WHERE is_active = 1 ORDER BY type_name"),
-      query("SELECT id, mode_name as name FROM visit_modes WHERE is_active = 1 ORDER BY mode_name"),
-      query("SELECT id, role_name as name FROM attendee_roles WHERE is_active = 1 ORDER BY role_name"),
-    ])
-
     prepopulatedData.lookupData = {
-      visitTypes: lookupQueries[0],
-      visitModes: lookupQueries[1],
-      attendeeRoles: lookupQueries[2],
+      visitTypes: [
+        { id: 1, name: "Initial Visit" },
+        { id: 2, name: "Quarterly Visit" },
+        { id: 3, name: "Follow-up Visit" },
+        { id: 4, name: "Unannounced Visit" },
+        { id: 5, name: "Emergency Visit" },
+      ],
+      visitModes: [
+        { id: 1, name: "In-Person" },
+        { id: 2, name: "Virtual" },
+        { id: 3, name: "Hybrid" },
+      ],
+      attendeeRoles: [
+        { id: 1, name: "Foster Parent" },
+        { id: 2, name: "Case Manager" },
+        { id: 3, name: "Liaison" },
+        { id: 4, name: "Child" },
+        { id: 5, name: "Other Family Member" },
+        { id: 6, name: "Supervisor" },
+      ],
     }
 
     return NextResponse.json(prepopulatedData)
