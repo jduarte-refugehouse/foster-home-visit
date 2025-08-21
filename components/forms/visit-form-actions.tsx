@@ -28,9 +28,19 @@ export default function VisitFormActions({ formData, visitFormId, appointmentId,
   const { toast } = useToast()
 
   const handlePrint = () => {
-    // Show the print component and trigger print
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
+    try {
+      const printWindow = window.open("", "_blank", "width=800,height=600")
+
+      if (!printWindow) {
+        // Popup was blocked, show error message
+        toast({
+          title: "Print Blocked",
+          description: "Please allow popups for this site and try again, or use your browser's print function (Ctrl+P)",
+          variant: "destructive",
+        })
+        return
+      }
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -56,12 +66,30 @@ export default function VisitFormActions({ formData, visitFormId, appointmentId,
             <div class="print-content">
               ${generatePrintHTML(formData, appointmentId, homeData)}
             </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() {
+                  window.close();
+                }, 1000);
+              }
+            </script>
           </body>
         </html>
       `)
       printWindow.document.close()
-      printWindow.print()
-      printWindow.close()
+
+      toast({
+        title: "Print Ready",
+        description: "Print dialog should open shortly",
+      })
+    } catch (error) {
+      console.error("Print error:", error)
+      toast({
+        title: "Print Error",
+        description: "Unable to open print dialog. Please try using your browser's print function (Ctrl+P)",
+        variant: "destructive",
+      })
     }
   }
 
