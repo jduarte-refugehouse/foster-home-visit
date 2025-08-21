@@ -113,11 +113,16 @@ const BasicHomeVisitForm = ({
   }, [formData.visitInfo.visitNumber])
 
   useEffect(() => {
+    console.log("[v0] Form useEffect triggered - appointmentId:", appointmentId, "existingFormData:", existingFormData)
+
     if (existingFormData) {
       console.log("[v0] Loading form data from props:", existingFormData)
       loadFormDataFromProps(existingFormData)
     } else if (appointmentId) {
+      console.log("[v0] No existing form data, loading from API for appointment:", appointmentId)
       loadExistingForm()
+    } else {
+      console.log("[v0] No appointment ID or existing form data")
     }
   }, [appointmentId, existingFormData])
 

@@ -34,9 +34,18 @@ export default function VisitFormPage() {
 
         if (formData.visitForms && formData.visitForms.length > 0) {
           const existingForm = formData.visitForms[0]
+          console.log("[v0] Found existing form:", existingForm)
+          console.log("[v0] Form ID:", existingForm.id)
+          console.log("[v0] Form status:", existingForm.status)
+          console.log("[v0] Family info:", existingForm.family_info)
+          console.log("[v0] Visit info:", existingForm.visit_info)
           setExistingFormData(existingForm)
-          console.log("[v0] Loading existing form data")
+          console.log("[v0] Set existingFormData state")
+        } else {
+          console.log("[v0] No existing forms found")
         }
+      } else {
+        console.log("[v0] Form response not ok:", formResponse.status)
       }
 
       await fetchAppointmentData()
