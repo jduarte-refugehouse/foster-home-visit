@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
-import { auth } from "@clerk/nextjs/server"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,11 +7,6 @@ export const runtime = "nodejs"
 // GET - Fetch single appointment
 export async function GET(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    const { userId } = auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { appointmentId } = params
 
     console.log(`📅 [API] Fetching appointment: ${appointmentId}`)
@@ -70,11 +64,6 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
 // PUT - Update appointment
 export async function PUT(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    const { userId } = auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { appointmentId } = params
     const body = await request.json()
 
@@ -208,7 +197,7 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
 
     // Always update the updated_by and updated_at fields
     updateFields.push(`updated_by_user_id = @param${paramIndex}`)
-    queryParams.push(userId)
+    queryParams.push("system") // Use system user instead of Clerk userId
     paramIndex++
 
     updateFields.push(`updated_at = @param${paramIndex}`)
@@ -254,11 +243,6 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
 // DELETE - Soft delete appointment
 export async function DELETE(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    const { userId } = auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { appointmentId } = params
 
     console.log(`📅 [API] Deleting appointment: ${appointmentId}`)
@@ -274,7 +258,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
         updated_by_user_id = @param0
       WHERE appointment_id = @param1 AND is_deleted = 0
     `,
-      [userId, appointmentId],
+      ["system", appointmentId], // Use system user instead of Clerk userId
     )
 
     console.log(`✅ [API] Deleted appointment: ${appointmentId}`)
