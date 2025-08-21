@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
         vf.updated_by_name,
         -- Include appointment details
         a.title as appointment_title,
-        a.home_name,
         a.location_address
       FROM visit_forms vf
       LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
