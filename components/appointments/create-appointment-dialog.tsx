@@ -249,7 +249,7 @@ export function CreateAppointmentDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -312,8 +312,8 @@ export function CreateAppointmentDialog({
               <Clock className="h-4 w-4" />
               Date & Time
             </h3>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2 space-y-2">
                 <Label>Date *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -324,11 +324,11 @@ export function CreateAppointmentDialog({
                         !formData.date && "text-muted-foreground",
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
+                      <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{formData.date ? format(formData.date, "PPP") : "Pick a date"}</span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
                     <Calendar
                       mode="single"
                       selected={formData.date}
@@ -350,7 +350,7 @@ export function CreateAppointmentDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (min)</Label>
+                <Label htmlFor="duration">Duration</Label>
                 <Select
                   value={formData.duration}
                   onValueChange={(value) => setFormData((prev) => ({ ...prev, duration: value }))}
@@ -359,7 +359,7 @@ export function CreateAppointmentDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
                     <SelectItem value="60">1 hour</SelectItem>
                     <SelectItem value="90">1.5 hours</SelectItem>
                     <SelectItem value="120">2 hours</SelectItem>
@@ -367,6 +367,8 @@ export function CreateAppointmentDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time</Label>
                 <Input id="endTime" type="time" value={formData.endTime} readOnly className="bg-muted" />
@@ -380,7 +382,7 @@ export function CreateAppointmentDialog({
               <MapPin className="h-4 w-4" />
               Location
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="home">Foster Home</Label>
                 <Select value={formData.homeXref} onValueChange={handleHomeChange} disabled={loadingData}>
@@ -424,7 +426,7 @@ export function CreateAppointmentDialog({
               <User className="h-4 w-4" />
               Staff Assignment
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assigned To *</Label>
                 <Select value={formData.assignedToUserId} onValueChange={handleStaffChange} disabled={loadingData}>
@@ -434,7 +436,7 @@ export function CreateAppointmentDialog({
                   <SelectContent>
                     {staff.map((member) => (
                       <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.role})
+                        {member.name} - {member.role}
                       </SelectItem>
                     ))}
                   </SelectContent>

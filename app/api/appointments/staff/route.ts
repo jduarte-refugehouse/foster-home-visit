@@ -37,18 +37,35 @@ export async function GET() {
       ORDER BY CaseManager
     `)
 
-    console.log(`✅ [API] Retrieved ${staff.length} staff members and ${caseManagers.length} case managers`)
+    const uniqueStaff = new Map()
+    staff.forEach((member) => {
+      const fullName = `${member.first_name} ${member.last_name}`.trim()
+      if (!uniqueStaff.has(fullName)) {
+        uniqueStaff.set(fullName, member)
+      }
+    })
+
+    const uniqueCaseManagers = new Map()
+    caseManagers.forEach((manager) => {
+      if (!uniqueCaseManagers.has(manager.name)) {
+        uniqueCaseManagers.set(manager.name, manager)
+      }
+    })
+
+    console.log(
+      `✅ [API] Retrieved ${uniqueStaff.size} unique staff members and ${uniqueCaseManagers.size} unique case managers`,
+    )
 
     return NextResponse.json({
       success: true,
-      staff: staff.map((member) => ({
+      staff: Array.from(uniqueStaff.values()).map((member) => ({
         id: member.clerk_user_id || member.id,
         name: `${member.first_name} ${member.last_name}`.trim(),
         email: member.email,
         role: member.role_name,
         type: "user",
       })),
-      caseManagers: caseManagers.map((manager) => ({
+      caseManagers: Array.from(uniqueCaseManagers.values()).map((manager) => ({
         id: `cm_${manager.name.replace(/\s+/g, "_").toLowerCase()}`,
         name: manager.name,
         email: manager.email,

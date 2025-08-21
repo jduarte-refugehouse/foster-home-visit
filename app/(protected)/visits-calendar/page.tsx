@@ -203,6 +203,27 @@ export default function VisitsCalendarPage() {
     }
   }
 
+  const businessHours = {
+    start: 7, // 7 AM
+    end: 20, // 8 PM
+  }
+
+  const slotStyleGetter = (date: Date) => {
+    const hour = date.getHours()
+
+    if (hour < businessHours.start || hour >= businessHours.end) {
+      return {
+        style: {
+          backgroundColor: "#f3f4f6",
+          color: "#9ca3af",
+          pointerEvents: "none" as const,
+        },
+      }
+    }
+
+    return {}
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -262,10 +283,13 @@ export default function VisitsCalendarPage() {
                   onSelectSlot={handleSelectSlot}
                   selectable
                   eventPropGetter={eventStyleGetter}
+                  slotPropGetter={slotStyleGetter}
                   views={["month", "week", "day"]}
                   defaultView="week"
                   step={30}
                   timeslots={2}
+                  min={new Date(2025, 0, 1, businessHours.start, 0)}
+                  max={new Date(2025, 0, 1, businessHours.end, 0)}
                 />
               </div>
             </CardContent>
