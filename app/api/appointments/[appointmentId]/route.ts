@@ -196,17 +196,17 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       paramIndex++
     }
 
-    // Always update the updated_by and updated_at fields
-    updateFields.push(`updated_by_user_id = @param${paramIndex}`)
+    // Always update the ModifiedBy and ModifiedDate fields
+    updateFields.push(`ModifiedBy = @param${paramIndex}`)
     queryParams.push("system") // Use system user instead of Clerk userId
     paramIndex++
 
-    updateFields.push(`updated_at = @param${paramIndex}`)
+    updateFields.push(`ModifiedDate = @param${paramIndex}`)
     queryParams.push(new Date())
     paramIndex++
 
     if (updateFields.length === 2) {
-      // Only updated_by and updated_at
+      // Only ModifiedBy and ModifiedDate
       console.log(`❌ [API] No fields to update for appointment: ${appointmentId}`)
       return NextResponse.json({ error: "No fields to update" }, { status: 400 })
     }
@@ -265,7 +265,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
         deleted_at = GETUTCDATE(),
         deleted_by_user_id = @param0,
         updated_at = GETUTCDATE(),
-        updated_by_user_id = @param0
+        ModifiedBy = @param0
       WHERE appointment_id = @param1 AND is_deleted = 0
     `,
       ["system", appointmentId], // Use system user instead of Clerk userId
