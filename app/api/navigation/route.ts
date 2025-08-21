@@ -2,14 +2,16 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@/lib/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   console.log("🔍 Navigation API called")
 
   try {
     // Get user identity from request headers (set by the client-side auth)
-    const userEmail = request.headers.get('x-user-email')
-    const userClerkId = request.headers.get('x-user-clerk-id')
-    const userName = request.headers.get('x-user-name')
+    const userEmail = request.headers.get("x-user-email")
+    const userClerkId = request.headers.get("x-user-clerk-id")
+    const userName = request.headers.get("x-user-name")
 
     console.log("👤 User identity from headers:")
     console.log("- Email:", userEmail)
@@ -233,6 +235,7 @@ export async function GET(request: NextRequest) {
             if (userPerm === item.permission_required) return true
 
             // Check for admin permissions that should grant access
+            if (item.permission_required === "admin" && userPerm === "system_admin") return true
             if (
               item.permission_required === "user_manage" &&
               (userPerm === "manage_users" || userPerm === "system_admin")
