@@ -196,7 +196,7 @@ const BasicHomeVisitForm = ({
             ...prevData.family,
             ...mappedFamilyInfo,
           },
-          attendees: parsedAttendees || prevData.attendees,
+          attendees: Array.isArray(parsedAttendees) ? parsedAttendees : prevData.attendees || [], // Ensure attendees is always an array when loading existing data
           observations: {
             ...prevData.observations,
             ...(parsedObservations || {}),
@@ -896,8 +896,17 @@ const FamilyHomeSection = ({ formData, onChange }: any) => (
 )
 
 const AttendeesSection = ({ formData, onChange, lookupData }: any) => {
-  const [attendees, setAttendees] = useState(formData.attendees || [])
+  const [attendees, setAttendees] = useState(() => {
+    const initialAttendees = formData.attendees
+    return Array.isArray(initialAttendees) ? initialAttendees : []
+  })
   const [newAttendee, setNewAttendee] = useState({ name: "", role: "", present: true })
+
+  useEffect(() => {
+    if (Array.isArray(formData.attendees)) {
+      setAttendees(formData.attendees)
+    }
+  }, [formData.attendees])
 
   const addAttendee = () => {
     if (newAttendee.name) {
