@@ -32,8 +32,8 @@ export default function VisitFormPage() {
         const formData = await formResponse.json()
         console.log("[v0] Existing form data:", formData)
 
-        if (formData.forms && formData.forms.length > 0) {
-          const existingForm = formData.forms[0]
+        if (formData.visitForms && formData.visitForms.length > 0) {
+          const existingForm = formData.visitForms[0]
           setExistingFormData(existingForm)
           console.log("[v0] Loading existing form data")
         }

@@ -82,7 +82,7 @@ const BasicHomeVisitForm = ({
   const [errors, setErrors] = useState({})
   const [visitFormId, setVisitFormId] = useState<string | null>(null)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [visitVariant, setVisitVariant] = useState(1)
@@ -124,11 +124,14 @@ const BasicHomeVisitForm = ({
   useEffect(() => {
     if (!autoSaveEnabled || !appointmentId) return
 
-    const autoSaveInterval = setInterval(() => {
-      handleAutoSave()
-    }, 30000) // Auto-save every 30 seconds
+    console.log("[v0] Auto-save is currently disabled to prevent SQL recursion")
+    return
 
-    return () => clearInterval(autoSaveInterval)
+    // const autoSaveInterval = setInterval(() => {
+    //   handleAutoSave()
+    // }, 30000) // Auto-save every 30 seconds
+
+    // return () => clearInterval(autoSaveInterval)
   }, [formData, autoSaveEnabled, appointmentId])
 
   const loadFormDataFromProps = (existingForm: any) => {
