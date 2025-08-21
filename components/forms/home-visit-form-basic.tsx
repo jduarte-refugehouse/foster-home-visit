@@ -20,11 +20,18 @@ interface BasicHomeVisitFormProps {
     phone: string
     email: string
   }
+  existingFormData?: any
   onSave?: (formData: any) => void
   onSubmit?: (formData: any) => void
 }
 
-const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: BasicHomeVisitFormProps) => {
+const BasicHomeVisitForm = ({
+  appointmentId,
+  homeData,
+  existingFormData,
+  onSave,
+  onSubmit,
+}: BasicHomeVisitFormProps) => {
   const [formData, setFormData] = useState({
     visitInfo: {
       date: new Date().toISOString().split("T")[0],
@@ -106,10 +113,13 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
   }, [formData.visitInfo.visitNumber])
 
   useEffect(() => {
-    if (appointmentId) {
-      loadPrepopulatedData()
+    if (existingFormData) {
+      console.log("[v0] Loading form data from props:", existingFormData)
+      loadFormDataFromProps(existingFormData)
+    } else if (appointmentId) {
+      loadExistingForm()
     }
-  }, [appointmentId])
+  }, [appointmentId, existingFormData])
 
   useEffect(() => {
     if (!autoSaveEnabled || !appointmentId) return
@@ -121,64 +131,50 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
     return () => clearInterval(autoSaveInterval)
   }, [formData, autoSaveEnabled, appointmentId])
 
-  useEffect(() => {
-    if (appointmentId) {
-      loadExistingForm()
-    }
-  }, [appointmentId])
-
-  const loadPrepopulatedData = async () => {
+  const loadFormDataFromProps = (existingForm: any) => {
     try {
-      setLoading(true)
-      console.log("[v0] Loading prepopulated data for appointment:", appointmentId)
+      console.log("[v0] Populating form with existing data:", existingForm)
 
-      const response = await fetch(`/api/visit-forms/prepopulate?appointmentId=${appointmentId}`)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log("[v0] Loaded prepopulated data:", data)
-
-        // Update form data with prepopulated information
-        if (data.familyInfo) {
-          setFormData((prev) => ({
-            ...prev,
-            family: {
-              ...prev.family,
-              ...data.familyInfo,
-            },
-          }))
-        }
-
-        // Set lookup data for dropdowns
-        if (data.lookupData) {
-          setLookupData(data.lookupData)
-        }
-
-        // Prepopulate attendees from previous visits
-        if (data.previousVisits && data.previousVisits.length > 0) {
-          const lastVisit = data.previousVisits[0]
-          if (lastVisit.attendees && lastVisit.attendees.length > 0) {
-            setFormData((prev) => ({
-              ...prev,
-              attendees: lastVisit.attendees,
-            }))
+      // Parse JSON fields if they're strings
+      const parseField = (field: any) => {
+        if (typeof field === "string") {
+          try {
+            return JSON.parse(field)
+          } catch {
+            return field
           }
         }
-
-        toast({
-          title: "Data Loaded",
-          description: "Form has been prepopulated with available data",
-        })
+        return field || {}
       }
+
+      setFormData({
+        visitInfo: parseField(existingForm.visit_info) || formData.visitInfo,
+        family: parseField(existingForm.family_info) || formData.family,
+        attendees: parseField(existingForm.attendees) || formData.attendees,
+        homeEnvironment: parseField(existingForm.home_environment) || formData.homeEnvironment,
+        childInterviews: parseField(existingForm.child_interviews) || formData.childInterviews,
+        parentInterviews: parseField(existingForm.parent_interviews) || formData.parentInterviews,
+        observations: parseField(existingForm.observations) || formData.observations,
+        compliance: parseField(existingForm.compliance_review) || formData.compliance,
+        recommendations: existingForm.recommendations || formData.recommendations,
+        nextSteps: parseField(existingForm.next_steps) || formData.nextSteps,
+        signatures: parseField(existingForm.signatures) || formData.signatures,
+      })
+
+      setVisitFormId(existingForm.visit_form_id)
+      setLastSaved(new Date(existingForm.updated_at))
+
+      toast({
+        title: "Form Loaded",
+        description: `Loaded ${existingForm.status} form from ${new Date(existingForm.updated_at).toLocaleString()}`,
+      })
     } catch (error) {
-      console.error("[v0] Error loading prepopulated data:", error)
+      console.error("[v0] Error loading form data from props:", error)
       toast({
         title: "Load Error",
-        description: "Failed to load prepopulated data",
+        description: "Failed to load existing form data",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -196,23 +192,7 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
           const existingForm = data.visitForms[0] // Get the most recent form
           console.log("[v0] Loaded existing form:", existingForm)
 
-          // Populate form data from existing form
-          setFormData({
-            visitInfo: existingForm.visit_info || formData.visitInfo,
-            family: existingForm.family_info || formData.family,
-            attendees: existingForm.attendees || formData.attendees,
-            observations: existingForm.observations || formData.observations,
-            recommendations: existingForm.recommendations || formData.recommendations,
-            signatures: existingForm.signatures || formData.signatures,
-          })
-
-          setVisitFormId(existingForm.visit_form_id)
-          setLastSaved(new Date(existingForm.updated_at))
-
-          toast({
-            title: "Form Loaded",
-            description: `Loaded ${existingForm.status} form from ${new Date(existingForm.updated_at).toLocaleString()}`,
-          })
+          loadFormDataFromProps(existingForm)
         }
       }
     } catch (error) {

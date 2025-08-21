@@ -11,15 +11,40 @@ export default function VisitFormPage() {
   const { toast } = useToast()
 
   const [homeData, setHomeData] = useState(null)
+  const [existingFormData, setExistingFormData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (appointmentId) {
-      fetchAppointmentData()
+      checkForExistingForm()
     } else {
       setLoading(false)
     }
   }, [appointmentId])
+
+  const checkForExistingForm = async () => {
+    try {
+      console.log("[v0] Checking for existing form for appointment:", appointmentId)
+
+      const formResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
+
+      if (formResponse.ok) {
+        const formData = await formResponse.json()
+        console.log("[v0] Existing form data:", formData)
+
+        if (formData.forms && formData.forms.length > 0) {
+          const existingForm = formData.forms[0]
+          setExistingFormData(existingForm)
+          console.log("[v0] Loading existing form data")
+        }
+      }
+
+      await fetchAppointmentData()
+    } catch (error) {
+      console.error("[v0] Error checking for existing form:", error)
+      await fetchAppointmentData()
+    }
+  }
 
   const fetchAppointmentData = async () => {
     try {
@@ -30,7 +55,6 @@ export default function VisitFormPage() {
         const data = await response.json()
         console.log("[v0] Appointment data received:", data)
 
-        // Extract home data from appointment
         if (data.appointment) {
           setHomeData({
             name: data.appointment.home_name || "",
@@ -119,6 +143,7 @@ export default function VisitFormPage() {
     <BasicHomeVisitForm
       appointmentId={appointmentId || undefined}
       homeData={homeData}
+      existingFormData={existingFormData}
       onSave={handleSave}
       onSubmit={handleSubmit}
     />
