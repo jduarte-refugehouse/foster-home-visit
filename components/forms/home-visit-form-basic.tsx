@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import VisitFormActions from "./visit-form-actions"
 
 interface BasicHomeVisitFormProps {
   appointmentId?: string
@@ -747,6 +748,15 @@ const BasicHomeVisitForm = ({
           </Button>
 
           <div className="flex gap-2">
+            {formData.visitInfo.date && formData.visitInfo.time && (
+              <VisitFormActions
+                formData={formData}
+                visitFormId={visitFormId}
+                appointmentId={appointmentId}
+                homeData={homeData}
+              />
+            )}
+
             <Button onClick={handleSave} variant="outline" disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving..." : "Save Draft"}
