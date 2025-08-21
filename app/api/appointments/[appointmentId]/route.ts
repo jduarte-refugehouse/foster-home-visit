@@ -67,6 +67,9 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     const { appointmentId } = params
     const body = await request.json()
 
+    console.log(`📅 [API] Updating appointment: ${appointmentId}`)
+    console.log(`📝 [API] Request body:`, JSON.stringify(body, null, 2))
+
     const {
       title,
       description,
@@ -86,8 +89,6 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       completionNotes,
       outcome,
     } = body
-
-    console.log(`📅 [API] Updating appointment: ${appointmentId}`)
 
     const updateFields: string[] = []
     const queryParams: any[] = []
@@ -206,6 +207,7 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
 
     if (updateFields.length === 2) {
       // Only updated_by and updated_at
+      console.log(`❌ [API] No fields to update for appointment: ${appointmentId}`)
       return NextResponse.json({ error: "No fields to update" }, { status: 400 })
     }
 
@@ -218,8 +220,12 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       WHERE appointment_id = @param${paramIndex} AND is_deleted = 0
     `
 
+    console.log(`🔍 [API] Generated SQL query:`, updateQuery)
+    console.log(`📊 [API] Query parameters:`, queryParams)
+
     const result = await query(updateQuery, queryParams)
 
+    console.log(`📈 [API] Query result:`, result)
     console.log(`✅ [API] Updated appointment: ${appointmentId}`)
 
     return NextResponse.json({
@@ -229,11 +235,15 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     })
   } catch (error) {
     console.error("❌ [API] Error updating appointment:", error)
+    console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("❌ [API] Appointment ID:", params.appointmentId)
+
     return NextResponse.json(
       {
         success: false,
         error: "Failed to update appointment",
         details: error instanceof Error ? error.message : "Unknown error",
+        appointmentId: params.appointmentId,
       },
       { status: 500 },
     )
