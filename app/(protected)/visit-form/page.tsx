@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import BasicHomeVisitForm from "@/components/forms/home-visit-form-basic"
 import { useToast } from "@/hooks/use-toast"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 export default function VisitFormPage() {
   const searchParams = useSearchParams()
@@ -13,6 +15,11 @@ export default function VisitFormPage() {
   const [homeData, setHomeData] = useState(null)
   const [existingFormData, setExistingFormData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [debugData, setDebugData] = useState({
+    apiResponse: null,
+    error: null,
+    lastAttempt: null,
+  })
 
   useEffect(() => {
     if (appointmentId) {
@@ -25,17 +32,19 @@ export default function VisitFormPage() {
   const checkForExistingForm = async () => {
     try {
       console.log("[v0] Checking for existing form for appointment:", appointmentId)
+      setDebugData((prev) => ({ ...prev, lastAttempt: new Date().toISOString() }))
 
       const formResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
 
       if (formResponse.ok) {
         const formData = await formResponse.json()
         console.log("[v0] Existing form data:", formData)
+        setDebugData((prev) => ({ ...prev, apiResponse: formData, error: null }))
 
         if (formData.visitForms && formData.visitForms.length > 0) {
           const existingForm = formData.visitForms[0]
           console.log("[v0] Found existing form:", existingForm)
-          console.log("[v0] Form ID:", existingForm.id)
+          console.log("[v0] Form ID:", existingForm.visit_form_id)
           console.log("[v0] Form status:", existingForm.status)
           console.log("[v0] Family info:", existingForm.family_info)
           console.log("[v0] Visit info:", existingForm.visit_info)
@@ -45,12 +54,28 @@ export default function VisitFormPage() {
           console.log("[v0] No existing forms found")
         }
       } else {
-        console.log("[v0] Form response not ok:", formResponse.status)
+        const errorText = await formResponse.text()
+        console.log("[v0] Form response not ok:", formResponse.status, errorText)
+        setDebugData((prev) => ({
+          ...prev,
+          error: {
+            status: formResponse.status,
+            statusText: formResponse.statusText,
+            body: errorText,
+          },
+        }))
       }
 
       await fetchAppointmentData()
     } catch (error) {
       console.error("[v0] Error checking for existing form:", error)
+      setDebugData((prev) => ({
+        ...prev,
+        error: {
+          message: error.message,
+          stack: error.stack,
+        },
+      }))
       await fetchAppointmentData()
     }
   }
@@ -149,12 +174,78 @@ export default function VisitFormPage() {
   }
 
   return (
-    <BasicHomeVisitForm
-      appointmentId={appointmentId || undefined}
-      homeData={homeData}
-      existingFormData={existingFormData}
-      onSave={handleSave}
-      onSubmit={handleSubmit}
-    />
+    <div>
+      <div className="fixed top-4 right-4 z-50">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              Debug Data
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>Database Debug Information</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">Appointment ID:</h3>
+                <p className="font-mono text-sm bg-gray-100 p-2 rounded">{appointmentId}</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold">Last API Attempt:</h3>
+                <p className="font-mono text-sm bg-gray-100 p-2 rounded">{debugData.lastAttempt}</p>
+              </div>
+
+              {debugData.error && (
+                <div>
+                  <h3 className="font-semibold text-red-600">API Error:</h3>
+                  <pre className="font-mono text-sm bg-red-50 p-2 rounded overflow-auto">
+                    {JSON.stringify(debugData.error, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {debugData.apiResponse && (
+                <div>
+                  <h3 className="font-semibold text-green-600">API Response:</h3>
+                  <pre className="font-mono text-sm bg-green-50 p-2 rounded overflow-auto">
+                    {JSON.stringify(debugData.apiResponse, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {existingFormData && (
+                <div>
+                  <h3 className="font-semibold text-blue-600">Existing Form Data (Parsed):</h3>
+                  <pre className="font-mono text-sm bg-blue-50 p-2 rounded overflow-auto">
+                    {JSON.stringify(existingFormData, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-semibold">Home Data:</h3>
+                <pre className="font-mono text-sm bg-gray-100 p-2 rounded overflow-auto">
+                  {JSON.stringify(homeData, null, 2)}
+                </pre>
+              </div>
+
+              <Button onClick={checkForExistingForm} className="w-full bg-transparent" variant="outline">
+                Retry Loading Data
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <BasicHomeVisitForm
+        appointmentId={appointmentId || undefined}
+        homeData={homeData}
+        existingFormData={existingFormData}
+        onSave={handleSave}
+        onSubmit={handleSubmit}
+      />
+    </div>
   )
 }

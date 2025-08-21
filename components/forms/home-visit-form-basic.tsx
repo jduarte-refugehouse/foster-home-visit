@@ -141,77 +141,91 @@ const BasicHomeVisitForm = ({
 
   const loadFormDataFromProps = (existingForm: any) => {
     try {
-      console.log("[v0] Populating form with existing data:", existingForm)
+      console.log("[v0] Loading form data from props:", existingForm)
+      console.log("[v0] Existing form keys:", Object.keys(existingForm))
+      console.log("[v0] Family info raw:", existingForm.family_info)
+      console.log("[v0] Visit info raw:", existingForm.visit_info)
 
       // Parse JSON fields if they're strings
       const parseField = (field: any) => {
         if (typeof field === "string") {
           try {
             return JSON.parse(field)
-          } catch {
+          } catch (e) {
+            console.error("[v0] JSON parse error for field:", field, e)
             return field
           }
         }
-        return field || {}
+        return field
       }
 
-      const parsedVisitInfo = parseField(existingForm.visit_info)
       const parsedFamilyInfo = parseField(existingForm.family_info)
+      const parsedVisitInfo = parseField(existingForm.visit_info)
       const parsedAttendees = parseField(existingForm.attendees)
+      const parsedObservations = parseField(existingForm.observations)
+      const parsedRecommendations = parseField(existingForm.recommendations)
+      const parsedSignatures = parseField(existingForm.signatures)
 
-      console.log("[v0] Parsed visit info:", parsedVisitInfo)
       console.log("[v0] Parsed family info:", parsedFamilyInfo)
+      console.log("[v0] Parsed visit info:", parsedVisitInfo)
 
-      const mappedFamilyInfo = {
-        familyName: parsedFamilyInfo.familyName || parsedFamilyInfo.name || "",
-        address: parsedFamilyInfo.address || "",
-        phone: parsedFamilyInfo.phone || "",
-        email: parsedFamilyInfo.email || "",
-      }
+      // Map database fields to form fields with proper property names
+      const mappedFamilyInfo = parsedFamilyInfo
+        ? {
+            familyName: parsedFamilyInfo.familyName || parsedFamilyInfo.name || "",
+            address: parsedFamilyInfo.address || "",
+            phone: parsedFamilyInfo.phone || "",
+            email: parsedFamilyInfo.email || "",
+          }
+        : {}
 
       console.log("[v0] Mapped family info:", mappedFamilyInfo)
 
-      setFormData((prevFormData) => {
-        console.log("[v0] Previous form data:", prevFormData)
-
+      setFormData((prevData) => {
         const newFormData = {
+          ...prevData,
           visitInfo: {
-            ...prevFormData.visitInfo,
-            ...parsedVisitInfo,
+            ...prevData.visitInfo,
+            ...(parsedVisitInfo || {}),
+            date: parsedVisitInfo?.date || existingForm.visit_date?.split("T")[0] || prevData.visitInfo.date,
+            time: parsedVisitInfo?.time || existingForm.visit_time || prevData.visitInfo.time,
+            quarter: parsedVisitInfo?.quarter || existingForm.quarter || prevData.visitInfo.quarter,
+            visitNumber: parsedVisitInfo?.visitNumber || existingForm.visit_number || prevData.visitInfo.visitNumber,
           },
           family: {
-            ...prevFormData.family,
+            ...prevData.family,
             ...mappedFamilyInfo,
           },
-          attendees: parsedAttendees || prevFormData.attendees,
-          homeEnvironment: parseField(existingForm.home_environment) || prevFormData.homeEnvironment,
-          childInterviews: parseField(existingForm.child_interviews) || prevFormData.childInterviews,
-          parentInterviews: parseField(existingForm.parent_interviews) || prevFormData.parentInterviews,
-          observations: parseField(existingForm.observations) || prevFormData.observations,
-          compliance: parseField(existingForm.compliance_review) || prevFormData.compliance,
-          recommendations: existingForm.recommendations || prevFormData.recommendations,
-          nextSteps: parseField(existingForm.next_steps) || prevFormData.nextSteps,
-          signatures: parseField(existingForm.signatures) || prevFormData.signatures,
+          attendees: parsedAttendees || prevData.attendees,
+          observations: {
+            ...prevData.observations,
+            ...(parsedObservations || {}),
+          },
+          recommendations: parsedRecommendations || prevData.recommendations,
+          signatures: {
+            ...prevData.signatures,
+            ...(parsedSignatures || {}),
+          },
         }
 
-        console.log("[v0] New form data being set:", newFormData)
+        console.log("[v0] Final form data after loading:", newFormData)
+        console.log("[v0] Family name in final data:", newFormData.family.familyName)
+
         return newFormData
       })
 
       setVisitFormId(existingForm.visit_form_id)
-      setLastSaved(new Date(existingForm.updated_at))
 
-      setTimeout(() => {
-        console.log("[v0] Form data should now be updated. Checking form fields...")
-        toast({
-          title: "Form Loaded",
-          description: `Loaded ${existingForm.status} form from ${new Date(existingForm.updated_at).toLocaleString()}`,
-        })
-      }, 500)
+      toast({
+        title: "Form Data Loaded",
+        description: `Loaded existing form data for ${mappedFamilyInfo.familyName || "this home"}`,
+      })
+
+      console.log("[v0] Successfully loaded form data from props")
     } catch (error) {
       console.error("[v0] Error loading form data from props:", error)
       toast({
-        title: "Load Error",
+        title: "Error",
         description: "Failed to load existing form data",
         variant: "destructive",
       })
