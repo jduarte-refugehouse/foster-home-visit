@@ -259,7 +259,7 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
       console.error("[v0] Manual save failed:", error)
       toast({
         title: "Save Error",
-        description: "Failed to save form draft",
+        description: error instanceof Error ? error.message : "Failed to save form draft",
         variant: "destructive",
       })
     } finally {
@@ -272,14 +272,26 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
       throw new Error("No appointment ID provided")
     }
 
+    if (!formData.visitInfo.date || !formData.visitInfo.time) {
+      throw new Error("Visit date and time are required")
+    }
+
+    console.log("[v0] Preparing to save form data:", {
+      appointmentId,
+      visitDate: formData.visitInfo.date,
+      visitTime: formData.visitInfo.time,
+      isAutoSave,
+      visitFormId,
+    })
+
     const saveData = {
       appointmentId,
       formType: "home_visit",
       status: "draft",
       visitDate: formData.visitInfo.date,
       visitTime: formData.visitInfo.time,
-      visitNumber: formData.visitInfo.visitNumber,
-      quarter: formData.visitInfo.quarter,
+      visitNumber: formData.visitInfo.visitNumber || 1,
+      quarter: formData.visitInfo.quarter || null,
       visitVariant: 1,
       visitInfo: formData.visitInfo,
       familyInfo: formData.family,
@@ -287,13 +299,17 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
       observations: formData.observations,
       recommendations: formData.recommendations,
       signatures: formData.signatures,
-      createdByUserId: "temp-user-id", // TODO: Get from auth context
-      createdByName: "Current User", // TODO: Get from auth context
+      createdByUserId: "system-user",
+      createdByName: "System User",
       isAutoSave,
     }
 
+    console.log("[v0] Save data prepared:", saveData)
+
     const url = visitFormId ? `/api/visit-forms/${visitFormId}` : "/api/visit-forms"
     const method = visitFormId ? "PUT" : "POST"
+
+    console.log("[v0] Making API request:", { url, method })
 
     const response = await fetch(url, {
       method,
@@ -304,10 +320,28 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to save form: ${response.statusText}`)
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+
+      try {
+        const errorData = await response.json()
+        console.log("[v0] API error response:", errorData)
+
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+        if (errorData.details) {
+          errorMessage += ` - ${errorData.details}`
+        }
+      } catch (parseError) {
+        console.log("[v0] Could not parse error response:", parseError)
+        // Use the original error message if we can't parse the response
+      }
+
+      throw new Error(`Failed to save form: ${errorMessage}`)
     }
 
     const result = await response.json()
+    console.log("[v0] API response:", result)
 
     if (result.success) {
       if (!visitFormId) {
@@ -323,18 +357,14 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
     }
   }
 
-  const getQuarter = (dateString: string) => {
-    const month = new Date(dateString).getMonth() + 1
-    if (month <= 3) return "Q1"
-    if (month <= 6) return "Q2"
-    if (month <= 9) return "Q3"
-    return "Q4"
-  }
-
   const handleSubmit = async () => {
     try {
       setSaving(true)
       console.log("[v0] Submitting completed form...")
+
+      if (!formData.visitInfo.date || !formData.visitInfo.time) {
+        throw new Error("Visit date and time are required")
+      }
 
       // First save as completed
       const saveData = {
@@ -343,8 +373,8 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
         status: "completed",
         visitDate: formData.visitInfo.date,
         visitTime: formData.visitInfo.time,
-        visitNumber: formData.visitInfo.visitNumber,
-        quarter: formData.visitInfo.quarter,
+        visitNumber: formData.visitInfo.visitNumber || 1,
+        quarter: formData.visitInfo.quarter || null,
         visitVariant: 1,
         visitInfo: formData.visitInfo,
         familyInfo: formData.family,
@@ -352,10 +382,12 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
         observations: formData.observations,
         recommendations: formData.recommendations,
         signatures: formData.signatures,
-        createdByUserId: "temp-user-id", // TODO: Get from auth context
-        createdByName: "Current User", // TODO: Get from auth context
+        createdByUserId: "system-user",
+        createdByName: "System User",
         isAutoSave: false,
       }
+
+      console.log("[v0] Submit data prepared:", saveData)
 
       const url = visitFormId ? `/api/visit-forms/${visitFormId}` : "/api/visit-forms"
       const method = visitFormId ? "PUT" : "POST"
@@ -369,10 +401,27 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to submit form: ${response.statusText}`)
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+
+        try {
+          const errorData = await response.json()
+          console.log("[v0] Submit API error response:", errorData)
+
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+          if (errorData.details) {
+            errorMessage += ` - ${errorData.details}`
+          }
+        } catch (parseError) {
+          console.log("[v0] Could not parse submit error response:", parseError)
+        }
+
+        throw new Error(`Failed to submit form: ${errorMessage}`)
       }
 
       const result = await response.json()
+      console.log("[v0] Submit API response:", result)
 
       if (result.success) {
         toast({
@@ -388,12 +437,20 @@ const BasicHomeVisitForm = ({ appointmentId, homeData, onSave, onSubmit }: Basic
       console.error("[v0] Form submission failed:", error)
       toast({
         title: "Submit Error",
-        description: "Failed to submit form",
+        description: error instanceof Error ? error.message : "Failed to submit form",
         variant: "destructive",
       })
     } finally {
       setSaving(false)
     }
+  }
+
+  const getQuarter = (dateString: string) => {
+    const month = new Date(dateString).getMonth() + 1
+    if (month <= 3) return "Q1"
+    if (month <= 6) return "Q2"
+    if (month <= 9) return "Q3"
+    return "Q4"
   }
 
   const getSectionsForRole = () => {
