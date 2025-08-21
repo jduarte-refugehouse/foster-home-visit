@@ -39,10 +39,31 @@ interface Home {
   phone: string
 }
 
+interface Appointment {
+  appointment_id: string
+  title: string
+  start_datetime: string
+  end_datetime: string
+  status: "scheduled" | "completed" | "cancelled" | "in-progress" | "rescheduled"
+  appointment_type: string
+  home_name: string
+  location_address: string
+  assigned_to_name: string
+  assigned_to_role: string
+  priority: string
+  description?: string
+  preparation_notes?: string
+  completion_notes?: string
+  home_xref?: number
+  assigned_to_user_id?: string
+  location_notes?: string
+}
+
 interface CreateAppointmentDialogProps {
   children: React.ReactNode
   selectedDate?: Date
   selectedTime?: string
+  editingAppointment?: Appointment | null
   onAppointmentCreated?: () => void
 }
 
@@ -50,6 +71,7 @@ export function CreateAppointmentDialog({
   children,
   selectedDate,
   selectedTime,
+  editingAppointment,
   onAppointmentCreated,
 }: CreateAppointmentDialogProps) {
   const [open, setOpen] = useState(false)
@@ -59,25 +81,58 @@ export function CreateAppointmentDialog({
   const [loadingData, setLoadingData] = useState(false)
   const { toast } = useToast()
 
+  const initializeFormData = () => {
+    if (editingAppointment) {
+      const startDate = new Date(editingAppointment.start_datetime)
+      const endDate = new Date(editingAppointment.end_datetime)
+      const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+
+      return {
+        title: editingAppointment.title,
+        description: editingAppointment.description || "",
+        appointmentType: editingAppointment.appointment_type,
+        date: startDate,
+        startTime: format(startDate, "HH:mm"),
+        endTime: format(endDate, "HH:mm"),
+        duration: duration.toString(),
+        homeXref: editingAppointment.home_xref?.toString() || "",
+        homeName: editingAppointment.home_name || "",
+        locationAddress: editingAppointment.location_address || "",
+        locationNotes: editingAppointment.location_notes || "",
+        assignedToUserId: editingAppointment.assigned_to_user_id || "",
+        assignedToName: editingAppointment.assigned_to_name,
+        assignedToRole: editingAppointment.assigned_to_role,
+        priority: editingAppointment.priority,
+        preparationNotes: editingAppointment.preparation_notes || "",
+      }
+    }
+
+    return {
+      title: "",
+      description: "",
+      appointmentType: "home_visit",
+      date: selectedDate || new Date(),
+      startTime: selectedTime || "09:00",
+      endTime: "",
+      duration: "60",
+      homeXref: "",
+      homeName: "",
+      locationAddress: "",
+      locationNotes: "",
+      assignedToUserId: "",
+      assignedToName: "",
+      assignedToRole: "",
+      priority: "normal",
+      preparationNotes: "",
+    }
+  }
+
   // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    appointmentType: "home_visit",
-    date: selectedDate || new Date(),
-    startTime: selectedTime || "09:00",
-    endTime: "",
-    duration: "60",
-    homeXref: "",
-    homeName: "",
-    locationAddress: "",
-    locationNotes: "",
-    assignedToUserId: "",
-    assignedToName: "",
-    assignedToRole: "",
-    priority: "normal",
-    preparationNotes: "",
-  })
+  const [formData, setFormData] = useState(initializeFormData)
+
+  useEffect(() => {
+    setFormData(initializeFormData())
+  }, [editingAppointment, selectedDate, selectedTime])
 
   // Load staff and homes data when dialog opens
   useEffect(() => {
@@ -171,8 +226,12 @@ export function CreateAppointmentDialog({
         createdByName: "System User",
       }
 
-      const response = await fetch("/api/appointments", {
-        method: "POST",
+      const isEditing = !!editingAppointment
+      const url = isEditing ? `/api/appointments/${editingAppointment.appointment_id}` : "/api/appointments"
+      const method = isEditing ? "PUT" : "POST"
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -180,40 +239,23 @@ export function CreateAppointmentDialog({
       })
 
       if (!response.ok) {
-        throw new Error("Failed to create appointment")
+        throw new Error(`Failed to ${isEditing ? "update" : "create"} appointment`)
       }
 
       toast({
         title: "Success",
-        description: "Appointment created successfully",
+        description: `Appointment ${isEditing ? "updated" : "created"} successfully`,
       })
 
       // Reset form and close dialog
-      setFormData({
-        title: "",
-        description: "",
-        appointmentType: "home_visit",
-        date: new Date(),
-        startTime: "09:00",
-        endTime: "",
-        duration: "60",
-        homeXref: "",
-        homeName: "",
-        locationAddress: "",
-        locationNotes: "",
-        assignedToUserId: "",
-        assignedToName: "",
-        assignedToRole: "",
-        priority: "normal",
-        preparationNotes: "",
-      })
+      setFormData(initializeFormData())
       setOpen(false)
       onAppointmentCreated?.()
     } catch (error) {
-      console.error("Error creating appointment:", error)
+      console.error(`Error ${editingAppointment ? "updating" : "creating"} appointment:`, error)
       toast({
         title: "Error",
-        description: "Failed to create appointment",
+        description: `Failed to ${editingAppointment ? "update" : "create"} appointment`,
         variant: "destructive",
       })
     } finally {
@@ -253,9 +295,13 @@ export function CreateAppointmentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Create New Appointment
+            {editingAppointment ? "Edit Appointment" : "Create New Appointment"}
           </DialogTitle>
-          <DialogDescription>Schedule a new appointment with foster homes and assign staff members.</DialogDescription>
+          <DialogDescription>
+            {editingAppointment
+              ? "Update the appointment details below."
+              : "Schedule a new appointment with foster homes and assign staff members."}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -505,7 +551,13 @@ export function CreateAppointmentDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Appointment"}
+              {loading
+                ? editingAppointment
+                  ? "Updating..."
+                  : "Creating..."
+                : editingAppointment
+                  ? "Update Appointment"
+                  : "Create Appointment"}
             </Button>
           </div>
         </form>

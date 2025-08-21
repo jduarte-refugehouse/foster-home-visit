@@ -55,6 +55,7 @@ export default function VisitsCalendarPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function VisitsCalendarPage() {
   const handleAppointmentCreated = () => {
     fetchAppointments()
     setSelectedSlot(null)
+    setEditingAppointment(null)
   }
 
   const getStatusColor = (status: string) => {
@@ -224,6 +226,48 @@ export default function VisitsCalendarPage() {
     return {}
   }
 
+  const handleEditAppointment = () => {
+    if (selectedAppointment) {
+      setEditingAppointment(selectedAppointment)
+    }
+  }
+
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointment) return
+
+    try {
+      const response = await fetch(`/api/appointments/${selectedAppointment.appointment_id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...selectedAppointment,
+          status: "cancelled",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel appointment")
+      }
+
+      toast({
+        title: "Success",
+        description: "Appointment cancelled successfully",
+      })
+
+      fetchAppointments()
+      setSelectedAppointment(null)
+    } catch (error) {
+      console.error("Error cancelling appointment:", error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel appointment",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -250,6 +294,7 @@ export default function VisitsCalendarPage() {
           <CreateAppointmentDialog
             selectedDate={selectedSlot?.start}
             selectedTime={selectedSlot?.start ? format(selectedSlot.start, "HH:mm") : undefined}
+            editingAppointment={editingAppointment}
             onAppointmentCreated={handleAppointmentCreated}
           >
             <Button>
@@ -407,10 +452,20 @@ export default function VisitsCalendarPage() {
                 )}
 
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1">
-                    Edit
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                  <CreateAppointmentDialog
+                    editingAppointment={editingAppointment}
+                    onAppointmentCreated={handleAppointmentCreated}
+                  >
+                    <Button size="sm" className="flex-1" onClick={handleEditAppointment}>
+                      Edit
+                    </Button>
+                  </CreateAppointmentDialog>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 bg-transparent"
+                    onClick={handleCancelAppointment}
+                  >
                     Cancel
                   </Button>
                 </div>
