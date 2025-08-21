@@ -158,6 +158,15 @@ const BasicHomeVisitForm = ({
       console.log("[v0] Parsed family info:", parsedFamilyInfo)
       console.log("[v0] Current form data before update:", formData)
 
+      const mappedFamilyInfo = {
+        name: parsedFamilyInfo.familyName || parsedFamilyInfo.name || "",
+        address: parsedFamilyInfo.address || "",
+        phone: parsedFamilyInfo.phone || "",
+        email: parsedFamilyInfo.email || "",
+      }
+
+      console.log("[v0] Mapped family info:", mappedFamilyInfo)
+
       const newFormData = {
         visitInfo: {
           ...formData.visitInfo,
@@ -165,7 +174,7 @@ const BasicHomeVisitForm = ({
         },
         family: {
           ...formData.family,
-          ...parsedFamilyInfo,
+          ...mappedFamilyInfo,
         },
         attendees: parsedAttendees || formData.attendees,
         homeEnvironment: parseField(existingForm.home_environment) || formData.homeEnvironment,
