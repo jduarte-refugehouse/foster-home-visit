@@ -114,28 +114,68 @@ export default function FeatureDevelopmentPage() {
     setSmsStatus({ type: null, message: "" })
 
     try {
-      const response = await fetch("/api/dev/twilio-test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(smsForm),
-      })
+      // Parse phone numbers - handle both single and multiple numbers
+      const phoneNumbers = smsForm.to
+        .split(/[\n,;]/) // Split by newlines, commas, or semicolons
+        .map((num) => num.trim())
+        .filter((num) => num.length > 0)
 
-      const result = await response.json()
-
-      if (response.ok) {
-        setSmsStatus({
-          type: "success",
-          message: `SMS sent successfully! Message SID: ${result.sid}`,
+      if (phoneNumbers.length === 1) {
+        // Single SMS - use the existing dev endpoint
+        const response = await fetch("/api/dev/twilio-test", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: phoneNumbers[0],
+            body: smsForm.body,
+          }),
         })
-        // Clear form on success
-        setSmsForm({ to: "", body: "" })
+
+        const result = await response.json()
+
+        if (response.ok) {
+          setSmsStatus({
+            type: "success",
+            message: `SMS sent successfully! Message SID: ${result.sid}`,
+          })
+          // Clear form on success
+          setSmsForm({ to: "", body: "" })
+        } else {
+          setSmsStatus({
+            type: "error",
+            message: result.error || "Failed to send SMS",
+          })
+        }
       } else {
-        setSmsStatus({
-          type: "error",
-          message: result.error || "Failed to send SMS",
+        // Multiple SMS - use the bulk endpoint
+        const response = await fetch("/api/admin/bulk-sms", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phoneNumbers: phoneNumbers,
+            message: smsForm.body,
+          }),
         })
+
+        const result = await response.json()
+
+        if (response.ok) {
+          setSmsStatus({
+            type: "success",
+            message: `Bulk SMS sent! ${result.totalSent} successful, ${result.totalFailed} failed out of ${result.totalProcessed} total.`,
+          })
+          // Clear form on success
+          setSmsForm({ to: "", body: "" })
+        } else {
+          setSmsStatus({
+            type: "error",
+            message: result.error || "Failed to send bulk SMS",
+          })
+        }
       }
     } catch (error) {
       setSmsStatus({
@@ -283,22 +323,24 @@ export default function FeatureDevelopmentPage() {
               </CardTitle>
               <CardDescription>
                 Test Twilio SMS functionality in a safe environment. All test messages will be prefixed with [DEV TEST].
+                Supports both single and multiple phone numbers.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sms-to">To (Recipient Phone Number)</Label>
-                  <Input
+                  <Label htmlFor="sms-to">To (Recipient Phone Number(s))</Label>
+                  <Textarea
                     id="sms-to"
-                    type="tel"
-                    placeholder="+1234567890"
+                    placeholder="Single number: +1234567890\n\nMultiple numbers (one per line or comma-separated):\n+1234567890\n+1987654321\n+1555123456"
+                    rows={4}
                     value={smsForm.to}
                     onChange={(e) => setSmsForm((prev) => ({ ...prev, to: e.target.value }))}
                     disabled={!sandboxMode}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Include country code (e.g., +1 for US). Trial accounts can only send to verified numbers.
+                    Include country code (e.g., +1 for US). For multiple numbers, separate with new lines, commas, or
+                    semicolons. Trial accounts can only send to verified numbers.
                   </p>
                 </div>
 

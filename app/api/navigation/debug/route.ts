@@ -3,6 +3,8 @@ import { getConnection } from "@/lib/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 import { getAuth } from "@/lib/auth-utils"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   console.log("🔍 Navigation Debug API called")
 
