@@ -328,12 +328,13 @@ export function CreateAppointmentDialog({
                       {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={formData.date}
                       onSelect={(date) => date && setFormData((prev) => ({ ...prev, date }))}
                       initialFocus
+                      className="rounded-md border"
                     />
                   </PopoverContent>
                 </Popover>

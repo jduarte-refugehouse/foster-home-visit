@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { auth } from "@clerk/nextjs/server"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,11 +7,6 @@ export const runtime = "nodejs"
 // GET - Fetch available staff members for appointment assignment
 export async function GET() {
   try {
-    const { userId } = auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     console.log("👥 [API] Fetching available staff members")
 
     const staff = await query(`
