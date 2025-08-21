@@ -291,3 +291,125 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+// PUT - Update existing appointment
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      appointmentId,
+      title,
+      description,
+      appointmentType = "home_visit",
+      startDateTime,
+      endDateTime,
+      homeXref,
+      locationAddress,
+      locationNotes,
+      assignedToUserId,
+      assignedToName,
+      assignedToRole,
+      priority = "normal",
+      status,
+      preparationNotes,
+    } = body
+
+    // Validation
+    if (!appointmentId) {
+      return NextResponse.json({ error: "Missing required field: appointmentId" }, { status: 400 })
+    }
+
+    if (!title || !startDateTime || !endDateTime || !assignedToUserId || !assignedToName) {
+      return NextResponse.json(
+        { error: "Missing required fields: title, startDateTime, endDateTime, assignedToUserId, assignedToName" },
+        { status: 400 },
+      )
+    }
+
+    // Check if appointment exists
+    const existingAppointment = await query(
+      "SELECT appointment_id FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
+      [appointmentId],
+    )
+
+    if (existingAppointment.length === 0) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
+
+    // Validate home exists if provided
+    if (homeXref) {
+      const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
+
+      if (homeExists[0].count === 0) {
+        return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+      }
+    }
+
+    // Validate dates
+    const start = new Date(startDateTime)
+    const end = new Date(endDateTime)
+    if (start >= end) {
+      return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
+    }
+
+    console.log("📝 [API] Updating appointment:", { appointmentId, title, assignedToName })
+
+    await query(
+      `
+      UPDATE appointments SET
+        title = @param1,
+        description = @param2,
+        appointment_type = @param3,
+        start_datetime = @param4,
+        end_datetime = @param5,
+        home_xref = @param6,
+        location_address = @param7,
+        location_notes = @param8,
+        assigned_to_user_id = @param9,
+        assigned_to_name = @param10,
+        assigned_to_role = @param11,
+        priority = @param12,
+        status = @param13,
+        preparation_notes = @param14,
+        updated_at = GETUTCDATE()
+      WHERE appointment_id = @param0 AND is_deleted = 0
+    `,
+      [
+        appointmentId,
+        title,
+        description,
+        appointmentType,
+        start,
+        end,
+        homeXref,
+        locationAddress,
+        locationNotes,
+        assignedToUserId,
+        assignedToName,
+        assignedToRole,
+        priority,
+        status || "scheduled",
+        preparationNotes,
+      ],
+    )
+
+    console.log(`✅ [API] Updated appointment with ID: ${appointmentId}`)
+
+    return NextResponse.json({
+      success: true,
+      appointmentId,
+      message: "Appointment updated successfully",
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ [API] Error updating appointment:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to update appointment",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
+  }
+}
