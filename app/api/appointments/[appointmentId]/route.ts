@@ -78,7 +78,6 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       endDateTime,
       status,
       homeXref,
-      homeName,
       locationAddress,
       locationNotes,
       assignedToUserId,
@@ -136,12 +135,6 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       paramIndex++
     }
 
-    if (homeName !== undefined) {
-      updateFields.push(`home_name = @param${paramIndex}`)
-      queryParams.push(homeName)
-      paramIndex++
-    }
-
     if (locationAddress !== undefined) {
       updateFields.push(`location_address = @param${paramIndex}`)
       queryParams.push(locationAddress)
@@ -196,17 +189,17 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       paramIndex++
     }
 
-    // Always update the ModifiedBy and ModifiedDate fields
-    updateFields.push(`ModifiedBy = @param${paramIndex}`)
+    // Always update the updated_by_user_id and updated_at fields
+    updateFields.push(`updated_by_user_id = @param${paramIndex}`)
     queryParams.push("system") // Use system user instead of Clerk userId
     paramIndex++
 
-    updateFields.push(`ModifiedDate = @param${paramIndex}`)
+    updateFields.push(`updated_at = @param${paramIndex}`)
     queryParams.push(new Date())
     paramIndex++
 
     if (updateFields.length === 2) {
-      // Only ModifiedBy and ModifiedDate
+      // Only updated_by_user_id and updated_at
       console.log(`❌ [API] No fields to update for appointment: ${appointmentId}`)
       return NextResponse.json({ error: "No fields to update" }, { status: 400 })
     }
@@ -265,7 +258,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
         deleted_at = GETUTCDATE(),
         deleted_by_user_id = @param0,
         updated_at = GETUTCDATE(),
-        ModifiedBy = @param0
+        updated_by_user_id = @param0
       WHERE appointment_id = @param1 AND is_deleted = 0
     `,
       ["system", appointmentId], // Use system user instead of Clerk userId
