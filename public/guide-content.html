@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Visit Liaison Reference Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6B46C1;
+            --primary-dark: #553C9A;
+            --secondary: #3B82F6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 15s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .nav-container {
+            background: var(--gray-100);
+            padding: 10px;
+            border-bottom: 3px solid var(--primary);
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .nav-tab {
+            padding: 10px 16px;
+            background: white;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            position: relative;
+        }
+        
+        .nav-tab:hover {
+            background: var(--gray-50);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .nav-tab.active {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+        }
+        
+        .content {
+            padding: 40px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: var(--gray-50);
+            border-radius: 15px;
+            border-left: 5px solid var(--primary);
+        }
+        
+        h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        h3 {
+            color: var(--gray-800);
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 10px;
+        }
+        
+        .requirement-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border-left: 4px solid var(--secondary);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .requirement-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .requirement-code {
+            font-weight: bold;
+            color: var(--secondary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            border-left: 5px solid var(--warning);
+            color: var(--gray-800);
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+            border-left: 5px solid var(--danger);
+            color: var(--gray-800);
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+            border-left: 5px solid var(--success);
+            color: var(--gray-800);
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+            border-left: 5px solid var(--secondary);
+            color: var(--gray-800);
+        }
+        
+        .interview-question {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--success);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .interview-question strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .checklist li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        
+        .checklist li::before {
+            content: '✓';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: var(--success);
+            color: white;
+            border-radius: 50%;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+        
+        .tip-box {
+            background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+            border: 2px solid var(--secondary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tip-box::before {
+            content: '💡';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+        }
+        
+        .tip-box-content {
+            padding-left: 40px;
+        }
+        
+        .conversation-starter {
+            background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .conversation-starter h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .red-flag {
+            background: var(--danger);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse-danger 2s infinite;
+        }
+        
+        @keyframes pulse-danger {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .documentation-note {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--warning);
+            font-style: italic;
+        }
+        
+        .icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        code {
+            background: var(--gray-200);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--primary);
+        }
+        
+        .phase-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .phase-required {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .phase-enhanced {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .phase-development {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .quick-ref {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(107, 70, 193, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .quick-ref:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(107, 70, 193, 0.6);
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .section {
+                padding: 15px;
+            }
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            .nav-container, .quick-ref {
+                display: none;
+            }
+            
+            .tab-content {
+                display: block !important;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Home Visit Liaison Reference Guide</h1>
+            <div class="subtitle">Enhanced Digital Monitoring - TAC Chapter 749 & RCC Requirements</div>
+            <div class="subtitle" style="margin-top: 10px; font-size: 0.95rem; opacity: 0.9;">Version 25.1 - Phase 1 Implementation</div>
+        </header>
+        
+        <div class="nav-container">
+            <nav class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('overview')">Overview</button>
+                <button class="nav-tab" onclick="showTab('preparation')">Pre-Visit</button>
+                <button class="nav-tab" onclick="showTab('medication')">Medication</button>
+                <button class="nav-tab" onclick="showTab('safety')">Health/Safety</button>
+                <button class="nav-tab" onclick="showTab('rights')">Rights</button>
+                <button class="nav-tab" onclick="showTab('bedroom')">Bedrooms</button>
+                <button class="nav-tab" onclick="showTab('indoor')">Indoor</button>
+                <button class="nav-tab" onclick="showTab('outdoor')">Outdoor</button>
+                <button class="nav-tab" onclick="showTab('education')">Education</button>
+                <button class="nav-tab" onclick="showTab('interview-child')">Child Interview</button>
+                <button class="nav-tab" onclick="showTab('interview-parent')">Parent Interview</button>
+                <button class="nav-tab" onclick="showTab('normalcy')">T3C Prep</button>
+                <button class="nav-tab" onclick="showTab('documentation')">Documentation</button>
+                <button class="nav-tab" onclick="showTab('resources')">Resources</button>
+            </nav>
+        </div>
+        
+        <div class="content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="alert alert-info">
+                    <span class="icon">ℹ️</span>
+                    <div>
+                        <strong>Important Phase 1 Note:</strong> This guide supports the enhanced monitoring form Version 25.1. Core Chapter 749 requirements remain unchanged. T3C sections are for discussion and development only, NOT compliance monitoring.
+                    </div>
+                </div>
+                
+                <div class="alert alert-danger">
+                    <span class="icon">⚠️</span>
+                    <div>
+                        <strong>Division of Responsibilities:</strong><br>
+                        As the Home Visit Liaison, you are responsible for household safety, well-being, and compliance oversight. The child's case manager separately handles service planning and child-specific goal progress. Do NOT document progress on service plans or therapeutic/educational goals - this is the case manager's responsibility.
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>📋 What's Different in This Version</h2>
+                    
+                    <h3>Critical Updates in Version 25.1:</h3>
+                    <ul class="checklist">
+                        <li>Enhanced child interview sections for up to 5 children</li>
+                        <li>Service level and service package tracking per child</li>
+                        <li>Legal status verification (TMC/PMC/JMC/Voluntary)</li>
+                        <li>ASQ suicide screening requirement for ages 10+</li>
+                        <li>Placement authorization verification</li>
+                        <li>Visit summary and compliance status tracking</li>
+                    </ul>
+                    
+                    <h3>What Remains the Same:</h3>
+                    <ul class="checklist">
+                        <li>All existing Chapter 749 minimum standards</li>
+                        <li>Three-visit tracking system</li>
+                        <li>Page layout and flow</li>
+                        <li>Current compliance requirements</li>
+                    </ul>
+                    
+                    <h3>What's Enhanced:</h3>
+                    <ul class="checklist">
+                        <li>Disaster planning requirements (§749.2907-2908)</li>
+                        <li>Child rights poster requirement (§749.1003(7)(b))</li>
+                        <li>2021 weapon storage update clarification</li>
+                        <li>RCC contract enhancement for medication logs</li>
+                    </ul>
+                    
+                    <h3>What's New for Development:</h3>
+                    <div class="alert alert-warning">
+                        <span class="icon">⚠️</span>
+                        <div>These sections are for conversation and planning only - families are NOT being evaluated on these items yet.</div>
+                    </div>
+                    <ul class="checklist">
+                        <li>Normalcy & Child Well-Being section (preparatory)</li>
+                        <li>T3C Preparation section (discussion only)</li>
+                        <li>Trauma-informed care conversation starters</li>
+                    </ul>
+                </div>
+                
+                <div class="section">
+                    <h2>🎯 Visit Objectives</h2>
+                    <div class="interview-question">
+                        <strong>Primary Goals:</strong>
+                        <ol style="padding-left: 20px;">
+                            <li>Ensure compliance with all Chapter 749 minimum standards</li>
+                            <li>Verify RCC contract requirements are met</li>
+                            <li>Support foster families through monitoring and resources</li>
+                            <li>Begin conversations about T3C preparation (non-evaluative)</li>
+                            <li>Document child well-being and safety</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preparation Tab -->
+            <div id="preparation" class="tab-content">
+                <div class="section">
+                    <h2>📝 Pre-Visit Checklist</h2>
+                    
+                    <h3>Documents to Bring:</h3>
+                    <ul class="checklist">
+                        <li>Enhanced Digital Monitoring Checklist (current version)</li>
+                        <li>Child/Youth Rights posters (English AND Spanish)</li>
+                        <li>Disaster plan template</li>
+                        <li>Medication log template</li>
+                        <li>Basic trauma-informed care handout</li>
+                        <li>Normalcy activities checklist</li>
+                        <li>Previous visit reports for reference</li>
+                    </ul>
+                    
+                    <h3>Review Before Visit:</h3>
+                    <ul class="checklist">
+                        <li>Previous visit notes and any outstanding issues</li>
+                        <li>Current placement information and child details</li>
+                        <li>Any recent incidents or concerns</li>
+                        <li>Upcoming inspection or certification deadlines</li>
+                        <li>Special needs or requirements for children in home</li>
+                    </ul>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Pro Tip:</strong> Call ahead to confirm the visit and ensure all household members who need to be present are available. This is especially important for conducting private child interviews.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>🗣️ Opening the Visit</h2>
+                    
+                    <div class="conversation-starter">
+                        <h4>Suggested Opening Script:</h4>
+                        <p>"Hello! I'm here for our monthly home visit. I'm using an enhanced version of our monitoring form today. The core requirements haven't changed, but we've added some discussion items to help prepare for upcoming changes in the foster care system. Let's start with a walk-through, and then we'll sit down to go over everything together."</p>
+                    </div>
+                    
+                    <div class="documentation-note">
+                        <strong>Documentation Tip:</strong> Note the date, time of arrival, and all persons present at the beginning of your visit documentation.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Medication Tab -->
+            <div id="medication" class="tab-content">
+                <div class="section">
+                    <h2>💊 Medication Requirements <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">⚠️</span>
+                        <div>
+                            <strong>Critical:</strong> All medication items are compliance requirements and must be met. Document any deficiencies for immediate correction.
+                        </div>
+                    </div>
+                    
+                    <h3>Storage Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1463(b)(2)</span>
+                        <strong>Original Containers</strong>
+                        <p>All medications must be stored in original containers with labels intact. Check that prescription labels are legible and match the child's current name.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1521(1-3)</span>
+                        <strong>Double Lock Requirement</strong>
+                        <p>All medications must be under double lock (e.g., locked box within locked cabinet). Both locks must be functioning and keys controlled.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1521</span>
+                        <strong>External Use Medications</strong>
+                        <p>Topical medications, creams, and ointments marked "external use only" must be stored separately from oral medications.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1521(4)</span>
+                        <strong>Refrigerated Medications</strong>
+                        <p>Must be in a locked box within the refrigerator. Box should be clearly labeled and not used for food storage.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1521(5)</span>
+                        <strong>Storage Area Cleanliness</strong>
+                        <p>Medication storage area must be clean, dry, and organized. No expired medications should be mixed with current medications.</p>
+                    </div>
+                    
+                    <h3>Documentation Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 5420</span>
+                        <strong>Medication Administration Record (MAR)</strong>
+                        <p>Check that MAR is current and accurate. Should show date, time, medication given, and initials for each administration.</p>
+                        <div class="tip-box" style="margin-top: 10px;">
+                            <div class="tip-box-content">
+                                <strong>Enhancement:</strong> If family doesn't have a MAR, provide template and explain it protects both them and the children.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 5420</span>
+                        <strong>Psychotropic Medications</strong>
+                        <p>Form 4526 must be submitted within 5 days for any psychotropic medication. Verify consent forms are current.</p>
+                    </div>
+                    
+                    <h3>Disposal of Medications:</h3>
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1521 & §749.1523</span>
+                        <strong>Expired/Discontinued Medications</strong>
+                        <p>Must be removed from active storage and properly stored for disposal within 30 days. Should be kept in separate, labeled container until disposal.</p>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Questions to Ask:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>"Have there been any medication changes since last visit?"</li>
+                            <li>"Any challenges with medication administration?"</li>
+                            <li>"Do you need any supplies like pill organizers or lock boxes?"</li>
+                            <li>"Are you familiar with proper disposal methods for expired medications?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Safety Tab -->
+            <div id="safety" class="tab-content">
+                <div class="section">
+                    <h2>🏥 Health & Safety Requirements <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Annual Inspections:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2905</span>
+                        <strong>Fire Inspection</strong>
+                        <p>Check current inspection date and expiration. Certificate should be on file. If expiring within 30 days, remind family to schedule renewal.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2905</span>
+                        <strong>Health Inspection</strong>
+                        <p>Verify current health inspection is on file. Check expiration date and remind if renewal needed soon.</p>
+                    </div>
+                    
+                    <h3>New/Enhanced Requirements:</h3>
+                    
+                    <div class="alert alert-warning">
+                        <span class="icon">📋</span>
+                        <div>
+                            <strong>Recently Added Requirements:</strong> These three items are now required for compliance.
+                        </div>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2907</span>
+                        <strong>Written Disaster Plan</strong>
+                        <p>Must include:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Evacuation routes for the home</li>
+                            <li>Designated meeting place</li>
+                            <li>Out-of-area contact person</li>
+                            <li>Plan for pets (if applicable)</li>
+                        </ul>
+                        <div class="tip-box" style="margin-top: 10px;">
+                            <div class="tip-box-content">
+                                Provide template if missing. Can be simple one-page document.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2908</span>
+                        <strong>Annual Disaster Drill</strong>
+                        <p>Must be documented at least annually. Simple documentation acceptable: "Fire drill conducted [date], all household members evacuated to meeting spot in X minutes."</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1003(7)(b)</span>
+                        <strong>Rights Posters in English AND Spanish</strong>
+                        <p>Must be visibly posted in common area. Both languages required regardless of languages spoken in home. Provide if missing.</p>
+                    </div>
+                    
+                    <h3>Fire Safety:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2909</span>
+                        <strong>Smoke Detectors</strong>
+                        <p>Required in hallways outside bedrooms and on each level. Test during visit if possible.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2913</span>
+                        <strong>Fire Extinguishers</strong>
+                        <p>Required in kitchen and on each level. Check:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Gauge is in green zone</li>
+                            <li>Inspection tag is current</li>
+                            <li>Pin and seal are intact</li>
+                            <li>No visible damage</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Weapon Storage:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2961</span>
+                        <strong>Firearms Storage (2021 Update)</strong>
+                        <div class="alert alert-info" style="margin-top: 10px;">
+                            <span class="icon">📌</span>
+                            <div>
+                                <strong>2021 Change:</strong> Trigger lock with ammunition stored in same locked container is now acceptable. Previous requirement of separate storage still acceptable. Gun safe meets all requirements.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3>General Safety:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3041(7)</span>
+                        <strong>Hazardous Substances</strong>
+                        <p>All cleaning supplies, chemicals, and hazardous materials must be out of reach of children or in locked storage.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2917</span>
+                        <strong>Pets/Animals</strong>
+                        <p>Verify vaccination records are current and animals appear healthy and non-aggressive.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Children's Rights Tab -->
+            <div id="rights" class="tab-content">
+                <div class="section">
+                    <h2>⚖️ Children's Rights & Well-Being <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Posting Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1003(7)(b) / RCC 1110</span>
+                        <strong>Rights Posters</strong>
+                        <p>Must be posted in common area visible to children:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Child/Youth Rights poster in ENGLISH</li>
+                            <li>Child/Youth Rights poster in SPANISH</li>
+                            <li>Both required regardless of languages spoken</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 1110</span>
+                        <strong>Contact Information Display</strong>
+                        <p>Following must be posted visibly:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>DFPS Statewide Intake: 1-800-252-5400</li>
+                            <li>Foster Care Ombudsman poster</li>
+                            <li>Agency emergency contact number</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Rights Documentation:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 1540</span>
+                        <strong>Rights Review with Child</strong>
+                        <p>Form 2530 must be signed indicating rights have been reviewed with child in age-appropriate manner. Check for current signature.</p>
+                    </div>
+                    
+                    <h3>Normalcy Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2601-2605 / RCC 4410</span>
+                        <strong>Supporting Normalcy Activities</strong>
+                        <p>Verify children are participating in age-appropriate activities:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Sports, clubs, or extracurriculars</li>
+                            <li>Social activities with peers</li>
+                            <li>Cultural or religious activities</li>
+                            <li>Family outings and celebrations</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Family Connections:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 3600</span>
+                        <strong>Maintaining Connections</strong>
+                        <p>Document how family is supporting child's connections to:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Biological family (when appropriate)</li>
+                            <li>Siblings</li>
+                            <li>Previous caregivers</li>
+                            <li>Important friends</li>
+                            <li>Cultural community</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 3610</span>
+                        <strong>Sibling Visits</strong>
+                        <p>If siblings are placed elsewhere within 100 miles, monthly visits must occur. Document frequency and quality of visits.</p>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Questions for Foster Parents:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>"What activities is [child] involved in?"</li>
+                            <li>"How are sibling visits going?"</li>
+                            <li>"Any barriers to normalcy activities we can help address?"</li>
+                            <li>"How is contact with bio family working?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bedroom Tab -->
+            <div id="bedroom" class="tab-content">
+                <div class="section">
+                    <h2>🛏️ Bedrooms & Living Space <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Space Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3029(a)</span>
+                        <strong>Bedroom Square Footage</strong>
+                        <p>Minimum requirements:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Single occupancy:</strong> 80 square feet</li>
+                            <li><strong>Multiple occupancy:</strong> 40 square feet per child</li>
+                            <li><strong>Maximum:</strong> 4 children per bedroom</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3029(b)</span>
+                        <strong>Bedroom Requirements</strong>
+                        <p>Each bedroom must have:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Window to outside for ventilation/emergency exit</li>
+                            <li>Door for privacy</li>
+                            <li>Adequate lighting</li>
+                            <li>Comfortable temperature control</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Furnishings:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3033</span>
+                        <strong>Required Furnishings Per Child</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Individual bed with mattress in good condition</li>
+                            <li>Clean bedding (sheets, blanket, pillow)</li>
+                            <li>Storage for clothing (dresser/closet space)</li>
+                            <li>Personal storage space for belongings</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Privacy & Dignity:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2595</span>
+                        <strong>No Unauthorized Surveillance</strong>
+                        <p>No cameras or monitoring devices in bedrooms, bathrooms, or areas where children change clothes.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3031</span>
+                        <strong>Sharing Bedrooms</strong>
+                        <p>Rules for room sharing:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Children 6+ cannot share with opposite gender</li>
+                            <li>Children cannot share with adults (except infants under 18 months)</li>
+                            <li>Consider trauma history when making room assignments</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Bathroom Facilities:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3035(a)</span>
+                        <strong>Bathroom Ratios</strong>
+                        <p>Minimum of one toilet, sink, and tub/shower per 8 household members. Must have hot and cold running water.</p>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Assessment Tip:</strong> During bedroom inspection, note personalization - posters, photos, decorations. This indicates the child feels at home and has ownership of their space.
+                        </div>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Things to Observe:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Are beds made and rooms reasonably clean?</li>
+                            <li>Does child have age-appropriate belongings visible?</li>
+                            <li>Is there evidence of hobbies or interests?</li>
+                            <li>Are there family photos including the foster child?</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Indoor Space Tab -->
+            <div id="indoor" class="tab-content">
+                <div class="section">
+                    <h2>🏠 Other Indoor Space Requirements <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Video Surveillance:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2595</span>
+                        <strong>No Unauthorized Video Surveillance</strong>
+                        <p>Cameras or monitoring devices are prohibited in:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Bedrooms</li>
+                            <li>Bathrooms</li>
+                            <li>Areas where children change clothes</li>
+                            <li>Any private spaces</li>
+                        </ul>
+                        <p style="margin-top: 10px;">Common area cameras must be disclosed to all household members.</p>
+                    </div>
+                    
+                    <h3>Activity Space:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3037</span>
+                        <strong>Indoor Activity Space</strong>
+                        <p>Minimum 40 square feet of indoor activity space per child (excluding bedrooms and bathrooms).</p>
+                    </div>
+                    
+                    <h3>Bathroom Facilities:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3035(a)</span>
+                        <strong>Bathroom Ratios</strong>
+                        <p>One toilet, sink, and tub/shower per 8 household members maximum.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3035(b)</span>
+                        <strong>Hot and Cold Running Water</strong>
+                        <p>All bathrooms must have functioning hot and cold running water.</p>
+                    </div>
+                    
+                    <h3>Food Storage & Kitchen:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3079(1-4)</span>
+                        <strong>Food Storage Requirements</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Food properly stored and protected from contamination</li>
+                            <li>All food in sealed containers or original packaging</li>
+                            <li>Food stored off floor (minimum 6 inches)</li>
+                            <li>Separate storage for cleaning supplies</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3079(5-6)</span>
+                        <strong>Refrigeration</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Perishables refrigerated promptly</li>
+                            <li>Refrigerator temperature 40°F or below</li>
+                            <li>Freezer temperature 0°F or below</li>
+                            <li>No expired food items</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3081(a)</span>
+                        <strong>Kitchen Cleanliness</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Food preparation areas clean and sanitized</li>
+                            <li>Dishes washed and properly stored</li>
+                            <li>Garbage disposed of regularly</li>
+                            <li>No evidence of pests</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>General Indoor Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3041(1-2)</span>
+                        <strong>Indoor Areas</strong>
+                        <p>All indoor areas must be clean, safe, and in good repair. Check for:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>No exposed wiring or electrical hazards</li>
+                            <li>Floors free of tripping hazards</li>
+                            <li>Adequate lighting in all rooms</li>
+                            <li>Functioning locks on exterior doors</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3041(3)</span>
+                        <strong>Exit Access</strong>
+                        <p>Exits must not be blocked by furniture or other items. All household members must be able to exit quickly in emergency.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3041(6)</span>
+                        <strong>Ventilation</strong>
+                        <p>Windows and doors used for ventilation must have intact screens to prevent insect entry.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3041(8)</span>
+                        <strong>Pest Control</strong>
+                        <p>Home must be free of rodents and insects. Evidence of infestation requires immediate corrective action.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Outdoor Space Tab -->
+            <div id="outdoor" class="tab-content">
+                <div class="section">
+                    <h2>🌳 Outdoor Space Requirements <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Outdoor Activity Space:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3039</span>
+                        <strong>Outdoor Play Area</strong>
+                        <p>Minimum 80 square feet of outdoor activity space per child. Area must be:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Safe and free from hazards</li>
+                            <li>Appropriately fenced if near traffic or water</li>
+                            <li>Free of toxic plants</li>
+                            <li>Equipment age-appropriate and in good repair</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Pool and Water Safety:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3043</span>
+                        <strong>Swimming Pools and Hot Tubs</strong>
+                        <p>If property has pool or hot tub:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Must be fenced with self-closing, self-latching gate</li>
+                            <li>Fence minimum 4 feet high</li>
+                            <li>Safety equipment readily available</li>
+                            <li>Posted rules for use</li>
+                            <li>Adult supervision required for children under 12</li>
+                            <li>Hot tub covers must lock when not in use</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Outdoor Hazards:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3045</span>
+                        <strong>Outdoor Safety Check</strong>
+                        <p>Inspect outdoor areas for:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Broken glass or sharp objects</li>
+                            <li>Holes or uneven surfaces</li>
+                            <li>Toxic plants or mushrooms</li>
+                            <li>Standing water (mosquito breeding)</li>
+                            <li>Unsafe structures (sheds, playhouses)</li>
+                            <li>Proper storage of lawn equipment</li>
+                            <li>Secure garbage/recycling containers</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Trampolines:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.3047</span>
+                        <strong>Trampoline Safety</strong>
+                        <p>If trampoline present:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Safety net enclosure required</li>
+                            <li>Padding on springs and frame</li>
+                            <li>One child at a time rule</li>
+                            <li>Adult supervision for children under 12</li>
+                            <li>Regular inspection for wear/damage</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Outdoor Inspection Tip:</strong> Walk the entire perimeter of the property. Check fencing integrity, gate latches, and look for any potential escape routes or hazards a child might encounter.
+                        </div>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Questions to Ask:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>"How often do the children play outside?"</li>
+                            <li>"What outdoor activities do they enjoy?"</li>
+                            <li>"Any outdoor safety concerns you've noticed?"</li>
+                            <li>"Do you have rules for outdoor play?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Education Tab -->
+            <div id="education" class="tab-content">
+                <div class="section">
+                    <h2>📚 Education & Life Skills <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <h3>Educational Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1893 / RCC 6700</span>
+                        <strong>Education Portfolio</strong>
+                        <p>Must maintain portfolio containing:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Current report cards</li>
+                            <li>School enrollment documents</li>
+                            <li>IEP/504 plans if applicable</li>
+                            <li>Achievement certificates</li>
+                            <li>Standardized test results</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.1893(4)</span>
+                        <strong>Study Environment</strong>
+                        <p>Child must have:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Quiet space for homework</li>
+                            <li>Designated homework time</li>
+                            <li>Necessary school supplies</li>
+                            <li>Access to resources (computer/library)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 6100</span>
+                        <strong>School Enrollment</strong>
+                        <p>Verify child is currently enrolled and attending school regularly. Check for any attendance issues.</p>
+                    </div>
+                    
+                    <h3>Life Skills Development:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 4500</span>
+                        <strong>Basic Life Skills Training</strong>
+                        <p>Must provide minimum 2 life skills activities per month. Examples:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Cooking and meal planning</li>
+                            <li>Budgeting and money management</li>
+                            <li>Laundry and housekeeping</li>
+                            <li>Personal hygiene and self-care</li>
+                            <li>Social skills and communication</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Youth 14+ Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 4120</span>
+                        <strong>Casey Life Skills Assessment</strong>
+                        <p>Required for all youth 14 and older. Should be completed annually to track progress.</p>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">RCC 1433</span>
+                        <strong>PAL (Preparation for Adult Living)</strong>
+                        <p>All youth 14+ must be enrolled in PAL program. Verify enrollment and participation.</p>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>For Teens - Additional Topics:</h4>
+                        <ul>
+                            <li>Driver's education progress</li>
+                            <li>Work experience or volunteer opportunities</li>
+                            <li>College or vocational planning</li>
+                            <li>Independent living skills practice</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Child Interview Tab -->
+            <div id="interview-child" class="tab-content">
+                <div class="section">
+                    <h2>👦 Child Interview Guide <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">⚠️</span>
+                        <div>
+                            <strong>CRITICAL REQUIREMENT:</strong> You must conduct and document individual interviews for EACH child in placement (up to 5 children). Each child requires their own interview section with complete identification and assessment.
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <span class="icon">🔒</span>
+                        <div>
+                            <strong>Privacy Note:</strong> Conduct interviews privately when age-appropriate. Use child's preferred space if they have one. Ensure a comfortable, relaxed environment.
+                        </div>
+                    </div>
+                    
+                    <h3>Child Identification Requirements (Per Child):</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Essential Information to Capture:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Legal Name:</strong> Must match placement authorization</li>
+                            <li><strong>Preferred Name/Nickname:</strong> Document if different</li>
+                            <li><strong>Date of Birth & Age:</strong> Verify accuracy</li>
+                            <li><strong>Placement ID (PID):</strong> Required for tracking</li>
+                            <li><strong>Medicaid #:</strong> Verify current</li>
+                            <li><strong>Placement Date:</strong> Calculate days in placement</li>
+                            <li><strong>Legal Status:</strong> TMC / PMC / JMC / Voluntary</li>
+                            <li><strong>SSCC Region:</strong> Document for compliance</li>
+                            <li><strong>Service Level:</strong> Basic / Moderate / Specialized / Intense</li>
+                            <li><strong>Service Package:</strong> Select applicable package type</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Service Package Options:</strong><br>
+                            • Basic Foster Family Home<br>
+                            • Mental & Behavioral Health<br>
+                            • IDD/Autism Support<br>
+                            • Youth Transition<br>
+                            • Pregnant/Parenting Youth<br>
+                            • Kinship Support
+                        </div>
+                    </div>
+                    
+                    <h3>Interview Setting Documentation:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Always Document:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Interview Setting:</strong> Private / Foster Parent Present / Other</li>
+                            <li><strong>Child's Demeanor:</strong> Comfortable / Anxious / Withdrawn / Hostile</li>
+                            <li>Note any changes in demeanor during interview</li>
+                            <li>Document reason if private interview not possible</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Building Rapport:</h3>
+                    
+                    <div class="conversation-starter">
+                        <h4>Opening Questions (Choose based on age):</h4>
+                        <ul>
+                            <li>"What's been the best part of your month?"</li>
+                            <li>"Tell me about something fun you've done recently."</li>
+                            <li>"What's your favorite thing about living here?"</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Core Interview Areas:</h3>
+                    
+                    <div class="interview-question">
+                        <strong>General Well-being:</strong>
+                        <p>"How have things been going this month?"</p>
+                        <div style="margin-top: 10px; padding: 10px; background: var(--gray-100); border-radius: 5px;">
+                            <strong>Listen for:</strong> Emotional regulation, stressors, positive experiences, any mentions of being upset or angry
+                        </div>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Daily Life & Routines:</strong>
+                        <ul>
+                            <li>"What's your typical day like here?"</li>
+                            <li>"Tell me about meal times - do you get foods you like?"</li>
+                            <li>"How does laundry and keeping your room work?"</li>
+                            <li>"Do you have privacy when you need it?"</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>School Experience:</strong>
+                        <ul>
+                            <li>"How's school going?"</li>
+                            <li>"Tell me about your friends."</li>
+                            <li>"What's your favorite/least favorite subject?"</li>
+                            <li>"Is there anything at school you need help with?"</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Relationship with Foster Family:</strong>
+                        <ul>
+                            <li>"What do you like about living with [foster parent names]?"</li>
+                            <li>"Is there anything you wish was different?"</li>
+                            <li>"Do you feel listened to when you have concerns?"</li>
+                            <li>"Who do you talk to when you're upset?"</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Needs Assessment:</strong>
+                        <ul>
+                            <li>"Is there anything you need that you don't have?"</li>
+                            <li>"Are you able to see/talk to your family/siblings?"</li>
+                            <li>"What activities would you like to be involved in?"</li>
+                            <li>"How are things going with your therapist/counselor?"</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>ASQ Suicide Risk Screening (CRITICAL):</h3>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">🚨</span>
+                        <div>
+                            <strong>MANDATORY REQUIREMENT:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li>Required for ALL children age 10+ every 90 days</li>
+                                <li>Due quarterly: March, June, September, December</li>
+                                <li>Must be conducted at admission AND quarterly thereafter</li>
+                                <li>Document date of last ASQ and next due date</li>
+                                <li><span class="red-flag">IMMEDIATE ACTION</span> required for any positive screen</li>
+                                <li>Follow agency safety protocol immediately if positive</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>ASQ Screening Process:</strong>
+                        <ol style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Verify Age:</strong> Check if child is 10 or older</li>
+                            <li><strong>Check Due Date:</strong> Confirm if screening is due this quarter</li>
+                            <li><strong>Private Setting:</strong> Must be conducted privately without foster parents</li>
+                            <li><strong>Use Approved Tool:</strong> Only use agency-approved ASQ screening tool</li>
+                            <li><strong>Document Completely:</strong> Record all responses exactly</li>
+                            <li><strong>Score Immediately:</strong> Calculate risk level during visit</li>
+                            <li><strong>Take Action:</strong> Follow protocol based on score</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>If ASQ is Positive (ANY positive response):</strong>
+                        <div class="alert alert-danger" style="margin-top: 10px;">
+                            <ol style="margin-left: 20px;">
+                                <li><strong>DO NOT LEAVE</strong> the child alone</li>
+                                <li>Contact supervisor IMMEDIATELY</li>
+                                <li>Implement safety plan with foster parents</li>
+                                <li>Remove access to means (medications, sharps, etc.)</li>
+                                <li>Schedule emergency mental health assessment within 24 hours</li>
+                                <li>Document all actions taken</li>
+                                <li>Follow up within 48 hours</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>Quarterly Schedule Tracking:</strong>
+                        <div style="margin-top: 10px; padding: 15px; background: var(--gray-100); border-radius: 8px;">
+                            <p><strong>Q1 (March):</strong> Due March 1-31</p>
+                            <p><strong>Q2 (June):</strong> Due June 1-30</p>
+                            <p><strong>Q3 (September):</strong> Due September 1-30</p>
+                            <p><strong>Q4 (December):</strong> Due December 1-31</p>
+                            <p style="margin-top: 10px;"><em>Note: If child turns 10 during quarter, begin screening immediately</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="documentation-note">
+                        <strong>ASQ Documentation Requirements:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Record exact date ASQ was completed</li>
+                            <li>Note if child refused (document reason)</li>
+                            <li>If positive screen, document immediate safety measures taken</li>
+                            <li>Verify supervisor notification if positive</li>
+                            <li>Note date of last ASQ and next due date</li>
+                            <li>File completed ASQ in child's record</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Best Practice Tips:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li>Build rapport before administering ASQ</li>
+                                <li>Use age-appropriate language</li>
+                                <li>Normalize the screening: "We ask all kids these questions"</li>
+                                <li>Be prepared for disclosures</li>
+                                <li>Have crisis resources ready</li>
+                                <li>Know your agency's safety protocol by heart</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>Red Flags Requiring Immediate Action:</h3>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">🚨</span>
+                        <div>
+                            <strong>If child reports any of these, follow immediate safety protocols:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li><span class="red-flag">CRITICAL</span> Fear of foster parents</li>
+                                <li><span class="red-flag">CRITICAL</span> Hunger or food restriction as punishment</li>
+                                <li><span class="red-flag">CRITICAL</span> Physical discipline or threats</li>
+                                <li><span class="red-flag">CRITICAL</span> Isolation or extreme restrictions</li>
+                                <li><span class="red-flag">CRITICAL</span> Missing school frequently without valid reason</li>
+                                <li><span class="red-flag">CRITICAL</span> No personal belongings allowed</li>
+                                <li><span class="red-flag">CRITICAL</span> Prevented from family contact without court order</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>Age-Specific Considerations:</h3>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Young Children (5-8):</strong> Use simple language, incorporate play or drawing, keep sessions shorter<br><br>
+                            <strong>Tweens (9-12):</strong> Respect growing need for privacy, ask about friendships, discuss activities<br><br>
+                            <strong>Teens (13+):</strong> Treat more like adults, discuss future plans, respect their autonomy
+                        </div>
+                    </div>
+                    
+                    <div class="documentation-note">
+                        <strong>Documentation Tips:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Quote significant statements directly</li>
+                            <li>Note body language and emotional state</li>
+                            <li>Document both positives and concerns</li>
+                            <li>Include child's exact words when reporting concerns</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Parent Interview Tab -->
+            <div id="interview-parent" class="tab-content">
+                <div class="section">
+                    <h2>👪 Foster Parent Interview Guide <span class="phase-badge phase-required">REQUIRED</span></h2>
+                    
+                    <div class="alert alert-success">
+                        <span class="icon">💚</span>
+                        <div>
+                            <strong>Approach:</strong> Collaborative, not interrogative. Recognize their expertise about the child. Balance information gathering with support.
+                        </div>
+                    </div>
+                    
+                    <h3>Key Topics to Cover:</h3>
+                    
+                    <div class="interview-question">
+                        <strong>Behavioral Patterns:</strong>
+                        <p>"How has [child's] behavior been this month?"</p>
+                        <div style="margin-top: 10px;">
+                            <strong>Get specific details on:</strong>
+                            <ul style="margin-left: 20px;">
+                                <li>Frequency, intensity, duration of behaviors</li>
+                                <li>Triggers and patterns noticed</li>
+                                <li>Successful intervention strategies</li>
+                                <li>Changes from previous month</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Documentation Tip:</strong> Avoid labels like "tantrum." Instead document: "Screams, throws objects, episodes last approximately 20 minutes, triggered by transitions."
+                        </div>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Daily Functioning:</strong>
+                        <ul>
+                            <li>"Walk me through a typical day with [child]."</li>
+                            <li>"How independent are they with daily routines?"</li>
+                            <li>"How are sleep patterns and eating habits?"</li>
+                            <li>"Any concerns about hygiene or self-care?"</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Services & Appointments:</strong>
+                        <ul>
+                            <li>"How is therapy going? Any progress to note?"</li>
+                            <li>"Are all medical/dental appointments current?"</li>
+                            <li>"How does [child] do with family visits?"</li>
+                            <li>"Any challenges with school?"</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Activities & Normalcy:</strong>
+                        <ul>
+                            <li>"What activities is [child] participating in?"</li>
+                            <li>"How are peer relationships developing?"</li>
+                            <li>"Tell me about family activities they enjoy."</li>
+                            <li>"Any interests they'd like to explore?"</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Support Needs Assessment:</h3>
+                    
+                    <div class="conversation-starter">
+                        <h4>Always Ask:</h4>
+                        <ul>
+                            <li>"What support would be most helpful to you right now?"</li>
+                            <li>"Are there any behaviors you're struggling to manage?"</li>
+                            <li>"What training would be beneficial?"</li>
+                            <li>"Do you need respite care?"</li>
+                            <li>"How are YOU doing? Any self-care needs?"</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Concerning Responses Requiring Follow-up:</h3>
+                    
+                    <div class="alert alert-warning">
+                        <span class="icon">⚠️</span>
+                        <div>
+                            <strong>Watch for these signs:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li>Overwhelm or burnout expressions</li>
+                                <li>Punitive discipline approaches</li>
+                                <li>Inability to manage behaviors</li>
+                                <li>Lack of warmth when discussing child</li>
+                                <li>Immediate removal requests</li>
+                                <li>Isolation of child from family activities</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>Strengths to Document:</h3>
+                    
+                    <div class="interview-question">
+                        <strong>Look for and document:</strong>
+                        <ul style="margin-top: 10px;">
+                            <li>Creative problem-solving strategies</li>
+                            <li>Commitment to child's growth</li>
+                            <li>Seeking appropriate help when needed</li>
+                            <li>Maintaining important connections</li>
+                            <li>Celebrating child's progress</li>
+                            <li>Including child in family life</li>
+                            <li>Advocating for child's needs</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="documentation-note">
+                        <strong>Good Documentation Examples:</strong>
+                        <p style="margin-top: 10px;">"Foster parents report child has made significant progress with emotional regulation. They've implemented a calm-down corner with sensory tools that child uses independently 75% of the time when upset. Parents demonstrate warm, patient approach and celebrate small victories."</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Normalcy/T3C Tab -->
+            <div id="normalcy" class="tab-content">
+                <div class="section">
+                    <h2>🌟 Normalcy & T3C Preparation <span class="phase-badge phase-development">DEVELOPMENT ONLY</span></h2>
+                    
+                    <div class="alert alert-info">
+                        <span class="icon">📢</span>
+                        <div>
+                            <strong>Critical Framing:</strong> "This section isn't about compliance - it's about celebrating what you're already doing and exploring opportunities. The state is moving toward greater emphasis on normalcy, and we want to support you in that transition."
+                        </div>
+                    </div>
+                    
+                    <h3>Normalcy Enhancement Areas:</h3>
+                    
+                    <div class="conversation-starter">
+                        <h4>Age-Appropriate Activities:</h4>
+                        <p><strong>ASK:</strong> "What fun things are the kids involved in?"</p>
+                        <p><strong>CELEBRATE:</strong> Any activities mentioned</p>
+                        <p><strong>EXPLORE:</strong> "Any activities they've expressed interest in?"</p>
+                        <p><strong>SUPPORT:</strong> "How can we help make that happen?"</p>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>Educational Support:</h4>
+                        <p><strong>ASK:</strong> "Beyond homework, any educational enrichment happening?"</p>
+                        <p><strong>EXAMPLES:</strong> Library visits, educational apps, museum trips, tutoring</p>
+                        <p><strong>EXPLORE:</strong> "Any educational goals for the children?"</p>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>Cultural/Religious Connections:</h4>
+                        <p><strong>ASK:</strong> "How are you supporting their cultural identity?"</p>
+                        <p><strong>SENSITIVE:</strong> This varies greatly by child's background</p>
+                        <p><strong>SUPPORT:</strong> Connect with resources if needed</p>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>Life Skills for Teens:</h4>
+                        <p><strong>ASK:</strong> "What life skills are you working on with the teens?"</p>
+                        <p><strong>EXAMPLES:</strong> Cooking, budgeting, job applications, driving</p>
+                        <p><strong>CELEBRATE:</strong> Any efforts in this area</p>
+                    </div>
+                    
+                    <h3>T3C Preparation Discussion:</h3>
+                    
+                    <div class="alert alert-warning">
+                        <span class="icon">💬</span>
+                        <div>
+                            <strong>Opening Script:</strong> "T3C implementation is coming but isn't here yet. This conversation is just to help you prepare and to identify any support you might need. Nothing we discuss here affects your current compliance or licensing."
+                        </div>
+                    </div>
+                    
+                    <h3>Trauma-Informed Care Practices:</h3>
+                    
+                    <div class="interview-question">
+                        <strong>Building Trust (Discussion Only):</strong>
+                        <ul>
+                            <li>"What works best for connecting with [child's name]?"</li>
+                            <li>"What activities do you enjoy together?"</li>
+                            <li>Share: "Some families find [technique] helpful..."</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Managing Dysregulation (Discussion Only):</strong>
+                        <ul>
+                            <li>"When [child] gets upset, what helps them calm down?"</li>
+                            <li>"Have you noticed patterns in what triggers difficult moments?"</li>
+                            <li>Offer: "There's a great training on co-regulation strategies..."</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Supporting Physical/Sensory Needs (Discussion Only):</strong>
+                        <ul>
+                            <li>"Have you noticed any sensory preferences or sensitivities?"</li>
+                            <li>"What routines seem to work best?"</li>
+                            <li>Share: "Some children benefit from sensory tools like weighted blankets..."</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Important:</strong> If family is already using trauma-informed practices, acknowledge and celebrate this. If not, present as opportunities for learning, not deficiencies.
+                        </div>
+                    </div>
+                    
+                    <h3>Key Phrases to Use:</h3>
+                    
+                    <ul class="checklist">
+                        <li>"That's wonderful that you're..."</li>
+                        <li>"Have you considered..."</li>
+                        <li>"Other families have found success with..."</li>
+                        <li>"What support would help with that?"</li>
+                        <li>"Let me connect you with resources for..."</li>
+                    </ul>
+                    
+                    <div class="documentation-note">
+                        <strong>Documentation for Development Sections:</strong>
+                        <p>Use phrases like:</p>
+                        <ul style="margin-top: 10px;">
+                            <li>"Opportunities for growth discussed..."</li>
+                            <li>"Family interested in learning more about..."</li>
+                            <li>"Resources provided for..."</li>
+                            <li>"Will follow up with support for..."</li>
+                        </ul>
+                        <p style="margin-top: 10px;"><strong>Never write:</strong> "Family not meeting T3C requirements" or "Deficient in trauma-informed care"</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Documentation Tab -->
+            <div id="documentation" class="tab-content">
+                <div class="section">
+                    <h2>📝 Documentation Guidelines</h2>
+                    
+                    <h3>General Documentation Principles:</h3>
+                    
+                    <ul class="checklist">
+                        <li>Be objective, specific, and factual</li>
+                        <li>Use direct quotes when significant</li>
+                        <li>Document both strengths and concerns</li>
+                        <li>Include dates, times, and persons present</li>
+                        <li>Note follow-up actions needed</li>
+                        <li>Check "Notes?" box if additional documentation needed for any item</li>
+                        <li>Use combined notes fields for section-specific observations</li>
+                    </ul>
+                    
+                    <h3>Visit Summary Requirements:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Overall Compliance Status (Select One):</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Fully Compliant:</strong> All requirements met, no issues identified</li>
+                            <li><strong>Substantially Compliant with Minor Issues:</strong> Small corrections needed</li>
+                            <li><strong>Corrective Action Required:</strong> Significant deficiencies found</li>
+                            <li><strong>Immediate Intervention Needed:</strong> Safety concerns or critical issues</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>Key Strengths Observed (Minimum 3):</strong>
+                        <p>Document at least three specific strengths observed during visit:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Foster parent engagement and commitment</li>
+                            <li>Home environment quality</li>
+                            <li>Child adjustment and well-being</li>
+                            <li>Compliance with requirements</li>
+                            <li>Creative problem-solving</li>
+                            <li>Support of normalcy activities</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>Priority Areas for Next Visit (Document 3):</strong>
+                        <p>Identify three specific areas to focus on during next visit:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Follow-up on corrective actions</li>
+                            <li>Check expiring certifications</li>
+                            <li>Review new placements</li>
+                            <li>Assess ongoing concerns</li>
+                            <li>Verify documentation updates</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>Resources Provided Documentation:</strong>
+                        <p>List all resources given during visit:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Training Materials:</strong> Handouts, guides, curriculum</li>
+                            <li><strong>Contact Information:</strong> Support services, emergency contacts</li>
+                            <li><strong>Templates/Forms:</strong> MAR, disaster plan, etc.</li>
+                            <li><strong>Other:</strong> Equipment, supplies, referrals</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="requirement-item">
+                        <strong>Next Scheduled Visit:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Visit Type: Monthly / Quarterly / Annual / Follow-up</li>
+                            <li>Date, Time, and Location</li>
+                            <li>Any special preparations needed</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>For Compliance Sections:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Document exactly as trained:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Check compliant/non-compliant/N/A boxes</li>
+                            <li>Note specific deficiencies found</li>
+                            <li>Document corrective actions required</li>
+                            <li>Set clear deadlines for corrections</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>For Enhancement/T3C Sections:</h3>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Remember:</strong> These sections are developmental, not evaluative. Focus on growth opportunities and support needs.
+                        </div>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Good Documentation Examples:</strong>
+                        <div style="margin-top: 10px; padding: 15px; background: var(--gray-100); border-radius: 8px;">
+                            <p><strong>Normalcy:</strong><br>
+                            "Family actively supporting child's participation in soccer and youth group. Discussed possibilities for summer camp. Family interested in resources for funding activities."</p>
+                            
+                            <p style="margin-top: 15px;"><strong>T3C Preparation:</strong><br>
+                            "Family demonstrates natural use of trauma-informed approaches, including co-regulation and sensory supports. Expressed interest in formal TBRI training when available."</p>
+                        </div>
+                    </div>
+                    
+                    <h3>Critical Incident Documentation:</h3>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">🚨</span>
+                        <div>
+                            <strong>If safety concerns identified:</strong>
+                            <ol style="margin-left: 20px; margin-top: 10px;">
+                                <li>Document exact observations/statements</li>
+                                <li>Note immediate actions taken</li>
+                                <li>Contact supervisor immediately</li>
+                                <li>Follow agency protocol for reporting</li>
+                                <li>Complete incident report same day</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <h3>Completing the Visit:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Before Leaving:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Review any deficiencies found with foster parents</li>
+                            <li>Provide resources or templates needed</li>
+                            <li>Set clear expectations for corrections</li>
+                            <li>Schedule follow-up if needed</li>
+                            <li>Thank family for their time and service</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Signatures & Certification:</h3>
+                    
+                    <div class="requirement-item">
+                        <span class="requirement-code">§749.2815(e)</span>
+                        <strong>Required Signatures</strong>
+                        <p>Obtain signatures from:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Agency field staff (you)</li>
+                            <li>Foster parent(s) present during visit</li>
+                            <li>Supervisor review (if applicable)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="documentation-note">
+                        <strong>Certification Statement:</strong>
+                        <p>"By signing below, all parties certify that this home visit was conducted in accordance with TAC Chapter 749 Minimum Standards and RCC Contract Requirements."</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resources Tab -->
+            <div id="resources" class="tab-content">
+                <div class="section">
+                    <h2>📚 Resources & Quick References</h2>
+                    
+                    <h3>Critical Phone Numbers:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Emergency Contacts:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>DFPS Statewide Intake:</strong> 1-800-252-5400</li>
+                            <li><strong>Foster Care Ombudsman:</strong> 1-844-286-0769</li>
+                            <li><strong>Agency Emergency Line:</strong> [Your Agency Number]</li>
+                            <li><strong>Supervisor Direct:</strong> [Supervisor Number]</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Required Forms & Documents:</h3>
+                    
+                    <ul class="checklist">
+                        <li>Form 2530 - Rights Acknowledgment</li>
+                        <li>Form 4526 - Psychotropic Medication Consent</li>
+                        <li>Medication Administration Record (MAR) Template</li>
+                        <li>Disaster Plan Template</li>
+                        <li>Rights Posters (English & Spanish)</li>
+                    </ul>
+                    
+                    <h3>Quick Reference - Square Footage:</h3>
+                    
+                    <div class="tip-box">
+                        <div class="tip-box-content">
+                            <strong>Bedroom Requirements:</strong><br>
+                            • Single child: 80 sq ft minimum<br>
+                            • Multiple children: 40 sq ft per child<br>
+                            • Maximum: 4 children per bedroom<br><br>
+                            <strong>Activity Space:</strong><br>
+                            • Indoor: 40 sq ft per child<br>
+                            • Outdoor: 80 sq ft per child
+                        </div>
+                    </div>
+                    
+                    <h3>Training Resources:</h3>
+                    
+                    <div class="requirement-item">
+                        <strong>Recommended Trainings for Foster Parents:</strong>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>TBRI (Trust-Based Relational Intervention)</li>
+                            <li>CPR/First Aid Certification</li>
+                            <li>Medication Administration</li>
+                            <li>De-escalation Techniques</li>
+                            <li>Normalcy and Prudent Parenting</li>
+                            <li>Cultural Competency</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Common Issues & Solutions:</h3>
+                    
+                    <div class="interview-question">
+                        <strong>Missing Documentation:</strong>
+                        <p>Provide templates immediately, set 7-day deadline for completion</p>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Expired Inspections:</strong>
+                        <p>Provide contact info for inspectors, require scheduling within 48 hours</p>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Medication Storage Issues:</strong>
+                        <p>Provide lock boxes if needed, demonstrate proper storage</p>
+                    </div>
+                    
+                    <div class="interview-question">
+                        <strong>Missing Rights Posters:</strong>
+                        <p>Leave copies with family, verify posting before next visit</p>
+                    </div>
+                    
+                    <h3>ASQ Screening Requirements:</h3>
+                    
+                    <div class="alert alert-danger">
+                        <span class="icon">⚠️</span>
+                        <div>
+                            <strong>CRITICAL - Suicide Screening:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li>Required for ALL children age 10+ every 90 days</li>
+                                <li>Due quarterly: March, June, September, December</li>
+                                <li>Must be conducted at admission and quarterly thereafter</li>
+                                <li>Any positive screen requires immediate safety protocol</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>Managing Different Family Responses:</h3>
+                    
+                    <div class="conversation-starter">
+                        <h4>The Eager Family:</h4>
+                        <ul>
+                            <li>Celebrate their enthusiasm</li>
+                            <li>Provide additional resources</li>
+                            <li>Connect with advanced training</li>
+                            <li>Consider as mentors for others</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>The Overwhelmed Family:</h4>
+                        <ul>
+                            <li>Reassure that requirements haven't changed</li>
+                            <li>Focus on one area for growth</li>
+                            <li>Increase support and check-ins</li>
+                            <li>Consider respite care options</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>The Resistant Family:</h4>
+                        <ul>
+                            <li>Acknowledge change is challenging</li>
+                            <li>Focus only on compliance items</li>
+                            <li>Don't push enhancement discussions</li>
+                            <li>Document willingness to engage</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="conversation-starter">
+                        <h4>The Confused Family:</h4>
+                        <ul>
+                            <li>Simplify explanations</li>
+                            <li>Provide written materials</li>
+                            <li>Offer follow-up discussion</li>
+                            <li>Connect with peer support</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Supervisor Consultation Triggers:</h3>
+                    
+                    <div class="alert alert-warning">
+                        <span class="icon">📞</span>
+                        <div>
+                            <strong>Contact Supervisor When:</strong>
+                            <ul style="margin-top: 10px;">
+                                <li>Any safety concerns identified</li>
+                                <li>Family refuses required corrections</li>
+                                <li>Multiple compliance issues found</li>
+                                <li>Removal request from foster parents</li>
+                                <li>Child discloses abuse or neglect</li>
+                                <li>Medical emergency during visit</li>
+                                <li>Support needs exceed available resources</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>✅ Visit Completion Checklist</h2>
+                    
+                    <ul class="checklist">
+                        <li>All sections of monitoring form completed</li>
+                        <li>Private interview with each child conducted</li>
+                        <li>Foster parent interview completed</li>
+                        <li>All bedrooms and common areas inspected</li>
+                        <li>Medication storage verified</li>
+                        <li>Safety equipment checked</li>
+                        <li>Rights posters confirmed posted</li>
+                        <li>Documentation requirements reviewed</li>
+                        <li>Resources provided as needed</li>
+                        <li>Follow-up actions clearly communicated</li>
+                        <li>All required signatures obtained</li>
+                        <li>Copy of report left with family</li>
+                    </ul>
+                    
+                    <div class="tip-box" style="margin-top: 30px;">
+                        <div class="tip-box-content">
+                            <strong>Remember:</strong> Phase 1 is about building bridges, not just compliance monitoring. Your role is to:
+                            <ol style="margin-left: 20px; margin-top: 10px;">
+                                <li>Maintain all current standards (unchanged)</li>
+                                <li>Introduce new concepts gently</li>
+                                <li>Assess readiness and support needs</li>
+                                <li>Build enthusiasm rather than anxiety</li>
+                                <li>Document development, not deficiency</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="quick-ref" onclick="alert('Quick Reference Guide - Key Points:\n\n• Bedroom: 80 sq ft single, 40 sq ft per child multiple\n• Meds: Double lock required\n• Rights posters: English AND Spanish\n• Fire extinguisher: Kitchen + each level\n• Disaster plan: Written plan required\n• ASQ: Age 10+ every 90 days\n• Weapons: Trigger lock with ammo OK (2021)')">
+        📖 Quick Reference
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            event.target.classList.add('active');
+            
+            // Scroll to top of content
+            document.querySelector('.content').scrollTop = 0;
+        }
+        
+        // Print functionality
+        function printGuide() {
+            window.print();
+        }
+        
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const tabs = Array.from(document.querySelectorAll('.nav-tab'));
+            const activeTab = document.querySelector('.nav-tab.active');
+            const currentIndex = tabs.indexOf(activeTab);
+            
+            if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                tabs[currentIndex - 1].click();
+            } else if (e.key === 'ArrowRight' && currentIndex < tabs.length - 1) {
+                tabs[currentIndex + 1].click();
+            }
+        });
+        
+        // Add search functionality (optional enhancement)
+        function searchContent(query) {
+            const content = document.querySelector('.content').textContent.toLowerCase();
+            if (content.includes(query.toLowerCase())) {
+                // Implement highlight functionality
+                console.log('Found:', query);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -60,13 +60,14 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
       title: "Navigation",
       items: [
         { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+        { code: "guide", title: "Home Visit Guide", url: "/guide", icon: "BookOpen", order: 2 },
         {
           code: "visits_calendar",
           title: "Visits Calendar",
           url: "/visits-calendar",
           icon: "Calendar",
           permission: "view_visits",
-          order: 2,
+          order: 3,
         },
         {
           code: "visit_forms",
@@ -74,7 +75,7 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
           url: "/visit-forms",
           icon: "FileText",
           permission: "view_visits",
-          order: 3,
+          order: 4,
         },
         {
           code: "reports",
@@ -82,10 +83,10 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
           url: "/reports",
           icon: "BarChart3",
           permission: "generate_reports",
-          order: 4,
+          order: 5,
         },
-        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 5 },
-        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 6 },
+        { code: "homes_map", title: "Homes Map", url: "/homes-map", icon: "Map", order: 6 },
+        { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 7 },
       ],
     },
     {

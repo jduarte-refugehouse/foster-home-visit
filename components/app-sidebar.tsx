@@ -27,14 +27,15 @@ import {
   Users,
   Settings,
   Database,
-  ChevronUp,
-  LogOut,
   UserCog,
   FileText,
   Shield,
   Plus,
   User,
+  BookOpen,
   type LucideIcon,
+  ChevronUp,
+  LogOut,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -52,6 +53,7 @@ const iconMap: Record<string, LucideIcon> = {
   FileText,
   Shield,
   Plus,
+  BookOpen,
 }
 
 interface NavigationItem {
