@@ -51,6 +51,16 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+      {/* TEST DEPLOYMENT BANNER - This is a test change for preview deployment */}
+      <div className="bg-gradient-to-r from-green-500 to-blue-500 border border-green-600 p-4 rounded-xl text-center">
+        <p className="text-white font-bold text-xl">
+          🚀 TEST DEPLOYMENT - Preview Environment Working! 🚀
+        </p>
+        <p className="text-white text-sm mt-1">
+          This banner confirms the Vercel preview deployment is active
+        </p>
+      </div>
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-br from-refuge-purple/10 via-transparent to-refuge-magenta/10 border border-slate-200 dark:border-slate-800 p-8 rounded-xl">
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
