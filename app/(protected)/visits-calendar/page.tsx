@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, dateFnsLocalizer } from "react-big-calendar"
 import { format, parse, startOfWeek, getDay } from "date-fns"
 import { enUS } from "date-fns/locale"
-import { Plus, CalendarIcon, Clock, MapPin, RefreshCw, Shield, AlertTriangle, CheckCircle, Phone } from "lucide-react"
+import { Plus, CalendarIcon, Clock, MapPin, RefreshCw, Shield, AlertTriangle, CheckCircle, Phone, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
 const locales = {
@@ -51,7 +52,8 @@ interface CalendarEvent {
   title: string
   start: Date
   end: Date
-  resource: Appointment
+  resource: Appointment | any
+  eventType?: "appointment" | "on-call"
 }
 
 export default function VisitsCalendarPage() {
@@ -67,6 +69,7 @@ export default function VisitsCalendarPage() {
   const [coverageData, setCoverageData] = useState<any>(null)
   const [currentOnCall, setCurrentOnCall] = useState<any>(null)
   const [showOnCallPanel, setShowOnCallPanel] = useState(true)
+  const [showOnCallOnCalendar, setShowOnCallOnCalendar] = useState(true)
   
   const { toast } = useToast()
 
@@ -194,13 +197,29 @@ export default function VisitsCalendarPage() {
   }
 
   // Transform appointments to calendar events
-  const calendarEvents: CalendarEvent[] = appointments.map((appointment) => ({
+  const appointmentEvents: CalendarEvent[] = appointments.map((appointment) => ({
     id: appointment.appointment_id,
     title: appointment.title,
     start: new Date(appointment.start_datetime),
     end: new Date(appointment.end_datetime),
     resource: appointment,
+    eventType: "appointment",
   }))
+
+  // Transform on-call schedules to calendar events
+  const onCallEvents: CalendarEvent[] = onCallSchedules.map((schedule) => ({
+    id: `oncall-${schedule.id}`,
+    title: `🛡️ ${schedule.user_name} (On-Call)`,
+    start: new Date(schedule.start_datetime),
+    end: new Date(schedule.end_datetime),
+    resource: schedule,
+    eventType: "on-call",
+  }))
+
+  // Combine events based on toggle
+  const calendarEvents: CalendarEvent[] = showOnCallOnCalendar 
+    ? [...appointmentEvents, ...onCallEvents]
+    : appointmentEvents
 
   const handleSelectEvent = (event: CalendarEvent) => {
     setSelectedAppointment(event.resource)
@@ -253,6 +272,22 @@ export default function VisitsCalendarPage() {
   }
 
   const eventStyleGetter = (event: CalendarEvent) => {
+    // Handle on-call events with distinct purple styling
+    if (event.eventType === "on-call") {
+      return {
+        style: {
+          backgroundColor: "#7c3aed", // Purple/violet for on-call
+          borderRadius: "4px",
+          opacity: 0.85,
+          color: "white",
+          border: "2px solid #6d28d9",
+          display: "block",
+          fontWeight: "600",
+        },
+      }
+    }
+
+    // Handle appointment events
     const appointment = event.resource
     let backgroundColor = "#3174ad"
 
@@ -452,13 +487,31 @@ export default function VisitsCalendarPage() {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                Calendar View
-                <Badge variant="secondary" className="ml-auto">
-                  {appointments.length} appointments
-                </Badge>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5" />
+                  Calendar View
+                  <Badge variant="secondary">
+                    {appointments.length} appointments
+                  </Badge>
+                  {showOnCallOnCalendar && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      <Shield className="h-3 w-3 mr-1" />
+                      {onCallSchedules.length} on-call
+                    </Badge>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox 
+                      checked={showOnCallOnCalendar} 
+                      onCheckedChange={(checked) => setShowOnCallOnCalendar(checked === true)}
+                    />
+                    <Shield className="h-4 w-4 text-purple-600" />
+                    <span className="text-gray-700">Show On-Call</span>
+                  </label>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div style={{ height: "600px" }}>
