@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -302,6 +302,11 @@ export function OnCallAssignmentDialog({
             <Calendar className="h-5 w-5 text-refuge-purple" />
             {editingAssignment ? "Edit On-Call Assignment" : "Create On-Call Assignment"}
           </DialogTitle>
+          <DialogDescription>
+            {editingAssignment 
+              ? "Update the on-call assignment details below." 
+              : "Schedule a staff member for on-call duty. The system will check for conflicts with existing assignments."}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -446,12 +451,12 @@ export function OnCallAssignmentDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Role Required (Optional)</Label>
-              <Select value={formData.roleRequired} onValueChange={(value) => setFormData((prev) => ({ ...prev, roleRequired: value }))}>
+              <Select value={formData.roleRequired || "none"} onValueChange={(value) => setFormData((prev) => ({ ...prev, roleRequired: value === "none" ? "" : value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Any role" />
                 </SelectTrigger>
                 <SelectContent className="z-[9999]">
-                  <SelectItem value="">Any Role</SelectItem>
+                  <SelectItem value="none">Any Role</SelectItem>
                   <SelectItem value="liaison">Liaison</SelectItem>
                   <SelectItem value="case_manager">Case Manager</SelectItem>
                   <SelectItem value="supervisor">Supervisor</SelectItem>
@@ -462,12 +467,12 @@ export function OnCallAssignmentDialog({
             </div>
             <div className="space-y-2">
               <Label>Department (Optional)</Label>
-              <Select value={formData.department} onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}>
+              <Select value={formData.department || "none"} onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value === "none" ? "" : value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Any department" />
                 </SelectTrigger>
                 <SelectContent className="z-[9999]">
-                  <SelectItem value="">Any Department</SelectItem>
+                  <SelectItem value="none">Any Department</SelectItem>
                   <SelectItem value="foster_care">Foster Care</SelectItem>
                   <SelectItem value="residential">Residential</SelectItem>
                   <SelectItem value="admin">Administration</SelectItem>
@@ -481,12 +486,12 @@ export function OnCallAssignmentDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>On-Call Category (Optional)</Label>
-              <Select value={formData.onCallCategory} onValueChange={(value) => setFormData((prev) => ({ ...prev, onCallCategory: value }))}>
+              <Select value={formData.onCallCategory || "none"} onValueChange={(value) => setFormData((prev) => ({ ...prev, onCallCategory: value === "none" ? "" : value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent className="z-[9999]">
-                  <SelectItem value="">No Category</SelectItem>
+                  <SelectItem value="none">No Category</SelectItem>
                   <SelectItem value="primary">Primary</SelectItem>
                   <SelectItem value="backup">Backup</SelectItem>
                   <SelectItem value="escalation">Escalation</SelectItem>
