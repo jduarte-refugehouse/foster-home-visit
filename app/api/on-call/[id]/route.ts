@@ -79,7 +79,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
-    const { userId, userName, userEmail, userPhone, startDatetime, endDatetime, notes, priorityLevel, isActive } = body
+    const { 
+      userId, 
+      userName, 
+      userEmail, 
+      userPhone, 
+      startDatetime, 
+      endDatetime, 
+      notes, 
+      priorityLevel, 
+      isActive,
+      onCallType,
+      onCallCategory,
+      roleRequired,
+      department,
+      region,
+      escalationLevel
+    } = body
 
     // Check if schedule exists
     const existing = await query(
@@ -182,6 +198,30 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (isActive !== undefined) {
       updateParams.push(isActive ? 1 : 0)
       updates.push(`is_active = @param${updateParams.length - 1}`)
+    }
+    if (onCallType !== undefined) {
+      updateParams.push(onCallType)
+      updates.push(`on_call_type = @param${updateParams.length - 1}`)
+    }
+    if (onCallCategory !== undefined) {
+      updateParams.push(onCallCategory)
+      updates.push(`on_call_category = @param${updateParams.length - 1}`)
+    }
+    if (roleRequired !== undefined) {
+      updateParams.push(roleRequired)
+      updates.push(`role_required = @param${updateParams.length - 1}`)
+    }
+    if (department !== undefined) {
+      updateParams.push(department)
+      updates.push(`department = @param${updateParams.length - 1}`)
+    }
+    if (region !== undefined) {
+      updateParams.push(region)
+      updates.push(`region = @param${updateParams.length - 1}`)
+    }
+    if (escalationLevel !== undefined) {
+      updateParams.push(escalationLevel)
+      updates.push(`escalation_level = @param${updateParams.length - 1}`)
     }
 
     // Add updated_by fields

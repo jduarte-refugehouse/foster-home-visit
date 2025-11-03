@@ -50,6 +50,13 @@ export function OnCallAssignmentDialog({
     endTime: "",
     notes: "",
     priorityLevel: "normal",
+    // Enhanced fields for multiple on-call scenarios
+    onCallType: "general",
+    onCallCategory: "",
+    roleRequired: "",
+    department: "",
+    region: "",
+    escalationLevel: 1,
   })
 
   const { toast } = useToast()
@@ -99,6 +106,12 @@ export function OnCallAssignmentDialog({
       endTime: endDate.toTimeString().slice(0, 5),
       notes: editingAssignment.notes || "",
       priorityLevel: editingAssignment.priority_level || "normal",
+      onCallType: editingAssignment.on_call_type || "general",
+      onCallCategory: editingAssignment.on_call_category || "",
+      roleRequired: editingAssignment.role_required || "",
+      department: editingAssignment.department || "",
+      region: editingAssignment.region || "",
+      escalationLevel: editingAssignment.escalation_level || 1,
     })
   }
 
@@ -213,6 +226,12 @@ export function OnCallAssignmentDialog({
           endDatetime,
           notes: formData.notes || null,
           priorityLevel: formData.priorityLevel,
+          onCallType: formData.onCallType || "general",
+          onCallCategory: formData.onCallCategory || null,
+          roleRequired: formData.roleRequired || null,
+          department: formData.department || null,
+          region: formData.region || null,
+          escalationLevel: formData.escalationLevel || 1,
         }),
       })
 
@@ -264,6 +283,12 @@ export function OnCallAssignmentDialog({
       endTime: "",
       notes: "",
       priorityLevel: "normal",
+      onCallType: "general",
+      onCallCategory: "",
+      roleRequired: "",
+      department: "",
+      region: "",
+      escalationLevel: 1,
     })
     setConflictCheck(null)
   }
@@ -398,19 +423,102 @@ export function OnCallAssignmentDialog({
             </Alert>
           )}
 
-          {/* Priority Level */}
+          {/* On-Call Type */}
           <div className="space-y-2">
-            <Label>Priority Level</Label>
-            <Select value={formData.priorityLevel} onValueChange={(value) => setFormData((prev) => ({ ...prev, priorityLevel: value }))}>
+            <Label>On-Call Type</Label>
+            <Select value={formData.onCallType} onValueChange={(value) => setFormData((prev) => ({ ...prev, onCallType: value }))}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select on-call type" />
               </SelectTrigger>
               <SelectContent className="z-[9999]">
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="primary">Primary</SelectItem>
-                <SelectItem value="backup">Backup</SelectItem>
+                <SelectItem value="general">General On-Call</SelectItem>
+                <SelectItem value="crisis_response">Crisis Response</SelectItem>
+                <SelectItem value="medical">Medical On-Call</SelectItem>
+                <SelectItem value="supervisor">Supervisor On-Call</SelectItem>
+                <SelectItem value="liaison">Liaison On-Call</SelectItem>
+                <SelectItem value="case_manager">Case Manager On-Call</SelectItem>
+                <SelectItem value="after_hours">After Hours On-Call</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Role and Department - Two columns */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Role Required (Optional)</Label>
+              <Select value={formData.roleRequired} onValueChange={(value) => setFormData((prev) => ({ ...prev, roleRequired: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any role" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  <SelectItem value="">Any Role</SelectItem>
+                  <SelectItem value="liaison">Liaison</SelectItem>
+                  <SelectItem value="case_manager">Case Manager</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Department (Optional)</Label>
+              <Select value={formData.department} onValueChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any department" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  <SelectItem value="">Any Department</SelectItem>
+                  <SelectItem value="foster_care">Foster Care</SelectItem>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="admin">Administration</SelectItem>
+                  <SelectItem value="clinical">Clinical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Category and Escalation - Two columns */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>On-Call Category (Optional)</Label>
+              <Select value={formData.onCallCategory} onValueChange={(value) => setFormData((prev) => ({ ...prev, onCallCategory: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  <SelectItem value="">No Category</SelectItem>
+                  <SelectItem value="primary">Primary</SelectItem>
+                  <SelectItem value="backup">Backup</SelectItem>
+                  <SelectItem value="escalation">Escalation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Escalation Level</Label>
+              <Select 
+                value={formData.escalationLevel.toString()} 
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, escalationLevel: parseInt(value) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  <SelectItem value="1">Level 1 (Primary)</SelectItem>
+                  <SelectItem value="2">Level 2 (Backup)</SelectItem>
+                  <SelectItem value="3">Level 3 (Tertiary)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Region (Optional) */}
+          <div className="space-y-2">
+            <Label>Region (Optional)</Label>
+            <Input
+              value={formData.region}
+              onChange={(e) => setFormData((prev) => ({ ...prev, region: e.target.value }))}
+              placeholder="e.g., North, South, East, West, County Name"
+            />
           </div>
 
           {/* Notes */}

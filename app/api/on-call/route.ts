@@ -108,7 +108,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, userName, userEmail, userPhone, startDatetime, endDatetime, notes, priorityLevel } = body
+    const { 
+      userId, 
+      userName, 
+      userEmail, 
+      userPhone, 
+      startDatetime, 
+      endDatetime, 
+      notes, 
+      priorityLevel,
+      onCallType,
+      onCallCategory,
+      roleRequired,
+      department,
+      region,
+      escalationLevel
+    } = body
 
     // Validation
     if (!userName || !startDatetime || !endDatetime) {
@@ -177,6 +192,12 @@ export async function POST(request: NextRequest) {
         end_datetime,
         notes,
         priority_level,
+        on_call_type,
+        on_call_category,
+        role_required,
+        department,
+        region,
+        escalation_level,
         is_active,
         created_by_user_id,
         created_by_name,
@@ -193,9 +214,15 @@ export async function POST(request: NextRequest) {
         @param5,
         @param6,
         @param7,
-        1,
         @param8,
         @param9,
+        @param10,
+        @param11,
+        @param12,
+        @param13,
+        1,
+        @param14,
+        @param15,
         GETDATE()
       )
     `,
@@ -208,6 +235,12 @@ export async function POST(request: NextRequest) {
         endDatetime,
         notes || null,
         priorityLevel || "normal",
+        onCallType || "general",
+        onCallCategory || null,
+        roleRequired || null,
+        department || null,
+        region || null,
+        escalationLevel || 1,
         user.id,
         `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "Unknown",
       ],
