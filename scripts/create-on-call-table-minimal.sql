@@ -62,10 +62,11 @@ ON [dbo].[on_call_schedule]([escalation_level], [on_call_type])
 WHERE [is_active] = 1 AND [is_deleted] = 0;
 
 -- Grant permissions to v0_application_role
+-- Note: v0_app_user is a member of v0_application_role
 GRANT SELECT, INSERT, UPDATE, DELETE ON [dbo].[on_call_schedule] TO [v0_application_role];
 
 PRINT 'Enhanced on-call schedule table created successfully!';
-PRINT 'Permissions granted to v0_application_role';
+PRINT 'Permissions granted to v0_application_role (used by v0_app_user)';
 PRINT '';
 PRINT 'Features enabled:';
 PRINT '  - Multiple on-call types (general, crisis, medical, etc.)';

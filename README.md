@@ -264,6 +264,17 @@ Ensure you have the following environment variables configured in your `.env.loc
 
 **Note**: The database connection parameters are hardcoded in `lib/db.ts` and should not be changed. The password is retrieved securely from Azure Key Vault.
 
+### Database Setup
+
+After deploying the application, you'll need to create the on-call schedule table:
+
+1. **Open Azure Portal** → Navigate to your SQL Database (`RadiusBifrost`)
+2. **Open Query Editor** and authenticate as database admin
+3. **Run the SQL script**: `scripts/create-on-call-table-minimal.sql`
+4. **Verify permissions**: The script grants permissions to `v0_application_role` (used by `v0_app_user`)
+
+**Important**: The database user `v0_app_user` is a member of `v0_application_role`. All table permissions are granted to the role, not directly to the user.
+
 ### Installation
 
 1. **Clone the repository:**
