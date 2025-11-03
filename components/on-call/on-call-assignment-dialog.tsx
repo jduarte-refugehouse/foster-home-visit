@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +35,7 @@ export function OnCallAssignmentDialog({
   selectedDate,
   selectedTime,
 }: OnCallAssignmentDialogProps) {
+  const { user } = useUser()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([])
@@ -232,6 +234,8 @@ export function OnCallAssignmentDialog({
           department: formData.department || null,
           region: formData.region || null,
           escalationLevel: formData.escalationLevel || 1,
+          createdByUserId: user?.id || "system",
+          createdByName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.primaryEmailAddress?.emailAddress || "Unknown" : "System",
         }),
       })
 
