@@ -207,14 +207,20 @@ export default function VisitsCalendarPage() {
   }))
 
   // Transform on-call schedules to calendar events
-  const onCallEvents: CalendarEvent[] = onCallSchedules.map((schedule) => ({
-    id: `oncall-${schedule.id}`,
-    title: `🛡️ ${schedule.user_name} (On-Call)`,
-    start: new Date(schedule.start_datetime),
-    end: new Date(schedule.end_datetime),
-    resource: schedule,
-    eventType: "on-call",
-  }))
+  const onCallEvents: CalendarEvent[] = onCallSchedules.map((schedule) => {
+    const start = new Date(schedule.start_datetime)
+    const end = new Date(schedule.end_datetime)
+    const timeRange = `${format(start, "MMM d, h:mm a")} - ${format(end, "MMM d, h:mm a")}`
+    
+    return {
+      id: `oncall-${schedule.id}`,
+      title: `🛡️ ${schedule.user_name} (On-Call)\n${timeRange}`,
+      start,
+      end,
+      resource: schedule,
+      eventType: "on-call",
+    }
+  })
 
   // Combine events based on toggle
   const calendarEvents: CalendarEvent[] = showOnCallOnCalendar 
@@ -222,8 +228,18 @@ export default function VisitsCalendarPage() {
     : appointmentEvents
 
   const handleSelectEvent = (event: CalendarEvent) => {
-    setSelectedAppointment(event.resource)
-    setSelectedSlot(null)
+    // Only show appointment details for appointments, not on-call events
+    if (event.eventType === "appointment") {
+      setSelectedAppointment(event.resource)
+      setSelectedSlot(null)
+    } else if (event.eventType === "on-call") {
+      // For on-call events, show a toast with details
+      const schedule = event.resource
+      toast({
+        title: `🛡️ ${schedule.user_name} - On-Call`,
+        description: `${format(new Date(schedule.start_datetime), "MMM d, yyyy h:mm a")} - ${format(new Date(schedule.end_datetime), "MMM d, yyyy h:mm a")}${schedule.user_phone ? `\n📞 ${schedule.user_phone}` : ""}${schedule.notes ? `\n\n${schedule.notes}` : ""}`,
+      })
+    }
   }
 
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
@@ -621,7 +637,7 @@ export default function VisitsCalendarPage() {
                     <div className="font-medium">{schedule.user_name}</div>
                     <div className="text-gray-500">
                       {format(new Date(schedule.start_datetime), "MMM d, h:mm a")} -{" "}
-                      {format(new Date(schedule.end_datetime), "h:mm a")}
+                      {format(new Date(schedule.end_datetime), "MMM d, h:mm a")}
                     </div>
                   </div>
                 ))}
