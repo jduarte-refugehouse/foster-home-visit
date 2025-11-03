@@ -266,14 +266,22 @@ Ensure you have the following environment variables configured in your `.env.loc
 
 ### Database Setup
 
-After deploying the application, you'll need to create the on-call schedule table:
+After deploying the application, you'll need to run the following SQL scripts:
 
 1. **Open Azure Portal** → Navigate to your SQL Database (`RadiusBifrost`)
 2. **Open Query Editor** and authenticate as database admin
-3. **Run the SQL script**: `scripts/create-on-call-table-minimal.sql`
-4. **Verify permissions**: The script grants permissions to `v0_application_role` (used by `v0_app_user`)
+3. **Run the SQL scripts in order**:
+   - `scripts/create-on-call-table-minimal.sql` - Creates the on-call schedule table
+   - `scripts/add-phone-to-app-users.sql` - Adds phone number field to app_users table
+4. **Verify permissions**: The scripts grant permissions to `v0_application_role` (used by `v0_app_user`)
 
 **Important**: The database user `v0_app_user` is a member of `v0_application_role`. All table permissions are granted to the role, not directly to the user.
+
+**Phone Number Feature**: 
+- User phone numbers are now stored centrally in the `app_users` table
+- When assigning on-call schedules, the system automatically pulls phone from `app_users`
+- If a phone number is missing, the user is prompted to enter it, and it's saved to their profile
+- This eliminates redundant data entry and keeps contact information up-to-date
 
 ### Installation
 
