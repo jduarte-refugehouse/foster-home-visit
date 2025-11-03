@@ -145,9 +145,11 @@ export async function POST(request: NextRequest) {
     
     const { 
       userId, 
+      appUserId,
       userName, 
       userEmail, 
-      userPhone, 
+      userPhone,
+      phoneFromDatabase,
       startDatetime, 
       endDatetime, 
       notes, 
@@ -249,6 +251,21 @@ export async function POST(request: NextRequest) {
           },
           { status: 409 },
         )
+      }
+    }
+
+    // Update app_users with phone number if provided and not from database
+    if (appUserId && userPhone && !phoneFromDatabase) {
+      console.log(`📞 [API] Updating app_users with phone for user: ${appUserId}`)
+      try {
+        await query(
+          `UPDATE app_users SET phone = @param0, updated_at = GETDATE() WHERE id = @param1`,
+          [userPhone, appUserId]
+        )
+        console.log(`✅ [API] Successfully updated phone number in app_users`)
+      } catch (error) {
+        console.error(`⚠️ [API] Failed to update app_users with phone:`, error)
+        // Don't fail the entire request if phone update fails
       }
     }
 

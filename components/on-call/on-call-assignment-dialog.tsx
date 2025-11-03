@@ -22,8 +22,10 @@ interface OnCallAssignmentDialogProps {
 
 interface StaffMember {
   id: string
+  appUserId?: string
   name: string
   email: string
+  phone?: string | null
   role: string
   type: string
 }
@@ -43,9 +45,11 @@ export function OnCallAssignmentDialog({
 
   const [formData, setFormData] = useState({
     userId: "",
+    appUserId: "",
     userName: "",
     userEmail: "",
     userPhone: "",
+    phoneFromDatabase: false, // Track if phone came from app_users
     startDate: "",
     startTime: "",
     endDate: "",
@@ -123,8 +127,11 @@ export function OnCallAssignmentDialog({
       setFormData((prev) => ({
         ...prev,
         userId: staff.id,
+        appUserId: staff.appUserId || "",
         userName: staff.name,
         userEmail: staff.email || "",
+        userPhone: staff.phone || "",
+        phoneFromDatabase: !!staff.phone, // True if phone exists in database
       }))
     }
   }
@@ -211,6 +218,17 @@ export function OnCallAssignmentDialog({
         return
       }
 
+      // Validate phone number is provided if not from database
+      if (formData.userId && !formData.phoneFromDatabase && !formData.userPhone) {
+        toast({
+          title: "Validation Error",
+          description: "Phone number is required. It will be saved to your user profile.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
       const url = editingAssignment ? `/api/on-call/${editingAssignment.id}` : "/api/on-call"
       const method = editingAssignment ? "PUT" : "POST"
 
@@ -221,9 +239,11 @@ export function OnCallAssignmentDialog({
         },
         body: JSON.stringify({
           userId: formData.userId || null,
+          appUserId: formData.appUserId || null,
           userName: formData.userName,
           userEmail: formData.userEmail || null,
           userPhone: formData.userPhone || null,
+          phoneFromDatabase: formData.phoneFromDatabase,
           startDatetime,
           endDatetime,
           notes: formData.notes || null,
@@ -358,13 +378,24 @@ export function OnCallAssignmentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
+              <Label>
+                Phone {!formData.phoneFromDatabase && formData.userId && <span className="text-red-500">*</span>}
+                {formData.phoneFromDatabase && <span className="text-xs text-gray-500 ml-2">(from database)</span>}
+              </Label>
               <Input
                 type="tel"
                 value={formData.userPhone}
                 onChange={(e) => setFormData((prev) => ({ ...prev, userPhone: e.target.value }))}
                 placeholder="(555) 123-4567"
+                disabled={formData.phoneFromDatabase}
+                className={formData.phoneFromDatabase ? "bg-gray-50" : ""}
+                required={!formData.phoneFromDatabase && !!formData.userId}
               />
+              {!formData.phoneFromDatabase && formData.userId && formData.userPhone === "" && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ Phone number required. It will be saved to your user profile.
+                </p>
+              )}
             </div>
           </div>
 

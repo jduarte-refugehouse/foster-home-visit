@@ -14,6 +14,7 @@ export async function GET() {
         u.id,
         u.clerk_user_id,
         u.email,
+        u.phone,
         u.first_name,
         u.last_name,
         u.is_active,
@@ -60,8 +61,10 @@ export async function GET() {
       success: true,
       staff: Array.from(uniqueStaff.values()).map((member) => ({
         id: member.clerk_user_id || member.id,
+        appUserId: member.id, // GUID for database operations
         name: `${member.first_name} ${member.last_name}`.trim(),
         email: member.email,
+        phone: member.phone || null,
         role: member.role_name,
         type: "user",
       })),
@@ -69,6 +72,7 @@ export async function GET() {
         id: `cm_${manager.name.replace(/\s+/g, "_").toLowerCase()}`,
         name: manager.name,
         email: manager.email,
+        phone: null,
         role: manager.role_name,
         type: "case_manager",
       })),
