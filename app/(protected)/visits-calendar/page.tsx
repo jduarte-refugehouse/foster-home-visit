@@ -7,10 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, dateFnsLocalizer } from "react-big-calendar"
 import { format, parse, startOfWeek, getDay } from "date-fns"
 import { enUS } from "date-fns/locale"
-import { Plus, CalendarIcon, Clock, MapPin, RefreshCw } from "lucide-react"
+import { Plus, CalendarIcon, Clock, MapPin, RefreshCw, Shield, AlertTriangle, CheckCircle, Phone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
+import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
 const locales = {
@@ -58,10 +61,18 @@ export default function VisitsCalendarPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null)
   const [visitFormStatus, setVisitFormStatus] = useState<Record<string, string>>({})
+  
+  // On-Call State
+  const [onCallSchedules, setOnCallSchedules] = useState<any[]>([])
+  const [coverageData, setCoverageData] = useState<any>(null)
+  const [currentOnCall, setCurrentOnCall] = useState<any>(null)
+  const [showOnCallPanel, setShowOnCallPanel] = useState(true)
+  
   const { toast } = useToast()
 
   useEffect(() => {
     fetchAppointments()
+    fetchOnCallData()
   }, [])
 
   const fetchVisitFormStatus = async (appointmentIds: string[]) => {
@@ -140,6 +151,46 @@ export default function VisitsCalendarPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchOnCallData = async () => {
+    try {
+      console.log("[v0] Fetching on-call data...")
+
+      // Fetch on-call schedules for next 30 days
+      const startDate = new Date()
+      const endDate = new Date()
+      endDate.setDate(endDate.getDate() + 30)
+
+      const [schedulesResponse, coverageResponse] = await Promise.all([
+        fetch(`/api/on-call?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`),
+        fetch(`/api/on-call/coverage?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`),
+      ])
+
+      if (schedulesResponse.ok) {
+        const schedulesData = await schedulesResponse.json()
+        setOnCallSchedules(schedulesData.schedules || [])
+      }
+
+      if (coverageResponse.ok) {
+        const coverageDataResult = await coverageResponse.json()
+        setCoverageData(coverageDataResult.coverage)
+        setCurrentOnCall(coverageDataResult.currentOnCall)
+      }
+
+      console.log("[v0] On-call data loaded successfully")
+    } catch (error) {
+      console.error("[v0] Error fetching on-call data:", error)
+      // Don't show error toast - it's not critical for calendar viewing
+    }
+  }
+
+  const handleOnCallAssignmentCreated = () => {
+    fetchOnCallData()
+    toast({
+      title: "Success",
+      description: "On-call assignment updated. Refreshing schedule...",
+    })
   }
 
   // Transform appointments to calendar events
@@ -373,6 +424,16 @@ export default function VisitsCalendarPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <OnCallAssignmentDialog
+            selectedDate={selectedSlot?.start}
+            selectedTime={selectedSlot?.start ? format(selectedSlot.start, "HH:mm") : undefined}
+            onAssignmentCreated={handleOnCallAssignmentCreated}
+          >
+            <Button variant="outline" className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple/10">
+              <Shield className="h-4 w-4 mr-2" />
+              Manage On-Call
+            </Button>
+          </OnCallAssignmentDialog>
           <CreateAppointmentDialog
             selectedDate={selectedSlot?.start}
             selectedTime={selectedSlot?.start ? format(selectedSlot.start, "HH:mm") : undefined}
@@ -424,6 +485,97 @@ export default function VisitsCalendarPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Current On-Call Status */}
+          <Card className="border-refuge-purple/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-refuge-purple" />
+                On-Call Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {currentOnCall ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
+                    <span className="font-semibold text-sm">Currently On-Call</span>
+                  </div>
+                  <div className="bg-refuge-purple/10 p-3 rounded-lg">
+                    <p className="font-medium text-refuge-purple">{currentOnCall.user_name}</p>
+                    {currentOnCall.user_phone && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                        <Phone className="h-3 w-3" />
+                        {currentOnCall.user_phone}
+                      </div>
+                    )}
+                    {currentOnCall.user_email && (
+                      <p className="text-xs text-gray-500 mt-1">{currentOnCall.user_email}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>No one currently on-call</AlertDescription>
+                </Alert>
+              )}
+
+              {coverageData && (
+                <div className="space-y-2 pt-3 border-t">
+                  <div className="flex justify-between items-center text-sm">
+                    <span>Coverage (30 days)</span>
+                    <Badge
+                      variant={
+                        coverageData.coveragePercentage >= 100
+                          ? "default"
+                          : coverageData.coveragePercentage >= 75
+                            ? "secondary"
+                            : "destructive"
+                      }
+                      className={
+                        coverageData.coveragePercentage >= 100
+                          ? "bg-green-100 text-green-800"
+                          : coverageData.coveragePercentage >= 75
+                            ? "bg-yellow-100 text-yellow-800"
+                            : ""
+                      }
+                    >
+                      {coverageData.coveragePercentage}%
+                    </Badge>
+                  </div>
+                  {coverageData.status === "critical" && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">Coverage gaps detected</AlertDescription>
+                    </Alert>
+                  )}
+                  {coverageData.status === "full" && (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-xs text-green-600">Full 24/7 coverage</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 pt-3 border-t">
+                <div className="flex justify-between items-center text-sm">
+                  <span>Upcoming Shifts</span>
+                  <Badge variant="outline">{onCallSchedules.length}</Badge>
+                </div>
+                {onCallSchedules.slice(0, 3).map((schedule) => (
+                  <div key={schedule.id} className="text-xs bg-gray-50 p-2 rounded">
+                    <div className="font-medium">{schedule.user_name}</div>
+                    <div className="text-gray-500">
+                      {format(new Date(schedule.start_datetime), "MMM d, h:mm a")} -{" "}
+                      {format(new Date(schedule.end_datetime), "h:mm a")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Appointment Statistics</CardTitle>
