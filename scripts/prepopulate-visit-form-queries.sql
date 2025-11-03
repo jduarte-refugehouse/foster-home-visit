@@ -221,13 +221,14 @@ SELECT TOP 1
     END as data_freshness,
     
     -- Recommendations for what to carry forward
+    -- NOTE: License info is NEVER carried forward - always pulled fresh from database
     CASE 
         WHEN DATEDIFF(DAY, vf.visit_date, GETDATE()) <= 30 THEN 
-            'Carry forward: License info, inspection dates, bedroom configurations, vehicle info, swimming area details'
+            'Carry forward: Inspection dates, bedroom configurations, vehicle info, swimming area details'
         WHEN DATEDIFF(DAY, vf.visit_date, GETDATE()) <= 90 THEN 
-            'Carry forward: License info, bedroom configurations, vehicle info. Re-verify: Inspection dates, training dates'
+            'Carry forward: Bedroom configurations, vehicle info. Re-verify: Inspection dates, training dates'
         WHEN DATEDIFF(DAY, vf.visit_date, GETDATE()) <= 365 THEN 
-            'Carry forward: Basic license info only. Re-verify everything else'
+            'Carry forward: Basic physical layout only. Re-verify everything else'
         ELSE 
             'Data is stale. Recommend fresh start with manual entry'
     END as carry_forward_recommendation,
