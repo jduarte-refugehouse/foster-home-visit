@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate")
     const userId = searchParams.get("userId")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
+    
+    console.log("📅 [API] Query parameters:", { startDate, endDate, userId, includeDeleted })
 
     let whereConditions = ["ocs.is_active = 1"]
     const params: any[] = []
@@ -92,11 +94,18 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [API] Error fetching on-call schedules:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch on-call schedules",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 },
     )
@@ -114,6 +123,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log("📅 [API] Request body:", JSON.stringify(body, null, 2))
+    
     const { 
       userId, 
       userName, 
@@ -130,6 +141,17 @@ export async function POST(request: NextRequest) {
       region,
       escalationLevel
     } = body
+    
+    console.log("📅 [API] Extracted values:", {
+      userId,
+      userName,
+      startDatetime,
+      endDatetime,
+      onCallType,
+      roleRequired,
+      department,
+      escalationLevel
+    })
 
     // Validation
     if (!userName || !startDatetime || !endDatetime) {
@@ -263,11 +285,18 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [API] Error creating on-call schedule:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to create on-call schedule",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 },
     )
