@@ -36,8 +36,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (userId) {
-      params.push(userId)
-      whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
+      // Convert Clerk user ID to app_users.id if needed
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+      
+      if (isGuid) {
+        params.push(userId)
+        whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
+      } else {
+        // It's a Clerk ID, look it up
+        console.log("📅 [API] Looking up user_id for Clerk ID:", userId)
+        const userLookup = await query(`SELECT id FROM app_users WHERE clerk_user_id = @param0`, [userId])
+        
+        if (userLookup.length > 0) {
+          const appUserId = userLookup[0].id
+          console.log("📅 [API] Found app_users.id:", appUserId)
+          params.push(appUserId)
+          whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
+        } else {
+          console.log("📅 [API] No app_user found for Clerk ID, filtering will return no results")
+          // Add impossible condition so query returns empty
+          whereConditions.push(`1 = 0`)
+        }
+      }
     }
 
     const whereClause = whereConditions.join(" AND ")
@@ -177,8 +197,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for overlapping assignments for the same user
+    // Convert Clerk user ID to app_users.id (UNIQUEIDENTIFIER) if needed
+    let appUserId: string | null = null
     if (userId) {
+      // Check if userId is already a GUID or if it's a Clerk ID
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+      
+      if (isGuid) {
+        appUserId = userId
+      } else {
+        // It's a Clerk ID, look up the app_users.id
+        console.log("📅 [API] Looking up app_users.id for Clerk ID:", userId)
+        const userLookup = await query(
+          `SELECT id FROM app_users WHERE clerk_user_id = @param0`,
+          [userId]
+        )
+        
+        if (userLookup.length > 0) {
+          appUserId = userLookup[0].id
+          console.log("📅 [API] Found app_users.id:", appUserId)
+        } else {
+          console.log("📅 [API] No app_user found for Clerk ID, proceeding without user_id link")
+        }
+      }
+    }
+
+    // Check for overlapping assignments for the same user
+    if (appUserId) {
       const overlaps = await query(
         `
         SELECT COUNT(*) as overlap_count
@@ -192,7 +237,7 @@ export async function POST(request: NextRequest) {
             OR (start_datetime >= @param1 AND end_datetime <= @param2)
           )
       `,
-        [userId, startDatetime, endDatetime],
+        [appUserId, startDatetime, endDatetime],
       )
 
       if (overlaps[0].overlap_count > 0) {
@@ -255,7 +300,7 @@ export async function POST(request: NextRequest) {
       )
     `,
       [
-        userId || null,
+        appUserId || null,  // Use converted GUID
         userName,
         userEmail || null,
         userPhone || null,
