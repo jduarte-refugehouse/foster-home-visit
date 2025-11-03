@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import BasicHomeVisitForm from "@/components/forms/home-visit-form-basic"
+import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export default function VisitFormPage() {
   const searchParams = useSearchParams()
@@ -239,13 +241,8 @@ export default function VisitFormPage() {
         </Dialog>
       </div>
 
-      <BasicHomeVisitForm
-        appointmentId={appointmentId || undefined}
-        homeData={homeData}
-        existingFormData={existingFormData}
-        onSave={handleSave}
-        onSubmit={handleSubmit}
-      />
+      {/* Enhanced Home Visit Form - Version 3.1 */}
+      <EnhancedHomeVisitForm />
     </div>
   )
 }
