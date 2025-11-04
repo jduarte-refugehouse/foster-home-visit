@@ -194,23 +194,56 @@ export async function POST(request: NextRequest) {
 
 // HTML generation functions
 function generateGapReportHTML(reportData: any, onCallType: string): string {
-  const { gaps, coveragePercentage } = reportData
-  const gapsList = gaps.map((gap: any) => {
-    const start = new Date(gap.gap_start)
-    const end = new Date(gap.gap_end)
-    return `
-      <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 12px 0;">
-        <div style="display: flex; align-items: center; margin-bottom: 8px;">
-          <span style="color: #dc2626; font-weight: 600; font-size: 16px;">⚠️ Gap: ${gap.gap_hours.toFixed(1)} hours</span>
-          <span style="margin-left: auto; background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${gap.severity}</span>
+  const { gaps, coveragePercentage, schedules = [] } = reportData
+  
+  // Combine schedules and gaps into chronological timeline
+  const timelineEvents = [
+    ...schedules.map((s: any) => ({
+      type: 'assignment',
+      start: new Date(s.start_datetime),
+      end: new Date(s.end_datetime),
+      data: s,
+    })),
+    ...gaps.map((g: any) => ({
+      type: 'gap',
+      start: new Date(g.gap_start),
+      end: new Date(g.gap_end),
+      data: g,
+    })),
+  ].sort((a, b) => a.start.getTime() - b.start.getTime())
+  
+  const timelineHTML = timelineEvents.map((event) => {
+    const hours = ((event.end.getTime() - event.start.getTime()) / (1000 * 60 * 60)).toFixed(1)
+    
+    if (event.type === 'assignment') {
+      return `
+        <div style="background: linear-gradient(to right, #f3e8ff, #ffffff); border-left: 4px solid #9333ea; border-radius: 8px; padding: 16px; margin: 12px 0;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <span style="color: #7c3aed; font-weight: 600; font-size: 16px;">👤 ${event.data.user_name}</span>
+            <span style="margin-left: auto; background: #e9d5ff; color: #7c3aed; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${hours} hours</span>
+          </div>
+          <p style="margin: 4px 0; color: #374151; font-size: 14px;">
+            <strong>From:</strong> ${format(event.start, "EEE, MMM d 'at' h:mm a")}<br>
+            <strong>To:</strong> ${format(event.end, "EEE, MMM d 'at' h:mm a")}
+          </p>
+          ${event.data.user_phone ? `<p style="margin: 8px 0 0 0; color: #6b7280; font-size: 13px;">📞 ${event.data.user_phone}</p>` : ''}
         </div>
-        <p style="margin: 4px 0; color: #374151;">
-          <strong>From:</strong> ${format(start, "EEEE, MMMM d, yyyy 'at' h:mm a")}<br>
-          <strong>To:</strong> ${format(end, "EEEE, MMMM d, yyyy 'at' h:mm a")}
-        </p>
-        ${gap.message ? `<p style="margin-top: 8px; color: #6b7280; font-size: 14px;">${gap.message}</p>` : ''}
-      </div>
-    `
+      `
+    } else {
+      return `
+        <div style="background: linear-gradient(to right, #fee2e2, #ffffff); border-left: 4px solid #dc2626; border-radius: 8px; padding: 16px; margin: 12px 0;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <span style="color: #dc2626; font-weight: 600; font-size: 16px;">⚠️ COVERAGE GAP: ${event.data.gap_hours.toFixed(1)} hours</span>
+            <span style="margin-left: auto; background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${event.data.severity}</span>
+          </div>
+          <p style="margin: 4px 0; color: #374151; font-size: 14px;">
+            <strong>From:</strong> ${format(event.start, "EEE, MMM d 'at' h:mm a")}<br>
+            <strong>To:</strong> ${format(event.end, "EEE, MMM d 'at' h:mm a")}
+          </p>
+          ${event.data.message ? `<p style="margin-top: 8px; color: #6b7280; font-size: 14px;">${event.data.message}</p>` : ''}
+        </div>
+      `
+    }
   }).join('')
 
   return `
@@ -233,10 +266,11 @@ function generateGapReportHTML(reportData: any, onCallType: string): string {
           <p style="margin: 8px 0 0 0; font-size: 14px; color: #6b7280;">${gaps.length} gap(s) detected</p>
         </div>
 
-        <h2 style="color: #111827; font-size: 18px; margin: 24px 0 12px 0;">Coverage Gaps</h2>
-        ${gaps.length === 0 
-          ? '<p style="text-align: center; color: #6b7280; padding: 40px 0;">✅ No coverage gaps detected - Full 24/7 coverage!</p>'
-          : gapsList
+        <h2 style="color: #111827; font-size: 18px; margin: 24px 0 12px 0;">Coverage Timeline</h2>
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">Purple = Scheduled Coverage | Red = Gaps</p>
+        ${timelineEvents.length === 0 
+          ? '<p style="text-align: center; color: #6b7280; padding: 40px 0;">No events to display</p>'
+          : timelineHTML
         }
 
         <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
@@ -250,16 +284,42 @@ function generateGapReportHTML(reportData: any, onCallType: string): string {
 }
 
 function generateGapReportText(reportData: any, onCallType: string): string {
-  const { gaps, coveragePercentage } = reportData
-  const gapsList = gaps.map((gap: any, index: number) => {
-    const start = new Date(gap.gap_start)
-    const end = new Date(gap.gap_end)
-    return `
-Gap ${index + 1}: ${gap.gap_hours.toFixed(1)} hours (${gap.severity})
-From: ${format(start, "EEEE, MMMM d, yyyy 'at' h:mm a")}
-To: ${format(end, "EEEE, MMMM d, yyyy 'at' h:mm a")}
-${gap.message ? `Note: ${gap.message}` : ''}
-    `.trim()
+  const { gaps, coveragePercentage, schedules = [] } = reportData
+  
+  // Combine schedules and gaps into chronological timeline
+  const timelineEvents = [
+    ...schedules.map((s: any) => ({
+      type: 'assignment',
+      start: new Date(s.start_datetime),
+      end: new Date(s.end_datetime),
+      data: s,
+    })),
+    ...gaps.map((g: any) => ({
+      type: 'gap',
+      start: new Date(g.gap_start),
+      end: new Date(g.gap_end),
+      data: g,
+    })),
+  ].sort((a, b) => a.start.getTime() - b.start.getTime())
+  
+  const timelineText = timelineEvents.map((event, index) => {
+    const hours = ((event.end.getTime() - event.start.getTime()) / (1000 * 60 * 60)).toFixed(1)
+    
+    if (event.type === 'assignment') {
+      return `
+[${index + 1}] ✓ SCHEDULED: ${event.data.user_name} (${hours} hours)
+From: ${format(event.start, "EEE, MMM d 'at' h:mm a")}
+To:   ${format(event.end, "EEE, MMM d 'at' h:mm a")}
+${event.data.user_phone ? `Phone: ${event.data.user_phone}` : ''}
+      `.trim()
+    } else {
+      return `
+[${index + 1}] ⚠️ COVERAGE GAP: ${event.data.gap_hours.toFixed(1)} hours (${event.data.severity})
+From: ${format(event.start, "EEE, MMM d 'at' h:mm a")}
+To:   ${format(event.end, "EEE, MMM d 'at' h:mm a")}
+${event.data.message ? `Note: ${event.data.message}` : ''}
+      `.trim()
+    }
   }).join('\n\n')
 
   return `
@@ -269,9 +329,12 @@ ${onCallType}
 COVERAGE STATUS: ${coveragePercentage}%
 Gaps Detected: ${gaps.length}
 
-${gaps.length === 0 
-  ? 'No coverage gaps detected - Full 24/7 coverage!'
-  : `COVERAGE GAPS:\n\n${gapsList}`
+COVERAGE TIMELINE (Chronological):
+✓ = Scheduled Coverage | ⚠️ = Gap
+
+${timelineEvents.length === 0 
+  ? 'No events to display'
+  : timelineText
 }
 
 ---

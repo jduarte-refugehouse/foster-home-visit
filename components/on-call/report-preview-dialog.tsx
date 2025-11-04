@@ -72,7 +72,7 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
 
   const renderGapReport = () => {
     if (!reportData) return null
-    const { gaps, coveragePercentage } = reportData
+    const { gaps, coveragePercentage, schedules = [] } = reportData
     return (
       <div className="space-y-4">
         <Card className={coveragePercentage === 100 ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
@@ -100,7 +100,7 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
 
           <TabsContent value="timeline" className="mt-4">
             <div className="max-h-[400px] overflow-y-auto">
-              <ReportTimeline gaps={gaps} />
+              <ReportTimeline schedules={schedules} gaps={gaps} />
             </div>
           </TabsContent>
 

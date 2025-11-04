@@ -132,6 +132,7 @@ export default function OnCallSchedulePage() {
     setCurrentReportData({
       gaps: coverage?.gaps || [],
       coveragePercentage: coverage?.covered_percentage || 0,
+      schedules, // Include schedules so timeline can show both coverage and gaps
     })
     setShowReportPreview(true)
   }
