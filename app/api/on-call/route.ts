@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     
     const { 
       userId, 
-      appUserId,
+      appUserId: providedAppUserId,
       userName, 
       userEmail, 
       userPhone,
@@ -199,9 +199,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert Clerk user ID to app_users.id (UNIQUEIDENTIFIER) if needed
-    let appUserId: string | null = null
-    if (userId) {
+    // Use provided appUserId if available, otherwise convert from userId
+    let appUserId: string | null = providedAppUserId || null
+    
+    // If not provided, try to convert from userId
+    if (!appUserId && userId) {
       // Check if userId is already a GUID or if it's a Clerk ID
       const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
       
