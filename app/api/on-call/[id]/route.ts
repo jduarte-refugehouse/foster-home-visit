@@ -134,6 +134,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Check for overlapping assignments if dates are being changed
+    // Note: Exact boundary times (one ends when another starts) are NOT overlaps
     if ((startDatetime || endDatetime) && userId) {
       const overlaps = await query(
         `
@@ -144,9 +145,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           AND is_active = 1
           AND is_deleted = 0
           AND (
-            (start_datetime <= @param2 AND end_datetime >= @param2)
-            OR (start_datetime <= @param3 AND end_datetime >= @param3)
-            OR (start_datetime >= @param2 AND end_datetime <= @param3)
+            (start_datetime < @param3 AND end_datetime > @param2)
           )
       `,
         [userId, id, startDatetime, endDatetime],

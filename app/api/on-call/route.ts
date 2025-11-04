@@ -233,6 +233,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for overlapping assignments for the same user
+    // Note: Exact boundary times (one ends when another starts) are NOT overlaps
     if (appUserId) {
       const overlaps = await query(
         `
@@ -242,9 +243,7 @@ export async function POST(request: NextRequest) {
           AND is_active = 1
           AND is_deleted = 0
           AND (
-            (start_datetime <= @param1 AND end_datetime >= @param1)
-            OR (start_datetime <= @param2 AND end_datetime >= @param2)
-            OR (start_datetime >= @param1 AND end_datetime <= @param2)
+            (start_datetime < @param2 AND end_datetime > @param1)
           )
       `,
         [appUserId, startDatetime, endDatetime],

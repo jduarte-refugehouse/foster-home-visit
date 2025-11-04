@@ -35,6 +35,15 @@ export function IndividualReportDialog({ open, onOpenChange, schedules, onCallTy
   const [expandedAssignee, setExpandedAssignee] = useState<string | null>(null)
   const { toast } = useToast()
 
+  // Helper: Parse SQL datetime as local time (not UTC)
+  const parseLocalDatetime = (sqlDatetime: string): Date => {
+    const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '')
+    const [datePart, timePart] = cleaned.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hour, minute, second || 0)
+  }
+
   // Initialize assignees when dialog opens or schedules change
   useEffect(() => {
     if (open && schedules.length > 0) {
@@ -43,8 +52,8 @@ export function IndividualReportDialog({ open, onOpenChange, schedules, onCallTy
         const userSchedules = schedules.filter(s => s.user_id === userId)
         const firstSchedule = userSchedules[0]
         const totalHours = userSchedules.reduce((sum, s) => {
-          const start = new Date(s.start_datetime)
-          const end = new Date(s.end_datetime)
+          const start = parseLocalDatetime(s.start_datetime)
+          const end = parseLocalDatetime(s.end_datetime)
           return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
         }, 0)
 
@@ -292,8 +301,8 @@ export function IndividualReportDialog({ open, onOpenChange, schedules, onCallTy
                         {expandedAssignee === assignee.userId && (
                           <div className="border-t pt-3 space-y-2">
                             {assignee.schedules.map((schedule, idx) => {
-                              const start = new Date(schedule.start_datetime)
-                              const end = new Date(schedule.end_datetime)
+                              const start = parseLocalDatetime(schedule.start_datetime)
+                              const end = parseLocalDatetime(schedule.end_datetime)
                               const hours = ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1)
                               
                               return (

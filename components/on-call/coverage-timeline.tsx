@@ -33,18 +33,27 @@ const WEEKEND_PERIODS = [
 ]
 
 export function CoverageTimeline({ schedules = [], gaps = [], startDate, endDate }: CoverageTimelineProps) {
+  // Helper: Parse SQL datetime as local time (not UTC)
+  const parseLocalDatetime = (sqlDatetime: string): Date => {
+    const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '')
+    const [datePart, timePart] = cleaned.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hour, minute, second || 0)
+  }
+
   // Combine schedules and gaps
   const events: TimelineEvent[] = [
     ...schedules.map(s => ({
       type: "assignment" as const,
-      start: new Date(s.start_datetime),
-      end: new Date(s.end_datetime),
+      start: parseLocalDatetime(s.start_datetime),
+      end: parseLocalDatetime(s.end_datetime),
       data: s,
     })),
     ...gaps.map(g => ({
       type: "gap" as const,
-      start: new Date(g.gap_start),
-      end: new Date(g.gap_end),
+      start: parseLocalDatetime(g.gap_start),
+      end: parseLocalDatetime(g.gap_end),
       data: g,
     })),
   ]
