@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Mail, X, AlertTriangle, Clock, User, Phone, Calendar as CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { format, min, max, addDays } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { ReportTimeline } from "./report-timeline"
+import { CoverageTimeline } from "./coverage-timeline"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ReportPreviewDialogProps {
@@ -73,6 +74,16 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   const renderGapReport = () => {
     if (!reportData) return null
     const { gaps, coveragePercentage, schedules = [] } = reportData
+    
+    // Calculate date range from schedules and gaps
+    const allDates = [
+      ...schedules.map((s: any) => [new Date(s.start_datetime), new Date(s.end_datetime)]),
+      ...gaps.map((g: any) => [new Date(g.gap_start), new Date(g.gap_end)]),
+    ].flat()
+    
+    const startDate = allDates.length > 0 ? min(allDates) : new Date()
+    const endDate = allDates.length > 0 ? max(allDates) : addDays(new Date(), 30)
+    
     return (
       <div className="space-y-4">
         <Card className={coveragePercentage === 100 ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
@@ -89,18 +100,23 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="timeline" className="w-full">
+        <Tabs defaultValue="calendar" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="timeline">
+            <TabsTrigger value="calendar">
               <CalendarIcon className="h-4 w-4 mr-2" />
-              Timeline View
+              Calendar View
             </TabsTrigger>
             <TabsTrigger value="list">List View</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timeline" className="mt-4">
-            <div className="max-h-[400px] overflow-y-auto">
-              <ReportTimeline schedules={schedules} gaps={gaps} />
+          <TabsContent value="calendar" className="mt-4">
+            <div className="max-h-[500px] overflow-y-auto">
+              <CoverageTimeline 
+                schedules={schedules} 
+                gaps={gaps} 
+                startDate={startDate}
+                endDate={endDate}
+              />
             </div>
           </TabsContent>
 
@@ -142,6 +158,12 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   const renderScheduleReport = () => {
     if (!reportData) return null
     const { schedules, coverage } = reportData
+    
+    // Calculate date range from schedules
+    const allDates = schedules.flatMap((s: any) => [new Date(s.start_datetime), new Date(s.end_datetime)])
+    const startDate = allDates.length > 0 ? min(allDates) : new Date()
+    const endDate = allDates.length > 0 ? max(allDates) : addDays(new Date(), 30)
+    
     return (
       <div className="space-y-4">
         <Card>
@@ -163,18 +185,23 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="timeline" className="w-full">
+        <Tabs defaultValue="calendar" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="timeline">
+            <TabsTrigger value="calendar">
               <CalendarIcon className="h-4 w-4 mr-2" />
-              Timeline View
+              Calendar View
             </TabsTrigger>
             <TabsTrigger value="list">List View</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timeline" className="mt-4">
-            <div className="max-h-[400px] overflow-y-auto">
-              <ReportTimeline schedules={schedules} gaps={coverage?.gaps || []} />
+          <TabsContent value="calendar" className="mt-4">
+            <div className="max-h-[500px] overflow-y-auto">
+              <CoverageTimeline 
+                schedules={schedules} 
+                gaps={coverage?.gaps || []} 
+                startDate={startDate}
+                endDate={endDate}
+              />
             </div>
           </TabsContent>
 
@@ -221,6 +248,12 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   const renderIndividualReport = () => {
     if (!reportData) return null
     const { assignee, schedules, totalHours } = reportData
+    
+    // Calculate date range from schedules
+    const allDates = schedules.flatMap((s: any) => [new Date(s.start_datetime), new Date(s.end_datetime)])
+    const startDate = allDates.length > 0 ? min(allDates) : new Date()
+    const endDate = allDates.length > 0 ? max(allDates) : addDays(new Date(), 30)
+    
     return (
       <div className="space-y-4">
         <Card className="border-purple-200 bg-purple-50">
@@ -240,18 +273,23 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="timeline" className="w-full">
+        <Tabs defaultValue="calendar" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="timeline">
+            <TabsTrigger value="calendar">
               <CalendarIcon className="h-4 w-4 mr-2" />
-              Timeline View
+              Calendar View
             </TabsTrigger>
             <TabsTrigger value="list">List View</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timeline" className="mt-4">
-            <div className="max-h-[400px] overflow-y-auto">
-              <ReportTimeline schedules={schedules} />
+          <TabsContent value="calendar" className="mt-4">
+            <div className="max-h-[500px] overflow-y-auto">
+              <CoverageTimeline 
+                schedules={schedules}
+                gaps={[]}
+                startDate={startDate}
+                endDate={endDate}
+              />
             </div>
           </TabsContent>
 

@@ -273,6 +273,7 @@ After deploying the application, you'll need to run the following SQL scripts:
 3. **Run the SQL scripts in order**:
    - `scripts/create-on-call-table-minimal.sql` - Creates the on-call schedule table
    - `scripts/add-phone-to-app-users.sql` - Adds phone number field to app_users table
+   - `scripts/add-on-call-schedule-nav.sql` - Adds "On-Call Schedule" to the navigation menu
 4. **Verify permissions**: The scripts grant permissions to `v0_application_role` (used by `v0_app_user`)
 
 **Important**: The database user `v0_app_user` is a member of `v0_application_role`. All table permissions are granted to the role, not directly to the user.
@@ -282,6 +283,12 @@ After deploying the application, you'll need to run the following SQL scripts:
 - When assigning on-call schedules, the system automatically pulls phone from `app_users`
 - If a phone number is missing, the user is prompted to enter it, and it's saved to their profile
 - This eliminates redundant data entry and keeps contact information up-to-date
+
+**Navigation Configuration**:
+- Navigation items are stored in the `navigation_items` table
+- The "On-Call Schedule" menu item must be added via the SQL script after initial setup
+- The item is linked to the `view_visits` permission
+- All navigation changes require a database update AND a browser cache clear to be visible
 
 ### Installation
 
