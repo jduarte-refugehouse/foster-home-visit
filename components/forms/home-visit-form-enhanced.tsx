@@ -337,12 +337,16 @@ const EnhancedHomeVisitForm = ({
     // Signatures
     signatures: {
       visitor: "",
+      visitorSignature: "",
       visitorDate: "",
       parent1: "",
+      parent1Signature: "",
       parent1Date: "",
       parent2: "",
+      parent2Signature: "",
       parent2Date: "",
       supervisor: "",
+      supervisorSignature: "",
       supervisorDate: "",
     },
   })

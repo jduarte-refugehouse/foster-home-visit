@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SignaturePad } from "@/components/ui/signature-pad"
 
 export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange }) => {
   const traumaCare = formData.traumaInformedCare
@@ -1206,142 +1207,151 @@ export const SignaturesSection = ({ formData, onChange }) => {
   const signatures = formData.signatures
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-        <FileText className="h-6 w-6 text-refuge-purple" />
-        Signatures
-      </h2>
-
-      <Alert>
-        <AlertDescription>
-          All required signatures must be collected before submission. Signatures confirm receipt and understanding of
-          visit findings.
+    <div className="space-y-3">
+      <Alert className="py-2">
+        <AlertDescription className="text-xs">
+          <strong>iPad Signatures:</strong> Foster parents can sign directly on screen with their finger or stylus. All signatures required before submission.
         </AlertDescription>
       </Alert>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Visitor Signature *</CardTitle>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Visitor Signature *</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="visitor-sig">Name *</Label>
-                <Input
-                  id="visitor-sig"
-                  value={signatures.visitor}
-                  onChange={(e) => onChange("signatures.visitor", e.target.value)}
-                  placeholder="Type your full name"
-                />
-              </div>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-sm">Name *</Label>
+              <Input
+                value={signatures.visitor}
+                onChange={(e) => onChange("signatures.visitor", e.target.value)}
+                placeholder="Type your full name"
+                className="text-sm"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="visitor-date">Date *</Label>
-                <Input
-                  id="visitor-date"
-                  type="date"
-                  value={signatures.visitorDate}
-                  onChange={(e) => onChange("signatures.visitorDate", e.target.value)}
-                />
-              </div>
+            <SignaturePad
+              label="Signature *"
+              value={signatures.visitorSignature}
+              onChange={(sig) => onChange("signatures.visitorSignature", sig)}
+            />
+
+            <div>
+              <Label className="text-sm">Date *</Label>
+              <Input
+                type="date"
+                value={signatures.visitorDate}
+                onChange={(e) => onChange("signatures.visitorDate", e.target.value)}
+                className="text-sm"
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Foster Parent 1 Signature *</CardTitle>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Foster Parent 1 Signature *</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="parent1-sig">Name *</Label>
-                <Input
-                  id="parent1-sig"
-                  value={signatures.parent1}
-                  onChange={(e) => onChange("signatures.parent1", e.target.value)}
-                  placeholder="Type full name"
-                />
-              </div>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-sm">Name *</Label>
+              <Input
+                value={signatures.parent1}
+                onChange={(e) => onChange("signatures.parent1", e.target.value)}
+                placeholder="Type full name"
+                className="text-sm"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="parent1-date">Date *</Label>
-                <Input
-                  id="parent1-date"
-                  type="date"
-                  value={signatures.parent1Date}
-                  onChange={(e) => onChange("signatures.parent1Date", e.target.value)}
-                />
-              </div>
+            <SignaturePad
+              label="Signature *"
+              value={signatures.parent1Signature}
+              onChange={(sig) => onChange("signatures.parent1Signature", sig)}
+            />
+
+            <div>
+              <Label className="text-sm">Date *</Label>
+              <Input
+                type="date"
+                value={signatures.parent1Date}
+                onChange={(e) => onChange("signatures.parent1Date", e.target.value)}
+                className="text-sm"
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Foster Parent 2 Signature</CardTitle>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Foster Parent 2 Signature (if applicable)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="parent2-sig">Name</Label>
-                <Input
-                  id="parent2-sig"
-                  value={signatures.parent2}
-                  onChange={(e) => onChange("signatures.parent2", e.target.value)}
-                  placeholder="Type full name (if applicable)"
-                />
-              </div>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-sm">Name</Label>
+              <Input
+                value={signatures.parent2}
+                onChange={(e) => onChange("signatures.parent2", e.target.value)}
+                placeholder="Type full name (optional)"
+                className="text-sm"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="parent2-date">Date</Label>
-                <Input
-                  id="parent2-date"
-                  type="date"
-                  value={signatures.parent2Date}
-                  onChange={(e) => onChange("signatures.parent2Date", e.target.value)}
-                />
-              </div>
+            <SignaturePad
+              label="Signature"
+              value={signatures.parent2Signature}
+              onChange={(sig) => onChange("signatures.parent2Signature", sig)}
+            />
+
+            <div>
+              <Label className="text-sm">Date</Label>
+              <Input
+                type="date"
+                value={signatures.parent2Date}
+                onChange={(e) => onChange("signatures.parent2Date", e.target.value)}
+                className="text-sm"
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Supervisor Signature *</CardTitle>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Supervisor Signature *</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="supervisor-sig">Name *</Label>
-                <Input
-                  id="supervisor-sig"
-                  value={signatures.supervisor}
-                  onChange={(e) => onChange("signatures.supervisor", e.target.value)}
-                  placeholder="Type full name"
-                />
-              </div>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-sm">Name *</Label>
+              <Input
+                value={signatures.supervisor}
+                onChange={(e) => onChange("signatures.supervisor", e.target.value)}
+                placeholder="Type full name"
+                className="text-sm"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="supervisor-date">Date *</Label>
-                <Input
-                  id="supervisor-date"
-                  type="date"
-                  value={signatures.supervisorDate}
-                  onChange={(e) => onChange("signatures.supervisorDate", e.target.value)}
-                />
-              </div>
+            <SignaturePad
+              label="Signature *"
+              value={signatures.supervisorSignature}
+              onChange={(sig) => onChange("signatures.supervisorSignature", sig)}
+            />
+
+            <div>
+              <Label className="text-sm">Date *</Label>
+              <Input
+                type="date"
+                value={signatures.supervisorDate}
+                onChange={(e) => onChange("signatures.supervisorDate", e.target.value)}
+                className="text-sm"
+              />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Alert className="border-green-200 bg-green-50">
+      <Alert className="border-green-200 bg-green-50 py-2">
         <CheckCircle className="h-4 w-4 text-green-800" />
-        <AlertDescription className="text-green-800">
-          <strong>Ready to Submit:</strong> Review all sections before final submission. Ensure all required fields are
-          complete and signatures are collected.
+        <AlertDescription className="text-green-800 text-xs">
+          <strong>Ready to Submit:</strong> Review all sections before final submission. Ensure all required fields and signatures are complete.
         </AlertDescription>
       </Alert>
     </div>
