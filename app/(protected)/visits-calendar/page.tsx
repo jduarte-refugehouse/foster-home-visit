@@ -287,18 +287,50 @@ export default function VisitsCalendarPage() {
     }
   }
 
+  // Generate a consistent color for each person/resource
+  const getColorForResource = (name: string) => {
+    const colors = [
+      { bg: "#8b5cf6", border: "#7c3aed" }, // Purple
+      { bg: "#ec4899", border: "#db2777" }, // Pink
+      { bg: "#3b82f6", border: "#2563eb" }, // Blue
+      { bg: "#10b981", border: "#059669" }, // Green
+      { bg: "#f59e0b", border: "#d97706" }, // Amber
+      { bg: "#ef4444", border: "#dc2626" }, // Red
+      { bg: "#06b6d4", border: "#0891b2" }, // Cyan
+      { bg: "#8b5cf6", border: "#7c3aed" }, // Violet
+      { bg: "#f97316", border: "#ea580c" }, // Orange
+      { bg: "#14b8a6", border: "#0d9488" }, // Teal
+    ]
+    
+    // Simple hash function to get consistent color for same name
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const index = Math.abs(hash) % colors.length
+    return colors[index]
+  }
+
   const eventStyleGetter = (event: CalendarEvent) => {
-    // Handle on-call events with distinct purple styling
+    // Handle on-call events with color per person and smaller font
     if (event.eventType === "on-call") {
+      const schedule = event.resource
+      const personColor = getColorForResource(schedule.user_name)
+      
       return {
         style: {
-          backgroundColor: "#7c3aed", // Purple/violet for on-call
+          backgroundColor: personColor.bg,
           borderRadius: "4px",
-          opacity: 0.85,
+          opacity: 0.9,
           color: "white",
-          border: "2px solid #6d28d9",
+          border: `2px solid ${personColor.border}`,
           display: "block",
-          fontWeight: "600",
+          fontWeight: "500",
+          fontSize: "11px",
+          padding: "2px 4px",
+          lineHeight: "1.3",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         },
       }
     }
@@ -339,6 +371,8 @@ export default function VisitsCalendarPage() {
         color: "white",
         border: "0px",
         display: "block",
+        fontSize: "12px",
+        padding: "2px 4px",
       },
     }
   }
