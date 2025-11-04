@@ -70,6 +70,8 @@ export default function VisitsCalendarPage() {
   const [currentOnCall, setCurrentOnCall] = useState<any>(null)
   const [showOnCallPanel, setShowOnCallPanel] = useState(true)
   const [showOnCallOnCalendar, setShowOnCallOnCalendar] = useState(true)
+  const [editingOnCall, setEditingOnCall] = useState<any>(null)
+  const [showOnCallEditDialog, setShowOnCallEditDialog] = useState(false)
   
   const { toast } = useToast()
 
@@ -246,13 +248,50 @@ export default function VisitsCalendarPage() {
       setSelectedAppointment(event.resource)
       setSelectedSlot(null)
     } else if (event.eventType === "on-call") {
-      // For on-call events, show a toast with details
+      // For on-call events, open edit dialog
       const schedule = event.resource
+      setEditingOnCall(schedule)
+      setShowOnCallEditDialog(true)
+    }
+  }
+
+  const handleDeleteOnCall = async (scheduleId: string) => {
+    try {
+      const response = await fetch(`/api/on-call/${scheduleId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete on-call schedule")
+      }
+
       toast({
-        title: `🛡️ ${schedule.user_name} - On-Call`,
-        description: `${format(parseLocalDatetime(schedule.start_datetime), "MMM d, yyyy h:mm a")} - ${format(parseLocalDatetime(schedule.end_datetime), "MMM d, yyyy h:mm a")}${schedule.user_phone ? `\n📞 ${schedule.user_phone}` : ""}${schedule.notes ? `\n\n${schedule.notes}` : ""}`,
+        title: "Success",
+        description: "On-call assignment deleted successfully",
+      })
+
+      // Refresh data
+      fetchOnCallData()
+      setShowOnCallEditDialog(false)
+      setEditingOnCall(null)
+    } catch (error) {
+      console.error("Error deleting on-call:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete on-call assignment",
+        variant: "destructive",
       })
     }
+  }
+
+  const handleOnCallUpdated = () => {
+    fetchOnCallData()
+    setShowOnCallEditDialog(false)
+    setEditingOnCall(null)
+    toast({
+      title: "Success",
+      description: "On-call assignment updated successfully",
+    })
   }
 
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
@@ -532,6 +571,15 @@ export default function VisitsCalendarPage() {
               Manage On-Call
             </Button>
           </OnCallAssignmentDialog>
+          
+          {/* Edit On-Call Dialog (opened by clicking calendar event) */}
+          <OnCallAssignmentDialog
+            open={showOnCallEditDialog}
+            onOpenChange={setShowOnCallEditDialog}
+            editingAssignment={editingOnCall}
+            onAssignmentCreated={handleOnCallUpdated}
+            onDelete={handleDeleteOnCall}
+          />
           <CreateAppointmentDialog
             selectedDate={selectedSlot?.start}
             selectedTime={selectedSlot?.start ? format(selectedSlot.start, "HH:mm") : undefined}

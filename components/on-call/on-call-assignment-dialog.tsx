@@ -18,6 +18,9 @@ interface OnCallAssignmentDialogProps {
   editingAssignment?: any
   selectedDate?: Date
   selectedTime?: string
+  onDelete?: (scheduleId: string) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 interface StaffMember {
@@ -36,12 +39,19 @@ export function OnCallAssignmentDialog({
   editingAssignment,
   selectedDate,
   selectedTime,
+  onDelete,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: OnCallAssignmentDialogProps) {
   const { user } = useUser()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([])
   const [conflictCheck, setConflictCheck] = useState<{ hasConflict: boolean; message?: string } | null>(null)
+
+  // Use controlled open state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = controlledOnOpenChange || setInternalOpen
 
   const [formData, setFormData] = useState({
     userId: "",
@@ -575,25 +585,47 @@ export function OnCallAssignmentDialog({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setOpen(false)
-                resetForm()
-              }}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="bg-refuge-purple hover:bg-refuge-purple-dark text-white"
-              disabled={loading || (conflictCheck?.hasConflict ?? false)}
-            >
-              {loading ? "Saving..." : editingAssignment ? "Update Assignment" : "Create Assignment"}
-            </Button>
+          <div className="flex justify-between gap-2 pt-4">
+            {/* Delete button - only show when editing */}
+            {editingAssignment && onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete this on-call assignment for ${editingAssignment.user_name}?`)) {
+                    onDelete(editingAssignment.id)
+                  }
+                }}
+                disabled={loading}
+              >
+                Delete
+              </Button>
+            )}
+            
+            {/* Spacer to push Cancel/Save to the right */}
+            {!editingAssignment && <div className="flex-1"></div>}
+            
+            {/* Cancel and Save buttons */}
+            <div className="flex gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpen(false)
+                  resetForm()
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+                disabled={loading || (conflictCheck?.hasConflict ?? false)}
+              >
+                {loading ? "Saving..." : editingAssignment ? "Update Assignment" : "Create Assignment"}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
