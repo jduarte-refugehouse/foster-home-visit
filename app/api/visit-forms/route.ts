@@ -3,6 +3,7 @@ import { query } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
+export const maxDuration = 60 // Vercel function timeout in seconds (Pro plan: max 60s, Enterprise: max 900s)
 
 // GET - Fetch visit forms with optional filtering
 export async function GET(request: NextRequest) {
