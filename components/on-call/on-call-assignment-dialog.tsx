@@ -105,21 +105,60 @@ export function OnCallAssignmentDialog({
     }
   }
 
+  // Helper: Parse SQL datetime as local time (not UTC)
+  const parseLocalDatetime = (sqlDatetime: string): Date => {
+    // SQL format: "2025-11-03T14:00:00" or "2025-11-03 14:00:00"
+    const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '')
+    const [datePart, timePart] = cleaned.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    
+    // Create Date in LOCAL timezone (not UTC)
+    return new Date(year, month - 1, day, hour, minute, second || 0)
+  }
+
   const populateEditForm = () => {
     if (!editingAssignment) return
 
-    const startDate = new Date(editingAssignment.start_datetime)
-    const endDate = new Date(editingAssignment.end_datetime)
+    // Parse dates in local timezone (not UTC)
+    const startDate = parseLocalDatetime(editingAssignment.start_datetime)
+    const endDate = parseLocalDatetime(editingAssignment.end_datetime)
+
+    // Format date as YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    // Format time as HH:MM
+    const formatTime = (date: Date) => {
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${hours}:${minutes}`
+    }
+
+    // Try to find the staff member in the list by GUID or by name
+    let matchingStaffId = ""
+    const matchingStaff = staffMembers.find(
+      (s) => s.appUserId === editingAssignment.user_id || s.name === editingAssignment.user_name
+    )
+    if (matchingStaff) {
+      matchingStaffId = matchingStaff.id
+    }
 
     setFormData({
-      userId: editingAssignment.user_id || "",
+      userId: matchingStaffId, // Use the Clerk ID for the dropdown
+      appUserId: editingAssignment.user_id || "", // Store the GUID for database operations
       userName: editingAssignment.user_name || "",
       userEmail: editingAssignment.user_email || "",
       userPhone: editingAssignment.user_phone || "",
-      startDate: startDate.toISOString().split("T")[0],
-      startTime: startDate.toTimeString().slice(0, 5),
-      endDate: endDate.toISOString().split("T")[0],
-      endTime: endDate.toTimeString().slice(0, 5),
+      phoneFromDatabase: !!editingAssignment.user_phone,
+      startDate: formatDate(startDate),
+      startTime: formatTime(startDate),
+      endDate: formatDate(endDate),
+      endTime: formatTime(endDate),
       notes: editingAssignment.notes || "",
       priorityLevel: editingAssignment.priority_level || "normal",
       onCallType: editingAssignment.on_call_type || "general",
