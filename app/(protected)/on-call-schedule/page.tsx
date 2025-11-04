@@ -13,6 +13,7 @@ import { Calendar, Shield, AlertTriangle, CheckCircle, Mail, Download, Plus, Edi
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
+import { ReportPreviewDialog } from "@/components/on-call/report-preview-dialog"
 
 export default function OnCallSchedulePage() {
   const router = useRouter()
@@ -23,7 +24,9 @@ export default function OnCallSchedulePage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingAssignment, setEditingAssignment] = useState<any>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [sendingReport, setSendingReport] = useState(false)
+  const [showReportPreview, setShowReportPreview] = useState(false)
+  const [currentReportType, setCurrentReportType] = useState<"gap" | "schedule" | "individual">("gap")
+  const [currentReportData, setCurrentReportData] = useState<any>(null)
   const { toast } = useToast()
 
   // Helper: Parse SQL datetime as local time (not UTC)
@@ -124,110 +127,58 @@ export default function OnCallSchedulePage() {
     fetchData()
   }
 
-  const sendGapReport = async () => {
-    setSendingReport(true)
-    try {
-      const response = await fetch('/api/on-call/reports/gaps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          onCallType,
-          gaps: coverage?.gaps || [],
-          coveragePercentage: coverage?.covered_percentage || 0,
-        }),
-      })
-
-      if (response.ok) {
-        toast({
-          title: "Gap Report Sent",
-          description: "Coverage gap report has been emailed to managers",
-        })
-      } else {
-        throw new Error("Failed to send report")
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send gap report. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setSendingReport(false)
-    }
+  const sendGapReport = () => {
+    setCurrentReportType("gap")
+    setCurrentReportData({
+      gaps: coverage?.gaps || [],
+      coveragePercentage: coverage?.covered_percentage || 0,
+    })
+    setShowReportPreview(true)
   }
 
-  const send30DayReport = async () => {
-    setSendingReport(true)
-    try {
-      const response = await fetch('/api/on-call/reports/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          onCallType,
-          schedules,
-          coverage,
-        }),
-      })
-
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `on-call-schedule-${onCallType}-${format(new Date(), 'yyyy-MM-dd')}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        
-        toast({
-          title: "Report Downloaded",
-          description: "30-day schedule report has been downloaded",
-        })
-      } else {
-        throw new Error("Failed to generate report")
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate 30-day report. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setSendingReport(false)
-    }
+  const send30DayReport = () => {
+    setCurrentReportType("schedule")
+    setCurrentReportData({
+      schedules,
+      coverage,
+    })
+    setShowReportPreview(true)
   }
 
-  const sendIndividualReports = async () => {
-    setSendingReport(true)
-    try {
-      const response = await fetch('/api/on-call/reports/individual', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          onCallType,
-          schedules,
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        toast({
-          title: "Reports Sent",
-          description: `Individual schedules sent to ${result.count} assignees`,
-        })
-      } else {
-        throw new Error("Failed to send reports")
-      }
-    } catch (error) {
+  const sendIndividualReports = () => {
+    // For individual reports, we'll need to select which assignee first
+    // For now, show a preview with the first assignee or all data
+    // In a full implementation, you might want a picker dialog first
+    const uniqueUsers = Array.from(new Set(schedules.map(s => s.user_id)))
+    if (uniqueUsers.length === 0) {
       toast({
-        title: "Error",
-        description: "Failed to send individual reports. Please try again.",
+        title: "No Assignees",
+        description: "No assignments found to generate reports for",
         variant: "destructive",
       })
-    } finally {
-      setSendingReport(false)
+      return
     }
+
+    // Group schedules by user for preview (showing first user as example)
+    const firstUserId = uniqueUsers[0]
+    const userSchedules = schedules.filter(s => s.user_id === firstUserId)
+    const firstSchedule = userSchedules[0]
+    
+    setCurrentReportType("individual")
+    setCurrentReportData({
+      assignee: {
+        name: firstSchedule.user_name,
+        email: firstSchedule.user_email,
+        phone: firstSchedule.user_phone,
+      },
+      schedules: userSchedules,
+      totalHours: userSchedules.reduce((sum, s) => {
+        const start = new Date(s.start_datetime)
+        const end = new Date(s.end_datetime)
+        return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+      }, 0).toFixed(1),
+    })
+    setShowReportPreview(true)
   }
 
   const gaps = coverage?.gaps || []
@@ -319,17 +270,17 @@ export default function OnCallSchedulePage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button onClick={sendGapReport} size="sm" variant="outline" disabled={gaps.length === 0 || sendingReport}>
+                <Button onClick={sendGapReport} size="sm" variant="outline" disabled={gaps.length === 0}>
                   <Mail className="h-4 w-4 mr-2" />
-                  Send Gap Report
+                  Gap Report
                 </Button>
-                <Button onClick={send30DayReport} size="sm" variant="outline" disabled={sendingReport}>
-                  <Download className="h-4 w-4 mr-2" />
-                  30-Day Report
-                </Button>
-                <Button onClick={sendIndividualReports} size="sm" variant="outline" disabled={schedules.length === 0 || sendingReport}>
+                <Button onClick={send30DayReport} size="sm" variant="outline" disabled={schedules.length === 0}>
                   <Mail className="h-4 w-4 mr-2" />
-                  Send to Assignees
+                  Schedule Report
+                </Button>
+                <Button onClick={sendIndividualReports} size="sm" variant="outline" disabled={schedules.length === 0}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Individual Report
                 </Button>
               </div>
             </div>
@@ -482,6 +433,15 @@ export default function OnCallSchedulePage() {
           handleDelete(id)
           setShowEditDialog(false)
         }}
+      />
+
+      {/* Report Preview Dialog */}
+      <ReportPreviewDialog
+        open={showReportPreview}
+        onOpenChange={setShowReportPreview}
+        reportType={currentReportType}
+        reportData={currentReportData}
+        onCallType={onCallType}
       />
     </div>
   )
