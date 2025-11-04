@@ -626,6 +626,9 @@ const EnhancedHomeVisitForm = ({
     }
   }
 
+  // Extract current section icon for JSX rendering
+  const CurrentSectionIcon = sections[currentSection].icon
+
   return (
     <div className="min-h-screen bg-gray-50 p-2">
       {/* Optimized for iPad 11-inch (834x1194px) */}
@@ -653,7 +656,7 @@ const EnhancedHomeVisitForm = ({
             {/* Current Section Display */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <sections[currentSection].icon className="w-5 h-5 text-refuge-purple" />
+                <CurrentSectionIcon className="w-5 h-5 text-refuge-purple" />
                 <div>
                   <p className="font-semibold text-sm">{sections[currentSection].title}</p>
                   <p className="text-xs text-gray-500">Section {currentSection + 1} of {sections.length}</p>
