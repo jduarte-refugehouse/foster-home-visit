@@ -97,7 +97,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       roleRequired,
       department,
       region,
-      escalationLevel
+      escalationLevel,
+      updatedByUserId,
+      updatedByName
     } = body
 
     // Check if schedule exists
@@ -228,10 +230,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Add updated_by fields
-    updateParams.push(user.id)
+    updateParams.push(updatedByUserId || "system")
     updates.push(`updated_by_user_id = @param${updateParams.length - 1}`)
 
-    updateParams.push(`${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "Unknown")
+    updateParams.push(updatedByName || "System")
     updates.push(`updated_by_name = @param${updateParams.length - 1}`)
 
     updates.push(`updated_at = GETDATE()`)

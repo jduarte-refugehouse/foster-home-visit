@@ -268,6 +268,9 @@ export function OnCallAssignmentDialog({
           escalationLevel: formData.escalationLevel || 1,
           createdByUserId: user?.id || "system",
           createdByName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.primaryEmailAddress?.emailAddress || "Unknown" : "System",
+          // For PUT requests, also send updated_by fields
+          updatedByUserId: user?.id || "system",
+          updatedByName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.primaryEmailAddress?.emailAddress || "Unknown" : "System",
         }),
       })
 
