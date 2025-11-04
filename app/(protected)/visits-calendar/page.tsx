@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
+import { ManageOnCallDialog } from "@/components/on-call/manage-on-call-dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -74,6 +75,7 @@ export default function VisitsCalendarPage() {
   const [editingOnCall, setEditingOnCall] = useState<any>(null)
   const [showOnCallEditDialog, setShowOnCallEditDialog] = useState(false)
   const [onCallTypeFilter, setOnCallTypeFilter] = useState<string>("all") // Filter by on-call type
+  const [showManageDialog, setShowManageDialog] = useState(false)
   
   const { toast } = useToast()
 
@@ -591,10 +593,19 @@ export default function VisitsCalendarPage() {
             onAssignmentCreated={handleOnCallAssignmentCreated}
           >
             <Button variant="outline" className="border-refuge-purple text-refuge-purple hover:bg-refuge-purple/10">
-              <Shield className="h-4 w-4 mr-2" />
-              Manage On-Call
+              <Plus className="h-4 w-4 mr-2" />
+              Add On-Call
             </Button>
           </OnCallAssignmentDialog>
+          
+          <Button 
+            variant="default" 
+            className="bg-refuge-purple hover:bg-refuge-purple/90"
+            onClick={() => setShowManageDialog(true)}
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            Manage On-Call Schedule
+          </Button>
           
           {/* Edit On-Call Dialog (opened by clicking calendar event) */}
           <OnCallAssignmentDialog
@@ -930,6 +941,16 @@ export default function VisitsCalendarPage() {
           )}
         </div>
       </div>
+
+      {/* Manage On-Call Dialog */}
+      <ManageOnCallDialog
+        open={showManageDialog}
+        onOpenChange={setShowManageDialog}
+        onRefresh={() => {
+          fetchOnCallData()
+          fetchAppointments()
+        }}
+      />
     </div>
   )
 }
