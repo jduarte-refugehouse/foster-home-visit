@@ -205,6 +205,8 @@ export function OnCallAssignmentDialog({
         return
       }
 
+      // Create datetime strings in local timezone (no conversion)
+      // This ensures the times you select are the times that get stored
       const startDatetime = `${formData.startDate}T${formData.startTime}:00`
       const endDatetime = `${formData.endDate}T${formData.endTime}:00`
 

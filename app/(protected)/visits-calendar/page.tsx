@@ -73,6 +73,19 @@ export default function VisitsCalendarPage() {
   
   const { toast } = useToast()
 
+  // Helper: Parse SQL datetime as local time (not UTC)
+  // SQL Server DATETIME2 has no timezone info, so we explicitly parse as local
+  const parseLocalDatetime = (sqlDatetime: string): Date => {
+    // SQL format: "2025-11-03T14:00:00" or "2025-11-03 14:00:00"
+    const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '')
+    const [datePart, timePart] = cleaned.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    
+    // Create Date in LOCAL timezone (not UTC)
+    return new Date(year, month - 1, day, hour, minute, second || 0)
+  }
+
   useEffect(() => {
     fetchAppointments()
     fetchOnCallData()
@@ -200,16 +213,16 @@ export default function VisitsCalendarPage() {
   const appointmentEvents: CalendarEvent[] = appointments.map((appointment) => ({
     id: appointment.appointment_id,
     title: appointment.title,
-    start: new Date(appointment.start_datetime),
-    end: new Date(appointment.end_datetime),
+    start: parseLocalDatetime(appointment.start_datetime),
+    end: parseLocalDatetime(appointment.end_datetime),
     resource: appointment,
     eventType: "appointment",
   }))
 
   // Transform on-call schedules to calendar events
   const onCallEvents: CalendarEvent[] = onCallSchedules.map((schedule) => {
-    const start = new Date(schedule.start_datetime)
-    const end = new Date(schedule.end_datetime)
+    const start = parseLocalDatetime(schedule.start_datetime)
+    const end = parseLocalDatetime(schedule.end_datetime)
     const timeRange = `${format(start, "MMM d, h:mm a")} - ${format(end, "MMM d, h:mm a")}`
     
     return {
@@ -237,7 +250,7 @@ export default function VisitsCalendarPage() {
       const schedule = event.resource
       toast({
         title: `🛡️ ${schedule.user_name} - On-Call`,
-        description: `${format(new Date(schedule.start_datetime), "MMM d, yyyy h:mm a")} - ${format(new Date(schedule.end_datetime), "MMM d, yyyy h:mm a")}${schedule.user_phone ? `\n📞 ${schedule.user_phone}` : ""}${schedule.notes ? `\n\n${schedule.notes}` : ""}`,
+        description: `${format(parseLocalDatetime(schedule.start_datetime), "MMM d, yyyy h:mm a")} - ${format(parseLocalDatetime(schedule.end_datetime), "MMM d, yyyy h:mm a")}${schedule.user_phone ? `\n📞 ${schedule.user_phone}` : ""}${schedule.notes ? `\n\n${schedule.notes}` : ""}`,
       })
     }
   }
@@ -670,8 +683,8 @@ export default function VisitsCalendarPage() {
                   <div key={schedule.id} className="text-xs bg-gray-50 p-2 rounded">
                     <div className="font-medium">{schedule.user_name}</div>
                     <div className="text-gray-500">
-                      {format(new Date(schedule.start_datetime), "MMM d, h:mm a")} -{" "}
-                      {format(new Date(schedule.end_datetime), "MMM d, h:mm a")}
+                      {format(parseLocalDatetime(schedule.start_datetime), "MMM d, h:mm a")} -{" "}
+                      {format(parseLocalDatetime(schedule.end_datetime), "MMM d, h:mm a")}
                     </div>
                   </div>
                 ))}
@@ -750,8 +763,8 @@ export default function VisitsCalendarPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4" />
-                    {format(new Date(selectedAppointment.start_datetime), "PPP")} at{" "}
-                    {format(new Date(selectedAppointment.start_datetime), "p")}
+                    {format(parseLocalDatetime(selectedAppointment.start_datetime), "PPP")} at{" "}
+                    {format(parseLocalDatetime(selectedAppointment.start_datetime), "p")}
                   </div>
                   {selectedAppointment.location_address && (
                     <div className="flex items-center gap-2 text-sm">
