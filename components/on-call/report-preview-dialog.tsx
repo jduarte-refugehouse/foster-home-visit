@@ -69,6 +69,7 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   }
 
   const renderGapReport = () => {
+    if (!reportData) return null
     const { gaps, coveragePercentage } = reportData
     return (
       <div className="space-y-4">
@@ -119,6 +120,7 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   }
 
   const renderScheduleReport = () => {
+    if (!reportData) return null
     const { schedules, coverage } = reportData
     return (
       <div className="space-y-4">
@@ -179,6 +181,7 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   }
 
   const renderIndividualReport = () => {
+    if (!reportData) return null
     const { assignee, schedules, totalHours } = reportData
     return (
       <div className="space-y-4">

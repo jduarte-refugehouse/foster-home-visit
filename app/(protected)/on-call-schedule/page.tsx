@@ -149,6 +149,15 @@ export default function OnCallSchedulePage() {
     // For individual reports, we'll need to select which assignee first
     // For now, show a preview with the first assignee or all data
     // In a full implementation, you might want a picker dialog first
+    if (!schedules || schedules.length === 0) {
+      toast({
+        title: "No Assignees",
+        description: "No assignments found to generate reports for",
+        variant: "destructive",
+      })
+      return
+    }
+
     const uniqueUsers = Array.from(new Set(schedules.map(s => s.user_id)))
     if (uniqueUsers.length === 0) {
       toast({
@@ -163,6 +172,15 @@ export default function OnCallSchedulePage() {
     const firstUserId = uniqueUsers[0]
     const userSchedules = schedules.filter(s => s.user_id === firstUserId)
     const firstSchedule = userSchedules[0]
+    
+    if (!firstSchedule) {
+      toast({
+        title: "Error",
+        description: "Unable to load schedule data",
+        variant: "destructive",
+      })
+      return
+    }
     
     setCurrentReportType("individual")
     setCurrentReportData({
