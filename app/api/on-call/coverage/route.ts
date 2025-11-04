@@ -157,12 +157,15 @@ export async function GET(request: NextRequest) {
       success: true,
       coverage: {
         status: overallStatus,
-        coveragePercentage: Math.round(coveragePercentage * 10) / 10,
+        covered_percentage: Math.round(coveragePercentage * 10) / 10, // Use snake_case for consistency
+        coveragePercentage: Math.round(coveragePercentage * 10) / 10, // Keep camelCase for backwards compatibility
         totalHours,
         coveredHours: totalHours - gapHours,
         gapHours,
         startDate,
         endDate,
+        gaps, // Include gaps in coverage object
+        overlaps, // Include overlaps in coverage object
       },
       currentOnCall: currentOnCall.length > 0 ? currentOnCall[0] : null,
       shifts: shifts.map((s) => ({
@@ -172,7 +175,7 @@ export async function GET(request: NextRequest) {
         end_datetime: s.end_datetime,
         priority_level: s.priority_level,
       })),
-      gaps,
+      gaps, // Also keep at top level for backwards compatibility
       overlaps,
       warnings: [
         ...gaps.map((g) => ({
