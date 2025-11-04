@@ -14,6 +14,7 @@ import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
 import { ReportPreviewDialog } from "@/components/on-call/report-preview-dialog"
+import { IndividualReportDialog } from "@/components/on-call/individual-report-dialog"
 
 export default function OnCallSchedulePage() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function OnCallSchedulePage() {
   const [showReportPreview, setShowReportPreview] = useState(false)
   const [currentReportType, setCurrentReportType] = useState<"gap" | "schedule" | "individual">("gap")
   const [currentReportData, setCurrentReportData] = useState<any>(null)
+  const [showIndividualReportDialog, setShowIndividualReportDialog] = useState(false)
   const { toast } = useToast()
 
   // Helper: Parse SQL datetime as local time (not UTC)
@@ -146,9 +148,8 @@ export default function OnCallSchedulePage() {
     setShowReportPreview(true)
   }
 
-  const sendIndividualReports = async () => {
-    // Send individual reports to ALL assignees at once
-    // Each person gets their own personalized report with only their shifts
+  const sendIndividualReports = () => {
+    // Open dialog to select which assignees to send reports to
     if (!schedules || schedules.length === 0) {
       toast({
         title: "No Assignees",
@@ -158,94 +159,7 @@ export default function OnCallSchedulePage() {
       return
     }
 
-    const uniqueUsers = Array.from(new Set(schedules.map((s: any) => s.user_id)))
-    if (uniqueUsers.length === 0) {
-      toast({
-        title: "No Assignees",
-        description: "No assignments found to generate reports for",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Confirm before sending to multiple people
-    const userCount = uniqueUsers.length
-    if (!window.confirm(`Send individual reports to ${userCount} assignee(s)? Each person will receive an email with their personal schedule and a calendar attachment.`)) {
-      return
-    }
-
-    toast({
-      title: "Sending Reports...",
-      description: `Sending personalized reports to ${userCount} assignee(s)...`,
-    })
-
-    let successCount = 0
-    let errorCount = 0
-
-    // Send to each assignee
-    for (const userId of uniqueUsers) {
-      const userSchedules = schedules.filter((s: any) => s.user_id === userId)
-      const userSchedule = userSchedules[0]
-      
-      if (!userSchedule) continue
-
-      const reportData = {
-        assignee: {
-          name: userSchedule.user_name,
-          email: userSchedule.user_email,
-          phone: userSchedule.user_phone,
-        },
-        schedules: userSchedules,
-        totalHours: userSchedules.reduce((sum: number, s: any) => {
-          const start = new Date(s.start_datetime)
-          const end = new Date(s.end_datetime)
-          return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-        }, 0).toFixed(1),
-      }
-
-      try {
-        const response = await fetch('/api/on-call/reports/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reportType: 'individual',
-            recipientEmail: userSchedule.user_email,
-            reportData,
-            onCallType,
-          }),
-        })
-
-        if (response.ok) {
-          successCount++
-        } else {
-          errorCount++
-          console.error(`Failed to send report to ${userSchedule.user_name}`)
-        }
-      } catch (error) {
-        errorCount++
-        console.error(`Error sending report to ${userSchedule.user_name}:`, error)
-      }
-    }
-
-    // Show summary
-    if (successCount > 0 && errorCount === 0) {
-      toast({
-        title: "✓ All Reports Sent",
-        description: `Successfully sent ${successCount} personalized report(s) with calendar attachments.`,
-      })
-    } else if (successCount > 0 && errorCount > 0) {
-      toast({
-        title: "Partially Complete",
-        description: `Sent ${successCount} report(s). ${errorCount} failed.`,
-        variant: "destructive",
-      })
-    } else {
-      toast({
-        title: "Failed to Send Reports",
-        description: "Unable to send any reports. Please try again.",
-        variant: "destructive",
-      })
-    }
+    setShowIndividualReportDialog(true)
   }
 
   const gaps = coverage?.gaps || []
@@ -508,6 +422,14 @@ export default function OnCallSchedulePage() {
         onOpenChange={setShowReportPreview}
         reportType={currentReportType}
         reportData={currentReportData}
+        onCallType={onCallType}
+      />
+
+      {/* Individual Report Selection Dialog */}
+      <IndividualReportDialog
+        open={showIndividualReportDialog}
+        onOpenChange={setShowIndividualReportDialog}
+        schedules={schedules}
         onCallType={onCallType}
       />
     </div>
