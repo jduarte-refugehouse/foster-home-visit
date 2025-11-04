@@ -1,18 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Shield, AlertTriangle, CheckCircle, Mail, Download, Plus, Edit, Trash2, Clock, Phone, RefreshCw } from "lucide-react"
+import { Calendar, Shield, AlertTriangle, CheckCircle, Mail, Download, Plus, Edit, Trash2, Clock, Phone, RefreshCw, ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
 
 export default function OnCallSchedulePage() {
+  const router = useRouter()
   const [onCallType, setOnCallType] = useState<string>("liaison")
   const [schedules, setSchedules] = useState<any[]>([])
   const [coverage, setCoverage] = useState<any>(null)
@@ -20,6 +23,7 @@ export default function OnCallSchedulePage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingAssignment, setEditingAssignment] = useState<any>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [sendingReport, setSendingReport] = useState(false)
   const { toast } = useToast()
 
   // Helper: Parse SQL datetime as local time (not UTC)
@@ -121,24 +125,109 @@ export default function OnCallSchedulePage() {
   }
 
   const sendGapReport = async () => {
-    toast({
-      title: "Coming Soon",
-      description: "Gap report generation will be implemented next",
-    })
+    setSendingReport(true)
+    try {
+      const response = await fetch('/api/on-call/reports/gaps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          onCallType,
+          gaps: coverage?.gaps || [],
+          coveragePercentage: coverage?.covered_percentage || 0,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Gap Report Sent",
+          description: "Coverage gap report has been emailed to managers",
+        })
+      } else {
+        throw new Error("Failed to send report")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send gap report. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingReport(false)
+    }
   }
 
   const send30DayReport = async () => {
-    toast({
-      title: "Coming Soon",
-      description: "30-day report generation will be implemented next",
-    })
+    setSendingReport(true)
+    try {
+      const response = await fetch('/api/on-call/reports/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          onCallType,
+          schedules,
+          coverage,
+        }),
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `on-call-schedule-${onCallType}-${format(new Date(), 'yyyy-MM-dd')}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        
+        toast({
+          title: "Report Downloaded",
+          description: "30-day schedule report has been downloaded",
+        })
+      } else {
+        throw new Error("Failed to generate report")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate 30-day report. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingReport(false)
+    }
   }
 
   const sendIndividualReports = async () => {
-    toast({
-      title: "Coming Soon",
-      description: "Individual assignee reports will be implemented next",
-    })
+    setSendingReport(true)
+    try {
+      const response = await fetch('/api/on-call/reports/individual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          onCallType,
+          schedules,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast({
+          title: "Reports Sent",
+          description: `Individual schedules sent to ${result.count} assignees`,
+        })
+      } else {
+        throw new Error("Failed to send reports")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send individual reports. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingReport(false)
+    }
   }
 
   const gaps = coverage?.gaps || []
@@ -146,14 +235,34 @@ export default function OnCallSchedulePage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Breadcrumb/Back Navigation */}
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <Link href="/visits-calendar" className="hover:text-refuge-purple transition-colors">
+          Visits Calendar
+        </Link>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">On-Call Schedule</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-8 w-8 text-refuge-purple" />
-            Manage On-Call Schedule
-          </h1>
-          <p className="text-gray-600 mt-1">View assignments, identify gaps, and generate reports for the next 30 days</p>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => router.back()}
+            className="text-gray-600 hover:text-refuge-purple"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <Shield className="h-8 w-8 text-refuge-purple" />
+              Manage On-Call Schedule
+            </h1>
+            <p className="text-gray-600 mt-1">View assignments, identify gaps, and generate reports for the next 30 days</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchData} disabled={loading}>
@@ -210,15 +319,15 @@ export default function OnCallSchedulePage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button onClick={sendGapReport} size="sm" variant="outline" disabled={gaps.length === 0}>
+                <Button onClick={sendGapReport} size="sm" variant="outline" disabled={gaps.length === 0 || sendingReport}>
                   <Mail className="h-4 w-4 mr-2" />
                   Send Gap Report
                 </Button>
-                <Button onClick={send30DayReport} size="sm" variant="outline">
+                <Button onClick={send30DayReport} size="sm" variant="outline" disabled={sendingReport}>
                   <Download className="h-4 w-4 mr-2" />
                   30-Day Report
                 </Button>
-                <Button onClick={sendIndividualReports} size="sm" variant="outline" disabled={schedules.length === 0}>
+                <Button onClick={sendIndividualReports} size="sm" variant="outline" disabled={schedules.length === 0 || sendingReport}>
                   <Mail className="h-4 w-4 mr-2" />
                   Send to Assignees
                 </Button>
