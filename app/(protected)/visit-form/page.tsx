@@ -99,17 +99,101 @@ export default function VisitFormPage() {
 
   const handleSave = async (formData: any) => {
     try {
-      console.log("[v0] Saving form draft:", formData)
+      console.log("💾 [FORM] Saving form draft:", formData)
 
+      if (!appointmentData) {
+        toast({
+          title: "Error",
+          description: "No appointment data available",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const savePayload = {
+        appointmentId: appointmentId,
+        formType: "enhanced_home_visit",
+        formVersion: "3.1",
+        status: "draft",
+        visitDate: formData.visitInfo.date,
+        visitTime: formData.visitInfo.time,
+        visitNumber: formData.visitInfo.visitNumberThisQuarter || 1,
+        quarter: formData.visitInfo.quarter,
+        visitVariant: 1,
+        
+        // Map enhanced form structure to API fields
+        visitInfo: {
+          ...formData.visitInfo,
+          formType: formData.visitInfo.formType,
+        },
+        familyInfo: {
+          fosterHome: formData.fosterHome,
+          household: formData.household,
+        },
+        attendees: {
+          childrenPresent: formData.childrenPresent,
+        },
+        homeEnvironment: {
+          homeCondition: formData.homeCondition,
+          outdoorSpace: formData.outdoorSpace,
+        },
+        observations: {
+          observations: formData.observations,
+          followUpItems: formData.followUpItems,
+          correctiveActions: formData.correctiveActions,
+        },
+        recommendations: {
+          visitSummary: formData.visitSummary,
+        },
+        signatures: formData.signatures,
+        complianceReview: {
+          licensing: formData.licensing,
+          medication: formData.medication,
+          sleepArrangements: formData.sleepArrangements,
+          waterSafety: formData.waterSafety,
+          firearms: formData.firearms,
+          vehicleSafety: formData.vehicleSafety,
+          documentation: formData.documentation,
+          traumaInformedCare: formData.traumaInformedCare,
+          qualityEnhancement: formData.qualityEnhancement,
+        },
+        childInterviews: {
+          placements: formData.placements,
+        },
+        parentInterviews: {
+          fosterParentInterview: formData.fosterParentInterview,
+        },
+        
+        createdByUserId: appointmentData.created_by_user_id || "system",
+        createdByName: appointmentData.created_by_name || "System",
+        isAutoSave: false,
+      }
+
+      console.log("📤 [FORM] Sending save request...")
+      const response = await fetch("/api/visit-forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(savePayload),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save form")
+      }
+
+      console.log("✅ [FORM] Form saved successfully:", result)
       toast({
         title: "Draft Saved",
         description: "Your form has been saved as a draft",
       })
     } catch (error) {
-      console.error("[v0] Error saving form:", error)
+      console.error("❌ [FORM] Error saving form:", error)
       toast({
         title: "Error",
-        description: "Failed to save form draft",
+        description: error instanceof Error ? error.message : "Failed to save form draft",
         variant: "destructive",
       })
     }
@@ -117,10 +201,98 @@ export default function VisitFormPage() {
 
   const handleSubmit = async (formData: any) => {
     try {
-      console.log("[v0] Submitting completed form:", formData)
+      console.log("📋 [FORM] Submitting completed form:", formData)
 
+      if (!appointmentData) {
+        toast({
+          title: "Error",
+          description: "No appointment data available",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // First, save the form as completed
+      const savePayload = {
+        appointmentId: appointmentId,
+        formType: "enhanced_home_visit",
+        formVersion: "3.1",
+        status: "completed",
+        visitDate: formData.visitInfo.date,
+        visitTime: formData.visitInfo.time,
+        visitNumber: formData.visitInfo.visitNumberThisQuarter || 1,
+        quarter: formData.visitInfo.quarter,
+        visitVariant: 1,
+        
+        // Map enhanced form structure to API fields
+        visitInfo: {
+          ...formData.visitInfo,
+          formType: formData.visitInfo.formType,
+        },
+        familyInfo: {
+          fosterHome: formData.fosterHome,
+          household: formData.household,
+        },
+        attendees: {
+          childrenPresent: formData.childrenPresent,
+        },
+        homeEnvironment: {
+          homeCondition: formData.homeCondition,
+          outdoorSpace: formData.outdoorSpace,
+        },
+        observations: {
+          observations: formData.observations,
+          followUpItems: formData.followUpItems,
+          correctiveActions: formData.correctiveActions,
+        },
+        recommendations: {
+          visitSummary: formData.visitSummary,
+        },
+        signatures: formData.signatures,
+        complianceReview: {
+          licensing: formData.licensing,
+          medication: formData.medication,
+          sleepArrangements: formData.sleepArrangements,
+          waterSafety: formData.waterSafety,
+          firearms: formData.firearms,
+          vehicleSafety: formData.vehicleSafety,
+          documentation: formData.documentation,
+          traumaInformedCare: formData.traumaInformedCare,
+          qualityEnhancement: formData.qualityEnhancement,
+        },
+        childInterviews: {
+          placements: formData.placements,
+        },
+        parentInterviews: {
+          fosterParentInterview: formData.fosterParentInterview,
+        },
+        
+        createdByUserId: appointmentData.created_by_user_id || "system",
+        createdByName: appointmentData.created_by_name || "System",
+        isAutoSave: false,
+      }
+
+      console.log("📤 [FORM] Sending submit request...")
+      const formResponse = await fetch("/api/visit-forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(savePayload),
+      })
+
+      const formResult = await formResponse.json()
+
+      if (!formResponse.ok) {
+        throw new Error(formResult.error || "Failed to submit form")
+      }
+
+      console.log("✅ [FORM] Form submitted successfully:", formResult)
+
+      // Then, update the appointment status to completed
       if (appointmentId) {
-        const response = await fetch(`/api/appointments/${appointmentId}`, {
+        console.log("📅 [FORM] Updating appointment status...")
+        const appointmentResponse = await fetch(`/api/appointments/${appointmentId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -130,10 +302,18 @@ export default function VisitFormPage() {
           }),
         })
 
-        if (response.ok) {
+        if (appointmentResponse.ok) {
+          console.log("✅ [FORM] Appointment marked as completed")
           toast({
             title: "Form Submitted",
             description: "Your visit form has been submitted and appointment marked as completed",
+          })
+        } else {
+          // Form was saved but appointment update failed
+          toast({
+            title: "Partial Success",
+            description: "Form was saved but appointment status could not be updated",
+            variant: "destructive",
           })
         }
       } else {
@@ -143,10 +323,10 @@ export default function VisitFormPage() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error submitting form:", error)
+      console.error("❌ [FORM] Error submitting form:", error)
       toast({
         title: "Error",
-        description: "Failed to submit form",
+        description: error instanceof Error ? error.message : "Failed to submit form",
         variant: "destructive",
       })
     }
