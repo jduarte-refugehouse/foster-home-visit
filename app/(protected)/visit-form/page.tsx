@@ -129,6 +129,66 @@ export default function VisitFormPage() {
         return
       }
 
+      // Helper to filter out empty compliance sections
+      const filterComplianceSection = (section: any) => {
+        if (!section) return null
+        if (!section.items || section.items.length === 0) return null
+        
+        // Only include items with actual data (status or notes)
+        const filledItems = section.items.filter((item: any) => 
+          item.status || item.notes
+        )
+        
+        if (filledItems.length === 0 && !section.combinedNotes) return null
+        
+        return {
+          items: filledItems,
+          combinedNotes: section.combinedNotes || ""
+        }
+      }
+
+      // Helper to filter special sections (inspections, trauma-informed care, quality enhancement)
+      const filterSpecialSection = (section: any) => {
+        if (!section) return null
+        
+        // Check if any field has actual data
+        const hasData = Object.values(section).some(value => {
+          if (typeof value === 'string') return value.trim() !== ''
+          if (typeof value === 'boolean') return value === true
+          if (Array.isArray(value)) return value.length > 0
+          if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0
+          return false
+        })
+        
+        return hasData ? section : null
+      }
+
+      // Build compliance review and remove null sections
+      const complianceReview: any = {}
+      const sections = {
+        medication: filterComplianceSection(formData.medication),
+        inspections: filterSpecialSection(formData.inspections),
+        healthSafety: filterComplianceSection(formData.healthSafety),
+        childrensRights: filterComplianceSection(formData.childrensRights),
+        bedrooms: filterComplianceSection(formData.bedrooms),
+        education: filterComplianceSection(formData.education),
+        indoorSpace: filterComplianceSection(formData.indoorSpace),
+        documentation: filterComplianceSection(formData.documentation),
+        traumaInformedCare: filterSpecialSection(formData.traumaInformedCare),
+        outdoorSpace: filterComplianceSection(formData.outdoorSpace),
+        vehicles: filterComplianceSection(formData.vehicles),
+        swimming: filterComplianceSection(formData.swimming),
+        infants: filterComplianceSection(formData.infants),
+        qualityEnhancement: filterSpecialSection(formData.qualityEnhancement),
+      }
+
+      // Only include non-null sections
+      for (const [key, value] of Object.entries(sections)) {
+        if (value !== null) {
+          complianceReview[key] = value
+        }
+      }
+
       const savePayload = {
         appointmentId: appointmentId,
         formType: "monthly_home_visit",
@@ -161,22 +221,7 @@ export default function VisitFormPage() {
           visitSummary: formData.visitSummary,
         },
         signatures: formData.signatures,
-        complianceReview: {
-          medication: formData.medication,
-          inspections: formData.inspections,
-          healthSafety: formData.healthSafety,
-          childrensRights: formData.childrensRights,
-          bedrooms: formData.bedrooms,
-          education: formData.education,
-          indoorSpace: formData.indoorSpace,
-          documentation: formData.documentation,
-          traumaInformedCare: formData.traumaInformedCare,
-          outdoorSpace: formData.outdoorSpace,
-          vehicles: formData.vehicles,
-          swimming: formData.swimming,
-          infants: formData.infants,
-          qualityEnhancement: formData.qualityEnhancement,
-        },
+        complianceReview: complianceReview,
         childInterviews: {
           placements: formData.placements,
         },
@@ -189,8 +234,13 @@ export default function VisitFormPage() {
         isAutoSave: false,
       }
 
+      // Calculate and log payload size
+      const payloadString = JSON.stringify(savePayload)
+      const payloadSizeKB = (payloadString.length / 1024).toFixed(2)
+      console.log(`📦 [FORM] Payload size: ${payloadSizeKB} KB`)
+      console.log(`📋 [FORM] Compliance sections with data: ${Object.keys(complianceReview).length}/${Object.keys(sections).length}`)
       console.log("📤 [FORM] Sending save request...")
-      console.log("📦 [FORM] Payload:", JSON.stringify(savePayload, null, 2))
+      console.log("📦 [FORM] Full payload:", JSON.stringify(savePayload, null, 2))
       
       const response = await fetch("/api/visit-forms", {
         method: "POST",
@@ -237,6 +287,65 @@ export default function VisitFormPage() {
         return
       }
 
+      // Helper to filter out empty compliance sections
+      const filterComplianceSection = (section: any) => {
+        if (!section) return null
+        if (!section.items || section.items.length === 0) return null
+        
+        const filledItems = section.items.filter((item: any) => 
+          item.status || item.notes
+        )
+        
+        if (filledItems.length === 0 && !section.combinedNotes) return null
+        
+        return {
+          items: filledItems,
+          combinedNotes: section.combinedNotes || ""
+        }
+      }
+
+      // Helper to filter special sections (inspections, trauma-informed care, quality enhancement)
+      const filterSpecialSection = (section: any) => {
+        if (!section) return null
+        
+        // Check if any field has actual data
+        const hasData = Object.values(section).some(value => {
+          if (typeof value === 'string') return value.trim() !== ''
+          if (typeof value === 'boolean') return value === true
+          if (Array.isArray(value)) return value.length > 0
+          if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0
+          return false
+        })
+        
+        return hasData ? section : null
+      }
+
+      // Build compliance review and remove null sections
+      const complianceReview: any = {}
+      const sections = {
+        medication: filterComplianceSection(formData.medication),
+        inspections: filterSpecialSection(formData.inspections),
+        healthSafety: filterComplianceSection(formData.healthSafety),
+        childrensRights: filterComplianceSection(formData.childrensRights),
+        bedrooms: filterComplianceSection(formData.bedrooms),
+        education: filterComplianceSection(formData.education),
+        indoorSpace: filterComplianceSection(formData.indoorSpace),
+        documentation: filterComplianceSection(formData.documentation),
+        traumaInformedCare: filterSpecialSection(formData.traumaInformedCare),
+        outdoorSpace: filterComplianceSection(formData.outdoorSpace),
+        vehicles: filterComplianceSection(formData.vehicles),
+        swimming: filterComplianceSection(formData.swimming),
+        infants: filterComplianceSection(formData.infants),
+        qualityEnhancement: filterSpecialSection(formData.qualityEnhancement),
+      }
+
+      // Only include non-null sections
+      for (const [key, value] of Object.entries(sections)) {
+        if (value !== null) {
+          complianceReview[key] = value
+        }
+      }
+
       // First, save the form as completed
       const savePayload = {
         appointmentId: appointmentId,
@@ -249,7 +358,6 @@ export default function VisitFormPage() {
         quarter: formData.visitInfo.quarter,
         visitVariant: 1,
         
-        // Map enhanced form structure to API fields
         visitInfo: formData.visitInfo,
         familyInfo: {
           fosterHome: formData.fosterHome,
@@ -271,17 +379,7 @@ export default function VisitFormPage() {
           visitSummary: formData.visitSummary,
         },
         signatures: formData.signatures,
-        complianceReview: {
-          licensing: formData.licensing,
-          medication: formData.medication,
-          sleepArrangements: formData.sleepArrangements,
-          waterSafety: formData.waterSafety,
-          firearms: formData.firearms,
-          vehicleSafety: formData.vehicleSafety,
-          documentation: formData.documentation,
-          traumaInformedCare: formData.traumaInformedCare,
-          qualityEnhancement: formData.qualityEnhancement,
-        },
+        complianceReview: complianceReview,
         childInterviews: {
           placements: formData.placements,
         },
@@ -294,6 +392,11 @@ export default function VisitFormPage() {
         isAutoSave: false,
       }
 
+      // Calculate and log payload size
+      const payloadString = JSON.stringify(savePayload)
+      const payloadSizeKB = (payloadString.length / 1024).toFixed(2)
+      console.log(`📦 [FORM] Submit payload size: ${payloadSizeKB} KB`)
+      console.log(`📋 [FORM] Compliance sections with data: ${Object.keys(complianceReview).length}/${Object.keys(sections).length}`)
       console.log("📤 [FORM] Sending submit request...")
       const formResponse = await fetch("/api/visit-forms", {
         method: "POST",

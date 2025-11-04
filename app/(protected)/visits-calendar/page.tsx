@@ -270,8 +270,8 @@ export default function VisitsCalendarPage() {
   const handleSelectEvent = (event: CalendarEvent) => {
     // Only show appointment details for appointments, not on-call events
     if (event.eventType === "appointment") {
-      setSelectedAppointment(event.resource)
-      setSelectedSlot(null)
+    setSelectedAppointment(event.resource)
+    setSelectedSlot(null)
     } else if (event.eventType === "on-call") {
       // For on-call events, open edit dialog
       const schedule = event.resource
@@ -619,19 +619,19 @@ export default function VisitsCalendarPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
-                  Calendar View
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                Calendar View
                   <Badge variant="secondary">
-                    {appointments.length} appointments
-                  </Badge>
+                  {appointments.length} appointments
+                </Badge>
                   {showOnCallOnCalendar && (
                     <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                       <Shield className="h-3 w-3 mr-1" />
                       {onCallSchedules.length} on-call
                     </Badge>
                   )}
-                </CardTitle>
+              </CardTitle>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox 
