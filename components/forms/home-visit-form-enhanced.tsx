@@ -28,7 +28,21 @@ import {
   SignaturesSection,
 } from "./home-visit-form-enhanced-sections"
 
-const EnhancedHomeVisitForm = () => {
+interface EnhancedHomeVisitFormProps {
+  appointmentId?: string | null
+  appointmentData?: any
+  prepopulationData?: any
+  onSave?: (formData: any) => Promise<void>
+  onSubmit?: (formData: any) => Promise<void>
+}
+
+const EnhancedHomeVisitForm = ({ 
+  appointmentId,
+  appointmentData, 
+  prepopulationData,
+  onSave,
+  onSubmit 
+}: EnhancedHomeVisitFormProps) => {
   // Enhanced state management with all new sections
   const [formData, setFormData] = useState({
     visitInfo: {
@@ -336,6 +350,72 @@ const EnhancedHomeVisitForm = () => {
 
   const [currentSection, setCurrentSection] = useState(0)
   const [errors, setErrors] = useState({})
+
+  // Pre-populate form with data from database
+  useEffect(() => {
+    if (!prepopulationData) return
+
+    console.log("📋 [FORM] Pre-populating form with data:", prepopulationData)
+
+    const { home, household, placements, previousVisit } = prepopulationData
+
+    setFormData(prev => ({
+      ...prev,
+      fosterHome: {
+        ...prev.fosterHome,
+        familyName: home?.name || "",
+        address: home?.address?.street || "",
+        city: home?.address?.city || "",
+        state: home?.address?.state || "",
+        zip: home?.address?.zip || "",
+        county: home?.address?.county || "",
+        phone: home?.phone || "",
+        email: home?.email || "",
+        licenseNumber: home?.license?.id || "",
+        licenseType: home?.license?.type || "",
+        licenseExpiration: home?.license?.expiration || "",
+        capacity: home?.license?.capacity || 0,
+        openBeds: home?.license?.openBeds || 0,
+        caseManager: home?.caseManager?.name || "",
+        caseManagerEmail: home?.caseManager?.email || "",
+      },
+      household: {
+        ...prev.household,
+        providers: household?.providers?.map(p => ({
+          name: p.name,
+          age: p.age,
+          relationship: p.relationship,
+        })) || [],
+        biologicalChildren: household?.biologicalChildren?.map(c => ({
+          name: c.name,
+          age: c.age,
+        })) || [],
+        otherMembers: household?.otherHouseholdMembers?.map(m => ({
+          name: m.name,
+          age: m.age,
+          relationship: m.relationship,
+        })) || [],
+      },
+      placements: {
+        ...prev.placements,
+        children: placements?.map(child => ({
+          firstName: child.firstName,
+          lastName: child.lastName,
+          age: child.age,
+          dateOfBirth: child.dateOfBirth,
+          placementDate: child.placementDate,
+          contract: child.contract,
+          servicePackage: child.servicePackage,
+          nextCourtDate: child.nextCourtDate,
+          medicalCheckups: child.nextAnnualMedical,
+          dentalCheckups: child.nextDental,
+          safetyPlan: child.hasActiveSafetyPlan ? "Yes" : "No",
+        })) || [],
+      },
+    }))
+
+    console.log("✅ [FORM] Form pre-populated successfully")
+  }, [prepopulationData])
 
   // Determine quarter based on date
   useEffect(() => {
