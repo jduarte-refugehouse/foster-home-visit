@@ -877,9 +877,120 @@ const VisitInfoSection = ({ formData, onChange }) => (
   </div>
 )
 
-const FosterHomeSection = ({ formData, onChange }) => (
-  <div className="space-y-3">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+const FosterHomeSection = ({ formData, onChange }) => {
+  const providers = formData.household?.providers || []
+  const biologicalChildren = formData.household?.biologicalChildren || []
+  const otherMembers = formData.household?.otherMembers || []
+  const placements = formData.placements?.children || []
+  
+  return (
+    <div className="space-y-3">
+      {/* Home Composition Display */}
+      {(providers.length > 0 || placements.length > 0) && (
+        <Alert className="bg-blue-50 border-blue-200 py-2">
+          <AlertDescription className="text-xs">
+            <strong>Home Composition:</strong> {providers.length} provider{providers.length !== 1 ? 's' : ''}, {biologicalChildren.length} biological child{biologicalChildren.length !== 1 ? 'ren' : ''}, {otherMembers.length} other member{otherMembers.length !== 1 ? 's' : ''}, {placements.length} foster placement{placements.length !== 1 ? 's' : ''}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Providers */}
+      {providers.length > 0 && (
+        <Card className="bg-green-50/50">
+          <CardHeader className="py-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-green-700" />
+              Providers ({providers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="space-y-1">
+              {providers.map((provider, idx) => (
+                <div key={idx} className="text-xs flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">{provider.relationship || 'Provider'}</Badge>
+                  <span className="font-medium">{provider.name}</span>
+                  {provider.age && <span className="text-gray-500">Age {provider.age}</span>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Foster Placements */}
+      {placements.length > 0 && (
+        <Card className="bg-purple-50/50">
+          <CardHeader className="py-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Heart className="h-4 w-4 text-purple-700" />
+              Foster Placements ({placements.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="space-y-2">
+              {placements.map((child, idx) => (
+                <div key={idx} className="text-xs border-l-2 border-purple-300 pl-2">
+                  <div className="font-medium">{child.firstName} {child.lastName}</div>
+                  <div className="flex gap-2 text-gray-600">
+                    {child.age && <span>Age {child.age}</span>}
+                    {child.placementDate && <span>• Placed: {new Date(child.placementDate).toLocaleDateString()}</span>}
+                  </div>
+                  {child.servicePackage && (
+                    <Badge variant="secondary" className="text-xs mt-1">{child.servicePackage}</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Biological Children */}
+      {biologicalChildren.length > 0 && (
+        <Card className="bg-blue-50/50">
+          <CardHeader className="py-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-700" />
+              Biological Children ({biologicalChildren.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="space-y-1">
+              {biologicalChildren.map((child, idx) => (
+                <div key={idx} className="text-xs">
+                  <span className="font-medium">{child.name}</span>
+                  {child.age && <span className="text-gray-500"> (Age {child.age})</span>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Other Household Members */}
+      {otherMembers.length > 0 && (
+        <Card className="bg-gray-50/50">
+          <CardHeader className="py-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-gray-700" />
+              Other Household Members ({otherMembers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="space-y-1">
+              {otherMembers.map((member, idx) => (
+                <div key={idx} className="text-xs flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">{member.relationship || 'Resident'}</Badge>
+                  <span className="font-medium">{member.name}</span>
+                  {member.age && <span className="text-gray-500">Age {member.age}</span>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div className="md:col-span-2">
         <Label htmlFor="familyName">Foster Family Name *</Label>
         <Input
@@ -1067,7 +1178,8 @@ const FosterHomeSection = ({ formData, onChange }) => (
       </div>
     </div>
   </div>
-)
+  )
+}
 
 const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }) => {
   const sectionData = formData[section]

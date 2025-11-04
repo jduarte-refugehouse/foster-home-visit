@@ -183,8 +183,8 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData.created_by_user_id || "system",
-        createdByName: appointmentData.created_by_name || "System",
+        createdByUserId: appointmentData.appointment?.assigned_to_user_id || appointmentData.appointment?.created_by_user_id || "system",
+        createdByName: appointmentData.appointment?.assigned_to_name || appointmentData.appointment?.created_by_name || "System",
         isAutoSave: false,
       }
 
@@ -283,8 +283,8 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData.created_by_user_id || "system",
-        createdByName: appointmentData.created_by_name || "System",
+        createdByUserId: appointmentData.appointment?.assigned_to_user_id || appointmentData.appointment?.created_by_user_id || "system",
+        createdByName: appointmentData.appointment?.assigned_to_name || appointmentData.appointment?.created_by_name || "System",
         isAutoSave: false,
       }
 
