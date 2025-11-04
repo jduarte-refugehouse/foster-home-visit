@@ -293,16 +293,17 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // Soft delete
+    // Note: deleted_by_user_id would need to be passed from client if tracking needed
     await query(
       `
       UPDATE on_call_schedule
       SET 
         is_deleted = 1,
         deleted_at = GETDATE(),
-        deleted_by_user_id = @param0
-      WHERE id = @param1
+        deleted_by_user_id = 'system'
+      WHERE id = @param0
     `,
-      [user.id, id],
+      [id],
     )
 
     console.log(`✅ [API] Deleted on-call schedule: ${id}`)
@@ -313,11 +314,21 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     })
   } catch (error) {
     console.error("❌ [API] Error deleting on-call schedule:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to delete on-call schedule",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        ...(process.env.NODE_ENV === "development" && {
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
       },
       { status: 500 },
     )
