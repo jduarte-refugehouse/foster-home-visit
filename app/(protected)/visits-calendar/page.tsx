@@ -15,6 +15,7 @@ import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
 const locales = {
@@ -72,6 +73,7 @@ export default function VisitsCalendarPage() {
   const [showOnCallOnCalendar, setShowOnCallOnCalendar] = useState(true)
   const [editingOnCall, setEditingOnCall] = useState<any>(null)
   const [showOnCallEditDialog, setShowOnCallEditDialog] = useState(false)
+  const [onCallTypeFilter, setOnCallTypeFilter] = useState<string>("all") // Filter by on-call type
   
   const { toast } = useToast()
 
@@ -92,6 +94,11 @@ export default function VisitsCalendarPage() {
     fetchAppointments()
     fetchOnCallData()
   }, [])
+
+  // Refetch on-call data when filter changes
+  useEffect(() => {
+    fetchOnCallData()
+  }, [onCallTypeFilter])
 
   const fetchVisitFormStatus = async (appointmentIds: string[]) => {
     try {
@@ -180,9 +187,26 @@ export default function VisitsCalendarPage() {
       const endDate = new Date()
       endDate.setDate(endDate.getDate() + 30)
 
+      // Build query params with type filter
+      const schedulesParams = new URLSearchParams({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      })
+      if (onCallTypeFilter !== "all") {
+        schedulesParams.append("type", onCallTypeFilter)
+      }
+
+      const coverageParams = new URLSearchParams({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      })
+      if (onCallTypeFilter !== "all") {
+        coverageParams.append("type", onCallTypeFilter)
+      }
+
       const [schedulesResponse, coverageResponse] = await Promise.all([
-        fetch(`/api/on-call?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`),
-        fetch(`/api/on-call/coverage?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`),
+        fetch(`/api/on-call?${schedulesParams}`),
+        fetch(`/api/on-call/coverage?${coverageParams}`),
       ])
 
       if (schedulesResponse.ok) {
@@ -612,7 +636,7 @@ export default function VisitsCalendarPage() {
                     </Badge>
                   )}
                 </CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox 
                       checked={showOnCallOnCalendar} 
@@ -621,6 +645,22 @@ export default function VisitsCalendarPage() {
                     <Shield className="h-4 w-4 text-purple-600" />
                     <span className="text-gray-700">Show On-Call</span>
                   </label>
+                  
+                  {showOnCallOnCalendar && (
+                    <Select value={onCallTypeFilter} onValueChange={setOnCallTypeFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="liaison">Liaison On-Call</SelectItem>
+                        <SelectItem value="general">General On-Call</SelectItem>
+                        <SelectItem value="emergency">Emergency Response</SelectItem>
+                        <SelectItem value="technical">Technical Support</SelectItem>
+                        <SelectItem value="management">Management</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -655,6 +695,15 @@ export default function VisitsCalendarPage() {
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-refuge-purple" />
                 On-Call Status
+                {onCallTypeFilter !== "all" && (
+                  <Badge variant="outline" className="ml-auto text-xs">
+                    {onCallTypeFilter === "liaison" && "Liaison Only"}
+                    {onCallTypeFilter === "general" && "General Only"}
+                    {onCallTypeFilter === "emergency" && "Emergency Only"}
+                    {onCallTypeFilter === "technical" && "Technical Only"}
+                    {onCallTypeFilter === "management" && "Management Only"}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

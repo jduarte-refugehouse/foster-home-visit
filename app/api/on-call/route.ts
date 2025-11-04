@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
     const userId = searchParams.get("userId")
+    const onCallType = searchParams.get("type")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
     
-    console.log("📅 [API] Query parameters:", { startDate, endDate, userId, includeDeleted })
+    console.log("📅 [API] Query parameters:", { startDate, endDate, userId, onCallType, includeDeleted })
 
     let whereConditions = ["ocs.is_active = 1"]
     const params: any[] = []
@@ -57,6 +58,11 @@ export async function GET(request: NextRequest) {
           whereConditions.push(`1 = 0`)
         }
       }
+    }
+
+    if (onCallType) {
+      params.push(onCallType)
+      whereConditions.push(`ocs.on_call_type = @param${params.length - 1}`)
     }
 
     const whereClause = whereConditions.join(" AND ")

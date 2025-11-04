@@ -12,8 +12,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get("startDate") || new Date().toISOString()
     const endDate = searchParams.get("endDate") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ahead
+    const onCallType = searchParams.get("type")
 
-    console.log(`Checking coverage from ${startDate} to ${endDate}`)
+    console.log(`Checking coverage from ${startDate} to ${endDate}`, onCallType ? `for type: ${onCallType}` : '(all types)')
+
+    // Build query with optional type filter
+    let whereConditions = [
+      "is_active = 1",
+      "is_deleted = 0",
+      "end_datetime >= @param0",
+      "start_datetime <= @param1"
+    ]
+    const params: any[] = [startDate, endDate]
+
+    if (onCallType) {
+      params.push(onCallType)
+      whereConditions.push(`on_call_type = @param${params.length - 1}`)
+    }
+
+    const whereClause = whereConditions.join(" AND ")
 
     // Get all active shifts in the date range
     const shifts = await query(
@@ -25,13 +42,10 @@ export async function GET(request: NextRequest) {
         end_datetime,
         priority_level
       FROM on_call_schedule
-      WHERE is_active = 1
-        AND is_deleted = 0
-        AND end_datetime >= @param0
-        AND start_datetime <= @param1
+      WHERE ${whereClause}
       ORDER BY start_datetime ASC
     `,
-      [startDate, endDate],
+      params,
     )
 
     console.log(`Found ${shifts.length} shifts in range`)
