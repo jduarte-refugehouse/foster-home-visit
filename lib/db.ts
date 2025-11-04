@@ -185,10 +185,14 @@ export async function closeConnection() {
   }
 }
 
-export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+export async function query<T = any>(queryText: string, params: any[] = [], timeout: number = 120000): Promise<T[]> {
   try {
     const connection = await getConnection()
     const request = connection.request()
+    
+    // Set request-specific timeout (default 120 seconds, configurable per query)
+    request.timeout = timeout
+    
     if (params) {
       params.forEach((param, index) => {
         request.input(`param${index}`, param)
