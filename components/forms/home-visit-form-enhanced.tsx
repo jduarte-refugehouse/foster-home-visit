@@ -46,11 +46,10 @@ const EnhancedHomeVisitForm = ({
   // Enhanced state management with all new sections
   const [formData, setFormData] = useState({
     visitInfo: {
-      formType: "monthly", // monthly, quarterly, annual
       date: new Date().toISOString().split("T")[0],
       time: new Date().toTimeString().slice(0, 5),
       quarter: "",
-      visitNumberThisQuarter: 1,
+      visitNumberThisQuarter: 1, // Track 1st, 2nd, or 3rd visit of quarter
       visitType: "announced",
       mode: "in-home",
       conductedBy: "",
@@ -458,55 +457,33 @@ const EnhancedHomeVisitForm = ({
     }))
   }, [formData.inspections.fire.expirationDate, formData.inspections.health.expirationDate])
 
-  // Form sections configuration based on form type
-  const getSections = () => {
-    const baseSections = [
-      { id: "visit-info", title: "Visit Information", icon: Calendar, required: true },
-      { id: "foster-home", title: "Foster Home Info", icon: Home, required: true },
-    ]
-
-    const monthlySections = [
-      { id: "children-present", title: "Children Present", icon: Users, required: true },
-      { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Heart, required: true },
-      { id: "observations", title: "Observations", icon: FileText, required: true },
-      { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: false },
-    ]
-
-    const quarterlySections = [
-      { id: "medication", title: "Medication", icon: Activity, required: true },
-      { id: "inspections", title: "Inspections", icon: Flame, required: true },
-      { id: "health-safety", title: "Health & Safety", icon: Shield, required: true },
-      { id: "childrens-rights", title: "Children's Rights", icon: Heart, required: true },
-      { id: "bedrooms", title: "Bedrooms", icon: Home, required: true },
-      { id: "education", title: "Education & Life Skills", icon: GraduationCap, required: true },
-      { id: "indoor-space", title: "Indoor Space", icon: Home, required: true },
-      { id: "documentation", title: "Documentation", icon: ClipboardList, required: true },
-      { id: "trauma-care", title: "Trauma-Informed Care", icon: Brain, required: true },
-      { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Users, required: true },
-      { id: "outdoor-space", title: "Outdoor Space", icon: Home, required: false },
-      { id: "vehicles", title: "Vehicles", icon: Car, required: false },
-      { id: "swimming", title: "Swimming Areas", icon: Droplets, required: false },
-      { id: "infants", title: "Infants", icon: Baby, required: false },
-      { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, required: false },
-      { id: "children-present", title: "Children Present", icon: Users, required: true },
-      { id: "observations", title: "Observations", icon: FileText, required: true },
-      { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: false },
-      { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, required: false },
-    ]
-
-    const summarySections = [
-      { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true },
-      { id: "signatures", title: "Signatures", icon: FileText, required: true },
-    ]
-
-    if (formData.visitInfo.formType === "quarterly" || formData.visitInfo.formType === "annual") {
-      return [...baseSections, ...quarterlySections, ...summarySections]
-    }
-
-    return [...baseSections, ...monthlySections, ...summarySections]
-  }
-
-  const sections = getSections()
+  // ALL sections shown on EVERY monthly visit
+  // Liaisons can complete quarterly items across 3 visits or all at once
+  const sections = [
+    { id: "visit-info", title: "Visit Information", icon: Calendar, required: true },
+    { id: "foster-home", title: "Foster Home Info", icon: Home, required: true },
+    { id: "medication", title: "Section 1: Medication", icon: Activity, quarterly: true },
+    { id: "inspections", title: "Section 2A: Inspections", icon: Flame, quarterly: true },
+    { id: "health-safety", title: "Section 2B: Health & Safety", icon: Shield, quarterly: true },
+    { id: "childrens-rights", title: "Section 3: Children's Rights", icon: Heart, quarterly: true },
+    { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home, quarterly: true },
+    { id: "education", title: "Section 5: Education", icon: GraduationCap, quarterly: true },
+    { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home, quarterly: true },
+    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList, quarterly: true },
+    { id: "trauma-care", title: "Section 8: Trauma Care", icon: Brain, quarterly: true },
+    { id: "foster-parent-interview", title: "Section 9: Foster Parent Interview", icon: Users, required: true },
+    { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true },
+    { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
+    { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
+    { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
+    { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
+    { id: "children-present", title: "Children Present", icon: Users, required: true },
+    { id: "observations", title: "Observations", icon: FileText, required: true },
+    { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
+    { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true },
+    { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true },
+    { id: "signatures", title: "Signatures", icon: FileText, required: true },
+  ]
 
   // Handle input changes
   const handleChange = (path, value) => {
@@ -646,91 +623,117 @@ const EnhancedHomeVisitForm = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <Card className="mb-6">
-          <CardHeader>
+    <div className="min-h-screen bg-gray-50 p-3">
+      {/* Optimized for iPad 11-inch (834x1194px) */}
+      <div className="max-w-full mx-auto">
+        {/* Compact Header for iPad */}
+        <Card className="mb-4 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white">
+          <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-3xl">Enhanced Home Visit Form</CardTitle>
-                <p className="text-gray-600 mt-2">
-                  {formData.visitInfo.formType.charAt(0).toUpperCase() + formData.visitInfo.formType.slice(1)} Visit -{" "}
-                  {formData.visitInfo.quarter} - Visit #{formData.visitInfo.visitNumberThisQuarter}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Chapter 749 Standards with RCC & T3C Elements - Version 3.1
+                <CardTitle className="text-2xl">Monthly Home Visit</CardTitle>
+                <p className="text-sm text-white/90 mt-1">
+                  {formData.visitInfo.quarter} - Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter
                 </p>
               </div>
               <div className="text-right">
-                <Badge variant={formData.visitInfo.visitType === "announced" ? "default" : "destructive"}>
+                <Badge className="bg-white text-refuge-purple mb-1">
                   {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
                 </Badge>
-                <p className="text-sm text-gray-500 mt-2">{formData.visitInfo.date}</p>
+                <p className="text-xs text-white/80">{formData.visitInfo.date}</p>
               </div>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Progress Bar */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              {sections.map((section, idx) => (
+        {/* Section Navigation - Horizontal scrollable for iPad */}
+        <Card className="mb-4">
+          <CardContent className="py-3">
+            <div className="overflow-x-auto">
+              <div className="flex gap-2 pb-2 min-w-max">
+                {sections.map((section, idx) => (
+                  <Button
+                    key={idx}
+                    variant={idx === currentSection ? "default" : "outline"}
+                    size="sm"
+                    className={`whitespace-nowrap flex-shrink-0 ${
+                      idx === currentSection 
+                        ? "bg-refuge-purple hover:bg-refuge-magenta" 
+                        : ""
+                    }`}
+                    onClick={() => setCurrentSection(idx)}
+                  >
+                    <section.icon className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{section.title}</span>
+                    {section.quarterly && (
+                      <Badge variant="secondary" className="ml-2 text-xs py-0 px-1">Q</Badge>
+                    )}
+                    {section.optional && (
+                      <Badge variant="outline" className="ml-2 text-xs py-0 px-1">Optional</Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {/* Progress indicator */}
+            <div className="mt-3">
+              <div className="bg-gray-200 rounded-full h-1.5">
                 <div
-                  key={idx}
-                  className={`flex flex-col items-center cursor-pointer transition-colors ${
-                    idx === currentSection ? "text-refuge-purple" : "text-gray-400"
-                  } ${section.required ? "" : "opacity-60"}`}
-                  onClick={() => setCurrentSection(idx)}
-                >
-                  <section.icon className="w-5 h-5 mb-1" />
-                  <span className="text-xs text-center hidden lg:block max-w-[80px]">{section.title}</span>
-                </div>
-              ))}
-            </div>
-            <div className="bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-refuge-purple h-2 rounded-full transition-all"
-                style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
-              />
-            </div>
-            <div className="text-center mt-2 text-sm text-gray-600">
-              Section {currentSection + 1} of {sections.length}: {sections[currentSection].title}
+                  className="bg-refuge-purple h-1.5 rounded-full transition-all"
+                  style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
+                />
+              </div>
+              <div className="text-center mt-2 text-sm text-gray-600">
+                {sections[currentSection].quarterly && (
+                  <Badge variant="outline" className="mr-2 text-xs">Complete any quarter this visit</Badge>
+                )}
+                Section {currentSection + 1} of {sections.length}
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Form Content */}
-        <Card className="mb-6">
+        <Card className="mb-4">
           <CardContent className="pt-6">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between gap-4">
+        {/* Navigation - Optimized for iPad thumb reach */}
+        <div className="flex justify-between gap-3">
           <Button
             onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
             disabled={currentSection === 0}
             variant="outline"
-            className="px-6"
+            size="lg"
+            className="flex-1"
           >
             Previous
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" className="px-6">
-              Save Draft
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="px-8"
+            onClick={() => onSave?.(formData)}
+          >
+            Save Draft
+          </Button>
+          {currentSection === sections.length - 1 ? (
+            <Button 
+              size="lg"
+              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+              onClick={() => onSubmit?.(formData)}
+            >
+              Submit Form
             </Button>
-            {currentSection === sections.length - 1 ? (
-              <Button className="px-6 bg-refuge-purple hover:bg-refuge-magenta">Submit Form</Button>
-            ) : (
-              <Button
-                onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
-                className="px-6 bg-refuge-purple hover:bg-refuge-magenta"
-              >
-                Next
-              </Button>
-            )}
-          </div>
+          ) : (
+            <Button
+              onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+              size="lg"
+              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+            >
+              Next
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -747,25 +750,12 @@ const VisitInfoSection = ({ formData, onChange }) => (
 
     <Alert>
       <AlertDescription>
-        <strong>Form Type Guide:</strong> Monthly visits focus on routine observations and foster parent check-ins.
-        Quarterly visits include comprehensive compliance reviews. Annual visits are the most thorough.
+        <strong>Monthly Home Visit:</strong> Complete ALL sections monthly. Items marked with "Q" are quarterly requirements 
+        - you can complete them during any of the 3 monthly visits or all at once. Use the visit number to track your progress.
       </AlertDescription>
     </Alert>
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div>
-        <Label htmlFor="formType">Form Type *</Label>
-        <Select value={formData.visitInfo.formType} onValueChange={(value) => onChange("visitInfo.formType", value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-            <SelectItem value="annual">Annual</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
       <div>
         <Label htmlFor="visitType">Visit Type *</Label>

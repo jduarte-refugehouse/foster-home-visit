@@ -234,7 +234,7 @@ export default function VisitFormPage() {
       // First, save the form as completed
       const savePayload = {
         appointmentId: appointmentId,
-        formType: "enhanced_home_visit",
+        formType: "monthly_home_visit",
         formVersion: "3.1",
         status: "completed",
         visitDate: formData.visitInfo.date,
@@ -244,10 +244,7 @@ export default function VisitFormPage() {
         visitVariant: 1,
         
         // Map enhanced form structure to API fields
-        visitInfo: {
-          ...formData.visitInfo,
-          formType: formData.visitInfo.formType,
-        },
+        visitInfo: formData.visitInfo,
         familyInfo: {
           fosterHome: formData.fosterHome,
           household: formData.household,
