@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import sgMail from "@sendgrid/mail"
 import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
 import { format } from "date-fns"
+import { generateOnCallICS } from "@/lib/ics-generator"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -69,8 +70,8 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    // Prepare email
-    const msg = {
+    // Prepare email with optional ICS attachment for individual reports
+    const msg: any = {
       to: recipientEmail,
       from: {
         email: fromEmail,
@@ -79,6 +80,31 @@ export async function POST(request: NextRequest) {
       subject: subject,
       text: textContent,
       html: htmlContent,
+    }
+
+    // Add calendar attachment for individual reports
+    if (reportType === "individual" && reportData.schedules) {
+      try {
+        const icsContent = generateOnCallICS(
+          reportData.schedules,
+          reportData.assignee?.name || "Assignee",
+          onCallType
+        )
+        
+        msg.attachments = [
+          {
+            content: Buffer.from(icsContent).toString("base64"),
+            filename: `on-call-schedule-${onCallType.toLowerCase().replace(/\s+/g, "-")}.ics`,
+            type: "text/calendar",
+            disposition: "attachment",
+          },
+        ]
+        
+        console.log("📅 ICS calendar file attached to email")
+      } catch (icsError) {
+        console.error("⚠️ Failed to generate ICS attachment:", icsError)
+        // Continue sending email without attachment
+      }
     }
 
     // Log communication
@@ -401,6 +427,13 @@ function generateIndividualReportHTML(reportData: any, onCallType: string): stri
           </div>
         </div>
 
+        <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin: 24px 0;">
+          <p style="margin: 0; color: #065f46; font-size: 14px; font-weight: 600;">📅 Calendar Attachment Included</p>
+          <p style="margin: 8px 0 0 0; color: #047857; font-size: 13px;">
+            A calendar file (.ics) is attached to this email. You can open it to automatically add these shifts to Outlook, Google Calendar, or Apple Calendar.
+          </p>
+        </div>
+
         <h2 style="color: #111827; font-size: 18px; margin: 24px 0 12px 0;">Your Shifts</h2>
         ${schedulesList}
 
@@ -436,6 +469,10 @@ ASSIGNEE: ${assignee.name}
 Email: ${assignee.email}
 Total Shifts: ${schedules.length}
 Total Hours: ${totalHours}
+
+📅 CALENDAR ATTACHMENT INCLUDED
+A calendar file (.ics) is attached to this email. Open it to automatically 
+add these shifts to Outlook, Google Calendar, or Apple Calendar.
 
 YOUR SHIFTS:
 
