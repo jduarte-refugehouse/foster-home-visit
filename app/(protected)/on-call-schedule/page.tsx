@@ -412,8 +412,8 @@ export default function OnCallSchedulePage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {gaps.map((gap: any, index: number) => {
-                const gapStart = new Date(gap.gap_start)
-                const gapEnd = new Date(gap.gap_end)
+                const gapStart = parseLocalDatetime(gap.gap_start)
+                const gapEnd = parseLocalDatetime(gap.gap_end)
                 const hours = gap.gap_hours.toFixed(1)
                 
                 return (

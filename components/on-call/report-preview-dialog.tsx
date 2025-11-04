@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,18 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
   const [sending, setSending] = useState(false)
   const { toast } = useToast()
 
+  // Reset sending state when dialog closes or report changes
+  useEffect(() => {
+    if (!open) {
+      setSending(false)
+      setRecipientEmail("")
+    }
+  }, [open])
+
+  useEffect(() => {
+    setSending(false)
+  }, [reportType, reportData])
+
   const handleSendEmail = async () => {
     if (!recipientEmail) {
       toast({
@@ -51,19 +63,28 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
       })
 
       if (response.ok) {
-        toast({
-          title: "Report Sent",
-          description: `Report has been emailed to ${recipientEmail}`,
-        })
-        setRecipientEmail("")
+        // Close dialog immediately
         onOpenChange(false)
+        
+        // Show success toast after closing
+        setTimeout(() => {
+          toast({
+            title: "✓ Report Sent Successfully",
+            description: `The report has been emailed to ${recipientEmail}`,
+          })
+        }, 100)
+        
+        // Reset state
+        setRecipientEmail("")
       } else {
-        throw new Error("Failed to send report")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to send report")
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send report"
       toast({
-        title: "Error",
-        description: "Failed to send report. Please try again.",
+        title: "Error Sending Report",
+        description: errorMessage + ". Please try again.",
         variant: "destructive",
       })
     } finally {
