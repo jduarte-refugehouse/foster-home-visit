@@ -623,112 +623,116 @@ const EnhancedHomeVisitForm = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3">
+    <div className="min-h-screen bg-gray-50 p-2">
       {/* Optimized for iPad 11-inch (834x1194px) */}
       <div className="max-w-full mx-auto">
-        {/* Compact Header for iPad */}
-        <Card className="mb-4 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white">
-          <CardHeader className="py-3">
+        {/* Compact Header */}
+        <Card className="mb-2 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white">
+          <CardHeader className="py-2 px-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl">Monthly Home Visit</CardTitle>
-                <p className="text-sm text-white/90 mt-1">
-                  {formData.visitInfo.quarter} - Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter
-                </p>
+                <CardTitle className="text-lg">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
+                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
               </div>
               <div className="text-right">
-                <Badge className="bg-white text-refuge-purple mb-1">
+                <Badge className="bg-white text-refuge-purple text-xs">
                   {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
                 </Badge>
-                <p className="text-xs text-white/80">{formData.visitInfo.date}</p>
               </div>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Section Navigation - Horizontal scrollable for iPad */}
-        <Card className="mb-4">
-          <CardContent className="py-3">
-            <div className="overflow-x-auto">
-              <div className="flex gap-2 pb-2 min-w-max">
-                {sections.map((section, idx) => (
-                  <Button
-                    key={idx}
-                    variant={idx === currentSection ? "default" : "outline"}
-                    size="sm"
-                    className={`whitespace-nowrap flex-shrink-0 ${
-                      idx === currentSection 
-                        ? "bg-refuge-purple hover:bg-refuge-magenta" 
-                        : ""
-                    }`}
-                    onClick={() => setCurrentSection(idx)}
-                  >
-                    <section.icon className="w-4 h-4 mr-2" />
-                    <span className="text-sm">{section.title}</span>
-                    {section.quarterly && (
-                      <Badge variant="secondary" className="ml-2 text-xs py-0 px-1">Q</Badge>
-                    )}
-                    {section.optional && (
-                      <Badge variant="outline" className="ml-2 text-xs py-0 px-1">Optional</Badge>
-                    )}
-                  </Button>
-                ))}
+        {/* Compact Section Navigation */}
+        <Card className="mb-2">
+          <CardContent className="py-2 px-3">
+            {/* Current Section Display */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <sections[currentSection].icon className="w-5 h-5 text-refuge-purple" />
+                <div>
+                  <p className="font-semibold text-sm">{sections[currentSection].title}</p>
+                  <p className="text-xs text-gray-500">Section {currentSection + 1} of {sections.length}</p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {sections[currentSection].quarterly && (
+                  <Badge variant="secondary" className="text-xs">Quarterly</Badge>
+                )}
+                {sections[currentSection].optional && (
+                  <Badge variant="outline" className="text-xs">Optional</Badge>
+                )}
               </div>
             </div>
-            {/* Progress indicator */}
-            <div className="mt-3">
-              <div className="bg-gray-200 rounded-full h-1.5">
-                <div
-                  className="bg-refuge-purple h-1.5 rounded-full transition-all"
-                  style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
-                />
-              </div>
-              <div className="text-center mt-2 text-sm text-gray-600">
-                {sections[currentSection].quarterly && (
-                  <Badge variant="outline" className="mr-2 text-xs">Complete any quarter this visit</Badge>
-                )}
-                Section {currentSection + 1} of {sections.length}
-              </div>
+            
+            {/* Progress Bar */}
+            <div className="bg-gray-200 rounded-full h-1.5">
+              <div
+                className="bg-refuge-purple h-1.5 rounded-full transition-all"
+                style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
+              />
+            </div>
+            
+            {/* Section Jumper Dropdown */}
+            <div className="mt-2">
+              <Select 
+                value={currentSection.toString()} 
+                onValueChange={(value) => setCurrentSection(parseInt(value))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Jump to section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((section, idx) => (
+                    <SelectItem key={idx} value={idx.toString()} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span>{section.title}</span>
+                        {section.quarterly && <Badge variant="secondary" className="text-xs py-0">Q</Badge>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Form Content */}
-        <Card className="mb-4">
-          <CardContent className="pt-6">{renderSectionContent(sections[currentSection].id)}</CardContent>
+        {/* Form Content - Reduced padding */}
+        <Card className="mb-2">
+          <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
 
-        {/* Navigation - Optimized for iPad thumb reach */}
-        <div className="flex justify-between gap-3">
+        {/* Navigation - Compact buttons */}
+        <div className="flex gap-2">
           <Button
             onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
             disabled={currentSection === 0}
             variant="outline"
-            size="lg"
+            size="default"
             className="flex-1"
           >
             Previous
           </Button>
           <Button 
             variant="outline" 
-            size="lg" 
-            className="px-8"
+            size="default" 
+            className="px-4"
             onClick={() => onSave?.(formData)}
           >
-            Save Draft
+            Save
           </Button>
           {currentSection === sections.length - 1 ? (
             <Button 
-              size="lg"
+              size="default"
               className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
               onClick={() => onSubmit?.(formData)}
             >
-              Submit Form
+              Submit
             </Button>
           ) : (
             <Button
               onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
-              size="lg"
+              size="default"
               className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
             >
               Next
@@ -742,20 +746,14 @@ const EnhancedHomeVisitForm = ({
 
 // Section Components
 const VisitInfoSection = ({ formData, onChange }) => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-      <Calendar className="h-6 w-6 text-refuge-purple" />
-      Visit Information
-    </h2>
-
-    <Alert>
-      <AlertDescription>
-        <strong>Monthly Home Visit:</strong> Complete ALL sections monthly. Items marked with "Q" are quarterly requirements 
-        - you can complete them during any of the 3 monthly visits or all at once. Use the visit number to track your progress.
+  <div className="space-y-3">
+    <Alert className="py-2">
+      <AlertDescription className="text-xs">
+        <strong>Monthly Visit:</strong> Items marked "Quarterly" can be completed across any of the 3 visits or all at once.
       </AlertDescription>
     </Alert>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
       <div>
         <Label htmlFor="visitType">Visit Type *</Label>
@@ -873,13 +871,8 @@ const VisitInfoSection = ({ formData, onChange }) => (
 )
 
 const FosterHomeSection = ({ formData, onChange }) => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-      <Home className="h-6 w-6 text-refuge-purple" />
-      Foster Home Information
-    </h2>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div className="md:col-span-2">
         <Label htmlFor="familyName">Foster Family Name *</Label>
         <Input
@@ -956,9 +949,9 @@ const FosterHomeSection = ({ formData, onChange }) => (
       </div>
     </div>
 
-    <div className="border-t pt-6">
-      <h3 className="font-semibold text-lg mb-4">License Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="border-t pt-3">
+      <h3 className="font-semibold text-sm mb-2">License Information</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label htmlFor="licenseType">License Type *</Label>
           <Select
@@ -1008,9 +1001,9 @@ const FosterHomeSection = ({ formData, onChange }) => (
       </div>
     </div>
 
-    <div className="border-t pt-6">
-      <h3 className="font-semibold text-lg mb-4">Capacity Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="border-t pt-3">
+      <h3 className="font-semibold text-sm mb-2">Capacity Information</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <Label htmlFor="totalCapacity">Total Capacity *</Label>
           <Input
@@ -1042,9 +1035,9 @@ const FosterHomeSection = ({ formData, onChange }) => (
         </div>
       </div>
 
-      <div className="mt-4">
-        <Label>Service Levels Approved</Label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+      <div className="mt-3">
+        <Label className="text-sm">Service Levels Approved</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
           {["basic", "moderate", "specialized", "intense"].map((level) => (
             <div key={level} className="flex items-center space-x-2">
               <Checkbox
