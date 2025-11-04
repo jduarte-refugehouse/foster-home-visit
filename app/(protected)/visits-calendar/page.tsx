@@ -454,24 +454,9 @@ export default function VisitsCalendarPage() {
     }
   }
 
-  const businessHours = {
-    start: 7, // 7 AM
-    end: 20, // 8 PM
-  }
-
+  // Removed business hours restriction - show full 24-hour day for on-call scheduling
   const slotStyleGetter = (date: Date) => {
-    const hour = date.getHours()
-
-    if (hour < businessHours.start || hour >= businessHours.end) {
-      return {
-        style: {
-          backgroundColor: "#f3f4f6",
-          color: "#9ca3af",
-          pointerEvents: "none" as const,
-        },
-      }
-    }
-
+    // All hours are available - no restrictions
     return {}
   }
 
@@ -691,8 +676,8 @@ export default function VisitsCalendarPage() {
                   defaultView="week"
                   step={30}
                   timeslots={2}
-                  min={new Date(2025, 0, 1, businessHours.start, 0)}
-                  max={new Date(2025, 0, 1, businessHours.end, 0)}
+                  min={new Date(2025, 0, 1, 0, 0)}
+                  max={new Date(2025, 0, 1, 23, 59)}
                 />
               </div>
             </CardContent>

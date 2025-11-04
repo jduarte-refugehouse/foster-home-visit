@@ -146,10 +146,9 @@ export default function OnCallSchedulePage() {
     setShowReportPreview(true)
   }
 
-  const sendIndividualReports = () => {
-    // For individual reports, we'll need to select which assignee first
-    // For now, show a preview with the first assignee or all data
-    // In a full implementation, you might want a picker dialog first
+  const sendIndividualReports = async () => {
+    // Send individual reports to ALL assignees at once
+    // Each person gets their own personalized report with only their shifts
     if (!schedules || schedules.length === 0) {
       toast({
         title: "No Assignees",
@@ -159,7 +158,7 @@ export default function OnCallSchedulePage() {
       return
     }
 
-    const uniqueUsers = Array.from(new Set(schedules.map(s => s.user_id)))
+    const uniqueUsers = Array.from(new Set(schedules.map((s: any) => s.user_id)))
     if (uniqueUsers.length === 0) {
       toast({
         title: "No Assignees",
@@ -169,35 +168,84 @@ export default function OnCallSchedulePage() {
       return
     }
 
-    // Group schedules by user for preview (showing first user as example)
-    const firstUserId = uniqueUsers[0]
-    const userSchedules = schedules.filter(s => s.user_id === firstUserId)
-    const firstSchedule = userSchedules[0]
-    
-    if (!firstSchedule) {
-      toast({
-        title: "Error",
-        description: "Unable to load schedule data",
-        variant: "destructive",
-      })
+    // Confirm before sending to multiple people
+    const userCount = uniqueUsers.length
+    if (!window.confirm(`Send individual reports to ${userCount} assignee(s)? Each person will receive an email with their personal schedule and a calendar attachment.`)) {
       return
     }
-    
-    setCurrentReportType("individual")
-    setCurrentReportData({
-      assignee: {
-        name: firstSchedule.user_name,
-        email: firstSchedule.user_email,
-        phone: firstSchedule.user_phone,
-      },
-      schedules: userSchedules,
-      totalHours: userSchedules.reduce((sum, s) => {
-        const start = new Date(s.start_datetime)
-        const end = new Date(s.end_datetime)
-        return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-      }, 0).toFixed(1),
+
+    toast({
+      title: "Sending Reports...",
+      description: `Sending personalized reports to ${userCount} assignee(s)...`,
     })
-    setShowReportPreview(true)
+
+    let successCount = 0
+    let errorCount = 0
+
+    // Send to each assignee
+    for (const userId of uniqueUsers) {
+      const userSchedules = schedules.filter((s: any) => s.user_id === userId)
+      const userSchedule = userSchedules[0]
+      
+      if (!userSchedule) continue
+
+      const reportData = {
+        assignee: {
+          name: userSchedule.user_name,
+          email: userSchedule.user_email,
+          phone: userSchedule.user_phone,
+        },
+        schedules: userSchedules,
+        totalHours: userSchedules.reduce((sum: number, s: any) => {
+          const start = new Date(s.start_datetime)
+          const end = new Date(s.end_datetime)
+          return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        }, 0).toFixed(1),
+      }
+
+      try {
+        const response = await fetch('/api/on-call/reports/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reportType: 'individual',
+            recipientEmail: userSchedule.user_email,
+            reportData,
+            onCallType,
+          }),
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          errorCount++
+          console.error(`Failed to send report to ${userSchedule.user_name}`)
+        }
+      } catch (error) {
+        errorCount++
+        console.error(`Error sending report to ${userSchedule.user_name}:`, error)
+      }
+    }
+
+    // Show summary
+    if (successCount > 0 && errorCount === 0) {
+      toast({
+        title: "✓ All Reports Sent",
+        description: `Successfully sent ${successCount} personalized report(s) with calendar attachments.`,
+      })
+    } else if (successCount > 0 && errorCount > 0) {
+      toast({
+        title: "Partially Complete",
+        description: `Sent ${successCount} report(s). ${errorCount} failed.`,
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Failed to Send Reports",
+        description: "Unable to send any reports. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const gaps = coverage?.gaps || []
