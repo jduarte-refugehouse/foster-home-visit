@@ -131,20 +131,16 @@ export default function VisitFormPage() {
 
       const savePayload = {
         appointmentId: appointmentId,
-        formType: "enhanced_home_visit",
+        formType: "monthly_home_visit",
         formVersion: "3.1",
         status: "draft",
-        visitDate: formData.visitInfo.date,
-        visitTime: formData.visitInfo.time,
+        visitDate: formData.visitInfo.date || new Date().toISOString().split("T")[0],
+        visitTime: formData.visitInfo.time || new Date().toTimeString().slice(0, 5),
         visitNumber: formData.visitInfo.visitNumberThisQuarter || 1,
-        quarter: formData.visitInfo.quarter,
+        quarter: formData.visitInfo.quarter || "",
         visitVariant: 1,
         
-        // Map enhanced form structure to API fields
-        visitInfo: {
-          ...formData.visitInfo,
-          formType: formData.visitInfo.formType,
-        },
+        visitInfo: formData.visitInfo,
         familyInfo: {
           fosterHome: formData.fosterHome,
           household: formData.household,
@@ -166,14 +162,19 @@ export default function VisitFormPage() {
         },
         signatures: formData.signatures,
         complianceReview: {
-          licensing: formData.licensing,
           medication: formData.medication,
-          sleepArrangements: formData.sleepArrangements,
-          waterSafety: formData.waterSafety,
-          firearms: formData.firearms,
-          vehicleSafety: formData.vehicleSafety,
+          inspections: formData.inspections,
+          healthSafety: formData.healthSafety,
+          childrensRights: formData.childrensRights,
+          bedrooms: formData.bedrooms,
+          education: formData.education,
+          indoorSpace: formData.indoorSpace,
           documentation: formData.documentation,
           traumaInformedCare: formData.traumaInformedCare,
+          outdoorSpace: formData.outdoorSpace,
+          vehicles: formData.vehicles,
+          swimming: formData.swimming,
+          infants: formData.infants,
           qualityEnhancement: formData.qualityEnhancement,
         },
         childInterviews: {
@@ -189,6 +190,8 @@ export default function VisitFormPage() {
       }
 
       console.log("📤 [FORM] Sending save request...")
+      console.log("📦 [FORM] Payload:", JSON.stringify(savePayload, null, 2))
+      
       const response = await fetch("/api/visit-forms", {
         method: "POST",
         headers: {
@@ -197,10 +200,13 @@ export default function VisitFormPage() {
         body: JSON.stringify(savePayload),
       })
 
+      console.log("📬 [FORM] Response status:", response.status)
       const result = await response.json()
+      console.log("📬 [FORM] Response data:", result)
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to save form")
+        console.error("❌ [FORM] Save failed:", result)
+        throw new Error(result.error || result.details || "Failed to save form")
       }
 
       console.log("✅ [FORM] Form saved successfully:", result)
