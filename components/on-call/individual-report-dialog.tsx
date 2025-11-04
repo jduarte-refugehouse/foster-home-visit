@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -36,7 +36,7 @@ export function IndividualReportDialog({ open, onOpenChange, schedules, onCallTy
   const { toast } = useToast()
 
   // Initialize assignees when dialog opens or schedules change
-  useState(() => {
+  useEffect(() => {
     if (open && schedules.length > 0) {
       const uniqueUsers = Array.from(new Set(schedules.map(s => s.user_id)))
       const assigneesList: AssigneeWithSchedules[] = uniqueUsers.map(userId => {
@@ -60,8 +60,13 @@ export function IndividualReportDialog({ open, onOpenChange, schedules, onCallTy
       }).sort((a, b) => a.name.localeCompare(b.name))
 
       setAssignees(assigneesList)
+    } else if (!open) {
+      // Reset when dialog closes
+      setAssignees([])
+      setSearchTerm("")
+      setExpandedAssignee(null)
     }
-  })
+  }, [open, schedules])
 
   const filteredAssignees = assignees.filter(assignee =>
     assignee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
