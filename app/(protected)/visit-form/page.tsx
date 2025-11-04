@@ -47,17 +47,36 @@ export default function VisitFormPage() {
       console.log("📋 [FORM] Appointment data received:", appointmentData)
       setAppointmentData(appointmentData.appointment)
 
-      // 2. Get home GUID from appointment
-      const homeGuid = appointmentData.appointment?.home_guid
+      // 2. Get home GUID from appointment via home_xref
+      const homeXref = appointmentData.appointment?.home_xref
       
-      if (!homeGuid) {
-        console.warn("⚠️ [FORM] No home_guid found in appointment")
+      if (!homeXref) {
+        console.warn("⚠️ [FORM] No home_xref found in appointment - cannot pre-populate")
         setLoading(false)
         return
       }
 
-      // 3. Fetch pre-population data for this home
-      console.log(`📋 [FORM] Fetching pre-population data for home: ${homeGuid}`)
+      // 3. Look up home GUID from syncActiveHomes using xref
+      console.log(`🔍 [FORM] Looking up home GUID for xref: ${homeXref}`)
+      const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
+      
+      if (!homeLookupResponse.ok) {
+        console.error("❌ [FORM] Failed to lookup home GUID")
+        setLoading(false)
+        return
+      }
+
+      const homeLookupData = await homeLookupResponse.json()
+      const homeGuid = homeLookupData.guid
+      
+      if (!homeGuid) {
+        console.warn("⚠️ [FORM] No GUID found for home xref:", homeXref)
+        setLoading(false)
+        return
+      }
+
+      // 4. Fetch pre-population data for this home
+      console.log(`📋 [FORM] Fetching pre-population data for home GUID: ${homeGuid}`)
       const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
       
       if (prepopResponse.ok) {
