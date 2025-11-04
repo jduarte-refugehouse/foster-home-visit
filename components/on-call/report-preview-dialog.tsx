@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Mail, X, AlertTriangle, Clock, User, Phone } from "lucide-react"
+import { Mail, X, AlertTriangle, Clock, User, Phone, Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
+import { ReportTimeline } from "./report-timeline"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ReportPreviewDialogProps {
   open: boolean
@@ -87,34 +89,52 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <div className="space-y-3 max-h-[400px] overflow-y-auto">
-          {gaps.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">No coverage gaps - Full 24/7 coverage</p>
-          ) : (
-            gaps.map((gap: any, index: number) => {
-              const start = new Date(gap.gap_start)
-              const end = new Date(gap.gap_end)
-              return (
-                <Card key={index} className="border-red-200">
-                  <CardContent className="pt-4">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-medium text-red-700">Gap {index + 1}: {gap.gap_hours.toFixed(1)} hours</p>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                          <Clock className="h-3 w-3" />
-                          {format(start, "MMM d, h:mm a")} - {format(end, "MMM d, h:mm a")}
+        <Tabs defaultValue="timeline" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timeline">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Timeline View
+            </TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timeline" className="mt-4">
+            <div className="max-h-[400px] overflow-y-auto">
+              <ReportTimeline gaps={gaps} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-4">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {gaps.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No coverage gaps - Full 24/7 coverage</p>
+              ) : (
+                gaps.map((gap: any, index: number) => {
+                  const start = new Date(gap.gap_start)
+                  const end = new Date(gap.gap_end)
+                  return (
+                    <Card key={index} className="border-red-200">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-medium text-red-700">Gap {index + 1}: {gap.gap_hours.toFixed(1)} hours</p>
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                              <Clock className="h-3 w-3" />
+                              {format(start, "MMM d, h:mm a")} - {format(end, "MMM d, h:mm a")}
+                            </div>
+                            {gap.message && <p className="text-sm text-gray-600 mt-2">{gap.message}</p>}
+                          </div>
+                          <Badge variant="destructive">{gap.severity}</Badge>
                         </div>
-                        {gap.message && <p className="text-sm text-gray-600 mt-2">{gap.message}</p>}
-                      </div>
-                      <Badge variant="destructive">{gap.severity}</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })
-          )}
-        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     )
   }
@@ -143,39 +163,57 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-          {schedules.map((schedule: any, index: number) => {
-            const start = new Date(schedule.start_datetime)
-            const end = new Date(schedule.end_datetime)
-            return (
-              <Card key={index} className="border-purple-200">
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium">{schedule.user_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-3 w-3" />
-                        {format(start, "MMM d, h:mm a")} - {format(end, "MMM d, h:mm a")}
-                      </div>
-                      {schedule.user_phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone className="h-3 w-3" />
-                          {schedule.user_phone}
+        <Tabs defaultValue="timeline" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timeline">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Timeline View
+            </TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timeline" className="mt-4">
+            <div className="max-h-[400px] overflow-y-auto">
+              <ReportTimeline schedules={schedules} gaps={coverage?.gaps || []} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-4">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {schedules.map((schedule: any, index: number) => {
+                const start = new Date(schedule.start_datetime)
+                const end = new Date(schedule.end_datetime)
+                return (
+                  <Card key={index} className="border-purple-200">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">{schedule.user_name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Clock className="h-3 w-3" />
+                            {format(start, "MMM d, h:mm a")} - {format(end, "MMM d, h:mm a")}
+                          </div>
+                          {schedule.user_phone && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone className="h-3 w-3" />
+                              {schedule.user_phone}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {schedule.priority_level === "high" && (
-                      <Badge variant="destructive">High Priority</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                        {schedule.priority_level === "high" && (
+                          <Badge variant="destructive">High Priority</Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     )
   }
@@ -202,32 +240,50 @@ export function ReportPreviewDialog({ open, onOpenChange, reportType, reportData
           </CardContent>
         </Card>
 
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-          {schedules.map((schedule: any, index: number) => {
-            const start = new Date(schedule.start_datetime)
-            const end = new Date(schedule.end_datetime)
-            const hours = ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1)
-            return (
-              <Card key={index}>
-                <CardContent className="pt-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">Shift {index + 1}</p>
-                      <Badge variant="outline">{hours} hours</Badge>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <p>{format(start, "EEEE, MMM d, yyyy")}</p>
-                      <p>{format(start, "h:mm a")} - {format(end, "h:mm a")}</p>
-                    </div>
-                    {schedule.notes && (
-                      <p className="text-sm text-gray-600 border-t pt-2">{schedule.notes}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+        <Tabs defaultValue="timeline" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timeline">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Timeline View
+            </TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timeline" className="mt-4">
+            <div className="max-h-[400px] overflow-y-auto">
+              <ReportTimeline schedules={schedules} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-4">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {schedules.map((schedule: any, index: number) => {
+                const start = new Date(schedule.start_datetime)
+                const end = new Date(schedule.end_datetime)
+                const hours = ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1)
+                return (
+                  <Card key={index}>
+                    <CardContent className="pt-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium">Shift {index + 1}</p>
+                          <Badge variant="outline">{hours} hours</Badge>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <p>{format(start, "EEEE, MMM d, yyyy")}</p>
+                          <p>{format(start, "h:mm a")} - {format(end, "h:mm a")}</p>
+                        </div>
+                        {schedule.notes && (
+                          <p className="text-sm text-gray-600 border-t pt-2">{schedule.notes}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     )
   }

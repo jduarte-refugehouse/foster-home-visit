@@ -143,17 +143,25 @@ export function AppSidebar() {
               error_fallback: "❌",
             }[source] || "❓"
 
-          console.log(`${sourceEmoji} Navigation loaded from: ${source}`)
-          if (data.metadata?.dbError) {
-            console.warn("⚠️ Database error:", data.metadata.dbError)
+          // Only show fallback warnings for admins/internal users
+          const isAdmin = data.metadata?.userPermissions?.includes('system_config') || 
+                         data.metadata?.userInfo?.email?.endsWith('@refugehouse.org')
+          
+          if (isAdmin || source === "database") {
+            console.log(`${sourceEmoji} Navigation loaded from: ${source}`)
+            if (data.metadata?.dbError) {
+              console.warn("⚠️ Database error:", data.metadata.dbError)
+            }
           }
 
-          // Log user info for debugging
-          if (data.metadata?.userInfo) {
-            console.log("👤 User info:", data.metadata.userInfo)
-          }
-          if (data.metadata?.userPermissions) {
-            console.log("🔑 User permissions:", data.metadata.userPermissions)
+          // Log user info for debugging (admin only)
+          if (isAdmin) {
+            if (data.metadata?.userInfo) {
+              console.log("👤 User info:", data.metadata.userInfo)
+            }
+            if (data.metadata?.userPermissions) {
+              console.log("🔑 User permissions:", data.metadata.userPermissions)
+            }
           }
         } else {
           console.error("❌ Failed to load navigation from API, using emergency fallback")
