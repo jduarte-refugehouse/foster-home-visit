@@ -364,20 +364,20 @@ const EnhancedHomeVisitForm = ({
       fosterHome: {
         ...prev.fosterHome,
         familyName: home?.name || "",
+        homeId: home?.guid || "",
         address: home?.address?.street || "",
         city: home?.address?.city || "",
         state: home?.address?.state || "",
         zip: home?.address?.zip || "",
-        county: home?.address?.county || "",
         phone: home?.phone || "",
         email: home?.email || "",
+        // CRITICAL: License info NEVER carried forward - always fresh from DB
         licenseNumber: home?.license?.id || "",
         licenseType: home?.license?.type || "",
-        licenseExpiration: home?.license?.expiration || "",
-        capacity: home?.license?.capacity || 0,
-        openBeds: home?.license?.openBeds || 0,
-        caseManager: home?.caseManager?.name || "",
-        caseManagerEmail: home?.caseManager?.email || "",
+        licenseExpiration: home?.license?.expiration ? home.license.expiration.split('T')[0] : "",
+        totalCapacity: home?.license?.capacity || 0,
+        fosterCareCapacity: home?.license?.capacity || 0, // Using same value as default
+        currentCensus: home?.license?.filledBeds || 0,
       },
       household: {
         ...prev.household,
