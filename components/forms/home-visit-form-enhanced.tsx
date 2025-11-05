@@ -790,12 +790,19 @@ const EnhancedHomeVisitForm = ({
                 size="default" 
                 className="flex-shrink-0 font-semibold border-2 border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white"
                 onClick={async () => {
+                  console.log("💾 [FORM] Save button clicked")
+                  console.log("💾 [FORM] onSave prop:", onSave)
+                  console.log("💾 [FORM] formData:", formData)
                   if (onSave) {
                     try {
+                      console.log("💾 [FORM] Calling onSave callback...")
                       await onSave(formData)
+                      console.log("💾 [FORM] onSave callback completed")
                     } catch (error) {
-                      console.error("Error in onSave callback:", error)
+                      console.error("❌ [FORM] Error in onSave callback:", error)
                     }
+                  } else {
+                    console.error("❌ [FORM] onSave prop is not defined!")
                   }
                 }}
               >

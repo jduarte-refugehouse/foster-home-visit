@@ -113,13 +113,33 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
 
     if (startDateTime !== undefined) {
       updateFields.push(`start_datetime = @param${paramIndex}`)
-      queryParams.push(new Date(startDateTime))
+      // Parse as local time if string (no timezone conversion)
+      let startDate: Date
+      if (typeof startDateTime === 'string') {
+        const [datePart, timePart] = startDateTime.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        startDate = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      } else {
+        startDate = new Date(startDateTime)
+      }
+      queryParams.push(startDate)
       paramIndex++
     }
 
     if (endDateTime !== undefined) {
       updateFields.push(`end_datetime = @param${paramIndex}`)
-      queryParams.push(new Date(endDateTime))
+      // Parse as local time if string (no timezone conversion)
+      let endDate: Date
+      if (typeof endDateTime === 'string') {
+        const [datePart, timePart] = endDateTime.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        endDate = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      } else {
+        endDate = new Date(endDateTime)
+      }
+      queryParams.push(endDate)
       paramIndex++
     }
 
