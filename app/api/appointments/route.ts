@@ -384,14 +384,42 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Validate dates
-    const start = new Date(startDateTime)
-    const end = new Date(endDateTime)
+    // Parse dates - if string, parse as local time; if already Date, use as-is
+    // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
+    let start: Date
+    let end: Date
+    
+    if (typeof startDateTime === 'string') {
+      const [datePart, timePart] = startDateTime.split('T')
+      const [year, month, day] = datePart.split('-').map(Number)
+      const [hour, minute, second] = (timePart || '').split(':').map(Number)
+      start = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+    } else {
+      start = new Date(startDateTime)
+    }
+    
+    if (typeof endDateTime === 'string') {
+      const [datePart, timePart] = endDateTime.split('T')
+      const [year, month, day] = datePart.split('-').map(Number)
+      const [hour, minute, second] = (timePart || '').split(':').map(Number)
+      end = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+    } else {
+      end = new Date(endDateTime)
+    }
+    
     if (start >= end) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
 
-    console.log("📝 [API] Updating appointment:", { appointmentId, title, assignedToName })
+    console.log("📝 [API] Updating appointment:", { 
+      appointmentId, 
+      title, 
+      assignedToName,
+      startDateTime,
+      endDateTime,
+      startParsed: start.toISOString(),
+      endParsed: end.toISOString(),
+    })
 
     await query(
       `
