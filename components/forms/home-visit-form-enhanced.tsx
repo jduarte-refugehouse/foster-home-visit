@@ -658,7 +658,7 @@ const EnhancedHomeVisitForm = ({
       case "quality-enhancement":
         return <QualityEnhancementSection formData={formData} onChange={handleChange} />
       case "children-present":
-        return <ChildrenPresentSection formData={formData} onChange={handleChange} onAddChild={addChild} />
+        return <ChildrenPresentSection formData={formData} onChange={handleChange} onAddChild={addChild} prepopulationData={prepopulationData} />
       case "observations":
         return <ObservationsSection formData={formData} onChange={handleChange} />
       case "follow-up":

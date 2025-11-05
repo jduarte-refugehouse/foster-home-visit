@@ -481,129 +481,195 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
   )
 }
 
-export const ChildrenPresentSection = ({ formData, onChange, onAddChild }) => {
+export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopulationData }) => {
   const children = formData.childrenPresent
+  
+  // Get placement children from prepopulation data
+  const placementChildren = prepopulationData?.placements || []
+  const biologicalChildren = formData.household?.biologicalChildren || []
+  
+  // Combine all children in the home
+  const allChildren = [
+    ...placementChildren.map(child => ({
+      id: `placement-${child.firstName}-${child.lastName}`,
+      name: `${child.firstName} ${child.lastName}`,
+      age: child.age,
+      type: 'Foster Child',
+      source: 'placement'
+    })),
+    ...biologicalChildren.map((child, idx) => ({
+      id: `bio-${idx}`,
+      name: child.name,
+      age: child.age,
+      type: 'Biological Child',
+      source: 'biological'
+    }))
+  ]
+
+  const toggleChildPresence = (childData) => {
+    const existingIndex = children.findIndex(c => c.name === childData.name)
+    
+    if (existingIndex >= 0) {
+      // Remove child
+      const newChildren = children.filter((_, idx) => idx !== existingIndex)
+      onChange("childrenPresent", newChildren)
+    } else {
+      // Add child with prepopulated data
+      const newChild = {
+        name: childData.name,
+        age: childData.age,
+        present: true,
+        behaviorNotes: "",
+        schoolNotes: "",
+        medicalNotes: "",
+        asqScreening: childData.age >= 10 ? "pending" : "not-required",
+        type: childData.type
+      }
+      onChange("childrenPresent", [...children, newChild])
+    }
+  }
+
+  const isChildSelected = (childName) => {
+    return children.some(c => c.name === childName)
+  }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-        <Heart className="h-6 w-6 text-refuge-purple" />
+    <div className="space-y-3">
+      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+        <Heart className="h-5 w-5 text-refuge-purple" />
         Children Present
       </h2>
 
-      <Alert>
-        <AlertDescription>
-          <strong>Liaison Note:</strong> Document children's presence and capture basic information from cursory
-          interactions. Full interviews are conducted by case managers during quarterly reviews.
+      <Alert className="py-2">
+        <AlertDescription className="text-xs">
+          <strong>Tap children who were present</strong> during the visit. Full interviews conducted by case managers.
         </AlertDescription>
       </Alert>
 
-      <Alert className="border-yellow-200 bg-yellow-50">
+      <Alert className="border-yellow-200 bg-yellow-50 py-2">
         <AlertTriangle className="h-4 w-4 text-yellow-800" />
-        <AlertDescription className="text-yellow-800">
-          <strong>ASQ Screening Reminder:</strong> Required for all children age 10+ every 90 days (quarterly: March,
-          June, September, December). If positive screen, follow immediate safety protocols.
+        <AlertDescription className="text-yellow-800 text-xs">
+          <strong>ASQ Screening:</strong> Required for age 10+ every 90 days (quarterly).
         </AlertDescription>
       </Alert>
 
-      <div className="flex justify-end">
-        <Button onClick={onAddChild} variant="outline">
-          Add Child
-        </Button>
-      </div>
+      {/* Smart Selection - Tap to Toggle */}
+      {allChildren.length > 0 && (
+        <Card className="bg-slate-50">
+          <CardHeader className="py-2">
+            <CardTitle className="text-sm">Children in Home (Tap to Select)</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {allChildren.map((child) => (
+                <Button
+                  key={child.id}
+                  type="button"
+                  variant={isChildSelected(child.name) ? "default" : "outline"}
+                  className={`h-auto py-3 px-4 justify-start ${
+                    isChildSelected(child.name)
+                      ? "bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+                      : "hover:bg-refuge-purple/10"
+                  }`}
+                  onClick={() => toggleChildPresence(child)}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <Checkbox
+                      checked={isChildSelected(child.name)}
+                      className="pointer-events-none"
+                    />
+                    <div className="text-left flex-1">
+                      <div className="font-semibold text-sm">{child.name}</div>
+                      <div className="text-xs opacity-90">Age {child.age} • {child.type}</div>
+                    </div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <div className="space-y-4">
+      {/* Selected Children Details */}
+      <div className="space-y-2">
         {children.map((child, index) => (
-          <Card key={index} className="border-2">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor={`child-name-${index}`}>Child Name *</Label>
-                  <Input
-                    id={`child-name-${index}`}
-                    value={child.name}
-                    onChange={(e) => {
-                      const newChildren = [...children]
-                      newChildren[index].name = e.target.value
+          <Card key={index} className="border-2 border-refuge-purple/20">
+            <CardContent className="p-3">
+              <div className="space-y-2">
+                {/* Child Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{child.name}</div>
+                    <div className="text-xs text-muted-foreground">Age {child.age} • {child.type || 'Child'}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const newChildren = children.filter((_, idx) => idx !== index)
                       onChange("childrenPresent", newChildren)
                     }}
-                  />
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Remove
+                  </Button>
                 </div>
 
-                <div>
-                  <Label htmlFor={`child-age-${index}`}>Age *</Label>
-                  <Input
-                    id={`child-age-${index}`}
-                    type="number"
-                    value={child.age}
-                    onChange={(e) => {
-                      const newChildren = [...children]
-                      newChildren[index].age = e.target.value
-                      onChange("childrenPresent", newChildren)
-                    }}
-                  />
+                {/* Compact Notes Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div>
+                    <Label htmlFor={`child-behavior-${index}`} className="text-xs">Behavior Notes</Label>
+                    <Textarea
+                      id={`child-behavior-${index}`}
+                      value={child.behaviorNotes}
+                      onChange={(e) => {
+                        const newChildren = [...children]
+                        newChildren[index].behaviorNotes = e.target.value
+                        onChange("childrenPresent", newChildren)
+                      }}
+                      placeholder="Demeanor, engagement..."
+                      className="text-sm"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`child-school-${index}`} className="text-xs">School Notes</Label>
+                    <Textarea
+                      id={`child-school-${index}`}
+                      value={child.schoolNotes}
+                      onChange={(e) => {
+                        const newChildren = [...children]
+                        newChildren[index].schoolNotes = e.target.value
+                        onChange("childrenPresent", newChildren)
+                      }}
+                      placeholder="If mentioned..."
+                      className="text-sm"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`child-medical-${index}`} className="text-xs">Medical/Therapy</Label>
+                    <Textarea
+                      id={`child-medical-${index}`}
+                      value={child.medicalTherapyNotes}
+                      onChange={(e) => {
+                        const newChildren = [...children]
+                        newChildren[index].medicalTherapyNotes = e.target.value
+                        onChange("childrenPresent", newChildren)
+                      }}
+                      placeholder="If mentioned..."
+                      className="text-sm"
+                      rows={2}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2 pt-6">
-                  <Checkbox
-                    id={`child-present-${index}`}
-                    checked={child.present}
-                    onCheckedChange={(checked) => {
-                      const newChildren = [...children]
-                      newChildren[index].present = checked
-                      onChange("childrenPresent", newChildren)
-                    }}
-                  />
-                  <Label htmlFor={`child-present-${index}`} className="cursor-pointer">
-                    Present During Visit
-                  </Label>
-                </div>
-
-                <div className="md:col-span-3">
-                  <Label htmlFor={`child-behavior-${index}`}>Behavior & Interaction Notes</Label>
-                  <Textarea
-                    id={`child-behavior-${index}`}
-                    value={child.behaviorNotes}
-                    onChange={(e) => {
-                      const newChildren = [...children]
-                      newChildren[index].behaviorNotes = e.target.value
-                      onChange("childrenPresent", newChildren)
-                    }}
-                    placeholder="Brief notes from cursory interaction (demeanor, engagement, any concerns observed)..."
-                    rows={2}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`child-school-${index}`}>School Notes (if mentioned)</Label>
-                  <Textarea
-                    id={`child-school-${index}`}
-                    value={child.schoolNotes}
-                    onChange={(e) => {
-                      const newChildren = [...children]
-                      newChildren[index].schoolNotes = e.target.value
-                      onChange("childrenPresent", newChildren)
-                    }}
-                    rows={2}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`child-medical-${index}`}>Medical/Therapy Notes (if mentioned)</Label>
-                  <Textarea
-                    id={`child-medical-${index}`}
-                    value={child.medicalTherapyNotes}
-                    onChange={(e) => {
-                      const newChildren = [...children]
-                      newChildren[index].medicalTherapyNotes = e.target.value
-                      onChange("childrenPresent", newChildren)
-                    }}
-                    rows={2}
-                  />
-                </div>
-
+                {/* ASQ Screening for Age 10+ */}
                 {parseInt(child.age) >= 10 && (
-                  <div className="space-y-2">
+                  <div className="flex gap-4 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id={`asq-due-${index}`}
@@ -614,8 +680,8 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild }) => {
                           onChange("childrenPresent", newChildren)
                         }}
                       />
-                      <Label htmlFor={`asq-due-${index}`} className="cursor-pointer text-yellow-800 font-semibold">
-                        ASQ Screening Due
+                      <Label htmlFor={`asq-due-${index}`} className="cursor-pointer text-yellow-800 font-semibold text-xs">
+                        ASQ Due
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -628,8 +694,8 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild }) => {
                           onChange("childrenPresent", newChildren)
                         }}
                       />
-                      <Label htmlFor={`asq-completed-${index}`} className="cursor-pointer text-green-800">
-                        ASQ Completed This Visit
+                      <Label htmlFor={`asq-completed-${index}`} className="cursor-pointer text-green-800 text-xs">
+                        ASQ Completed
                       </Label>
                     </div>
                   </div>
