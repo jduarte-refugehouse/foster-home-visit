@@ -225,6 +225,13 @@ export default function AppointmentDetailPage() {
         </Button>
         <div className="flex items-start justify-between">
           <div>
+            {appointment.home_name && (
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="text-lg px-3 py-1 bg-blue-50 border-blue-200 text-blue-700">
+                  {appointment.home_name}
+                </Badge>
+              </div>
+            )}
             <h1 className="text-3xl font-bold mb-2">{appointment.title}</h1>
             <div className="flex flex-wrap gap-2">
               <Badge className={getStatusColor(appointment.status)}>
@@ -295,24 +302,31 @@ export default function AppointmentDetailPage() {
           </Card>
 
           {/* Location */}
-          {appointment.location_address && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg">{appointment.location_address}</p>
-                {appointment.home_name && (
-                  <p className="text-muted-foreground mt-2">
-                    <span className="font-medium">Home:</span> {appointment.home_name}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {appointment.home_name && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Foster Home</p>
+                  <p className="text-xl font-semibold text-blue-700">{appointment.home_name}</p>
+                  {appointment.home_xref && (
+                    <p className="text-xs text-muted-foreground">Home ID: {appointment.home_xref}</p>
+                  )}
+                </div>
+              )}
+              {appointment.location_address && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Address</p>
+                  <p className="text-lg">{appointment.location_address}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Description */}
           {appointment.description && (

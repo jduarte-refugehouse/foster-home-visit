@@ -278,12 +278,16 @@ export function CreateAppointmentDialog({
   const handleHomeChange = (homeXref: string) => {
     const selectedHome = homes.find((h) => h.xref.toString() === homeXref)
     if (selectedHome) {
+      // Auto-generate title based on appointment type and home name
+      const appointmentTypeLabel = formData.appointmentType.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      const newTitle = `${appointmentTypeLabel} - ${selectedHome.name}`
+      
       setFormData((prev) => ({
         ...prev,
         homeXref,
         homeName: selectedHome.name,
         locationAddress: selectedHome.address,
-        title: prev.title || `${prev.appointmentType.replace("_", " ")} - ${selectedHome.name}`,
+        title: newTitle, // Always update title when home changes
       }))
     }
   }
@@ -309,20 +313,29 @@ export function CreateAppointmentDialog({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">Title * (Auto-generated)</Label>
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Home Visit - Johnson Family"
+                  readOnly
+                  className="bg-muted"
+                  placeholder="Select home and type to generate title"
                   required
                 />
+                <p className="text-xs text-muted-foreground">Title is automatically generated from appointment type and home name</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Appointment Type</Label>
                 <Select
                   value={formData.appointmentType}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, appointmentType: value }))}
+                  onValueChange={(value) => {
+                    setFormData((prev) => {
+                      // Auto-update title when type changes if home is selected
+                      const appointmentTypeLabel = value.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+                      const newTitle = prev.homeName ? `${appointmentTypeLabel} - ${prev.homeName}` : prev.title
+                      return { ...prev, appointmentType: value, title: newTitle }
+                    })
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
