@@ -339,27 +339,21 @@ export default function AppointmentDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ROW 1: Navigation + Title + Actions */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      {/* ROW 1: Navigation + Title + Actions - Single Row */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-8 px-2">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
+          <Link 
+            href="/visits-calendar" 
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Appointments</span>
+          </Link>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold truncate">{appointment.home_name || appointment.title}</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handlePopOut}
-            className="h-8 px-3"
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Pop Out
-          </Button>
           {appointment.status === "scheduled" && (
             <Button 
               size="sm"
@@ -370,20 +364,15 @@ export default function AppointmentDetailPage() {
               Start Visit
             </Button>
           )}
-          <CreateAppointmentDialog
-            editingAppointment={appointment}
-            onAppointmentCreated={() => {
-              fetchAppointmentDetails()
-              setEditDialogOpen(false)
-            }}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handlePopOut}
+            className="h-8 px-3"
           >
-            <Button variant="outline" size="sm" className="h-8 px-3">
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-          </CreateAppointmentDialog>
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Pop Out
+          </Button>
         </div>
       </div>
 
@@ -441,6 +430,23 @@ export default function AppointmentDetailPage() {
         {/* Details Tab */}
         <TabsContent value="details" className="mt-0">
           <div className="container mx-auto p-6 max-w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Appointment Details</h2>
+              <CreateAppointmentDialog
+                editingAppointment={appointment}
+                onAppointmentCreated={() => {
+                  fetchAppointmentDetails()
+                  setEditDialogOpen(false)
+                }}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+              >
+                <Button variant="outline" size="sm" className="h-8 px-3">
+                  <Edit className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              </CreateAppointmentDialog>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Details */}
               <div className="lg:col-span-2 space-y-6">

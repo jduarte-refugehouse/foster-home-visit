@@ -15,9 +15,25 @@ import { usePathname } from "next/navigation"
 export function AppHeader() {
   const pathname = usePathname()
 
+  // Special handling for appointment detail pages - use simpler breadcrumb
+  const isAppointmentDetail = pathname.startsWith("/appointment/") && pathname.split("/").length === 3
+  
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split("/").filter(Boolean)
-  const breadcrumbs = pathSegments.map((segment, index) => {
+  const breadcrumbs: Array<{ href: string; label: string }> = []
+  
+  pathSegments.forEach((segment, index) => {
+    // For appointment detail pages, link back to visits calendar and stop
+    if (isAppointmentDetail && segment === "appointment") {
+      breadcrumbs.push({ href: "/visits-calendar", label: "Appointments" })
+      return
+    }
+    
+    // Skip GUID segments for appointment detail pages
+    if (isAppointmentDetail && segment.length > 30 && /^[A-F0-9-]+$/i.test(segment)) {
+      return
+    }
+    
     const href = "/" + pathSegments.slice(0, index + 1).join("/")
     
     // Special handling for GUIDs and dynamic routes
@@ -25,12 +41,7 @@ export function AppHeader() {
     
     // If this looks like a GUID (long hex string), replace with generic label
     if (segment.length > 30 && /^[A-F0-9-]+$/i.test(segment)) {
-      // Check the parent segment to determine what this ID represents
-      if (index > 0 && pathSegments[index - 1] === "appointment") {
-        label = segment.substring(0, 8) + "..." // Show first 8 chars of ID
-      } else {
-        label = "Details"
-      }
+      label = "Details"
     } else {
       label = segment
       .split("-")
@@ -38,7 +49,7 @@ export function AppHeader() {
       .join(" ")
     }
     
-    return { href, label }
+    breadcrumbs.push({ href, label })
   })
 
   // Generate page title from pathname
