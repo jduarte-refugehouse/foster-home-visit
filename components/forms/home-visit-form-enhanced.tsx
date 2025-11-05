@@ -1442,7 +1442,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                       placeholder={item.status ? "Add notes if needed..." : ""}
                       value={item.notes}
                       onChange={(e) => onChange(section, index, "notes", e.target.value)}
-                      className="text-sm h-6 resize-none"
+                      className="text-sm min-h-[24px] h-6 resize-none"
                       rows={1}
                       disabled={!item.status}
                     />
