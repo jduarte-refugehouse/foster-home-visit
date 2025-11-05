@@ -320,14 +320,14 @@ const BasicHomeVisitForm = ({
       throw new Error("No appointment ID provided")
     }
 
-    if (!formData.visitInfo.date || !formData.visitInfo.time) {
-      throw new Error("Visit date and time are required")
-    }
+    // Allow saving even without date/time - use current date/time as defaults
+    const visitDate = formData.visitInfo.date || new Date().toISOString().split("T")[0]
+    const visitTime = formData.visitInfo.time || new Date().toTimeString().slice(0, 5)
 
     console.log("[v0] Preparing to save form data:", {
       appointmentId,
-      visitDate: formData.visitInfo.date,
-      visitTime: formData.visitInfo.time,
+      visitDate,
+      visitTime,
       isAutoSave,
       visitFormId,
     })
@@ -336,8 +336,8 @@ const BasicHomeVisitForm = ({
       appointmentId,
       formType: "home_visit",
       status: "draft",
-      visitDate: formData.visitInfo.date,
-      visitTime: formData.visitInfo.time,
+      visitDate,
+      visitTime,
       visitNumber: formData.visitInfo.visitNumber || 1,
       quarter: formData.visitInfo.quarter || null,
       visitVariant: 1,
