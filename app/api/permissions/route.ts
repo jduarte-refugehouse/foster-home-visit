@@ -1,35 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
+import { clerkClient } from "@clerk/nextjs/server"
 import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    let clerkUserId
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    let clerkUserId: string
+    let clerkUserEmail: string | null = null
+    
     try {
-      // Try currentUser first (more reliable)
-      const user = await currentUser()
-      if (user?.id) {
-        clerkUserId = user.id
-      } else {
-        // Fallback to auth()
-        const authResult = await auth()
-        console.log("🔍 [API] Auth result in permissions GET:", { 
-          hasResult: !!authResult, 
-          userId: authResult?.userId,
-          keys: authResult ? Object.keys(authResult) : []
-        })
-        clerkUserId = authResult?.userId
-      }
+      const auth = requireClerkAuth(request)
+      clerkUserId = auth.clerkUserId
+      clerkUserEmail = auth.email
     } catch (authError) {
       console.error("❌ [API] Auth error in permissions GET:", authError)
-      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
-    }
-
-    if (!clerkUserId) {
-      console.error("❌ [API] No clerkUserId found in permissions GET")
-      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
+      return NextResponse.json({ 
+        error: "Authentication failed", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     // Check for impersonation first
@@ -52,20 +43,36 @@ export async function GET(request: NextRequest) {
         }
         appUser = await createOrUpdateAppUser(clerkUser)
       }
-    } else {
-      // Fetch the full user object from Clerk and sync
-      try {
-        const clerkUser = await clerkClient.users.getUser(clerkUserId)
-        if (!clerkUser) {
-          return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
-        }
-        // This function syncs the Clerk user with your local app_users table
-        appUser = await createOrUpdateAppUser(clerkUser)
-      } catch (clerkError) {
-        console.error("❌ [API] Clerk error fetching user:", clerkError)
-        return NextResponse.json({ error: "Failed to fetch user from Clerk", details: clerkError instanceof Error ? clerkError.message : "Unknown error" }, { status: 500 })
-      }
-    }
+            } else {
+              // If we have email but no Clerk ID, look up by email
+              // Otherwise, try to get user from Clerk API (only if we have a valid Clerk ID)
+              if (clerkUserEmail && !clerkUserId.startsWith('user_')) {
+                // clerkUserId is actually an email, look up by email
+                const { query } = await import("@/lib/db")
+                const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
+                appUser = result[0] || null
+              } else {
+                // Fetch the full user object from Clerk and sync
+                try {
+                  const clerkUser = await clerkClient.users.getUser(clerkUserId)
+                  if (!clerkUser) {
+                    return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+                  }
+                  // This function syncs the Clerk user with your local app_users table
+                  appUser = await createOrUpdateAppUser(clerkUser)
+                } catch (clerkError) {
+                  console.error("❌ [API] Clerk error fetching user:", clerkError)
+                  // Fallback: try to find by email if we have it
+                  if (clerkUserEmail) {
+                    const { query } = await import("@/lib/db")
+                    const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
+                    appUser = result[0] || null
+                  } else {
+                    return NextResponse.json({ error: "Failed to fetch user from Clerk", details: clerkError instanceof Error ? clerkError.message : "Unknown error" }, { status: 500 })
+                  }
+                }
+              }
+            }
 
     if (!appUser) {
       return NextResponse.json({ error: "App user not found." }, { status: 404 })
