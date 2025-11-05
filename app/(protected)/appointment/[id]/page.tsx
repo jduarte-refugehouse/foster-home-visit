@@ -624,29 +624,14 @@ export default function AppointmentDetailPage() {
               </CardContent>
             </Card>
           ) : appointmentData ? (
-            <div>
-              <div className="mb-4 flex justify-end">
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
-                >
-                  <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open in New Tab
-                  </Link>
-                </Button>
-              </div>
-              <EnhancedHomeVisitForm
-                appointmentId={appointmentId}
-                appointmentData={appointmentData}
-                prepopulationData={prepopulationData}
-                existingFormData={existingFormData}
-                onSave={handleSaveForm}
-                onSubmit={handleSubmitForm}
-              />
-            </div>
+            <EnhancedHomeVisitForm
+              appointmentId={appointmentId}
+              appointmentData={appointmentData}
+              prepopulationData={prepopulationData}
+              existingFormData={existingFormData}
+              onSave={handleSaveForm}
+              onSubmit={handleSubmitForm}
+            />
           ) : (
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-12 text-center">
