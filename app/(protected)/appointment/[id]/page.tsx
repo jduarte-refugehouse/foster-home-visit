@@ -519,32 +519,84 @@ export default function AppointmentDetailPage() {
 
         {/* Visit Form Tab */}
         <TabsContent value="form" className="mt-0">
-          <div className="rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-            <div className="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                <h3 className="font-semibold">Home Visit Form</h3>
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Home Visit Form
+                </CardTitle>
                 {getVisitFormStatusBadge()}
               </div>
-              <Button 
-                variant="outline"
-                size="sm"
-                asChild
-                className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
-              >
-                <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open in New Tab
-                </Link>
-              </Button>
-            </div>
-            <iframe
-              src={`/visit-form?appointmentId=${appointmentId}`}
-              className="w-full border-0"
-              style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}
-              title="Home Visit Form"
-            />
-          </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="text-center space-y-6">
+                <div className="max-w-2xl mx-auto">
+                  <p className="text-muted-foreground mb-4">
+                    {visitFormStatus 
+                      ? "Continue working on your visit form or view the completed form."
+                      : "Start filling out the visit form for this appointment."}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button 
+                      asChild
+                      className="bg-refuge-purple hover:bg-refuge-purple-dark text-white shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <Link href={`/visit-form?appointmentId=${appointmentId}`}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        {visitFormStatus ? "Continue Form" : "Start Form"}
+                      </Link>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      asChild
+                      className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
+                    >
+                      <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open in New Tab
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Form Preview Info */}
+                <div className="mt-8 pt-6 border-t">
+                  <h4 className="font-semibold mb-3">Form Features:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Auto-Save</p>
+                        <p className="text-xs text-muted-foreground">Progress saved automatically</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Pre-populated Data</p>
+                        <p className="text-xs text-muted-foreground">Home info loaded automatically</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">23 Sections</p>
+                        <p className="text-xs text-muted-foreground">Comprehensive compliance review</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Mobile Optimized</p>
+                        <p className="text-xs text-muted-foreground">Works on tablets and phones</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* History Tab */}

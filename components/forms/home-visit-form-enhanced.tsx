@@ -681,13 +681,13 @@ const EnhancedHomeVisitForm = ({
     <div className="min-h-screen bg-gray-50 p-2">
       {/* Optimized for iPad 11-inch (834x1194px) */}
       <div className="max-w-full mx-auto">
-        {/* Compact Header */}
-        <Card className="mb-2 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white">
-          <CardHeader className="py-2 px-3">
+        {/* Dark Gradient Header - FORM STYLE */}
+        <Card className="mb-2 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
+          <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
-                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
+                <CardTitle className="text-xl font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
+                <p className="text-sm text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
               </div>
               <div className="text-right">
                 <Badge className="bg-white text-refuge-purple text-xs">
