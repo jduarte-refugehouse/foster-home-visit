@@ -214,17 +214,20 @@ export function CreateAppointmentDialog({
       const startDateTime = new Date(year, month - 1, day, startHours, startMinutes, 0, 0)
       const endDateTime = new Date(year, month - 1, day, endHours, endMinutes, 0, 0)
 
-      // Convert to ISO string - this will convert to UTC
-      // But we need to preserve the local time, so we'll send the timezone offset
-      // Actually, the better approach is to send the datetime as if it were in UTC
-      // but store it as-is in the database (which doesn't have timezone info)
-      // The calendar will display it correctly because it uses the Date object directly
+      // Format as ISO string but WITHOUT timezone (remove 'Z')
+      // SQL Server DATETIME2 has no timezone, so we store as local time string
+      // Format: YYYY-MM-DDTHH:mm:ss (no Z, no timezone offset)
+      const formatLocalISO = (date: Date) => {
+        const pad = (n: number) => n.toString().padStart(2, '0')
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+      }
+
       const appointmentData = {
         title: formData.title,
         description: formData.description,
         appointmentType: formData.appointmentType,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString(),
+        startDateTime: formatLocalISO(startDateTime),
+        endDateTime: formatLocalISO(endDateTime),
         homeXref: formData.homeXref ? Number.parseInt(formData.homeXref) : null,
         homeName: formData.homeName,
         locationAddress: formData.locationAddress,
