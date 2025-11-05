@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 import { checkPermission } from "@/lib/permissions-middleware"
 import { CURRENT_MICROSERVICE } from "@/lib/user-management"
@@ -15,21 +15,30 @@ export async function PATCH(
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items PATCH:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in navigation-items PATCH")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)
     try {
-      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      const permissionCheck = await checkPermission(["system_admin", "view_diagnostics"], CURRENT_MICROSERVICE, request)
       if (!permissionCheck.authorized) {
+        console.log(`⚠️ [API] Permission check failed: ${permissionCheck.reason}`)
         return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
       }
     } catch (permError) {
@@ -140,21 +149,30 @@ export async function DELETE(
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items DELETE:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in navigation-items DELETE")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)
     try {
-      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      const permissionCheck = await checkPermission(["system_admin", "view_diagnostics"], CURRENT_MICROSERVICE, request)
       if (!permissionCheck.authorized) {
+        console.log(`⚠️ [API] Permission check failed: ${permissionCheck.reason}`)
         return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
       }
     } catch (permError) {

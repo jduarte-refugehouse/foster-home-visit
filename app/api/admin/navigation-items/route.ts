@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)
     try {
-      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      const permissionCheck = await checkPermission(["system_admin", "view_diagnostics"], CURRENT_MICROSERVICE, request)
       if (!permissionCheck.authorized) {
+        console.log(`⚠️ [API] Permission check failed: ${permissionCheck.reason}`)
         return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
       }
     } catch (permError) {
@@ -151,21 +152,30 @@ export async function POST(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items POST:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in navigation-items POST")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)
     try {
-      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      const permissionCheck = await checkPermission(["system_admin", "view_diagnostics"], CURRENT_MICROSERVICE, request)
       if (!permissionCheck.authorized) {
+        console.log(`⚠️ [API] Permission check failed: ${permissionCheck.reason}`)
         return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
       }
     } catch (permError) {
