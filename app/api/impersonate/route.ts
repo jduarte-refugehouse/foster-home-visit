@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 import { getUserByClerkId } from "@/lib/user-management"
-import { checkPermission } from "@/lib/permissions-middleware"
 
 export const runtime = "nodejs"
 
@@ -18,19 +17,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if the current user has admin permissions
-    const permissionCheck = await checkPermission("system_config", "home-visits")
-    if (!permissionCheck.authorized) {
+    // Get the admin user (use real user, not effective user for permission check)
+    const adminUser = await getUserByClerkId(clerkUserId)
+    if (!adminUser) {
+      return NextResponse.json({ error: "Admin user not found" }, { status: 404 })
+    }
+
+    // Check if the current user has admin permissions (use real user, not effective)
+    // Import hasPermission directly to bypass effective user check
+    const { hasPermission } = await import("@/lib/user-management")
+    const hasSystemConfig = await hasPermission(adminUser.id, "system_config", "home-visits")
+    
+    // Also check if user is system admin
+    if (!hasSystemConfig && adminUser.core_role !== "system_admin") {
       return NextResponse.json(
         { error: "Insufficient permissions. Only administrators can impersonate users." },
         { status: 403 }
       )
-    }
-
-    // Get the admin user
-    const adminUser = await getUserByClerkId(clerkUserId)
-    if (!adminUser) {
-      return NextResponse.json({ error: "Admin user not found" }, { status: 404 })
     }
 
     // Get the target user ID from request body
