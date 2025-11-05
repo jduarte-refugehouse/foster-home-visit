@@ -19,10 +19,25 @@ export function AppHeader() {
   const pathSegments = pathname.split("/").filter(Boolean)
   const breadcrumbs = pathSegments.map((segment, index) => {
     const href = "/" + pathSegments.slice(0, index + 1).join("/")
-    const label = segment
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ")
+    
+    // Special handling for GUIDs and dynamic routes
+    let label = segment
+    
+    // If this looks like a GUID (long hex string), replace with generic label
+    if (segment.length > 30 && /^[A-F0-9-]+$/i.test(segment)) {
+      // Check the parent segment to determine what this ID represents
+      if (index > 0 && pathSegments[index - 1] === "appointment") {
+        label = segment.substring(0, 8) + "..." // Show first 8 chars of ID
+      } else {
+        label = "Details"
+      }
+    } else {
+      label = segment
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
+    }
+    
     return { href, label }
   })
 
@@ -37,12 +52,20 @@ export function AppHeader() {
       "homes-list": "Homes List",
       "homes-map": "Homes Map",
       "visits-calendar": "Visits Calendar",
+      "visits-list": "Visits List",
       reports: "Reports",
       admin: "Admin",
       "system-admin": "System Admin",
       diagnostics: "Diagnostics",
       users: "User Management",
       invitations: "Invitations",
+      "visit-form": "Visit Form",
+      "visit-forms": "Visit Forms",
+    }
+
+    // Special handling for dynamic routes (appointment/[id], etc.)
+    if (segments[0] === "appointment" && segments.length === 2) {
+      return "Appointment Details"
     }
 
     return (
