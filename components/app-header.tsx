@@ -91,7 +91,6 @@ export function AppHeader() {
   const pageTitle = generatePageTitle(pathname)
 
   // Hide header for appointment detail pages - they have their own custom header
-  const isAppointmentDetail = pathname.startsWith("/appointment/") && pathname.split("/").length === 3
   if (isAppointmentDetail) {
     return null
   }
