@@ -23,6 +23,8 @@ import {
   MessageSquare,
   Paperclip
 } from "lucide-react"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
@@ -339,28 +341,34 @@ export default function AppointmentDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ROW 1: Navigation + Title + Actions - Single Row */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      {/* Single Unified Header - Replaces AppHeader */}
+      <header className="flex h-16 shrink-0 items-center gap-2 bg-white border-b border-slate-200 px-4">
+        {/* Left: Sidebar Trigger + Navigation */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
           <Link 
             href="/visits-calendar" 
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Appointments</span>
           </Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{appointment.home_name || appointment.title}</h1>
-          </div>
+          <Separator orientation="vertical" className="mx-2 h-4" />
+          <h1 className="text-base font-semibold truncate text-foreground">
+            {appointment.home_name || appointment.title}
+          </h1>
         </div>
+        
+        {/* Right: Action Buttons */}
         <div className="flex items-center gap-2">
           {appointment.status === "scheduled" && (
             <Button 
               size="sm"
               onClick={handleStartVisit}
-              className="h-8 px-3 bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+              className="h-8 px-3 text-sm font-medium bg-refuge-purple hover:bg-refuge-purple-dark text-white"
             >
-              <Play className="h-4 w-4 mr-1" />
+              <Play className="h-4 w-4 mr-1.5" />
               Start Visit
             </Button>
           )}
@@ -368,13 +376,13 @@ export default function AppointmentDetailPage() {
             variant="outline" 
             size="sm"
             onClick={handlePopOut}
-            className="h-8 px-3"
+            className="h-8 px-3 text-sm font-medium"
           >
-            <ExternalLink className="h-4 w-4 mr-1" />
+            <ExternalLink className="h-4 w-4 mr-1.5" />
             Pop Out
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* ROW 2: Status Badges */}
       <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2">

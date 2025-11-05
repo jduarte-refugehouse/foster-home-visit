@@ -90,6 +90,12 @@ export function AppHeader() {
 
   const pageTitle = generatePageTitle(pathname)
 
+  // Hide header for appointment detail pages - they have their own custom header
+  const isAppointmentDetail = pathname.startsWith("/appointment/") && pathname.split("/").length === 3
+  if (isAppointmentDetail) {
+    return null
+  }
+
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
       <div className="flex items-center gap-2 px-4">
