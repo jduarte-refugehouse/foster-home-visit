@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth, clerkClient } from "@clerk/nextjs/server"
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
 import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
 
 export const dynamic = "force-dynamic"
@@ -8,20 +8,27 @@ export async function GET(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      console.log("🔍 [API] Auth result in permissions GET:", { 
-        hasResult: !!authResult, 
-        userId: authResult?.userId,
-        keys: authResult ? Object.keys(authResult) : []
-      })
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        console.log("🔍 [API] Auth result in permissions GET:", { 
+          hasResult: !!authResult, 
+          userId: authResult?.userId,
+          keys: authResult ? Object.keys(authResult) : []
+        })
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in permissions GET:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      console.log("⚠️ [API] No clerkUserId found in permissions GET")
+      console.error("❌ [API] No clerkUserId found in permissions GET")
       return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 

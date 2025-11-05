@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 import { getUserByClerkId } from "@/lib/user-management"
 
@@ -13,15 +13,23 @@ export async function POST(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in impersonate POST:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in impersonate POST")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
     // Get the admin user (use real user, not effective user for permission check)
@@ -129,15 +137,23 @@ export async function DELETE(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in impersonate DELETE:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in impersonate DELETE")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
     // Verify the user is actually impersonating (check if they're the admin who started it)
@@ -175,20 +191,27 @@ export async function GET(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      console.log("🔍 [API] Auth result in impersonate GET:", { 
-        hasResult: !!authResult, 
-        userId: authResult?.userId,
-        keys: authResult ? Object.keys(authResult) : []
-      })
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        console.log("🔍 [API] Auth result in impersonate GET:", { 
+          hasResult: !!authResult, 
+          userId: authResult?.userId,
+          keys: authResult ? Object.keys(authResult) : []
+        })
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in impersonate GET:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      console.log("⚠️ [API] No clerkUserId found in impersonate GET")
+      console.error("❌ [API] No clerkUserId found in impersonate GET")
       return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 

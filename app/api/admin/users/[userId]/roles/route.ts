@@ -1,21 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@/lib/user-management"
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in user roles PUT:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in user roles PUT")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
     // Get the actual user performing the action

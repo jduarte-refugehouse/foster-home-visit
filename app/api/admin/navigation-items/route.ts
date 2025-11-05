@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 import { checkPermission } from "@/lib/permissions-middleware"
 import { CURRENT_MICROSERVICE } from "@/lib/user-management"
@@ -12,15 +12,23 @@ export async function GET(request: NextRequest) {
   try {
     let clerkUserId
     try {
-      const authResult = await auth()
-      clerkUserId = authResult?.userId
+      // Try currentUser first (more reliable)
+      const user = await currentUser()
+      if (user?.id) {
+        clerkUserId = user.id
+      } else {
+        // Fallback to auth()
+        const authResult = await auth()
+        clerkUserId = authResult?.userId
+      }
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items GET:", authError)
       return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.error("❌ [API] No clerkUserId found in navigation-items GET")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
     // Check permissions
