@@ -759,40 +759,39 @@ const EnhancedHomeVisitForm = ({
         </Select>
       </div>
 
-        {/* Form Content - Reduced padding */}
-        <div className="p-2">
-          {renderSectionContent(sections[currentSection].id)}
-        </div>
+      {/* Form Content - Reduced padding */}
+      <div className="p-2">
+        {renderSectionContent(sections[currentSection].id)}
+      </div>
 
-        {/* Navigation - Compact buttons - Fixed at bottom */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-2 flex gap-2 shadow-lg">
-          <Button
-            onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-            disabled={currentSection === 0}
-            variant="outline"
+      {/* Navigation - Compact buttons - Fixed at bottom */}
+      <div className="sticky bottom-0 bg-white border-t border-slate-200 p-2 flex gap-2 shadow-lg">
+        <Button
+          onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
+          disabled={currentSection === 0}
+          variant="outline"
+          size="default"
+          className="flex-1 h-12"
+        >
+          Previous
+        </Button>
+        {currentSection === sections.length - 1 ? (
+          <Button 
             size="default"
-            className="flex-1 h-12"
+            className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+            onClick={() => onSubmit?.(formData)}
           >
-            Previous
+            Submit
           </Button>
-          {currentSection === sections.length - 1 ? (
-            <Button 
-              size="default"
-              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
-              onClick={() => onSubmit?.(formData)}
-            >
-              Submit
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
-              size="default"
-              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
-            >
-              Next
-            </Button>
-          )}
-        </div>
+        ) : (
+          <Button
+            onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+            size="default"
+            className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+          >
+            Next
+          </Button>
+        )}
       </div>
     </div>
   )
