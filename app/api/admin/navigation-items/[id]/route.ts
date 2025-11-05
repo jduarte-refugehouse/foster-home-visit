@@ -13,16 +13,28 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in navigation-items PATCH:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Check permissions
-    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
-    if (!permissionCheck.authorized) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    try {
+      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      if (!permissionCheck.authorized) {
+        return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
+      }
+    } catch (permError) {
+      console.error("❌ [API] Permission check error:", permError)
+      return NextResponse.json({ error: "Permission check failed", details: permError instanceof Error ? permError.message : "Unknown error" }, { status: 500 })
     }
 
     const body = await request.json()
@@ -126,16 +138,28 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in navigation-items DELETE:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Check permissions
-    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
-    if (!permissionCheck.authorized) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    try {
+      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      if (!permissionCheck.authorized) {
+        return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
+      }
+    } catch (permError) {
+      console.error("❌ [API] Permission check error:", permError)
+      return NextResponse.json({ error: "Permission check failed", details: permError instanceof Error ? permError.message : "Unknown error" }, { status: 500 })
     }
 
     // Soft delete by setting is_active = 0

@@ -10,16 +10,28 @@ export const runtime = "nodejs"
 // GET - Fetch all navigation items for the microservice
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in navigation-items GET:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Check permissions
-    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
-    if (!permissionCheck.authorized) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    try {
+      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      if (!permissionCheck.authorized) {
+        return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
+      }
+    } catch (permError) {
+      console.error("❌ [API] Permission check error:", permError)
+      return NextResponse.json({ error: "Permission check failed", details: permError instanceof Error ? permError.message : "Unknown error" }, { status: 500 })
     }
 
     // Get microservice ID
@@ -90,11 +102,18 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [API] Error fetching navigation items:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch navigation items",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 }
     )
@@ -104,16 +123,28 @@ export async function GET(request: NextRequest) {
 // POST - Create new navigation item
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in navigation-items POST:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Check permissions
-    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
-    if (!permissionCheck.authorized) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    try {
+      const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+      if (!permissionCheck.authorized) {
+        return NextResponse.json({ error: "Insufficient permissions", reason: permissionCheck.reason }, { status: 403 })
+      }
+    } catch (permError) {
+      console.error("❌ [API] Permission check error:", permError)
+      return NextResponse.json({ error: "Permission check failed", details: permError instanceof Error ? permError.message : "Unknown error" }, { status: 500 })
     }
 
     const body = await request.json()
