@@ -199,14 +199,16 @@ export function CreateAppointmentDialog({
         return
       }
 
-      // Create start and end datetime objects
-      const startDateTime = new Date(formData.date)
+      // Create start and end datetime objects in local timezone
+      // Parse the date string and time separately to avoid timezone issues
+      // IMPORTANT: Treat user input as local time, not UTC
+      const [year, month, day] = formData.date.split("-").map(Number)
       const [startHours, startMinutes] = formData.startTime.split(":").map(Number)
-      startDateTime.setHours(startHours, startMinutes, 0, 0)
-
-      const endDateTime = new Date(formData.date)
       const [endHours, endMinutes] = formData.endTime.split(":").map(Number)
-      endDateTime.setHours(endHours, endMinutes, 0, 0)
+      
+      // Create dates using Date constructor with components (avoids timezone conversion)
+      const startDateTime = new Date(year, month - 1, day, startHours, startMinutes, 0, 0)
+      const endDateTime = new Date(year, month - 1, day, endHours, endMinutes, 0, 0)
 
       const appointmentData = {
         title: formData.title,
