@@ -679,121 +679,85 @@ const EnhancedHomeVisitForm = ({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
-      <div className="max-w-full mx-auto">
-        {/* Top Navigation Bar - FORM STYLE with Dark Gradient Header */}
-        <Card className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-none shadow-md">
-          <CardHeader className="py-2 px-3">
-            <div className="flex items-center justify-between gap-4">
-              {/* Left: Back Button (if needed) */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.history.back()}
-                  className="text-white hover:bg-white/20 h-8 px-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-base font-bold truncate">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
-                    <Badge className="bg-white text-refuge-purple text-xs flex-shrink-0">
-                      {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-white/90 truncate">
-                    {formData.fosterHome.familyName || "Foster Home"} • Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter
-                  </p>
-                </div>
-              </div>
-              
-              {/* Right: Pop Out Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open(window.location.href, '_blank')}
-                className="text-white hover:bg-white/20 h-8 px-3 flex-shrink-0"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline text-xs">Pop Out</span>
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Tab-Style Section Navigation (Context Menu) */}
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-          <div className="px-3 py-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <CurrentSectionIcon className="w-4 h-4 text-refuge-purple" />
-                <span className="font-semibold text-sm">{sections[currentSection].title}</span>
-                <span className="text-xs text-gray-500">({currentSection + 1}/{sections.length})</span>
-                {sections[currentSection].quarterly && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Quarterly</Badge>
-                )}
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="w-32 bg-gray-200 rounded-full h-1.5">
-                <div
-                  className="bg-refuge-purple h-1.5 rounded-full transition-all"
-                  style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
-                />
-              </div>
-            </div>
-            
-            {/* Section Jumper Dropdown */}
-            <Select 
-              value={currentSection.toString()} 
-              onValueChange={(value) => setCurrentSection(parseInt(value))}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Jump to section..." />
-              </SelectTrigger>
-              <SelectContent>
-                {sections.map((section, idx) => (
-                  <SelectItem key={idx} value={idx.toString()} className="text-xs">
-                    <div className="flex items-center gap-2">
-                      <span>{section.title}</span>
-                      {section.quarterly && <Badge variant="secondary" className="text-[10px] py-0">Q</Badge>}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* ROW 1: Breadcrumbs + Title + Actions */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="h-8 px-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">{formData.fosterHome.familyName || "Foster Home"}</h1>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(window.location.href, '_blank')}
+            className="h-8 px-3"
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Pop Out
+          </Button>
+        </div>
+      </div>
 
-        {/* Status and Action Buttons Bar */}
-        <div className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between gap-3">
+      {/* ROW 2: Status Badges */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2">
+        <Badge variant="outline" className="text-xs">
+          {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
+        </Badge>
+        <Badge variant="outline" className="text-xs">
+          Draft Saved
+        </Badge>
+        <Badge className="text-xs bg-green-100 text-green-800">
+          Form Complete
+        </Badge>
+      </div>
+
+      {/* ROW 3: Tab Menu (Section Navigation) */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              Draft Saved
-            </Badge>
-            <span className="text-xs text-muted-foreground">Auto-saving...</span>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 px-3 text-xs"
-              onClick={() => onSave?.(formData)}
-            >
-              Save Draft
-            </Button>
-            {currentSection === sections.length - 1 && (
-              <Button 
-                size="sm" 
-                className="h-8 px-3 text-xs bg-refuge-purple hover:bg-refuge-purple-dark"
-                onClick={() => onSubmit?.(formData)}
-              >
-                Submit Form
-              </Button>
+            <CurrentSectionIcon className="w-4 h-4 text-refuge-purple" />
+            <span className="font-semibold text-sm">{sections[currentSection].title}</span>
+            <span className="text-xs text-gray-500">({currentSection + 1}/{sections.length})</span>
+            {sections[currentSection].quarterly && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Quarterly</Badge>
             )}
           </div>
+          <div className="w-32 bg-gray-200 rounded-full h-1.5">
+            <div
+              className="bg-refuge-purple h-1.5 rounded-full transition-all"
+              style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
+            />
+          </div>
         </div>
+        <Select 
+          value={currentSection.toString()} 
+          onValueChange={(value) => setCurrentSection(parseInt(value))}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Jump to section..." />
+          </SelectTrigger>
+          <SelectContent>
+            {sections.map((section, idx) => (
+              <SelectItem key={idx} value={idx.toString()} className="text-xs">
+                <div className="flex items-center gap-2">
+                  <span>{section.title}</span>
+                  {section.quarterly && <Badge variant="secondary" className="text-[10px] py-0">Q</Badge>}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
         {/* Form Content - Reduced padding */}
         <div className="p-2">
