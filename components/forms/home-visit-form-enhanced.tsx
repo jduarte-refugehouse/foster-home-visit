@@ -727,7 +727,7 @@ const EnhancedHomeVisitForm = ({
                 style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
               />
             </div>
-
+            
             {/* Section Jumper Dropdown */}
             <div className="mt-2">
               <Select 

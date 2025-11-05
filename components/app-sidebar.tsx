@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { SignOutButton } from "@clerk/nextjs"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Home,
   Calendar,
@@ -35,7 +36,11 @@ import {
   BookOpen,
   type LucideIcon,
   ChevronUp,
+  ChevronDown,
   LogOut,
+  MessageSquare,
+  History,
+  TestTube,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -54,6 +59,9 @@ const iconMap: Record<string, LucideIcon> = {
   Shield,
   Plus,
   BookOpen,
+  MessageSquare,
+  History,
+  TestTube,
 }
 
 interface NavigationItem {
@@ -107,6 +115,8 @@ export function AppSidebar() {
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
+  const [usersOpen, setUsersOpen] = useState(true)
+  const [systemOpen, setSystemOpen] = useState(true)
 
   // Load navigation items
   useEffect(() => {
@@ -240,6 +250,42 @@ export function AppSidebar() {
   const navigationGroups = navigationItems.filter((group) => group.title !== "Administration")
   const administrationGroup = navigationItems.find((group) => group.title === "Administration")
 
+  // Group Administration items into "Users" and "System" domains
+  const groupAdministrationItems = (items: NavigationItem[]) => {
+    const userItems: NavigationItem[] = []
+    const systemItems: NavigationItem[] = []
+
+    items.forEach((item) => {
+      // User-related items
+      if (
+        item.code === "user_invitations" ||
+        item.code === "user_management"
+      ) {
+        userItems.push(item)
+      }
+      // System-related items
+      else if (
+        item.code === "system_admin" ||
+        item.code === "diagnostics" ||
+        item.code === "feature_development" ||
+        item.code === "bulk_sms" ||
+        item.code === "test_logging" ||
+        item.code === "communication_history"
+      ) {
+        systemItems.push(item)
+      }
+      // Default to system if not categorized
+      else {
+        systemItems.push(item)
+      }
+    })
+
+    return {
+      users: userItems.sort((a, b) => a.order - b.order),
+      system: systemItems.sort((a, b) => a.order - b.order),
+    }
+  }
+
   return (
     <Sidebar className="border-r border-gray-200 flex flex-col">
       <SidebarHeader className="h-20 p-4 border-b bg-gradient-to-r from-refuge-light-purple/10 via-refuge-purple/5 to-refuge-magenta/10 flex items-center justify-center">
@@ -314,36 +360,101 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Administration Section - Anchored to Bottom */}
-      {administrationGroup && administrationGroup.items.length > 0 && (
-        <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Shield className="h-3 w-3" />
-              {administrationGroup.title}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {administrationGroup.items.map((item) => {
-                  const IconComponent = iconMap[item.icon] || Settings
-                  return (
-                    <SidebarMenuItem key={item.code}>
-                      <SidebarMenuButton asChild className="group">
-                        <Link
-                          href={item.url}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                        >
-                          <IconComponent className="h-5 w-5 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
-                          <span className="font-medium">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </div>
-      )}
+      {administrationGroup && administrationGroup.items.length > 0 && (() => {
+        const grouped = groupAdministrationItems(administrationGroup.items)
+
+        return (
+          <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Shield className="h-3 w-3" />
+                {administrationGroup.title}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="space-y-1">
+                  {/* Users Domain */}
+                  {grouped.users.length > 0 && (
+                    <Collapsible open={usersOpen} onOpenChange={setUsersOpen}>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>Users</span>
+                          </div>
+                          {usersOpen ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronUp className="h-4 w-4" />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenu className="space-y-1 mt-1 ml-4">
+                          {grouped.users.map((item) => {
+                            const IconComponent = iconMap[item.icon] || Settings
+                            return (
+                              <SidebarMenuItem key={item.code}>
+                                <SidebarMenuButton asChild className="group">
+                                  <Link
+                                    href={item.url}
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                                  >
+                                    <IconComponent className="h-4 w-4 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
+                                    <span className="text-sm font-medium">{item.title}</span>
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            )
+                          })}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {/* System Domain */}
+                  {grouped.system.length > 0 && (
+                    <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Settings className="h-4 w-4" />
+                            <span>System</span>
+                          </div>
+                          {systemOpen ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronUp className="h-4 w-4" />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenu className="space-y-1 mt-1 ml-4">
+                          {grouped.system.map((item) => {
+                            const IconComponent = iconMap[item.icon] || Settings
+                            return (
+                              <SidebarMenuItem key={item.code}>
+                                <SidebarMenuButton asChild className="group">
+                                  <Link
+                                    href={item.url}
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                                  >
+                                    <IconComponent className="h-4 w-4 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
+                                    <span className="text-sm font-medium">{item.title}</span>
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            )
+                          })}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </div>
+        )
+      })()}
 
       <SidebarFooter className="p-4 border-t bg-gradient-to-r from-gray-50 to-refuge-light-purple/10">
         <SidebarMenu>
