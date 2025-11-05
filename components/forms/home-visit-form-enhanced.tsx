@@ -1390,60 +1390,63 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                   <p className="text-sm font-medium leading-snug">{item.requirement}</p>
                 </div>
 
-                {/* Large Touch-Friendly Status Buttons */}
-                <div className="grid grid-cols-3 gap-2">
+                {/* Compact Status Buttons and Notes - Side by Side */}
+                <div className="flex gap-2">
+                  {/* Buttons - 1/2 width total (1/6 each) */}
+                  <div className="flex gap-1 w-1/2">
                     <Button
-                    size="lg"
+                      size="sm"
                       variant={item.status === "compliant" ? "default" : "outline"}
-                    className={`h-12 ${
+                      className={`h-6 flex-1 ${
                         item.status === "compliant"
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "hover:bg-green-50"
-                    }`}
+                          ? "bg-green-600 hover:bg-green-700 text-white"
+                          : "hover:bg-green-50"
+                      }`}
                       onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
                     >
-                    <CheckCircle className="h-5 w-5 mr-1" />
-                    <span className="text-sm font-semibold">Compliant</span>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      <span className="text-xs font-semibold">Compliant</span>
                     </Button>
                     <Button
-                    size="lg"
+                      size="sm"
                       variant={item.status === "non-compliant" ? "default" : "outline"}
-                    className={`h-12 ${
+                      className={`h-6 flex-1 ${
                         item.status === "non-compliant"
-                        ? "bg-red-600 hover:bg-red-700 text-white"
-                        : "hover:bg-red-50"
-                    }`}
+                          ? "bg-red-600 hover:bg-red-700 text-white"
+                          : "hover:bg-red-50"
+                      }`}
                       onClick={() =>
                         onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
                       }
                     >
-                    <AlertTriangle className="h-5 w-5 mr-1" />
-                    <span className="text-sm font-semibold">Non-Compliant</span>
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      <span className="text-xs font-semibold">Non-Compliant</span>
                     </Button>
                     <Button
-                    size="lg"
+                      size="sm"
                       variant={item.status === "na" ? "default" : "outline"}
-                    className={`h-12 ${
-                      item.status === "na"
-                        ? "bg-slate-600 hover:bg-slate-700 text-white"
-                        : "hover:bg-slate-50"
-                    }`}
+                      className={`h-6 flex-1 ${
+                        item.status === "na"
+                          ? "bg-slate-600 hover:bg-slate-700 text-white"
+                          : "hover:bg-slate-50"
+                      }`}
                       onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
                     >
-                    <span className="text-sm font-semibold">N/A</span>
+                      <span className="text-xs font-semibold">N/A</span>
                     </Button>
                   </div>
 
-                {/* Notes Field - Always Reserve Space to Prevent Layout Shift */}
-                <div className={`transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+                  {/* Notes Field - 1/2 width, always reserve space */}
+                  <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
                     <Textarea
-                    placeholder={item.status ? "Add notes if needed..." : ""}
+                      placeholder={item.status ? "Add notes if needed..." : ""}
                       value={item.notes}
                       onChange={(e) => onChange(section, index, "notes", e.target.value)}
-                    className="text-sm min-h-[60px]"
-                      rows={2}
-                    disabled={!item.status}
+                      className="text-sm h-6 resize-none"
+                      rows={1}
+                      disabled={!item.status}
                     />
+                  </div>
                 </div>
               </div>
             </CardContent>
