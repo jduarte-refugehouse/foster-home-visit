@@ -1440,12 +1440,13 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                   <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
                     <Textarea
                       placeholder={item.status === "non-compliant" ? "Notes required..." : item.status ? "Add notes if needed..." : ""}
-                      value={item.notes}
+                      value={item.notes || ""}
                       onChange={(e) => onChange(section, index, "notes", e.target.value)}
                       className={`text-sm min-h-[24px] h-6 resize-none ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
                       rows={1}
                       disabled={!item.status}
                       required={item.status === "non-compliant"}
+                      aria-required={item.status === "non-compliant"}
                     />
                   </div>
                 </div>
@@ -1566,12 +1567,13 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
                       <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
                         <Textarea
                           placeholder={item.status === "non-compliant" ? "Notes required..." : item.status ? "Add notes if needed..." : ""}
-                          value={item.notes}
+                          value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
                           className={`text-sm min-h-[24px] h-6 resize-none ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
                           rows={1}
                           disabled={!item.status}
                           required={item.status === "non-compliant"}
+                          aria-required={item.status === "non-compliant"}
                         />
                       </div>
                     </div>
