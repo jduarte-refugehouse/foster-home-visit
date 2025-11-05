@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, UserPlus, Settings } from "lucide-react"
+import { Search, UserPlus, Settings, UserCheck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface User {
@@ -99,6 +99,44 @@ export default function UsersPage() {
     }
   }
 
+  const handleImpersonate = async (userId: string, userName: string) => {
+    if (!confirm(`Impersonate ${userName}? You will see the application from their perspective.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch("/api/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Impersonation Started",
+          description: `Now viewing as ${userName}. Refresh to see their view.`,
+        })
+        // Reload page after a short delay to show the toast
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      } else {
+        const data = await response.json()
+        toast({
+          title: "Error",
+          description: data.error || "Failed to start impersonation",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to start impersonation",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -185,6 +223,16 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleImpersonate(user.id, `${user.first_name} ${user.last_name}`)}
+                      className="text-refuge-purple hover:bg-refuge-purple/10 hover:border-refuge-purple/50"
+                      title="View application as this user"
+                    >
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      Impersonate
+                    </Button>
                     <Button variant="outline" size="sm">
                       <Settings className="h-4 w-4" />
                     </Button>

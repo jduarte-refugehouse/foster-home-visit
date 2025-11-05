@@ -13,10 +13,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get the app user ID from clerk_user_id
+    // Check for impersonation first
+    const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
+    
+    // Get the app user ID (impersonated if active, otherwise real user)
     const appUser = await query<{ id: string; email: string; first_name: string; last_name: string }>(
-      `SELECT id, email, first_name, last_name FROM app_users WHERE clerk_user_id = @param0`,
-      [clerkUserId]
+      impersonatedUserId
+        ? `SELECT id, email, first_name, last_name FROM app_users WHERE id = @param0`
+        : `SELECT id, email, first_name, last_name FROM app_users WHERE clerk_user_id = @param0`,
+      [impersonatedUserId || clerkUserId]
     )
 
     if (appUser.length === 0) {

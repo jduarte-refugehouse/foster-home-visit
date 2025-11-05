@@ -89,8 +89,9 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
   if (!user) return null
 
   try {
-    const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [user.id])
-    return result[0] || null
+    // Use effective user (impersonated if active, otherwise real user)
+    const { getEffectiveUser } = await import("./impersonation")
+    return await getEffectiveUser(user.id)
   } catch (error) {
     console.error("Error fetching app user:", error)
     return null

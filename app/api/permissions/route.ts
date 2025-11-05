@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { getEffectiveUser } from "@/lib/impersonation"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { userId: clerkUserId } = auth()
 
@@ -12,17 +13,28 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Fetch the full user object from Clerk
-    const clerkUser = await clerkClient.users.getUser(clerkUserId)
-    if (!clerkUser) {
-      return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+    // Check for impersonation first
+    const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
+    
+    let appUser
+    
+    if (impersonatedUserId) {
+      // Use impersonated user directly
+      const { query } = await import("@/lib/db")
+      const result = await query("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
+      appUser = result[0] || null
+    } else {
+      // Fetch the full user object from Clerk and sync
+      const clerkUser = await clerkClient.users.getUser(clerkUserId)
+      if (!clerkUser) {
+        return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+      }
+      // This function syncs the Clerk user with your local app_users table
+      appUser = await createOrUpdateAppUser(clerkUser)
     }
 
-    // This function syncs the Clerk user with your local app_users table
-    const appUser = await createOrUpdateAppUser(clerkUser)
-
     if (!appUser) {
-      return NextResponse.json({ error: "App user not found or could not be created." }, { status: 404 })
+      return NextResponse.json({ error: "App user not found." }, { status: 404 })
     }
 
     // Fetch the user's roles and permissions from your database

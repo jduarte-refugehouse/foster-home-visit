@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
+import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
 
 export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string) {
@@ -9,7 +10,8 @@ export async function checkPermission(requiredPermission: string | string[], mic
     return { authorized: false, user: null, reason: "Not authenticated" }
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  const user = await getEffectiveUser(userId)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -49,7 +51,8 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
     return { authorized: false, user: null, reason: "Not authenticated" }
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  const user = await getEffectiveUser(userId)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -92,7 +95,8 @@ export async function requireAuth() {
     throw new Error("Authentication required")
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  const user = await getEffectiveUser(userId)
 
   if (!user) {
     throw new Error("User not found in system")
