@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth, currentUser } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 import { checkPermission } from "@/lib/permissions-middleware"
 import { CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -13,25 +13,17 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    let clerkUserId
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    let clerkUserId: string
     try {
-      // Try currentUser first (more reliable)
-      const user = await currentUser()
-      if (user?.id) {
-        clerkUserId = user.id
-      } else {
-        // Fallback to auth()
-        const authResult = await auth()
-        clerkUserId = authResult?.userId
-      }
+      const auth = requireClerkAuth(request)
+      clerkUserId = auth.clerkUserId
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items PATCH:", authError)
-      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
-    }
-
-    if (!clerkUserId) {
-      console.error("❌ [API] No clerkUserId found in navigation-items PATCH")
-      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
+      return NextResponse.json({ 
+        error: "Authentication failed", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)
@@ -147,25 +139,17 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    let clerkUserId
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    let clerkUserId: string
     try {
-      // Try currentUser first (more reliable)
-      const user = await currentUser()
-      if (user?.id) {
-        clerkUserId = user.id
-      } else {
-        // Fallback to auth()
-        const authResult = await auth()
-        clerkUserId = authResult?.userId
-      }
+      const auth = requireClerkAuth(request)
+      clerkUserId = auth.clerkUserId
     } catch (authError) {
       console.error("❌ [API] Auth error in navigation-items DELETE:", authError)
-      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
-    }
-
-    if (!clerkUserId) {
-      console.error("❌ [API] No clerkUserId found in navigation-items DELETE")
-      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
+      return NextResponse.json({ 
+        error: "Authentication failed", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     // Check permissions - use system_admin or view_diagnostics (system_config doesn't exist in DB)

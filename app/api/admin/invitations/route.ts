@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
+import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    try {
+      requireClerkAuth(request)
+    } catch (authError) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     // Get all invited users
@@ -34,11 +39,16 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    try {
+      requireClerkAuth(request)
+    } catch (authError) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     const { email, invitedBy } = await request.json()

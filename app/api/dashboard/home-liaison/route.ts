@@ -1,16 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
 import { getConnection, query } from "@/lib/db"
 import { format, addDays, startOfDay, endOfDay } from "date-fns"
+import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 
 export const runtime = "nodejs"
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
-
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // SAFE: Get Clerk user ID from headers (no middleware required)
+    let clerkUserId: string
+    try {
+      const auth = requireClerkAuth(request)
+      clerkUserId = auth.clerkUserId
+    } catch (authError) {
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        details: authError instanceof Error ? authError.message : "Missing authentication headers" 
+      }, { status: 401 })
     }
 
     // Check for impersonation first
