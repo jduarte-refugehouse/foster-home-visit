@@ -47,23 +47,33 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
                       </Badge>
                       <p className="text-sm font-medium">{item.requirement}</p>
                     </div>
-                    <div className="flex flex-col gap-2 min-w-[300px]">
-                      <div className="flex gap-2">
+                    {/* Compact Status Buttons and Notes - Side by Side */}
+                    <div className="flex gap-2 w-full">
+                      {/* Buttons - 1/2 width total (1/6 each) */}
+                      <div className="flex gap-1 w-1/2">
                         <Button
                           size="sm"
                           variant={item.status === "compliant" ? "default" : "outline"}
-                          className={item.status === "compliant" ? "bg-green-600 hover:bg-green-700" : ""}
+                          className={`h-6 flex-1 ${
+                            item.status === "compliant"
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "hover:bg-green-50"
+                          }`}
                           onClick={() =>
                             onChange("traumaInformedCare", index, "status", item.status === "compliant" ? "" : "compliant")
                           }
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Compliant
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          <span className="text-xs font-semibold">Compliant</span>
                         </Button>
                         <Button
                           size="sm"
                           variant={item.status === "non-compliant" ? "default" : "outline"}
-                          className={item.status === "non-compliant" ? "bg-red-600 hover:bg-red-700" : ""}
+                          className={`h-6 flex-1 ${
+                            item.status === "non-compliant"
+                              ? "bg-red-600 hover:bg-red-700 text-white"
+                              : "hover:bg-red-50"
+                          }`}
                           onClick={() =>
                             onChange(
                               "traumaInformedCare",
@@ -73,26 +83,35 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
                             )
                           }
                         >
-                          <AlertTriangle className="h-4 w-4 mr-1" />
-                          Non-Compliant
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          <span className="text-xs font-semibold">Non-Compliant</span>
                         </Button>
                         <Button
                           size="sm"
                           variant={item.status === "na" ? "default" : "outline"}
+                          className={`h-6 flex-1 ${
+                            item.status === "na"
+                              ? "bg-slate-600 hover:bg-slate-700 text-white"
+                              : "hover:bg-slate-50"
+                          }`}
                           onClick={() => onChange("traumaInformedCare", index, "status", item.status === "na" ? "" : "na")}
                         >
-                          N/A
+                          <span className="text-xs font-semibold">N/A</span>
                         </Button>
                       </div>
-                      {item.status && (
+
+                      {/* Notes Field - 1/2 width, required only for non-compliant */}
+                      <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
                         <Textarea
-                          placeholder="Notes (if needed)..."
+                          placeholder={item.status === "non-compliant" ? "Notes required..." : item.status ? "Add notes if needed..." : ""}
                           value={item.notes}
                           onChange={(e) => onChange("traumaInformedCare", index, "notes", e.target.value)}
-                          className="text-sm"
-                          rows={2}
+                          className={`text-sm min-h-[24px] h-6 resize-none ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
+                          rows={1}
+                          disabled={!item.status}
+                          required={item.status === "non-compliant"}
                         />
-                      )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

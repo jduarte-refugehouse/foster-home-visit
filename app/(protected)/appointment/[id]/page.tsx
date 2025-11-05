@@ -382,9 +382,46 @@ export default function AppointmentDetailPage() {
   }
 
   const handleSubmitForm = async (formData: any) => {
-    // This will be handled by the form component's existing submit logic
-    console.log("✅ Submitting form from appointment detail page")
-    await handleVisitFormCompleted()
+    console.log("✅ [APPT] Submitting form from appointment detail page")
+    try {
+      // 1. Save the form data first
+      await handleSaveForm(formData)
+
+      // 2. Send the complete report to case manager and CC to current user
+      console.log("📧 [APPT] Sending report...")
+      const reportResponse = await fetch("/api/visit-forms/send-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ appointmentId, formData }),
+      })
+
+      const reportResult = await reportResponse.json()
+
+      if (reportResponse.ok) {
+        toast({
+          title: "Report Sent",
+          description: `Report sent to case manager${reportResult.cc ? ` and CC'd to you` : ""}`,
+        })
+      } else {
+        toast({
+          title: "Error Sending Report",
+          description: reportResult.error || "Failed to send the report",
+          variant: "destructive",
+        })
+      }
+
+      // 3. Update visit form status to completed
+      await handleVisitFormCompleted()
+    } catch (error) {
+      console.error("❌ [APPT] Error during form submission:", error)
+      toast({
+        title: "Submission Error",
+        description: error instanceof Error ? error.message : "Failed to submit form",
+        variant: "destructive",
+      })
+    }
   }
 
   // Load form data when Visit Form tab is activated
