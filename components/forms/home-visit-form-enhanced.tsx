@@ -851,7 +851,7 @@ const VisitInfoSection = ({ formData, onChange }) => (
       <div>
         <Label htmlFor="visitNumber">Visit Number This Quarter *</Label>
         <Select
-          value={formData.visitInfo.visitNumberThisQuarter.toString()}
+          value={(formData.visitInfo.visitNumberThisQuarter || 1).toString()}
           onValueChange={(value) => onChange("visitInfo.visitNumberThisQuarter", parseInt(value))}
         >
           <SelectTrigger>
