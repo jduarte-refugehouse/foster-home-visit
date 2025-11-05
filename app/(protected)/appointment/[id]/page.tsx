@@ -27,6 +27,7 @@ import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
+import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 
 interface Appointment {
   appointment_id: string
@@ -61,6 +62,10 @@ export default function AppointmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
+  const [appointmentData, setAppointmentData] = useState(null)
+  const [prepopulationData, setPrepopulationData] = useState(null)
+  const [existingFormData, setExistingFormData] = useState(null)
+  const [formDataLoading, setFormDataLoading] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -162,6 +167,72 @@ export default function AppointmentDetailPage() {
   const handlePopOut = () => {
     window.open(`/appointment/${appointmentId}`, '_blank')
   }
+
+  const fetchFormData = async () => {
+    if (formDataLoading || appointmentData) return // Don't fetch if already loading or loaded
+    
+    try {
+      setFormDataLoading(true)
+      console.log("📋 [FORM] Fetching form data for appointment:", appointmentId)
+
+      // 1. Get appointment details (we already have this, but need it in the right format)
+      setAppointmentData({ appointment })
+
+      // 2. Check for existing visit form
+      const existingFormResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
+      if (existingFormResponse.ok) {
+        const existingFormResult = await existingFormResponse.json()
+        if (existingFormResult.visitForms && existingFormResult.visitForms.length > 0) {
+          setExistingFormData(existingFormResult.visitForms[0])
+        }
+      }
+
+      // 3. Get home GUID and prepopulation data
+      const homeXref = appointment?.home_xref
+      if (homeXref) {
+        const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
+        if (homeLookupResponse.ok) {
+          const homeLookupData = await homeLookupResponse.json()
+          const homeGuid = homeLookupData.guid
+          
+          if (homeGuid) {
+            const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
+            if (prepopResponse.ok) {
+              const prepopData = await prepopResponse.json()
+              setPrepopulationData(prepopData)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ [FORM] Error fetching form data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load form data",
+        variant: "destructive",
+      })
+    } finally {
+      setFormDataLoading(false)
+    }
+  }
+
+  const handleSaveForm = async (formData: any) => {
+    // This will be handled by the form component's existing save logic
+    console.log("💾 Saving form from appointment detail page")
+  }
+
+  const handleSubmitForm = async (formData: any) => {
+    // This will be handled by the form component's existing submit logic
+    console.log("✅ Submitting form from appointment detail page")
+    await handleVisitFormCompleted()
+  }
+
+  // Load form data when Visit Form tab is activated
+  useEffect(() => {
+    if (activeTab === "form" && appointment) {
+      fetchFormData()
+    }
+  }, [activeTab, appointment])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -519,84 +590,45 @@ export default function AppointmentDetailPage() {
 
         {/* Visit Form Tab */}
         <TabsContent value="form" className="mt-0">
-          <Card className="rounded-xl shadow-sm">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Home Visit Form
-                </CardTitle>
-                {getVisitFormStatusBadge()}
+          {formDataLoading ? (
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-refuge-purple mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading visit form...</p>
+              </CardContent>
+            </Card>
+          ) : appointmentData ? (
+            <div>
+              <div className="mb-4 flex justify-end">
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
+                >
+                  <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open in New Tab
+                  </Link>
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="text-center space-y-6">
-                <div className="max-w-2xl mx-auto">
-                  <p className="text-muted-foreground mb-4">
-                    {visitFormStatus 
-                      ? "Continue working on your visit form or view the completed form."
-                      : "Start filling out the visit form for this appointment."}
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button 
-                      asChild
-                      className="bg-refuge-purple hover:bg-refuge-purple-dark text-white shadow-sm hover:shadow-md transition-all duration-200"
-                    >
-                      <Link href={`/visit-form?appointmentId=${appointmentId}`}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        {visitFormStatus ? "Continue Form" : "Start Form"}
-                      </Link>
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      asChild
-                      className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
-                    >
-                      <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Open in New Tab
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Form Preview Info */}
-                <div className="mt-8 pt-6 border-t">
-                  <h4 className="font-semibold mb-3">Form Features:</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Auto-Save</p>
-                        <p className="text-xs text-muted-foreground">Progress saved automatically</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Pre-populated Data</p>
-                        <p className="text-xs text-muted-foreground">Home info loaded automatically</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">23 Sections</p>
-                        <p className="text-xs text-muted-foreground">Comprehensive compliance review</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Mobile Optimized</p>
-                        <p className="text-xs text-muted-foreground">Works on tablets and phones</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <EnhancedHomeVisitForm
+                appointmentId={appointmentId}
+                appointmentData={appointmentData}
+                prepopulationData={prepopulationData}
+                existingFormData={existingFormData}
+                onSave={handleSaveForm}
+                onSubmit={handleSubmitForm}
+              />
+            </div>
+          ) : (
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+                <p className="text-muted-foreground">Click to load the visit form</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* History Tab */}
