@@ -33,9 +33,9 @@ export function AppHeader() {
       }
     } else {
       label = segment
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ")
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
     }
     
     return { href, label }

@@ -2,10 +2,27 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Clock, MapPin, User, Calendar, FileText, AlertCircle, CheckCircle2, Edit } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  ArrowLeft, 
+  Clock, 
+  MapPin, 
+  User, 
+  Calendar, 
+  FileText, 
+  AlertCircle, 
+  CheckCircle2, 
+  Edit,
+  ExternalLink,
+  Play,
+  History,
+  MessageSquare,
+  Paperclip
+} from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
@@ -43,6 +60,7 @@ export default function AppointmentDetailPage() {
   const [visitFormStatus, setVisitFormStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("details")
 
   useEffect(() => {
     if (appointmentId) {
@@ -108,6 +126,41 @@ export default function AppointmentDetailPage() {
     } catch (error) {
       console.error("Error updating appointment status:", error)
     }
+  }
+
+  const handleStartVisit = async () => {
+    try {
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "in-progress",
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Visit Started",
+          description: "Visit status updated to in-progress",
+        })
+        fetchAppointmentDetails()
+        // Navigate to visit form
+        router.push(`/visit-form?appointmentId=${appointmentId}`)
+      }
+    } catch (error) {
+      console.error("Error starting visit:", error)
+      toast({
+        title: "Error",
+        description: "Failed to start visit",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handlePopOut = () => {
+    window.open(`/appointment/${appointmentId}`, '_blank')
   }
 
   const getStatusColor = (status: string) => {
@@ -214,13 +267,50 @@ export default function AppointmentDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      {/* Header with Back Button */}
+    <div className="container mx-auto p-6 max-w-full">
+      {/* Header with Back Button and Actions */}
       <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4 hover:bg-refuge-purple/10 hover:text-refuge-purple">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="ghost" onClick={() => router.back()} className="hover:bg-refuge-purple/10 hover:text-refuge-purple">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handlePopOut}
+              className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Pop Out
+            </Button>
+            {appointment.status === "scheduled" && (
+              <Button 
+                onClick={handleStartVisit}
+                className="bg-refuge-purple hover:bg-refuge-purple-dark text-white shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Visit
+              </Button>
+            )}
+            <CreateAppointmentDialog
+              editingAppointment={appointment}
+              onAppointmentCreated={() => {
+                fetchAppointmentDetails()
+                setEditDialogOpen(false)
+              }}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+            >
+              <Button variant="outline" className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            </CreateAppointmentDialog>
+          </div>
+        </div>
+
+        {/* Title Section */}
         <div className="flex items-start justify-between">
           <div>
             {appointment.home_name && (
@@ -239,26 +329,37 @@ export default function AppointmentDetailPage() {
               {getVisitFormStatusBadge()}
             </div>
           </div>
-          <div className="flex gap-2">
-            <CreateAppointmentDialog
-              editingAppointment={appointment}
-              onAppointmentCreated={() => {
-                fetchAppointmentDetails()
-                setEditDialogOpen(false)
-              }}
-              open={editDialogOpen}
-              onOpenChange={setEditDialogOpen}
-            >
-              <Button variant="outline" className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            </CreateAppointmentDialog>
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Tabbed Interface */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5 max-w-2xl mb-6">
+          <TabsTrigger value="details" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Details</span>
+          </TabsTrigger>
+          <TabsTrigger value="form" className="flex items-center gap-2">
+            <Edit className="h-4 w-4" />
+            <span className="hidden sm:inline">Visit Form</span>
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">History</span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Notes</span>
+          </TabsTrigger>
+          <TabsTrigger value="attachments" className="flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            <span className="hidden sm:inline">Files</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Details Tab */}
+        <TabsContent value="details" className="mt-0">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Date & Time */}
@@ -433,7 +534,108 @@ export default function AppointmentDetailPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+          </div>
+        </TabsContent>
+
+        {/* Visit Form Tab */}
+        <TabsContent value="form" className="mt-0">
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Home Visit Form
+                </CardTitle>
+                {getVisitFormStatusBadge()}
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  {visitFormStatus 
+                    ? "Continue working on your visit form or view the completed form."
+                    : "Start filling out the visit form for this appointment."}
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <VisitFormButton
+                    appointmentId={appointment.appointment_id}
+                    appointmentStatus={appointment.status}
+                    visitFormStatus={visitFormStatus || undefined}
+                    onVisitFormCompleted={handleVisitFormCompleted}
+                  />
+                  <Button 
+                    variant="outline"
+                    asChild
+                    className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
+                  >
+                    <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open in New Tab
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="mt-0">
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Visit History
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="text-center text-muted-foreground py-8">
+                <History className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                <p>Visit history and activity log will appear here.</p>
+                <p className="text-sm mt-2">Feature coming soon.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes" className="mt-0">
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Notes & Comments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="text-center text-muted-foreground py-8">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                <p>Internal notes and team comments will appear here.</p>
+                <p className="text-sm mt-2">Feature coming soon.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Attachments Tab */}
+        <TabsContent value="attachments" className="mt-0">
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                Attachments & Files
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="text-center text-muted-foreground py-8">
+                <Paperclip className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                <p>Documents, photos, and attachments will appear here.</p>
+                <p className="text-sm mt-2">Feature coming soon.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
