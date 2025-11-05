@@ -11,7 +11,14 @@ const IMPERSONATION_ADMIN_COOKIE_NAME = "impersonate_admin_id"
 // POST - Start impersonating a user
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in impersonate POST:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -120,7 +127,14 @@ export async function POST(request: NextRequest) {
 // DELETE - Stop impersonating
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in impersonate DELETE:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -159,7 +173,14 @@ export async function DELETE(request: NextRequest) {
 // GET - Get current impersonation status
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in impersonate GET:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

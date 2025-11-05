@@ -6,7 +6,14 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth()
+    let clerkUserId
+    try {
+      const authResult = await auth()
+      clerkUserId = authResult?.userId
+    } catch (authError) {
+      console.error("❌ [API] Auth error in permissions GET:", authError)
+      return NextResponse.json({ error: "Authentication failed", details: authError instanceof Error ? authError.message : "Unknown auth error" }, { status: 401 })
+    }
 
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -19,17 +26,32 @@ export async function GET(request: NextRequest) {
     
     if (impersonatedUserId) {
       // Use impersonated user directly
-      const { query } = await import("@/lib/db")
-      const result = await query("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
-      appUser = result[0] || null
+      try {
+        const { query } = await import("@/lib/db")
+        const result = await query("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
+        appUser = result[0] || null
+      } catch (dbError) {
+        console.error("❌ [API] Database error fetching impersonated user:", dbError)
+        // Fall back to real user if impersonation lookup fails
+        const clerkUser = await clerkClient.users.getUser(clerkUserId)
+        if (!clerkUser) {
+          return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+        }
+        appUser = await createOrUpdateAppUser(clerkUser)
+      }
     } else {
       // Fetch the full user object from Clerk and sync
-      const clerkUser = await clerkClient.users.getUser(clerkUserId)
-      if (!clerkUser) {
-        return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+      try {
+        const clerkUser = await clerkClient.users.getUser(clerkUserId)
+        if (!clerkUser) {
+          return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+        }
+        // This function syncs the Clerk user with your local app_users table
+        appUser = await createOrUpdateAppUser(clerkUser)
+      } catch (clerkError) {
+        console.error("❌ [API] Clerk error fetching user:", clerkError)
+        return NextResponse.json({ error: "Failed to fetch user from Clerk", details: clerkError instanceof Error ? clerkError.message : "Unknown error" }, { status: 500 })
       }
-      // This function syncs the Clerk user with your local app_users table
-      appUser = await createOrUpdateAppUser(clerkUser)
     }
 
     if (!appUser) {
@@ -37,7 +59,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch the user's roles and permissions from your database
-    const userProfile = await getUserProfile(appUser.id)
+    let userProfile
+    try {
+      userProfile = await getUserProfile(appUser.id)
+    } catch (profileError) {
+      console.error("❌ [API] Error fetching user profile:", profileError)
+      return NextResponse.json({ 
+        error: "Failed to fetch user profile", 
+        details: profileError instanceof Error ? profileError.message : "Unknown error" 
+      }, { status: 500 })
+    }
 
     const permissionsForMicroservice = userProfile.permissions.filter(
       (p: any) => p.microservice_code === CURRENT_MICROSERVICE,

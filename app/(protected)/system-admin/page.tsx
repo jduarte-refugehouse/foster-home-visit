@@ -7,7 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CheckCircle, XCircle, Users, Shield, Key, Database, Clock, Server } from "lucide-react"
+import { CheckCircle, XCircle, Users, Shield, Key, Database, Clock, Server, Menu, Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 
 interface SystemStatus {
   database: string
@@ -55,13 +61,32 @@ interface Permission {
   created_at: string
 }
 
+interface NavigationItem {
+  id: string
+  code: string
+  title: string
+  url: string
+  icon: string
+  permissionRequired: string | null
+  permissionId: string | null
+  category: string
+  orderIndex: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export default function SystemAdminPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
+  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingNavItem, setEditingNavItem] = useState<NavigationItem | null>(null)
+  const [isNavDialogOpen, setIsNavDialogOpen] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchAllData()
@@ -118,6 +143,18 @@ export default function SystemAdminPage() {
         const errorData = await permissionsResponse.json()
         console.error("❌ Failed to fetch permissions:", permissionsResponse.status)
         console.error("Permissions error details:", errorData)
+      }
+
+      // Fetch navigation items
+      const navItemsResponse = await fetch("/api/admin/navigation-items")
+      if (navItemsResponse.ok) {
+        const navItemsData = await navItemsResponse.json()
+        console.log("✅ Navigation items data:", navItemsData)
+        setNavigationItems(navItemsData.navigationItems || [])
+      } else {
+        const errorData = await navItemsResponse.json()
+        console.error("❌ Failed to fetch navigation items:", navItemsResponse.status)
+        console.error("Navigation items error details:", errorData)
       }
     } catch (err) {
       console.error("❌ Error fetching admin data:", err)
@@ -264,6 +301,7 @@ export default function SystemAdminPage() {
           <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
           <TabsTrigger value="roles">Roles ({roles.length})</TabsTrigger>
           <TabsTrigger value="permissions">Permissions ({permissions.length})</TabsTrigger>
+          <TabsTrigger value="navigation">Navigation ({navigationItems.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -370,7 +408,8 @@ export default function SystemAdminPage() {
             <CardHeader>
               <CardTitle>System Permissions</CardTitle>
               <CardDescription>
-                All permissions defined for the {systemStatus?.microserviceName || "Home Visits"} microservice
+                All permissions defined for the {systemStatus?.microserviceName || "Home Visits"} microservice.
+                Permissions can be assigned to navigation items to control menu visibility.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -384,17 +423,161 @@ export default function SystemAdminPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Used In Navigation</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {permissions.map((permission) => (
-                      <TableRow key={permission.id}>
-                        <TableCell className="font-mono text-sm">{permission.permission_code}</TableCell>
-                        <TableCell className="font-medium">{permission.permission_name}</TableCell>
+                    {permissions.map((permission) => {
+                      const navItemsUsingPermission = navigationItems.filter(
+                        (item) => item.permissionRequired === permission.permission_code
+                      )
+                      return (
+                        <TableRow key={permission.id}>
+                          <TableCell className="font-mono text-sm">{permission.permission_code}</TableCell>
+                          <TableCell className="font-medium">{permission.permission_name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{permission.category}</Badge>
+                          </TableCell>
+                          <TableCell>{permission.description}</TableCell>
+                          <TableCell>
+                            {navItemsUsingPermission.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {navItemsUsingPermission.map((item) => (
+                                  <Badge key={item.id} variant="secondary" className="text-xs">
+                                    {item.title}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">Not used</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="navigation">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Navigation Items</CardTitle>
+                  <CardDescription>
+                    Manage menu items for the {systemStatus?.microserviceName || "Home Visits"} microservice
+                  </CardDescription>
+                </div>
+                <Dialog open={isNavDialogOpen} onOpenChange={setIsNavDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setEditingNavItem(null)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Item
+                    </Button>
+                  </DialogTrigger>
+                  <NavigationItemDialog
+                    item={editingNavItem}
+                    permissions={permissions}
+                    onClose={() => {
+                      setIsNavDialogOpen(false)
+                      setEditingNavItem(null)
+                    }}
+                    onSave={() => {
+                      fetchAllData()
+                      setIsNavDialogOpen(false)
+                      setEditingNavItem(null)
+                    }}
+                  />
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {navigationItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No navigation items found</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead>Icon</TableHead>
+                      <TableHead>Permission</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {navigationItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.title}</TableCell>
+                        <TableCell className="font-mono text-sm">{item.url}</TableCell>
+                        <TableCell>{item.icon}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{permission.category}</Badge>
+                          {item.permissionRequired ? (
+                            <Badge variant="outline">{item.permissionRequired}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">No permission</span>
+                          )}
                         </TableCell>
-                        <TableCell>{permission.description}</TableCell>
+                        <TableCell>{item.category}</TableCell>
+                        <TableCell>{item.orderIndex}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.isActive ? "default" : "secondary"}>
+                            {item.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingNavItem(item)
+                                setIsNavDialogOpen(true)
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/admin/navigation-items/${item.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ isActive: !item.isActive }),
+                                  })
+                                  if (response.ok) {
+                                    toast({
+                                      title: "Success",
+                                      description: `Navigation item ${item.isActive ? "deactivated" : "activated"}`,
+                                    })
+                                    fetchAllData()
+                                  }
+                                } catch (error) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to update navigation item",
+                                    variant: "destructive",
+                                  })
+                                }
+                              }}
+                            >
+                              {item.isActive ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -405,5 +588,196 @@ export default function SystemAdminPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+// Navigation Item Dialog Component
+function NavigationItemDialog({
+  item,
+  permissions,
+  onClose,
+  onSave,
+}: {
+  item: NavigationItem | null
+  permissions: Permission[]
+  onClose: () => void
+  onSave: () => void
+}) {
+  const [formData, setFormData] = useState({
+    code: item?.code || "",
+    title: item?.title || "",
+    url: item?.url || "",
+    icon: item?.icon || "",
+    permissionRequired: item?.permissionRequired || "",
+    category: item?.category || "Navigation",
+    orderIndex: item?.orderIndex || 0,
+    isActive: item?.isActive ?? true,
+  })
+  const { toast } = useToast()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const url = item ? `/api/admin/navigation-items/${item.id}` : "/api/admin/navigation-items"
+      const method = item ? "PATCH" : "POST"
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: item ? "Navigation item updated" : "Navigation item created",
+        })
+        onSave()
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to save navigation item",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save navigation item",
+        variant: "destructive",
+      })
+    }
+  }
+
+  return (
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{item ? "Edit Navigation Item" : "Add Navigation Item"}</DialogTitle>
+        <DialogDescription>
+          {item ? "Update the navigation item details" : "Create a new navigation item for the menu"}
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="code">Code *</Label>
+            <Input
+              id="code"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              required
+              disabled={!!item}
+              placeholder="e.g., visits_list"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Unique identifier (lowercase, underscores)</p>
+          </div>
+          <div>
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+              placeholder="e.g., Visits List"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="url">URL *</Label>
+          <Input
+            id="url"
+            value={formData.url}
+            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+            required
+            placeholder="e.g., /visits-list"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="icon">Icon *</Label>
+            <Input
+              id="icon"
+              value={formData.icon}
+              onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+              required
+              placeholder="e.g., List"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Lucide icon name (PascalCase)</p>
+          </div>
+          <div>
+            <Label htmlFor="category">Category *</Label>
+            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Navigation">Navigation</SelectItem>
+                <SelectItem value="Administration">Administration</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="permissionRequired">Permission Required</Label>
+          <Select
+            value={formData.permissionRequired || ""}
+            onValueChange={(value) => setFormData({ ...formData, permissionRequired: value || null })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a permission (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No permission required</SelectItem>
+              {permissions.map((perm) => (
+                <SelectItem key={perm.id} value={perm.permission_code}>
+                  {perm.permission_name} ({perm.permission_code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Users need this permission to see this menu item
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="orderIndex">Order Index</Label>
+            <Input
+              id="orderIndex"
+              type="number"
+              value={formData.orderIndex}
+              onChange={(e) => setFormData({ ...formData, orderIndex: parseInt(e.target.value) || 0 })}
+              min="0"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Lower numbers appear first</p>
+          </div>
+          <div className="flex items-center space-x-2 pt-6">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              className="rounded"
+            />
+            <Label htmlFor="isActive" className="cursor-pointer">
+              Active (visible in menu)
+            </Label>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit">{item ? "Update" : "Create"}</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
   )
 }

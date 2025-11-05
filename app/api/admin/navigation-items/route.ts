@@ -1,0 +1,231 @@
+import { NextResponse, type NextRequest } from "next/server"
+import { auth } from "@clerk/nextjs/server"
+import { query } from "@/lib/db"
+import { checkPermission } from "@/lib/permissions-middleware"
+import { CURRENT_MICROSERVICE } from "@/lib/user-management"
+
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
+// GET - Fetch all navigation items for the microservice
+export async function GET(request: NextRequest) {
+  try {
+    const { userId: clerkUserId } = await auth()
+
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check permissions
+    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+    if (!permissionCheck.authorized) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    }
+
+    // Get microservice ID
+    const microservice = await query<{ id: string }>(
+      "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
+      [CURRENT_MICROSERVICE]
+    )
+
+    if (microservice.length === 0) {
+      return NextResponse.json({ error: "Microservice not found" }, { status: 404 })
+    }
+
+    const microserviceId = microservice[0].id
+
+    // Fetch navigation items with permission info
+    const navigationItems = await query<{
+      id: string
+      code: string
+      title: string
+      url: string
+      icon: string
+      permission_required: string | null
+      permission_code: string | null
+      category: string
+      order_index: number
+      is_active: number
+      created_at: string
+      updated_at: string
+    }>(
+      `
+      SELECT 
+        ni.id,
+        ni.code,
+        ni.title,
+        ni.url,
+        ni.icon,
+        ni.permission_required,
+        p.permission_code,
+        ni.category,
+        ni.order_index,
+        ni.is_active,
+        ni.created_at,
+        ni.updated_at
+      FROM navigation_items ni
+      LEFT JOIN permissions p ON ni.permission_required = p.id
+      WHERE ni.microservice_id = @param0
+      ORDER BY ni.category, ni.order_index
+    `,
+      [microserviceId]
+    )
+
+    return NextResponse.json({
+      success: true,
+      navigationItems: navigationItems.map((item) => ({
+        id: item.id,
+        code: item.code,
+        title: item.title,
+        url: item.url,
+        icon: item.icon,
+        permissionRequired: item.permission_code,
+        permissionId: item.permission_required,
+        category: item.category,
+        orderIndex: item.order_index,
+        isActive: item.is_active === 1,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      })),
+    })
+  } catch (error) {
+    console.error("❌ [API] Error fetching navigation items:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch navigation items",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Create new navigation item
+export async function POST(request: NextRequest) {
+  try {
+    const { userId: clerkUserId } = await auth()
+
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check permissions
+    const permissionCheck = await checkPermission("system_config", CURRENT_MICROSERVICE, request)
+    if (!permissionCheck.authorized) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { code, title, url, icon, permissionRequired, category, orderIndex } = body
+
+    if (!code || !title || !url || !icon || !category) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Get microservice ID
+    const microservice = await query<{ id: string }>(
+      "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
+      [CURRENT_MICROSERVICE]
+    )
+
+    if (microservice.length === 0) {
+      return NextResponse.json({ error: "Microservice not found" }, { status: 404 })
+    }
+
+    const microserviceId = microservice[0].id
+
+    // Get permission ID if permission code provided
+    let permissionId: string | null = null
+    if (permissionRequired) {
+      const permission = await query<{ id: string }>(
+        "SELECT id FROM permissions WHERE permission_code = @param0 AND microservice_id = @param1",
+        [permissionRequired, microserviceId]
+      )
+      if (permission.length > 0) {
+        permissionId = permission[0].id
+      }
+    }
+
+    // Check if code already exists
+    const existing = await query<{ id: string }>(
+      "SELECT id FROM navigation_items WHERE code = @param0 AND microservice_id = @param1",
+      [code, microserviceId]
+    )
+
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "Navigation item with this code already exists" }, { status: 400 })
+    }
+
+    // Insert new navigation item
+    const result = await query<{ id: string }>(
+      `
+      INSERT INTO navigation_items (
+        id,
+        microservice_id,
+        code,
+        title,
+        url,
+        icon,
+        permission_required,
+        category,
+        order_index,
+        is_active,
+        created_at,
+        updated_at
+      )
+      OUTPUT INSERTED.id
+      VALUES (
+        NEWID(),
+        @param0,
+        @param1,
+        @param2,
+        @param3,
+        @param4,
+        @param5,
+        @param6,
+        @param7,
+        1,
+        GETDATE(),
+        GETDATE()
+      )
+    `,
+      [
+        microserviceId,
+        code,
+        title,
+        url,
+        icon,
+        permissionId,
+        category,
+        orderIndex || 0,
+      ]
+    )
+
+    return NextResponse.json({
+      success: true,
+      navigationItem: {
+        id: result[0].id,
+        code,
+        title,
+        url,
+        icon,
+        permissionRequired,
+        category,
+        orderIndex: orderIndex || 0,
+        isActive: true,
+      },
+    })
+  } catch (error) {
+    console.error("❌ [API] Error creating navigation item:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to create navigation item",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
