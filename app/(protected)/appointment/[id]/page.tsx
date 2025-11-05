@@ -385,11 +385,116 @@ export default function AppointmentDetailPage() {
 
   const handleSubmitForm = async (formData: any) => {
     console.log("✅ [APPT] Submitting form from appointment detail page")
+    console.log("📋 [APPT] FormData structure:", {
+      hasComplianceReview: !!formData.complianceReview,
+      complianceReviewKeys: formData.complianceReview ? Object.keys(formData.complianceReview) : [],
+      hasSignatures: !!formData.signatures,
+      signatureKeys: formData.signatures ? Object.keys(formData.signatures) : [],
+      hasObservations: !!formData.observations,
+      hasFamilyInfo: !!formData.familyInfo,
+      allKeys: Object.keys(formData),
+    })
+    
     try {
       // 1. Save the form data first
       await handleSaveForm(formData)
 
-      // 2. Send the complete report to case manager and CC to current user
+      // 2. Build the complete report data structure (same as save payload)
+      // Helper to build compliance review (same logic as handleSaveForm)
+      const filterComplianceSection = (section: any) => {
+        if (!section) return null
+        if (!section.items || section.items.length === 0) return null
+        
+        const filledItems = section.items.filter((item: any) => 
+          item.status || item.notes
+        )
+        
+        if (filledItems.length === 0 && !section.combinedNotes) return null
+        
+        return {
+          items: filledItems,
+          combinedNotes: section.combinedNotes || ""
+        }
+      }
+
+      const filterSpecialSection = (section: any) => {
+        if (!section) return null
+        
+        const hasData = Object.values(section).some(value => {
+          if (typeof value === 'string') return value.trim() !== ''
+          if (typeof value === 'boolean') return value === true
+          if (Array.isArray(value)) return value.length > 0
+          if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0
+          return false
+        })
+        
+        return hasData ? section : null
+      }
+
+      // Build compliance review (same as handleSaveForm)
+      const complianceReview: any = {}
+      const sections = {
+        medication: filterComplianceSection(formData.medication),
+        inspections: filterSpecialSection(formData.inspections),
+        healthSafety: filterComplianceSection(formData.healthSafety),
+        childrensRights: filterComplianceSection(formData.childrensRights),
+        bedrooms: filterComplianceSection(formData.bedrooms),
+        education: filterComplianceSection(formData.education),
+        indoorSpace: filterComplianceSection(formData.indoorSpace),
+        documentation: filterComplianceSection(formData.documentation),
+        traumaInformedCare: filterSpecialSection(formData.traumaInformedCare),
+        outdoorSpace: filterComplianceSection(formData.outdoorSpace),
+        vehicles: filterSpecialSection(formData.vehicles),
+        swimming: filterSpecialSection(formData.swimming),
+        infants: filterComplianceSection(formData.infants),
+        qualityEnhancement: filterSpecialSection(formData.qualityEnhancement),
+      }
+
+      for (const [key, value] of Object.entries(sections)) {
+        if (value !== null) {
+          complianceReview[key] = value
+        }
+      }
+
+      // Build complete report data structure
+      const reportData = {
+        visitInfo: formData.visitInfo,
+        familyInfo: {
+          fosterHome: formData.fosterHome,
+          household: formData.household,
+        },
+        attendees: {
+          childrenPresent: formData.childrenPresent,
+        },
+        homeEnvironment: {
+          homeCondition: formData.homeCondition,
+          outdoorSpace: formData.outdoorSpaceCompliance || formData.outdoorSpace,
+        },
+        observations: {
+          observations: formData.observations,
+          followUpItems: formData.followUpItems,
+          correctiveActions: formData.correctiveActions,
+        },
+        recommendations: {
+          visitSummary: formData.visitSummary,
+        },
+        signatures: formData.signatures,
+        complianceReview: complianceReview,
+        childInterviews: {
+          placements: formData.placements,
+        },
+        parentInterviews: {
+          fosterParentInterview: formData.fosterParentInterview,
+        },
+      }
+
+      console.log("📤 [APPT] Report data structure:", {
+        hasComplianceReview: !!reportData.complianceReview,
+        complianceReviewKeys: reportData.complianceReview ? Object.keys(reportData.complianceReview) : [],
+        hasSignatures: !!reportData.signatures,
+      })
+
+      // 3. Send the complete report to case manager and CC to current user
       console.log("📧 [APPT] Sending report...")
       
       // Create headers with user identity for authentication
@@ -406,7 +511,7 @@ export default function AppointmentDetailPage() {
       const reportResponse = await fetch("/api/visit-forms/send-report", {
         method: "POST",
         headers,
-        body: JSON.stringify({ appointmentId, formData }),
+        body: JSON.stringify({ appointmentId, formData: reportData }),
       })
 
       const reportResult = await reportResponse.json()

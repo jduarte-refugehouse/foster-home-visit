@@ -41,6 +41,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Debug: Log the formData structure to see what we're receiving
+    console.log("📋 [API] FormData keys:", Object.keys(formData))
+    console.log("📋 [API] ComplianceReview keys:", formData.complianceReview ? Object.keys(formData.complianceReview) : "No complianceReview")
+    console.log("📋 [API] ComplianceReview sections:", formData.complianceReview ? Object.keys(formData.complianceReview).filter(k => formData.complianceReview[k] !== null) : [])
+    console.log("📋 [API] Signatures:", formData.signatures)
+    console.log("📋 [API] Observations:", formData.observations)
+    console.log("📋 [API] FamilyInfo:", formData.familyInfo)
+
     // Get current user's email for CC (use from auth if available, otherwise lookup)
     let ccEmail = currentUserEmail
     if (!ccEmail) {
@@ -175,33 +183,55 @@ function generateCompleteReportHTML(
   visitTime: string,
   familyName: string,
 ): string {
-  // Helper to format compliance sections
+  // Helper to format compliance sections - show all items, not just those with status
   const formatComplianceSection = (sectionData: any, sectionName: string) => {
-    if (!sectionData || !sectionData.items || sectionData.items.length === 0) return ""
+    if (!sectionData) return ""
+    
+    // Handle case where sectionData might be an object with items, or just items array
+    const items = sectionData.items || (Array.isArray(sectionData) ? sectionData : [])
+    
+    if (!items || items.length === 0) {
+      // Still show section if there are combined notes
+      if (sectionData.combinedNotes) {
+        return `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}</h3>
+            <p style="font-style: italic;">${sectionData.combinedNotes}</p>
+          </div>
+        `
+      }
+      return ""
+    }
 
-    const items = sectionData.items
-      .filter((item: any) => item.status) // Only show items with status
+    // Show all items, not just those with status (but prioritize items with status)
+    const itemsWithStatus = items.filter((item: any) => item.status)
+    const itemsWithoutStatus = items.filter((item: any) => !item.status && (item.notes || item.requirement))
+    
+    // Only show section if there are items with data or combined notes
+    if (itemsWithStatus.length === 0 && itemsWithoutStatus.length === 0 && !sectionData.combinedNotes) {
+      return ""
+    }
+
+    const itemsList = [...itemsWithStatus, ...itemsWithoutStatus]
       .map((item: any) => {
-        const statusBadge = {
+        const statusBadge = item.status ? {
           compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
           "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
           na: '<span style="color: #6b7280;">N/A</span>',
-        }[item.status] || item.status
-
+        }[item.status] || `<span>${item.status}</span>` : ""
+        
+        const statusText = statusBadge ? ` - ${statusBadge}` : ""
         const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
-        return `<li>${item.code || ""}: ${item.requirement || ""} - ${statusBadge}${notes}</li>`
+        const requirement = item.requirement || item.code || ""
+        return `<li>${item.code || ""}${requirement && item.code ? ": " : ""}${requirement}${statusText}${notes}</li>`
       })
       .join("")
-
-    if (!items) return ""
 
     return `
       <div style="margin-bottom: 20px;">
         <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}</h3>
-        <ul style="margin: 0; padding-left: 20px;">
-          ${items}
-        </ul>
-        ${sectionData.combinedNotes ? `<p style="margin-top: 10px; font-style: italic;">${sectionData.combinedNotes}</p>` : ""}
+        ${itemsList ? `<ul style="margin: 0; padding-left: 20px;">${itemsList}</ul>` : ""}
+        ${sectionData.combinedNotes ? `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>` : ""}
       </div>
     `
   }
@@ -420,23 +450,42 @@ function generateCompleteReportHTML(
       ` : ""}
 
       <!-- Compliance Review -->
-      ${formData.complianceReview ? `
+      ${formData.complianceReview && Object.keys(formData.complianceReview).length > 0 ? `
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
-        ${formatComplianceSection(formData.complianceReview.medication, "1. Medication")}
-        ${formatInspectionsSection(formData.complianceReview.inspections)}
-        ${formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety")}
-        ${formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being")}
-        ${formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings")}
-        ${formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills")}
-        ${formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space")}
-        ${formatComplianceSection(formData.complianceReview.documentation, "7. Documentation")}
-        ${formatTraumaInformedCare(formData.complianceReview.traumaInformedCare)}
-        ${formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space")}
-        ${formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles")}
-        ${formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas")}
-        ${formatComplianceSection(formData.complianceReview.infants, "11. Infants")}
-        ${formatQualityEnhancement(formData.complianceReview.qualityEnhancement)}
+        ${formData.complianceReview.medication ? formatComplianceSection(formData.complianceReview.medication, "1. Medication") : ""}
+        ${formData.complianceReview.inspections ? formatInspectionsSection(formData.complianceReview.inspections) : ""}
+        ${formData.complianceReview.healthSafety ? formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety") : ""}
+        ${formData.complianceReview.childrensRights ? formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being") : ""}
+        ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings") : ""}
+        ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills") : ""}
+        ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space") : ""}
+        ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation") : ""}
+        ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
+        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space") : ""}
+        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles") : ""}
+        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas") : ""}
+        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants") : ""}
+        ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""}
+      </div>
+      ` : formData.medication || formData.healthSafety || formData.childrensRights ? `
+      <!-- Compliance Review (from formData root) -->
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
+        ${formData.medication ? formatComplianceSection(formData.medication, "1. Medication") : ""}
+        ${formData.inspections ? formatInspectionsSection(formData.inspections) : ""}
+        ${formData.healthSafety ? formatComplianceSection(formData.healthSafety, "2. Health & Safety") : ""}
+        ${formData.childrensRights ? formatComplianceSection(formData.childrensRights, "3. Children's Rights & Well-Being") : ""}
+        ${formData.bedrooms ? formatComplianceSection(formData.bedrooms, "4. Bedrooms and Belongings") : ""}
+        ${formData.education ? formatComplianceSection(formData.education, "5. Education & Life Skills") : ""}
+        ${formData.indoorSpace ? formatComplianceSection(formData.indoorSpace, "6. Indoor Space") : ""}
+        ${formData.documentation ? formatComplianceSection(formData.documentation, "7. Documentation") : ""}
+        ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""}
+        ${formData.outdoorSpaceCompliance || formData.outdoorSpace ? formatComplianceSection(formData.outdoorSpaceCompliance || formData.outdoorSpace, "8. Outdoor Space") : ""}
+        ${formData.vehicles ? formatComplianceSection(formData.vehicles, "9. Vehicles") : ""}
+        ${formData.swimming ? formatComplianceSection(formData.swimming, "10. Swimming Areas") : ""}
+        ${formData.infants ? formatComplianceSection(formData.infants, "11. Infants") : ""}
+        ${formData.qualityEnhancement ? formatQualityEnhancement(formData.qualityEnhancement) : ""}
       </div>
       ` : ""}
 
@@ -515,11 +564,16 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Signatures</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          ${formData.signatures.visitor ? `<div><p style="margin: 5px 0;"><strong>Visitor Signature:</strong> ${formData.signatures.visitor}</p></div>` : ""}
-          ${formData.signatures.parent1 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 1:</strong> ${formData.signatures.parent1}</p></div>` : ""}
-          ${formData.signatures.parent2 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 2:</strong> ${formData.signatures.parent2}</p></div>` : ""}
-          ${formData.signatures.supervisor ? `<div><p style="margin: 5px 0;"><strong>Supervisor:</strong> ${formData.signatures.supervisor}</p></div>` : ""}
+          ${formData.signatures.visitor ? `<div><p style="margin: 5px 0;"><strong>Visitor Signature:</strong> ${typeof formData.signatures.visitor === 'string' && formData.signatures.visitor.length > 50 ? 'Signed (signature data present)' : formData.signatures.visitor}</p></div>` : ""}
+          ${formData.signatures.parent1 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 1:</strong> ${typeof formData.signatures.parent1 === 'string' && formData.signatures.parent1.length > 50 ? 'Signed (signature data present)' : formData.signatures.parent1}</p></div>` : ""}
+          ${formData.signatures.parent2 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 2:</strong> ${typeof formData.signatures.parent2 === 'string' && formData.signatures.parent2.length > 50 ? 'Signed (signature data present)' : formData.signatures.parent2}</p></div>` : ""}
+          ${formData.signatures.supervisor ? `<div><p style="margin: 5px 0;"><strong>Supervisor:</strong> ${typeof formData.signatures.supervisor === 'string' && formData.signatures.supervisor.length > 50 ? 'Signed (signature data present)' : formData.signatures.supervisor}</p></div>` : ""}
         </div>
+        ${Object.keys(formData.signatures).filter(k => !['visitor', 'parent1', 'parent2', 'supervisor'].includes(k)).length > 0 ? `
+          <div style="margin-top: 10px;">
+            <p style="font-size: 12px; color: #6b7280;">Additional signature fields present</p>
+          </div>
+        ` : ""}
       </div>
       ` : ""}
 
