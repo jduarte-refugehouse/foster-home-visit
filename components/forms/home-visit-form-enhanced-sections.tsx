@@ -583,9 +583,9 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
                       <div className="text-xs opacity-90">Age {child.age} • {child.type}</div>
                     </div>
                   </div>
-                </Button>
+        </Button>
               ))}
-            </div>
+      </div>
           </CardContent>
         </Card>
       )}
@@ -598,10 +598,10 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
               <div className="space-y-2">
                 {/* Child Header */}
                 <div className="flex items-center justify-between">
-                  <div>
+                <div>
                     <div className="font-semibold">{child.name}</div>
                     <div className="text-xs text-muted-foreground">Age {child.age} • {child.type || 'Child'}</div>
-                  </div>
+                </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -620,50 +620,50 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div>
                     <Label htmlFor={`child-behavior-${index}`} className="text-xs">Behavior Notes</Label>
-                    <Textarea
-                      id={`child-behavior-${index}`}
-                      value={child.behaviorNotes}
-                      onChange={(e) => {
-                        const newChildren = [...children]
-                        newChildren[index].behaviorNotes = e.target.value
-                        onChange("childrenPresent", newChildren)
-                      }}
+                  <Textarea
+                    id={`child-behavior-${index}`}
+                    value={child.behaviorNotes}
+                    onChange={(e) => {
+                      const newChildren = [...children]
+                      newChildren[index].behaviorNotes = e.target.value
+                      onChange("childrenPresent", newChildren)
+                    }}
                       placeholder="Demeanor, engagement..."
                       className="text-sm"
-                      rows={2}
-                    />
-                  </div>
+                    rows={2}
+                  />
+                </div>
 
-                  <div>
+                <div>
                     <Label htmlFor={`child-school-${index}`} className="text-xs">School Notes</Label>
-                    <Textarea
-                      id={`child-school-${index}`}
-                      value={child.schoolNotes}
-                      onChange={(e) => {
-                        const newChildren = [...children]
-                        newChildren[index].schoolNotes = e.target.value
-                        onChange("childrenPresent", newChildren)
-                      }}
+                  <Textarea
+                    id={`child-school-${index}`}
+                    value={child.schoolNotes}
+                    onChange={(e) => {
+                      const newChildren = [...children]
+                      newChildren[index].schoolNotes = e.target.value
+                      onChange("childrenPresent", newChildren)
+                    }}
                       placeholder="If mentioned..."
                       className="text-sm"
-                      rows={2}
-                    />
-                  </div>
+                    rows={2}
+                  />
+                </div>
 
-                  <div>
+                <div>
                     <Label htmlFor={`child-medical-${index}`} className="text-xs">Medical/Therapy</Label>
-                    <Textarea
-                      id={`child-medical-${index}`}
-                      value={child.medicalTherapyNotes}
-                      onChange={(e) => {
-                        const newChildren = [...children]
-                        newChildren[index].medicalTherapyNotes = e.target.value
-                        onChange("childrenPresent", newChildren)
-                      }}
+                  <Textarea
+                    id={`child-medical-${index}`}
+                    value={child.medicalTherapyNotes}
+                    onChange={(e) => {
+                      const newChildren = [...children]
+                      newChildren[index].medicalTherapyNotes = e.target.value
+                      onChange("childrenPresent", newChildren)
+                    }}
                       placeholder="If mentioned..."
                       className="text-sm"
-                      rows={2}
-                    />
+                    rows={2}
+                  />
                   </div>
                 </div>
 

@@ -49,15 +49,15 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
     if (!ctx) return
 
     const rect = canvas.getBoundingClientRect()
-    const img = new Image()
-    img.onload = () => {
+      const img = new Image()
+      img.onload = () => {
       // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       // Draw the signature
-      ctx.drawImage(img, 0, 0, rect.width, rect.height)
-      setIsEmpty(false)
-    }
-    img.src = value
+        ctx.drawImage(img, 0, 0, rect.width, rect.height)
+        setIsEmpty(false)
+      }
+      img.src = value
   }, [value])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {

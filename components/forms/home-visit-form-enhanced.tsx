@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { 
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
-  GraduationCap, ClipboardList, Brain, TrendingUp
+  GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -678,103 +678,138 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-50 p-1">
+    <div className="min-h-screen bg-gray-50">
       {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
       <div className="max-w-full mx-auto">
-        {/* Dark Gradient Header - FORM STYLE */}
-        <Card className="mb-1 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
+        {/* Top Navigation Bar - FORM STYLE with Dark Gradient Header */}
+        <Card className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-none shadow-md">
           <CardHeader className="py-2 px-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
-                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
+            <div className="flex items-center justify-between gap-4">
+              {/* Left: Back Button (if needed) */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.history.back()}
+                  className="text-white hover:bg-white/20 h-8 px-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-bold truncate">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
+                    <Badge className="bg-white text-refuge-purple text-xs flex-shrink-0">
+                      {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-white/90 truncate">
+                    {formData.fosterHome.familyName || "Foster Home"} • Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <Badge className="bg-white text-refuge-purple text-xs">
-                  {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
-                </Badge>
-              </div>
+              
+              {/* Right: Pop Out Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(window.location.href, '_blank')}
+                className="text-white hover:bg-white/20 h-8 px-3 flex-shrink-0"
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline text-xs">Pop Out</span>
+              </Button>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Compact Section Navigation */}
-        <Card className="mb-2">
-          <CardContent className="py-2 px-3">
-            {/* Current Section Display */}
+        {/* Tab-Style Section Navigation (Context Menu) */}
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+          <div className="px-3 py-2">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <CurrentSectionIcon className="w-5 h-5 text-refuge-purple" />
-                <div>
-                  <p className="font-semibold text-sm">{sections[currentSection].title}</p>
-                  <p className="text-xs text-gray-500">Section {currentSection + 1} of {sections.length}</p>
-                </div>
-              </div>
-              <div className="flex gap-1">
+                <CurrentSectionIcon className="w-4 h-4 text-refuge-purple" />
+                <span className="font-semibold text-sm">{sections[currentSection].title}</span>
+                <span className="text-xs text-gray-500">({currentSection + 1}/{sections.length})</span>
                 {sections[currentSection].quarterly && (
-                  <Badge variant="secondary" className="text-xs">Quarterly</Badge>
-                )}
-                {sections[currentSection].optional && (
-                  <Badge variant="outline" className="text-xs">Optional</Badge>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Quarterly</Badge>
                 )}
               </div>
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="bg-gray-200 rounded-full h-1.5">
-              <div
-                className="bg-refuge-purple h-1.5 rounded-full transition-all"
-                style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
-              />
+              
+              {/* Progress Bar */}
+              <div className="w-32 bg-gray-200 rounded-full h-1.5">
+                <div
+                  className="bg-refuge-purple h-1.5 rounded-full transition-all"
+                  style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
+                />
+              </div>
             </div>
             
             {/* Section Jumper Dropdown */}
-            <div className="mt-2">
-              <Select 
-                value={currentSection.toString()} 
-                onValueChange={(value) => setCurrentSection(parseInt(value))}
+            <Select 
+              value={currentSection.toString()} 
+              onValueChange={(value) => setCurrentSection(parseInt(value))}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Jump to section..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((section, idx) => (
+                  <SelectItem key={idx} value={idx.toString()} className="text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>{section.title}</span>
+                      {section.quarterly && <Badge variant="secondary" className="text-[10px] py-0">Q</Badge>}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Status and Action Buttons Bar */}
+        <div className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              Draft Saved
+            </Badge>
+            <span className="text-xs text-muted-foreground">Auto-saving...</span>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-3 text-xs"
+              onClick={() => onSave?.(formData)}
+            >
+              Save Draft
+            </Button>
+            {currentSection === sections.length - 1 && (
+              <Button 
+                size="sm" 
+                className="h-8 px-3 text-xs bg-refuge-purple hover:bg-refuge-purple-dark"
+                onClick={() => onSubmit?.(formData)}
               >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Jump to section..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((section, idx) => (
-                    <SelectItem key={idx} value={idx.toString()} className="text-xs">
-                      <div className="flex items-center gap-2">
-                        <span>{section.title}</span>
-                        {section.quarterly && <Badge variant="secondary" className="text-xs py-0">Q</Badge>}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+                Submit Form
+              </Button>
+            )}
+          </div>
+        </div>
 
         {/* Form Content - Reduced padding */}
-        <Card className="mb-2">
-          <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
-        </Card>
+        <div className="p-2">
+          {renderSectionContent(sections[currentSection].id)}
+        </div>
 
-        {/* Navigation - Compact buttons */}
-        <div className="flex gap-2">
+        {/* Navigation - Compact buttons - Fixed at bottom */}
+        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-2 flex gap-2 shadow-lg">
           <Button
             onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
             disabled={currentSection === 0}
             variant="outline"
             size="default"
-            className="flex-1"
+            className="flex-1 h-12"
           >
             Previous
-          </Button>
-          <Button 
-            variant="outline" 
-            size="default" 
-            className="px-4"
-            onClick={() => onSave?.(formData)}
-          >
-            Save
           </Button>
           {currentSection === sections.length - 1 ? (
             <Button 
@@ -1267,58 +1302,58 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
 
                 {/* Large Touch-Friendly Status Buttons */}
                 <div className="grid grid-cols-3 gap-2">
-                  <Button
+                    <Button
                     size="lg"
-                    variant={item.status === "compliant" ? "default" : "outline"}
+                      variant={item.status === "compliant" ? "default" : "outline"}
                     className={`h-12 ${
-                      item.status === "compliant"
+                        item.status === "compliant"
                         ? "bg-green-600 hover:bg-green-700 text-white"
                         : "hover:bg-green-50"
                     }`}
-                    onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
-                  >
+                      onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
+                    >
                     <CheckCircle className="h-5 w-5 mr-1" />
                     <span className="text-sm font-semibold">Compliant</span>
-                  </Button>
-                  <Button
+                    </Button>
+                    <Button
                     size="lg"
-                    variant={item.status === "non-compliant" ? "default" : "outline"}
+                      variant={item.status === "non-compliant" ? "default" : "outline"}
                     className={`h-12 ${
-                      item.status === "non-compliant"
+                        item.status === "non-compliant"
                         ? "bg-red-600 hover:bg-red-700 text-white"
                         : "hover:bg-red-50"
                     }`}
-                    onClick={() =>
-                      onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
-                    }
-                  >
+                      onClick={() =>
+                        onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
+                      }
+                    >
                     <AlertTriangle className="h-5 w-5 mr-1" />
                     <span className="text-sm font-semibold">Non-Compliant</span>
-                  </Button>
-                  <Button
+                    </Button>
+                    <Button
                     size="lg"
-                    variant={item.status === "na" ? "default" : "outline"}
+                      variant={item.status === "na" ? "default" : "outline"}
                     className={`h-12 ${
                       item.status === "na"
                         ? "bg-slate-600 hover:bg-slate-700 text-white"
                         : "hover:bg-slate-50"
                     }`}
-                    onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
-                  >
+                      onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
+                    >
                     <span className="text-sm font-semibold">N/A</span>
-                  </Button>
-                </div>
+                    </Button>
+                  </div>
 
                 {/* Notes Field - Always Reserve Space to Prevent Layout Shift */}
                 <div className={`transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-                  <Textarea
+                    <Textarea
                     placeholder={item.status ? "Add notes if needed..." : ""}
-                    value={item.notes}
-                    onChange={(e) => onChange(section, index, "notes", e.target.value)}
+                      value={item.notes}
+                      onChange={(e) => onChange(section, index, "notes", e.target.value)}
                     className="text-sm min-h-[60px]"
-                    rows={2}
+                      rows={2}
                     disabled={!item.status}
-                  />
+                    />
                 </div>
               </div>
             </CardContent>
