@@ -9,9 +9,25 @@ export const runtime = "nodejs"
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const auth = requireClerkAuth(request)
-    const currentClerkUserId = auth.clerkUserId
+    // Authenticate user - handle case where headers might not be set
+    let currentClerkUserId: string
+    let currentUserEmail: string | null = null
+    
+    try {
+      const auth = requireClerkAuth(request)
+      currentClerkUserId = auth.clerkUserId
+      currentUserEmail = auth.email
+    } catch (authError) {
+      console.error("❌ [API] Auth error in send-report:", authError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Authentication failed",
+          details: authError instanceof Error ? authError.message : "Missing authentication headers",
+        },
+        { status: 401 },
+      )
+    }
 
     const { appointmentId, formData } = await request.json()
 
@@ -25,12 +41,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current user's email for CC
-    const currentUser = await getUserByClerkId(currentClerkUserId)
-    if (!currentUser) {
-      return NextResponse.json({ error: "Current user not found" }, { status: 404 })
+    // Get current user's email for CC (use from auth if available, otherwise lookup)
+    let ccEmail = currentUserEmail
+    if (!ccEmail) {
+      const currentUser = await getUserByClerkId(currentClerkUserId)
+      if (!currentUser) {
+        return NextResponse.json({ error: "Current user not found" }, { status: 404 })
+      }
+      ccEmail = currentUser.email
     }
-    const currentUserEmail = currentUser.email
 
     // Get appointment details to find case manager email
     const appointmentResult = await query<{
@@ -103,7 +122,7 @@ export async function POST(request: NextRequest) {
     // Prepare email with CC
     const msg = {
       to: caseManagerEmail,
-      cc: currentUserEmail,
+      cc: ccEmail,
       from: {
         email: fromEmail,
         name: "Foster Home Visit System",
@@ -121,7 +140,7 @@ export async function POST(request: NextRequest) {
       messageId: response[0].headers["x-message-id"],
       message: "Report sent successfully to case manager",
       recipient: caseManagerEmail,
-      cc: currentUserEmail,
+      cc: ccEmail,
     })
   } catch (error: any) {
     console.error("❌ [API] Error sending report:", error)

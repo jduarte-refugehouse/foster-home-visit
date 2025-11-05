@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,6 +58,7 @@ export default function AppointmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useUser()
   const appointmentId = params.id as string
 
   const [appointment, setAppointment] = useState<Appointment | null>(null)
@@ -389,11 +391,21 @@ export default function AppointmentDetailPage() {
 
       // 2. Send the complete report to case manager and CC to current user
       console.log("📧 [APPT] Sending report...")
+      
+      // Create headers with user identity for authentication
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+      
       const reportResponse = await fetch("/api/visit-forms/send-report", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ appointmentId, formData }),
       })
 
