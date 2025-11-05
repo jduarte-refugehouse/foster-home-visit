@@ -31,18 +31,15 @@ export async function GET() {
     console.log(`🔍 [API] Fetching roles for microservice: ${CURRENT_MICROSERVICE_CODE} (ID: ${microserviceId})`)
 
     // Get all distinct roles from database (both active and inactive to show all available)
+    // Note: user_roles table doesn't have role_display_name or role_level columns
     const roles = await query<{
       role_name: string
       user_count: number
-      role_display_name: string | null
-      role_level: number | null
     }>(
       `
-      SELECT DISTINCT 
+      SELECT 
         ur.role_name,
-        COUNT(DISTINCT ur.user_id) as user_count,
-        MAX(ur.role_display_name) as role_display_name,
-        MAX(ur.role_level) as role_level
+        COUNT(DISTINCT ur.user_id) as user_count
       FROM user_roles ur
       WHERE ur.microservice_id = @param0
       GROUP BY ur.role_name
@@ -75,13 +72,28 @@ export async function GET() {
 
     console.log(`✅ Found ${roles.length} roles for ${CURRENT_MICROSERVICE_CODE} microservice`)
 
-    return NextResponse.json({
-      roles: roles.map((r) => ({
+    // Generate display name and level from role_name
+    const rolesWithDisplay = roles.map((r) => {
+      const roleDisplayName = r.role_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      // Calculate role level based on role name patterns
+      const roleLevel = r.role_name.includes("admin") || r.role_name === "global_admin"
+        ? 4
+        : r.role_name.includes("director")
+          ? 3
+          : r.role_name.includes("liaison") || r.role_name.includes("coordinator") || r.role_name.includes("manager")
+            ? 2
+            : 1
+      
+      return {
         role_name: r.role_name,
-        role_display_name: r.role_display_name || r.role_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-        role_level: r.role_level || 1,
+        role_display_name: roleDisplayName,
+        role_level: roleLevel,
         user_count: r.user_count,
-      })),
+      }
+    })
+
+    return NextResponse.json({
+      roles: rolesWithDisplay,
       total: roles.length,
       microservice: {
         code: MICROSERVICE_CONFIG.code,
