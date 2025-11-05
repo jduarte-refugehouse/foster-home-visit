@@ -32,6 +32,7 @@ interface EnhancedHomeVisitFormProps {
   appointmentId?: string | null
   appointmentData?: any
   prepopulationData?: any
+  existingFormData?: any
   onSave?: (formData: any) => Promise<void>
   onSubmit?: (formData: any) => Promise<void>
 }
@@ -40,6 +41,7 @@ const EnhancedHomeVisitForm = ({
   appointmentId,
   appointmentData, 
   prepopulationData,
+  existingFormData,
   onSave,
   onSubmit 
 }: EnhancedHomeVisitFormProps) => {
@@ -419,6 +421,52 @@ const EnhancedHomeVisitForm = ({
 
     console.log("✅ [FORM] Form pre-populated successfully")
   }, [prepopulationData])
+
+  // Load existing form data if available (takes precedence over prepopulation)
+  useEffect(() => {
+    if (!existingFormData) return
+
+    console.log("📝 [FORM] Loading existing form data:", existingFormData)
+
+    try {
+      // Parse all JSON fields from the database
+      const parsedData = {
+        visitInfo: existingFormData.visit_info || formData.visitInfo,
+        fosterHome: existingFormData.family_info?.fosterHome || formData.fosterHome,
+        household: existingFormData.family_info?.household || formData.household,
+        childrenPresent: existingFormData.attendees?.childrenPresent || formData.childrenPresent,
+        homeCondition: existingFormData.home_environment?.homeCondition || formData.homeCondition,
+        outdoorSpace: existingFormData.home_environment?.outdoorSpace || formData.outdoorSpace,
+        observations: existingFormData.observations?.observations || formData.observations,
+        followUpItems: existingFormData.observations?.followUpItems || formData.followUpItems,
+        correctiveActions: existingFormData.observations?.correctiveActions || formData.correctiveActions,
+        visitSummary: existingFormData.recommendations?.visitSummary || formData.visitSummary,
+        signatures: existingFormData.signatures || formData.signatures,
+        placements: existingFormData.child_interviews?.placements || formData.placements,
+        fosterParentInterview: existingFormData.parent_interviews?.fosterParentInterview || formData.fosterParentInterview,
+        // Compliance sections
+        medication: existingFormData.compliance_review?.medication || formData.medication,
+        inspections: existingFormData.compliance_review?.inspections || formData.inspections,
+        healthSafety: existingFormData.compliance_review?.healthSafety || formData.healthSafety,
+        childrensRights: existingFormData.compliance_review?.childrensRights || formData.childrensRights,
+        bedrooms: existingFormData.compliance_review?.bedrooms || formData.bedrooms,
+        education: existingFormData.compliance_review?.education || formData.education,
+        indoorSpace: existingFormData.compliance_review?.indoorSpace || formData.indoorSpace,
+        documentation: existingFormData.compliance_review?.documentation || formData.documentation,
+        traumaInformedCare: existingFormData.compliance_review?.traumaInformedCare || formData.traumaInformedCare,
+        outdoorSpaceCompliance: existingFormData.compliance_review?.outdoorSpace || formData.outdoorSpaceCompliance,
+        vehicles: existingFormData.compliance_review?.vehicles || formData.vehicles,
+        swimming: existingFormData.compliance_review?.swimming || formData.swimming,
+        infants: existingFormData.compliance_review?.infants || formData.infants,
+        qualityEnhancement: existingFormData.compliance_review?.qualityEnhancement || formData.qualityEnhancement,
+      }
+
+      setFormData(parsedData)
+      console.log("✅ [FORM] Existing form data loaded successfully")
+    } catch (error) {
+      console.error("❌ [FORM] Error loading existing form data:", error)
+    }
+  }, [existingFormData])
 
   // Determine quarter based on date
   useEffect(() => {

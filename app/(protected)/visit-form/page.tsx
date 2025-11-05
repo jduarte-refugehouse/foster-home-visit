@@ -16,6 +16,7 @@ export default function VisitFormPage() {
 
   const [appointmentData, setAppointmentData] = useState(null)
   const [prepopulationData, setPrepopulationData] = useState(null)
+  const [existingFormData, setExistingFormData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [debugData, setDebugData] = useState({
     apiResponse: null,
@@ -47,7 +48,22 @@ export default function VisitFormPage() {
       console.log("📋 [FORM] Appointment data received:", appointmentData)
       setAppointmentData(appointmentData.appointment)
 
-      // 2. Get home GUID from appointment via home_xref
+      // 2. Check if a visit form already exists for this appointment
+      console.log("🔍 [FORM] Checking for existing visit form...")
+      const existingFormResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
+      
+      if (existingFormResponse.ok) {
+        const existingFormResult = await existingFormResponse.json()
+        if (existingFormResult.visitForms && existingFormResult.visitForms.length > 0) {
+          const existingForm = existingFormResult.visitForms[0]
+          console.log("✅ [FORM] Found existing visit form:", existingForm)
+          setExistingFormData(existingForm)
+        } else {
+          console.log("ℹ️ [FORM] No existing visit form found - will create new")
+        }
+      }
+
+      // 3. Get home GUID from appointment via home_xref
       const homeXref = appointmentData.appointment?.home_xref
       
       if (!homeXref) {
@@ -56,7 +72,7 @@ export default function VisitFormPage() {
         return
       }
 
-      // 3. Look up home GUID from syncActiveHomes using xref
+      // 4. Look up home GUID from syncActiveHomes using xref
       console.log(`🔍 [FORM] Looking up home GUID for xref: ${homeXref}`)
       const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
       
@@ -75,7 +91,7 @@ export default function VisitFormPage() {
         return
       }
 
-      // 4. Fetch pre-population data for this home
+      // 5. Fetch pre-population data for this home
       console.log(`📋 [FORM] Fetching pre-population data for home GUID: ${homeGuid}`)
       const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
       
@@ -552,6 +568,7 @@ export default function VisitFormPage() {
         appointmentId={appointmentId}
         appointmentData={appointmentData}
         prepopulationData={prepopulationData}
+        existingFormData={existingFormData}
         onSave={handleSave}
         onSubmit={handleSubmit}
       />
