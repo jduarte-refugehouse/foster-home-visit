@@ -41,12 +41,31 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (isHomeLiaison) {
-      fetchLiaisonDashboardData()
-    } else {
-      fetchDashboardData()
+    // Always try to load liaison dashboard first if permissions are loaded
+    // If user has home_liaison role, show liaison dashboard
+    // Otherwise, show general dashboard
+    if (permissions.isLoaded) {
+      if (isHomeLiaison) {
+        fetchLiaisonDashboardData()
+      } else {
+        fetchDashboardData()
+      }
     }
+    // If permissions not loaded yet, wait a bit and check again
+    // This ensures liaison dashboard loads even if permissions API is slow
   }, [isHomeLiaison, permissions.isLoaded])
+  
+  // Also check for liaison role after a short delay in case permissions hook is slow
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!permissions.isLoaded && !liaisonLoading && !loading) {
+        // If permissions not loaded after 500ms, try fetching liaison data anyway
+        // (will show general dashboard if not liaison)
+        fetchLiaisonDashboardData()
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [permissions.isLoaded, liaisonLoading, loading])
 
   const fetchLiaisonDashboardData = async () => {
     try {
