@@ -87,11 +87,14 @@ export function CreateAppointmentDialog({
       const endDate = new Date(editingAppointment.end_datetime)
       const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
 
+      // Format date as YYYY-MM-DD string for the date input
+      const dateString = format(startDate, "yyyy-MM-dd")
+
       return {
         title: editingAppointment.title,
         description: editingAppointment.description || "",
         appointmentType: editingAppointment.appointment_type,
-        date: startDate,
+        date: dateString, // Use string format for date input
         startTime: format(startDate, "HH:mm"),
         endTime: format(endDate, "HH:mm"),
         duration: duration.toString(),
@@ -111,7 +114,7 @@ export function CreateAppointmentDialog({
       title: "",
       description: "",
       appointmentType: "home_visit",
-      date: selectedDate || new Date(),
+      date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Use string format
       startTime: selectedTime || "09:00",
       endTime: "",
       duration: "60",
@@ -207,9 +210,15 @@ export function CreateAppointmentDialog({
       const [endHours, endMinutes] = formData.endTime.split(":").map(Number)
       
       // Create dates using Date constructor with components (avoids timezone conversion)
+      // This creates a date in LOCAL timezone
       const startDateTime = new Date(year, month - 1, day, startHours, startMinutes, 0, 0)
       const endDateTime = new Date(year, month - 1, day, endHours, endMinutes, 0, 0)
 
+      // Convert to ISO string - this will convert to UTC
+      // But we need to preserve the local time, so we'll send the timezone offset
+      // Actually, the better approach is to send the datetime as if it were in UTC
+      // but store it as-is in the database (which doesn't have timezone info)
+      // The calendar will display it correctly because it uses the Date object directly
       const appointmentData = {
         title: formData.title,
         description: formData.description,

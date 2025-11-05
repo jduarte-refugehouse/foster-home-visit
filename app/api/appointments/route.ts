@@ -145,11 +145,13 @@ export async function GET(request: NextRequest) {
                   : null,
             }
           : null,
-        // Ensure consistent date formatting
-        start_datetime: new Date(appointment.start_datetime).toISOString(),
-        end_datetime: new Date(appointment.end_datetime).toISOString(),
-        created_at: new Date(appointment.created_at).toISOString(),
-        updated_at: new Date(appointment.updated_at).toISOString(),
+        // Return datetime strings WITHOUT timezone conversion
+        // SQL Server DATETIME2 has no timezone, so we return as-is (local time)
+        // The calendar will parse these as local time using parseLocalDatetime
+        start_datetime: appointment.start_datetime,
+        end_datetime: appointment.end_datetime,
+        created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
+        updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
       })),
       timestamp: new Date().toISOString(),
     })
