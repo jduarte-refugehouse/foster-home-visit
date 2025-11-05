@@ -28,6 +28,7 @@ export async function GET() {
     }
 
     const microserviceId = microservice[0].id
+    console.log(`🔍 [API] Fetching roles for microservice: ${CURRENT_MICROSERVICE_CODE} (ID: ${microserviceId})`)
 
     // Get all distinct roles from database (both active and inactive to show all available)
     const roles = await query<{
@@ -49,6 +50,11 @@ export async function GET() {
     `,
       [microserviceId],
     )
+
+    console.log(`✅ [API] Found ${roles.length} roles in database for microservice ${CURRENT_MICROSERVICE_CODE}`)
+    if (roles.length > 0) {
+      console.log(`📋 [API] Role names:`, roles.map(r => r.role_name))
+    }
 
     // Also get roles from config that might not be in database yet
     const configRoles = Object.values(MICROSERVICE_CONFIG.roles)

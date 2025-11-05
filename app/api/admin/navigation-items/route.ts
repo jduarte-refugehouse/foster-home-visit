@@ -35,17 +35,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Get microservice ID
-    const microservice = await query<{ id: string }>(
-      "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
+    const microservice = await query<{ id: string; app_code: string; app_name: string }>(
+      "SELECT id, app_code, app_name FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
       [CURRENT_MICROSERVICE]
     )
 
     if (microservice.length === 0) {
+      console.error(`❌ [API] Microservice not found for code: ${CURRENT_MICROSERVICE}`)
       return NextResponse.json({ error: "Microservice not found" }, { status: 404 })
     }
 
     const microserviceId = microservice[0].id
-    console.log(`🔍 [API] Fetching navigation items for microservice: ${CURRENT_MICROSERVICE} (ID: ${microserviceId})`)
+    console.log(`🔍 [API] Fetching navigation items for microservice: ${CURRENT_MICROSERVICE} (${microservice[0].app_name}, ID: ${microserviceId})`)
 
     // Fetch navigation items with permission info
     const navigationItems = await query<{
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
         ni.created_at,
         ni.updated_at
       FROM navigation_items ni
-      LEFT JOIN permissions p ON ni.permission_required = p.id
+      LEFT JOIN permissions p ON ni.permission_required = p.permission_code AND p.microservice_id = ni.microservice_id
       WHERE ni.microservice_id = @param0
       ORDER BY ni.category, ni.order_index
     `,
@@ -85,6 +86,20 @@ export async function GET(request: NextRequest) {
     )
 
     console.log(`✅ [API] Found ${navigationItems.length} navigation items for microservice ${CURRENT_MICROSERVICE}`)
+    if (navigationItems.length > 0) {
+      console.log(`📋 [API] Navigation item codes:`, navigationItems.map(ni => ni.code))
+      console.log(`📋 [API] Sample item:`, JSON.stringify(navigationItems[0], null, 2))
+    } else {
+      // Debug: Check if there are any navigation items at all for this microservice
+      const allItems = await query<{ id: string; code: string; microservice_id: string }>(
+        "SELECT id, code, microservice_id FROM navigation_items WHERE microservice_id = @param0",
+        [microserviceId]
+      )
+      console.log(`🔍 [API] Debug: Found ${allItems.length} items with microservice_id ${microserviceId} (before join)`)
+      if (allItems.length > 0) {
+        console.log(`📋 [API] Debug: Sample item microservice_id:`, allItems[0].microservice_id)
+      }
+    }
 
     return NextResponse.json({
       success: true,
