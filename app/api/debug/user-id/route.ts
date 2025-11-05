@@ -11,27 +11,79 @@ export const runtime = "nodejs"
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get Clerk user ID
+    // Get Clerk user ID with detailed logging
     let clerkUserId: string | null = null
     let clerkUserEmail: string | null = null
+    const debugInfo: any = {
+      currentUserAttempt: null,
+      authAttempt: null,
+      errors: [],
+      cookies: {},
+      headers: {},
+    }
     
+    // Check cookies and headers for debugging
+    const cookies = request.cookies.getAll()
+    debugInfo.cookies = cookies.reduce((acc, cookie) => {
+      acc[cookie.name] = cookie.value ? 'present' : 'missing'
+      return acc
+    }, {} as Record<string, string>)
+    
+    // Try currentUser first
     try {
       const user = await currentUser()
+      debugInfo.currentUserAttempt = {
+        success: !!user,
+        hasId: !!user?.id,
+        id: user?.id || null,
+        email: user?.emailAddresses?.[0]?.emailAddress || null,
+      }
       if (user?.id) {
         clerkUserId = user.id
         clerkUserEmail = user.emailAddresses[0]?.emailAddress || null
-      } else {
-        const authResult = await auth()
-        clerkUserId = authResult?.userId || null
       }
-    } catch (error) {
-      console.error("Error getting Clerk user:", error)
+    } catch (currentUserError) {
+      debugInfo.errors.push({
+        method: 'currentUser',
+        error: currentUserError instanceof Error ? currentUserError.message : 'Unknown error',
+        stack: currentUserError instanceof Error ? currentUserError.stack : undefined,
+      })
+      console.error("❌ [Debug] Error calling currentUser():", currentUserError)
     }
 
+    // Fallback to auth() if currentUser didn't work
+    if (!clerkUserId) {
+      try {
+        const authResult = await auth()
+        debugInfo.authAttempt = {
+          success: !!authResult,
+          hasUserId: !!authResult?.userId,
+          userId: authResult?.userId || null,
+          keys: authResult ? Object.keys(authResult) : [],
+        }
+        clerkUserId = authResult?.userId || null
+      } catch (authError) {
+        debugInfo.errors.push({
+          method: 'auth',
+          error: authError instanceof Error ? authError.message : 'Unknown error',
+          stack: authError instanceof Error ? authError.stack : undefined,
+        })
+        console.error("❌ [Debug] Error calling auth():", authError)
+      }
+    }
+
+    // Return detailed debug info even if auth fails
     if (!clerkUserId) {
       return NextResponse.json({
         error: "Not authenticated",
         clerkUserId: null,
+        debug: debugInfo,
+        suggestions: [
+          "Make sure you're logged in to Clerk",
+          "Check if the route is accessible (might need to be in a protected folder)",
+          "Check browser console for Clerk errors",
+          "Try accessing /api/permissions to see if auth works there",
+        ],
       }, { status: 401 })
     }
 
@@ -99,6 +151,7 @@ export async function GET(request: NextRequest) {
         userId: clerkUserId,
         email: clerkUserEmail,
       },
+      debug: debugInfo,
       appUsers: {
         matchingByClerkId: appUsers.map(u => ({
           id: u.id,
@@ -135,12 +188,13 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error in user-id debug endpoint:", error)
+    console.error("❌ [Debug] Error in user-id debug endpoint:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to get user ID",
         details: error instanceof Error ? error.message : "Unknown error",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 }
     )
