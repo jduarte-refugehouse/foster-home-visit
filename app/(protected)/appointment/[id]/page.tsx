@@ -230,8 +230,155 @@ export default function AppointmentDetailPage() {
   }
 
   const handleSaveForm = async (formData: any) => {
-    // This will be handled by the form component's existing save logic
-    console.log("💾 Saving form from appointment detail page")
+    try {
+      console.log("💾 [APPT] Saving form from appointment detail page:", formData)
+
+      if (!appointmentId) {
+        toast({
+          title: "Error",
+          description: "No appointment ID available",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Helper to filter out empty compliance sections
+      const filterComplianceSection = (section: any) => {
+        if (!section) return null
+        if (!section.items || section.items.length === 0) return null
+        
+        const filledItems = section.items.filter((item: any) => 
+          item.status || item.notes
+        )
+        
+        if (filledItems.length === 0 && !section.combinedNotes) return null
+        
+        return {
+          items: filledItems,
+          combinedNotes: section.combinedNotes || ""
+        }
+      }
+
+      const filterSpecialSection = (section: any) => {
+        if (!section) return null
+        
+        const hasData = Object.values(section).some(value => {
+          if (typeof value === 'string') return value.trim() !== ''
+          if (typeof value === 'boolean') return value === true
+          if (Array.isArray(value)) return value.length > 0
+          if (typeof value === 'object' && value !== null) return Object.keys(value).length > 0
+          return false
+        })
+        
+        return hasData ? section : null
+      }
+
+      // Build compliance review
+      const complianceReview: any = {}
+      const sections = {
+        medication: filterComplianceSection(formData.medication),
+        inspections: filterSpecialSection(formData.inspections),
+        healthSafety: filterComplianceSection(formData.healthSafety),
+        childrensRights: filterComplianceSection(formData.childrensRights),
+        bedrooms: filterComplianceSection(formData.bedrooms),
+        education: filterComplianceSection(formData.education),
+        indoorSpace: filterComplianceSection(formData.indoorSpace),
+        documentation: filterComplianceSection(formData.documentation),
+        traumaInformedCare: filterSpecialSection(formData.traumaInformedCare),
+        outdoorSpace: filterComplianceSection(formData.outdoorSpace),
+        vehicles: filterComplianceSection(formData.vehicles),
+        swimming: filterComplianceSection(formData.swimming),
+        infants: filterComplianceSection(formData.infants),
+        qualityEnhancement: filterSpecialSection(formData.qualityEnhancement),
+      }
+
+      for (const [key, value] of Object.entries(sections)) {
+        if (value !== null) {
+          complianceReview[key] = value
+        }
+      }
+
+      const savePayload = {
+        appointmentId: appointmentId,
+        formType: "monthly_home_visit",
+        formVersion: "3.1",
+        status: "draft",
+        visitDate: formData.visitInfo?.date || new Date().toISOString().split("T")[0],
+        visitTime: formData.visitInfo?.time || new Date().toTimeString().slice(0, 5),
+        visitNumber: formData.visitInfo?.visitNumberThisQuarter || 1,
+        quarter: formData.visitInfo?.quarter || "",
+        visitVariant: 1,
+        
+        visitInfo: formData.visitInfo,
+        familyInfo: {
+          fosterHome: formData.fosterHome,
+          household: formData.household,
+        },
+        attendees: {
+          childrenPresent: formData.childrenPresent,
+        },
+        homeEnvironment: {
+          homeCondition: formData.homeCondition,
+          outdoorSpace: formData.outdoorSpace,
+        },
+        observations: {
+          observations: formData.observations,
+          followUpItems: formData.followUpItems,
+          correctiveActions: formData.correctiveActions,
+        },
+        recommendations: {
+          visitSummary: formData.visitSummary,
+        },
+        signatures: formData.signatures,
+        complianceReview: complianceReview,
+        childInterviews: {
+          placements: formData.placements,
+        },
+        parentInterviews: {
+          fosterParentInterview: formData.fosterParentInterview,
+        },
+        
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || "System",
+        isAutoSave: false,
+      }
+
+      console.log("📤 [APPT] Sending save request...")
+      
+      const response = await fetch("/api/visit-forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(savePayload),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("❌ [APPT] Save failed:", result)
+        throw new Error(result.error || result.details || "Failed to save form")
+      }
+
+      console.log("✅ [APPT] Form saved successfully:", result)
+      
+      // Update visit form status
+      if (result.visitFormId) {
+        setVisitFormStatus("draft")
+      }
+      
+      toast({
+        title: "Draft Saved",
+        description: "Your form has been saved as a draft",
+      })
+    } catch (error) {
+      console.error("❌ [APPT] Error saving form:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save form draft",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleSubmitForm = async (formData: any) => {
