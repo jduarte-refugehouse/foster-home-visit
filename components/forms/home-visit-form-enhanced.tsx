@@ -728,18 +728,31 @@ const EnhancedHomeVisitForm = ({
               />
             </div>
             
-            {/* Section Jumper Dropdown */}
-            <div className="mt-2">
+            {/* Navigation Controls: Previous | Section Dropdown | Next | Save */}
+            <div className="mt-2 flex items-center gap-2">
+              {/* Previous Button */}
+              <Button
+                onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
+                disabled={currentSection === 0}
+                variant="outline"
+                size="default"
+                className="flex-shrink-0"
+              >
+                Previous
+              </Button>
+              
+              {/* Section Dropdown */}
               <Select 
                 value={currentSection.toString()} 
                 onValueChange={(value) => setCurrentSection(parseInt(value))}
+                className="flex-1"
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="Jump to section..." />
                 </SelectTrigger>
                 <SelectContent>
                   {sections.map((section, idx) => (
-                    <SelectItem key={idx} value={idx.toString()} className="text-xs">
+                    <SelectItem key={idx} value={idx.toString()} className="text-sm">
                       <div className="flex items-center gap-2">
                         <span>{section.title}</span>
                         {section.quarterly && <Badge variant="secondary" className="text-xs py-0">Q</Badge>}
@@ -748,6 +761,38 @@ const EnhancedHomeVisitForm = ({
                   ))}
                 </SelectContent>
               </Select>
+              
+              {/* Next Button */}
+              {currentSection === sections.length - 1 ? (
+                <Button 
+                  size="default"
+                  className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
+                  onClick={() => onSubmit?.(formData)}
+                >
+                  Submit
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+                  size="default"
+                  className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
+                >
+                  Next
+                </Button>
+              )}
+              
+              {/* Spacer */}
+              <div className="flex-1" />
+              
+              {/* Save Button - clearly separated */}
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="flex-shrink-0 font-semibold border-2 border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white"
+                onClick={() => onSave?.(formData)}
+              >
+                Save
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -756,44 +801,6 @@ const EnhancedHomeVisitForm = ({
         <Card className="mb-2">
           <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
-
-        {/* Navigation - Compact buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-            disabled={currentSection === 0}
-            variant="outline"
-            size="default"
-            className="flex-1"
-          >
-            Previous
-          </Button>
-          <Button 
-            variant="outline" 
-            size="default" 
-            className="px-4"
-            onClick={() => onSave?.(formData)}
-          >
-            Save
-          </Button>
-          {currentSection === sections.length - 1 ? (
-            <Button 
-              size="default"
-              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
-              onClick={() => onSubmit?.(formData)}
-            >
-              Submit
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
-              size="default"
-              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
-            >
-              Next
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   )
