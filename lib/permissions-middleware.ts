@@ -1,9 +1,10 @@
 import { auth } from "@clerk/nextjs/server"
+import type { NextRequest } from "next/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
 import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
 
-export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string) {
+export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
   const { userId } = await auth()
 
   if (!userId) {
@@ -11,7 +12,8 @@ export async function checkPermission(requiredPermission: string | string[], mic
   }
 
   // Use effective user (impersonated if active, otherwise real user)
-  const user = await getEffectiveUser(userId)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -44,7 +46,7 @@ export async function checkPermission(requiredPermission: string | string[], mic
   }
 }
 
-export async function checkRole(requiredRole: string | string[], microserviceCode?: string) {
+export async function checkRole(requiredRole: string | string[], microserviceCode?: string, request?: NextRequest) {
   const { userId } = await auth()
 
   if (!userId) {
@@ -52,7 +54,8 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
   }
 
   // Use effective user (impersonated if active, otherwise real user)
-  const user = await getEffectiveUser(userId)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -88,7 +91,7 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
   }
 }
 
-export async function requireAuth() {
+export async function requireAuth(request?: NextRequest) {
   const { userId } = await auth()
 
   if (!userId) {
@@ -96,7 +99,8 @@ export async function requireAuth() {
   }
 
   // Use effective user (impersonated if active, otherwise real user)
-  const user = await getEffectiveUser(userId)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     throw new Error("User not found in system")

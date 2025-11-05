@@ -1,4 +1,5 @@
 import { cookies } from "next/headers"
+import type { NextRequest } from "next/server"
 import { query } from "./db"
 import { AppUser } from "./user-management"
 
@@ -8,12 +9,20 @@ const IMPERSONATION_ADMIN_COOKIE_NAME = "impersonate_admin_id"
 /**
  * Get the currently impersonated user ID (if any)
  * Returns null if not impersonating
+ * Can be used in both API routes (with request) and server components (without request)
  */
-export async function getImpersonatedUserId(): Promise<string | null> {
+export async function getImpersonatedUserId(request?: NextRequest): Promise<string | null> {
   try {
-    const cookieStore = await cookies()
-    const impersonatedUserId = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
-    return impersonatedUserId || null
+    if (request) {
+      // API route context - use request.cookies
+      const impersonatedUserId = request.cookies.get(IMPERSONATION_COOKIE_NAME)?.value
+      return impersonatedUserId || null
+    } else {
+      // Server component context - use cookies()
+      const cookieStore = await cookies()
+      const impersonatedUserId = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
+      return impersonatedUserId || null
+    }
   } catch (error) {
     console.error("Error reading impersonation cookie:", error)
     return null
@@ -23,11 +32,18 @@ export async function getImpersonatedUserId(): Promise<string | null> {
 /**
  * Get the admin user ID who is impersonating (if any)
  */
-export async function getImpersonationAdminId(): Promise<string | null> {
+export async function getImpersonationAdminId(request?: NextRequest): Promise<string | null> {
   try {
-    const cookieStore = await cookies()
-    const adminId = cookieStore.get(IMPERSONATION_ADMIN_COOKIE_NAME)?.value
-    return adminId || null
+    if (request) {
+      // API route context - use request.cookies
+      const adminId = request.cookies.get(IMPERSONATION_ADMIN_COOKIE_NAME)?.value
+      return adminId || null
+    } else {
+      // Server component context - use cookies()
+      const cookieStore = await cookies()
+      const adminId = cookieStore.get(IMPERSONATION_ADMIN_COOKIE_NAME)?.value
+      return adminId || null
+    }
   } catch (error) {
     console.error("Error reading impersonation admin cookie:", error)
     return null
@@ -36,27 +52,38 @@ export async function getImpersonationAdminId(): Promise<string | null> {
 
 /**
  * Get the effective user ID (impersonated user if impersonating, otherwise the real user)
+ * Can be used in both API routes (with request) and server components (without request)
  */
-export async function getEffectiveUserId(realUserId: string): Promise<string> {
-  const impersonatedUserId = await getImpersonatedUserId()
+export async function getEffectiveUserId(realUserId: string, request?: NextRequest): Promise<string> {
+  const impersonatedUserId = await getImpersonatedUserId(request)
   return impersonatedUserId || realUserId
 }
 
 /**
  * Get the effective user (app_user) - impersonated user if impersonating, otherwise the real user
+ * Can be used in both API routes (with request) and server components (without request)
+ * 
+ * Note: In API routes, pass the request. In server components, don't pass it.
  */
-export async function getEffectiveUser(realClerkUserId: string): Promise<AppUser | null> {
-  const impersonatedUserId = await getImpersonatedUserId()
-  
-  if (impersonatedUserId) {
-    // Return the impersonated user
-    const result = await query<AppUser>("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
+export async function getEffectiveUser(realClerkUserId: string, request?: NextRequest): Promise<AppUser | null> {
+  try {
+    const impersonatedUserId = await getImpersonatedUserId(request)
+    
+    if (impersonatedUserId) {
+      // Return the impersonated user
+      const result = await query<AppUser>("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
+      return result[0] || null
+    }
+    
+    // Return the real user
+    const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [realClerkUserId])
+    return result[0] || null
+  } catch (error) {
+    // If cookies() fails (e.g., in API route without request), fall back to real user
+    console.error("Error getting effective user, falling back to real user:", error)
+    const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [realClerkUserId])
     return result[0] || null
   }
-  
-  // Return the real user
-  const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [realClerkUserId])
-  return result[0] || null
 }
 
 /**
