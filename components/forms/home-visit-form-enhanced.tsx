@@ -678,16 +678,16 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2">
-      {/* Optimized for iPad 11-inch (834x1194px) */}
+    <div className="min-h-screen bg-gray-50 p-1">
+      {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
       <div className="max-w-full mx-auto">
         {/* Dark Gradient Header - FORM STYLE */}
-        <Card className="mb-2 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
-          <CardHeader className="py-3 px-4">
+        <Card className="mb-1 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
+          <CardHeader className="py-2 px-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-xl font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
-                <p className="text-sm text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
+                <CardTitle className="text-lg font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
+                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
               </div>
               <div className="text-right">
                 <Badge className="bg-white text-refuge-purple text-xs">
@@ -1233,84 +1233,92 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
   const sectionData = formData[section]
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-        <CheckCircle className="h-6 w-6 text-refuge-purple" />
+    <div className="space-y-3">
+      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+        <CheckCircle className="h-5 w-5 text-refuge-purple" />
         {title}
       </h2>
 
-      <Alert>
-        <AlertDescription>
-          Check "Compliant" for items meeting requirements, "Non-Compliant" for deficiencies, or "N/A" if not applicable.
-          Add notes for any item that needs additional documentation.
+      <Alert className="py-2">
+        <AlertDescription className="text-xs">
+          Tap to select status. Notes field appears when needed.
         </AlertDescription>
       </Alert>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {sectionData.items.map((item, index) => (
-          <Card key={index} className={item.code.includes("T3C") ? "border-blue-200 bg-blue-50/30" : ""}>
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="text-xs">
+          <Card key={index} className={`${item.code.includes("T3C") ? "border-blue-200 bg-blue-50/30" : ""} shadow-sm`}>
+            <CardContent className="p-3">
+              <div className="space-y-2">
+                {/* Requirement Text and Code */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                       {item.code}
                     </Badge>
                     {item.code.includes("T3C") && (
-                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                        T3C Development
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800">
+                        T3C
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm font-medium">{item.requirement}</p>
+                  <p className="text-sm font-medium leading-snug">{item.requirement}</p>
                 </div>
-                <div className="flex flex-col gap-2 min-w-[300px]">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={item.status === "compliant" ? "default" : "outline"}
-                      className={
-                        item.status === "compliant"
-                          ? "bg-green-600 hover:bg-green-700"
-                          : ""
-                      }
-                      onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Compliant
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.status === "non-compliant" ? "default" : "outline"}
-                      className={
-                        item.status === "non-compliant"
-                          ? "bg-red-600 hover:bg-red-700"
-                          : ""
-                      }
-                      onClick={() =>
-                        onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
-                      }
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      Non-Compliant
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.status === "na" ? "default" : "outline"}
-                      onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
-                    >
-                      N/A
-                    </Button>
-                  </div>
-                  {item.status && (
-                    <Textarea
-                      placeholder="Notes (if needed)..."
-                      value={item.notes}
-                      onChange={(e) => onChange(section, index, "notes", e.target.value)}
-                      className="text-sm"
-                      rows={2}
-                    />
-                  )}
+
+                {/* Large Touch-Friendly Status Buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="lg"
+                    variant={item.status === "compliant" ? "default" : "outline"}
+                    className={`h-12 ${
+                      item.status === "compliant"
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "hover:bg-green-50"
+                    }`}
+                    onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
+                  >
+                    <CheckCircle className="h-5 w-5 mr-1" />
+                    <span className="text-sm font-semibold">Compliant</span>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant={item.status === "non-compliant" ? "default" : "outline"}
+                    className={`h-12 ${
+                      item.status === "non-compliant"
+                        ? "bg-red-600 hover:bg-red-700 text-white"
+                        : "hover:bg-red-50"
+                    }`}
+                    onClick={() =>
+                      onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
+                    }
+                  >
+                    <AlertTriangle className="h-5 w-5 mr-1" />
+                    <span className="text-sm font-semibold">Non-Compliant</span>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant={item.status === "na" ? "default" : "outline"}
+                    className={`h-12 ${
+                      item.status === "na"
+                        ? "bg-slate-600 hover:bg-slate-700 text-white"
+                        : "hover:bg-slate-50"
+                    }`}
+                    onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
+                  >
+                    <span className="text-sm font-semibold">N/A</span>
+                  </Button>
+                </div>
+
+                {/* Notes Field - Always Reserve Space to Prevent Layout Shift */}
+                <div className={`transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+                  <Textarea
+                    placeholder={item.status ? "Add notes if needed..." : ""}
+                    value={item.notes}
+                    onChange={(e) => onChange(section, index, "notes", e.target.value)}
+                    className="text-sm min-h-[60px]"
+                    rows={2}
+                    disabled={!item.status}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -1318,15 +1326,15 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
         ))}
       </div>
 
-      <div className="border-t pt-6">
-        <Label htmlFor={`${section}-combined-notes`}>Combined Notes for {title}</Label>
+      <div className="border-t pt-3 mt-4">
+        <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes</Label>
         <Textarea
           id={`${section}-combined-notes`}
           value={sectionData.combinedNotes}
           onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
-          placeholder="Any additional observations or context for this section..."
-          rows={4}
-          className="mt-2"
+          placeholder="Additional observations for this section..."
+          rows={3}
+          className="mt-1 text-sm"
         />
       </div>
     </div>
