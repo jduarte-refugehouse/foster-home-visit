@@ -37,11 +37,21 @@ export async function GET(request: NextRequest) {
     const user = appUser[0]
     const userId = user.id
 
+    // Debug: Log user info
+    console.log("🔍 [DASHBOARD] User lookup:", {
+      clerkUserId,
+      impersonatedUserId,
+      appUserId: userId,
+      userName: `${user.first_name} ${user.last_name}`,
+      email: user.email,
+    })
+
     // Date range: today and next 30 days
     const today = startOfDay(new Date())
     const endDate = endOfDay(addDays(today, 30))
 
-    // Fetch upcoming appointments assigned to this user
+    // Fetch upcoming appointments - check both assigned_to_user_id AND created_by_user_id
+    // (in case user created appointments for themselves but didn't set assigned_to)
     const upcomingAppointments = await query(
       `
       SELECT 
@@ -55,11 +65,12 @@ export async function GET(request: NextRequest) {
         a.location_address,
         a.assigned_to_user_id,
         a.assigned_to_name,
+        a.created_by_user_id,
         vf.status as form_status,
         vf.visit_form_id
       FROM appointments a
       LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
-      WHERE a.assigned_to_user_id = @param0
+      WHERE (a.assigned_to_user_id = @param0 OR a.created_by_user_id = @param0)
         AND a.start_datetime >= @param1
         AND a.start_datetime <= @param2
         AND a.is_deleted = 0
@@ -68,7 +79,19 @@ export async function GET(request: NextRequest) {
       [userId, today.toISOString(), endDate.toISOString()]
     )
 
+    console.log("🔍 [DASHBOARD] Found appointments:", {
+      count: upcomingAppointments.length,
+      appointments: upcomingAppointments.map((a: any) => ({
+        id: a.appointment_id,
+        title: a.title,
+        assigned_to_user_id: a.assigned_to_user_id,
+        created_by_user_id: a.created_by_user_id,
+        start_datetime: a.start_datetime,
+      })),
+    })
+
     // Fetch upcoming on-call assignments for this user
+    // Also check by user_email in case user_id wasn't set correctly
     const upcomingOnCall = await query(
       `
       SELECT 
@@ -78,6 +101,8 @@ export async function GET(request: NextRequest) {
         ocs.on_call_type,
         ocs.on_call_category,
         ocs.duration_hours,
+        ocs.user_id,
+        ocs.user_email,
         ocs.is_currently_active,
         CASE 
           WHEN GETDATE() BETWEEN ocs.start_datetime AND ocs.end_datetime 
@@ -85,23 +110,33 @@ export async function GET(request: NextRequest) {
           ELSE 0 
         END as is_currently_active
       FROM on_call_schedule ocs
-      WHERE ocs.user_id = @param0
-        AND ocs.end_datetime >= @param1
+      WHERE (ocs.user_id = @param0 OR ocs.user_email = @param1)
+        AND ocs.end_datetime >= @param2
         AND ocs.is_active = 1
         AND ocs.is_deleted = 0
       ORDER BY ocs.start_datetime ASC
     `,
-      [userId, today.toISOString()]
+      [userId, user.email, today.toISOString()]
     )
 
-    // Count today's appointments
+    console.log("🔍 [DASHBOARD] Found on-call schedules:", {
+      count: upcomingOnCall.length,
+      schedules: upcomingOnCall.map((s: any) => ({
+        id: s.id,
+        user_id: s.user_id,
+        user_email: s.user_email,
+        start_datetime: s.start_datetime,
+      })),
+    })
+
+    // Count today's appointments (check both assigned and created by)
     const todayStart = startOfDay(new Date()).toISOString()
     const todayEnd = endOfDay(new Date()).toISOString()
     const todayAppointments = await query(
       `
       SELECT COUNT(*) as count
       FROM appointments
-      WHERE assigned_to_user_id = @param0
+      WHERE (assigned_to_user_id = @param0 OR created_by_user_id = @param0)
         AND start_datetime >= @param1
         AND start_datetime <= @param2
         AND is_deleted = 0
@@ -109,13 +144,13 @@ export async function GET(request: NextRequest) {
       [userId, todayStart, todayEnd]
     )
 
-    // Count this week's appointments
+    // Count this week's appointments (check both assigned and created by)
     const weekEnd = endOfDay(addDays(today, 7)).toISOString()
     const weekAppointments = await query(
       `
       SELECT COUNT(*) as count
       FROM appointments
-      WHERE assigned_to_user_id = @param0
+      WHERE (assigned_to_user_id = @param0 OR created_by_user_id = @param0)
         AND start_datetime >= @param1
         AND start_datetime <= @param2
         AND is_deleted = 0
@@ -123,12 +158,12 @@ export async function GET(request: NextRequest) {
       [userId, todayStart, weekEnd]
     )
 
-    // Count pending visits (scheduled but not started)
+    // Count pending visits (scheduled but not started) - check both assigned and created by
     const pendingVisits = await query(
       `
       SELECT COUNT(*) as count
       FROM appointments
-      WHERE assigned_to_user_id = @param0
+      WHERE (assigned_to_user_id = @param0 OR created_by_user_id = @param0)
         AND status = 'scheduled'
         AND start_datetime >= @param1
         AND is_deleted = 0
