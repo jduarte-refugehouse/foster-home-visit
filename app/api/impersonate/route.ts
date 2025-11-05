@@ -98,12 +98,19 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error("❌ Error starting impersonation:", error)
+    console.error("❌ [API] Error starting impersonation:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to start impersonation",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 }
     )
@@ -205,12 +212,19 @@ export async function GET(request: NextRequest) {
       } : null,
     })
   } catch (error) {
-    console.error("❌ Error getting impersonation status:", error)
+    console.error("❌ [API] Error getting impersonation status:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to get impersonation status",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 }
     )

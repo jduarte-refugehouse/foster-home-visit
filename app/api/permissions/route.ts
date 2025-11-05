@@ -68,8 +68,21 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error("Error fetching user permissions:", error)
+    console.error("❌ [API] Error fetching user permissions:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred"
-    return NextResponse.json({ error: "Failed to fetch permissions", details: errorMessage }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to fetch permissions",
+        details: errorMessage,
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
+      },
+      { status: 500 }
+    )
   }
 }

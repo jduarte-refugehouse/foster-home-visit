@@ -19,11 +19,19 @@ export async function getImpersonatedUserId(request?: NextRequest): Promise<stri
       return impersonatedUserId || null
     } else {
       // Server component context - use cookies()
-      const cookieStore = await cookies()
-      const impersonatedUserId = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
-      return impersonatedUserId || null
+      // Note: cookies() will throw in API route context, so we catch and return null
+      try {
+        const cookieStore = await cookies()
+        const impersonatedUserId = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
+        return impersonatedUserId || null
+      } catch (cookieError) {
+        // cookies() not available (likely in API route without request)
+        // Return null to fall back to real user
+        return null
+      }
     }
   } catch (error) {
+    // Fallback: return null if anything fails
     console.error("Error reading impersonation cookie:", error)
     return null
   }
