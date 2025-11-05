@@ -113,31 +113,31 @@ export default function AppointmentDetailPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800"
+        return "bg-sky-100 text-sky-800 dark:bg-sky-900/20 dark:text-sky-400"
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-refuge-magenta/10 text-refuge-magenta dark:bg-refuge-magenta/20 dark:text-refuge-magenta-light"
       case "in-progress":
       case "in_progress":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400"
       case "rescheduled":
-        return "bg-purple-100 text-purple-800"
+        return "bg-refuge-purple/10 text-refuge-purple dark:bg-refuge-purple/20 dark:text-refuge-purple-light"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400"
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
-        return "bg-red-100 text-red-800"
+        return "bg-refuge-magenta/10 text-refuge-magenta dark:bg-refuge-magenta/20 dark:text-refuge-magenta-light"
       case "medium":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400"
       case "low":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400"
     }
   }
 
@@ -154,21 +154,21 @@ export default function AppointmentDetailPage() {
     switch (visitFormStatus) {
       case "completed":
         return (
-          <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Form Complete
           </Badge>
         )
       case "draft":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 flex items-center gap-1">
             <FileText className="h-3 w-3" />
             Draft Saved
           </Badge>
         )
       case "in_progress":
         return (
-          <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/20 dark:text-sky-400 flex items-center gap-1">
             <FileText className="h-3 w-3" />
             In Progress
           </Badge>
@@ -200,15 +200,13 @@ export default function AppointmentDetailPage() {
   if (!appointment) {
     return (
       <div className="container mx-auto p-6">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">Appointment not found</p>
-            <div className="flex justify-center mt-4">
-              <Button onClick={() => router.back()}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Go Back
-              </Button>
-            </div>
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="p-12 text-center">
+            <p className="text-muted-foreground mb-4">Appointment not found</p>
+            <Button onClick={() => router.back()} className="bg-refuge-purple hover:bg-refuge-purple-dark text-white shadow-sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -219,7 +217,7 @@ export default function AppointmentDetailPage() {
     <div className="container mx-auto p-6 max-w-5xl">
       {/* Header with Back Button */}
       <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <Button variant="ghost" onClick={() => router.back()} className="mb-4 hover:bg-refuge-purple/10 hover:text-refuge-purple">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
@@ -227,7 +225,7 @@ export default function AppointmentDetailPage() {
           <div>
             {appointment.home_name && (
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className="text-lg px-3 py-1 bg-blue-50 border-blue-200 text-blue-700">
+                <Badge variant="outline" className="text-lg px-3 py-1 bg-refuge-purple/10 border-refuge-purple/20 text-refuge-purple dark:bg-refuge-purple/20 dark:text-refuge-purple-light">
                   {appointment.home_name}
                 </Badge>
               </div>
@@ -251,7 +249,7 @@ export default function AppointmentDetailPage() {
               open={editDialogOpen}
               onOpenChange={setEditDialogOpen}
             >
-              <Button variant="outline">
+              <Button variant="outline" className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
@@ -264,7 +262,7 @@ export default function AppointmentDetailPage() {
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Date & Time */}
-          <Card>
+          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -302,7 +300,7 @@ export default function AppointmentDetailPage() {
           </Card>
 
           {/* Location */}
-          <Card>
+          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
@@ -313,7 +311,7 @@ export default function AppointmentDetailPage() {
               {appointment.home_name && (
                 <div>
                   <p className="text-sm text-muted-foreground">Foster Home</p>
-                  <p className="text-xl font-semibold text-blue-700">{appointment.home_name}</p>
+                  <p className="text-xl font-semibold text-refuge-purple dark:text-refuge-purple-light">{appointment.home_name}</p>
                   {appointment.home_xref && (
                     <p className="text-xs text-muted-foreground">Home ID: {appointment.home_xref}</p>
                   )}
@@ -330,36 +328,36 @@ export default function AppointmentDetailPage() {
 
           {/* Description */}
           {appointment.description && (
-            <Card>
+            <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
               <CardHeader>
                 <CardTitle>Description</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap">{appointment.description}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{appointment.description}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Preparation Notes */}
           {appointment.preparation_notes && (
-            <Card>
+            <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
               <CardHeader>
                 <CardTitle>Preparation Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap">{appointment.preparation_notes}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{appointment.preparation_notes}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Completion Notes */}
           {appointment.completion_notes && (
-            <Card>
+            <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
               <CardHeader>
                 <CardTitle>Completion Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-wrap">{appointment.completion_notes}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{appointment.completion_notes}</p>
               </CardContent>
             </Card>
           )}
@@ -368,7 +366,7 @@ export default function AppointmentDetailPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Assigned To */}
-          <Card>
+          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -382,7 +380,7 @@ export default function AppointmentDetailPage() {
           </Card>
 
           {/* Visit Form Actions */}
-          <Card>
+          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -402,7 +400,7 @@ export default function AppointmentDetailPage() {
           </Card>
 
           {/* Metadata */}
-          <Card>
+          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
