@@ -480,26 +480,6 @@ export default function AppointmentDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Visit Form Actions */}
-          <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Visit Form
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {getVisitFormStatusBadge()}
-              <VisitFormButton
-                appointmentId={appointment.appointment_id}
-                appointmentStatus={appointment.status}
-                visitFormStatus={visitFormStatus || undefined}
-                onVisitFormCompleted={handleVisitFormCompleted}
-                className="w-full"
-              />
-            </CardContent>
-          </Card>
-
           {/* Metadata */}
           <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
@@ -539,44 +519,32 @@ export default function AppointmentDetailPage() {
 
         {/* Visit Form Tab */}
         <TabsContent value="form" className="mt-0">
-          <Card className="rounded-xl shadow-sm">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Home Visit Form
-                </CardTitle>
+          <div className="rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <div className="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                <h3 className="font-semibold">Home Visit Form</h3>
                 {getVisitFormStatusBadge()}
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="text-center space-y-4">
-                <p className="text-muted-foreground">
-                  {visitFormStatus 
-                    ? "Continue working on your visit form or view the completed form."
-                    : "Start filling out the visit form for this appointment."}
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <VisitFormButton
-                    appointmentId={appointment.appointment_id}
-                    appointmentStatus={appointment.status}
-                    visitFormStatus={visitFormStatus || undefined}
-                    onVisitFormCompleted={handleVisitFormCompleted}
-                  />
-                  <Button 
-                    variant="outline"
-                    asChild
-                    className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
-                  >
-                    <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Open in New Tab
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Button 
+                variant="outline"
+                size="sm"
+                asChild
+                className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
+              >
+                <Link href={`/visit-form?appointmentId=${appointmentId}`} target="_blank">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open in New Tab
+                </Link>
+              </Button>
+            </div>
+            <iframe
+              src={`/visit-form?appointmentId=${appointmentId}`}
+              className="w-full border-0"
+              style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}
+              title="Home Visit Form"
+            />
+          </div>
         </TabsContent>
 
         {/* History Tab */}
