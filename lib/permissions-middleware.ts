@@ -1,30 +1,22 @@
-import { auth, currentUser } from "@clerk/nextjs/server"
 import type { NextRequest } from "next/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
 import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
+import { getClerkUserIdFromRequest } from "./clerk-auth-helper"
 
 export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
-  // Try currentUser first (more reliable)
+  // SAFE: Use header-based auth for API routes (no middleware required)
+  // If request is provided, use headers. Otherwise, this is a server component (not used in API routes)
   let userId: string | null = null
-  try {
-    const user = await currentUser()
-    if (user?.id) {
-      userId = user.id
-    } else {
-      // Fallback to auth()
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    }
-  } catch (error) {
-    console.error("❌ [Permissions] Auth error:", error)
-    // Try auth() as fallback
-    try {
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    } catch (fallbackError) {
-      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
-    }
+  
+  if (request) {
+    // API route - use header-based auth
+    const auth = getClerkUserIdFromRequest(request)
+    userId = auth.clerkUserId
+  } else {
+    // Server component - this shouldn't happen in API routes, but keep for compatibility
+    // Note: Server components should use getEffectiveUser directly
+    return { authorized: false, user: null, reason: "checkPermission requires NextRequest for API routes" }
   }
 
   if (!userId) {
@@ -67,26 +59,16 @@ export async function checkPermission(requiredPermission: string | string[], mic
 }
 
 export async function checkRole(requiredRole: string | string[], microserviceCode?: string, request?: NextRequest) {
-  // Try currentUser first (more reliable)
+  // SAFE: Use header-based auth for API routes (no middleware required)
   let userId: string | null = null
-  try {
-    const user = await currentUser()
-    if (user?.id) {
-      userId = user.id
-    } else {
-      // Fallback to auth()
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    }
-  } catch (error) {
-    console.error("❌ [Permissions] Auth error in checkRole:", error)
-    // Try auth() as fallback
-    try {
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    } catch (fallbackError) {
-      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
-    }
+  
+  if (request) {
+    // API route - use header-based auth
+    const auth = getClerkUserIdFromRequest(request)
+    userId = auth.clerkUserId
+  } else {
+    // Server component - this shouldn't happen in API routes
+    return { authorized: false, user: null, reason: "checkRole requires NextRequest for API routes" }
   }
 
   if (!userId) {
@@ -132,30 +114,16 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
 }
 
 export async function requireAuth(request?: NextRequest) {
-  // Try currentUser first (more reliable)
-  let userId: string | null = null
-  try {
-    const user = await currentUser()
-    if (user?.id) {
-      userId = user.id
-    } else {
-      // Fallback to auth()
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    }
-  } catch (error) {
-    console.error("❌ [Permissions] Auth error in requireAuth:", error)
-    // Try auth() as fallback
-    try {
-      const authResult = await auth()
-      userId = authResult?.userId || null
-    } catch (fallbackError) {
-      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
-    }
+  // SAFE: Use header-based auth for API routes (no middleware required)
+  if (!request) {
+    throw new Error("requireAuth requires NextRequest for API routes")
   }
+  
+  const auth = getClerkUserIdFromRequest(request)
+  const userId = auth.clerkUserId
 
   if (!userId) {
-    throw new Error("Authentication required")
+    throw new Error("Authentication required: Missing x-user-clerk-id or x-user-email header")
   }
 
   // Use effective user (impersonated if active, otherwise real user)
