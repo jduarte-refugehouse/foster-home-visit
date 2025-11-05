@@ -200,14 +200,19 @@ export function CreateAppointmentDialog({
       }
 
       // Create start and end datetime objects
-      const startDateTime = new Date(formData.date)
+      // IMPORTANT: Treat the user's input as local time, store as-is without timezone conversion
+      // This prevents timezone shifts when displaying in the calendar
+      const [year, month, day] = formData.date.split("-").map(Number)
       const [startHours, startMinutes] = formData.startTime.split(":").map(Number)
-      startDateTime.setHours(startHours, startMinutes, 0, 0)
-
-      const endDateTime = new Date(formData.date)
       const [endHours, endMinutes] = formData.endTime.split(":").map(Number)
-      endDateTime.setHours(endHours, endMinutes, 0, 0)
+      
+      // Create dates in local timezone
+      // Use Date constructor with individual components to avoid timezone conversion
+      const startDateTime = new Date(year, month - 1, day, startHours, startMinutes, 0, 0)
+      const endDateTime = new Date(year, month - 1, day, endHours, endMinutes, 0, 0)
 
+      // Format as ISO string but ensure we're treating it as the user's local time
+      // The calendar will display this correctly because react-big-calendar handles timezones
       const appointmentData = {
         title: formData.title,
         description: formData.description,

@@ -112,7 +112,28 @@ export default function VisitFormPage() {
 
   const handleSave = async (formData: any) => {
     try {
-      console.log("[v0] Saving form draft:", formData)
+      console.log("[v0] Saving form draft via API:", formData)
+
+      // Actually save the form data to the API
+      const response = await fetch("/api/visit-forms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          appointmentId: appointmentId,
+          formData: formData,
+          status: "draft",
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to save form")
+      }
+
+      const result = await response.json()
+      console.log("[v0] Form saved successfully:", result)
 
       toast({
         title: "Draft Saved",
@@ -122,7 +143,7 @@ export default function VisitFormPage() {
       console.error("[v0] Error saving form:", error)
       toast({
         title: "Error",
-        description: "Failed to save form draft",
+        description: error instanceof Error ? error.message : "Failed to save form draft",
         variant: "destructive",
       })
     }
@@ -243,7 +264,11 @@ export default function VisitFormPage() {
         appointmentId={appointmentId || undefined}
         homeData={homeData}
         existingFormData={existingFormData}
-        onSave={handleSave}
+        onSave={async (formData) => {
+          // The form component handles saving internally via saveFormData
+          // This callback is just for notification
+          await handleSave(formData)
+        }}
         onSubmit={handleSubmit}
       />
     </div>

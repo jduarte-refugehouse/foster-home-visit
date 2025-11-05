@@ -206,13 +206,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate dates
+    // Parse ISO strings - these come from the client and should be in local time
+    // The database stores DATETIME2 without timezone, so we store the literal datetime value
     const start = new Date(startDateTime)
     const end = new Date(endDateTime)
     if (start >= end) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
 
-    console.log("📅 [API] Creating new appointment:", { title, appointmentType, assignedToName })
+    // Log the datetime values for debugging
+    console.log("📅 [API] Creating new appointment:", { 
+      title, 
+      appointmentType, 
+      assignedToName,
+      startDateTime,
+      endDateTime,
+      startISO: start.toISOString(),
+      endISO: end.toISOString(),
+      startLocal: start.toLocaleString(),
+      endLocal: end.toLocaleString()
+    })
 
     const result = await query(
       `
