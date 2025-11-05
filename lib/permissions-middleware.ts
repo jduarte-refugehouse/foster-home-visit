@@ -1,11 +1,31 @@
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import type { NextRequest } from "next/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
 import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
 
 export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
-  const { userId } = await auth()
+  // Try currentUser first (more reliable)
+  let userId: string | null = null
+  try {
+    const user = await currentUser()
+    if (user?.id) {
+      userId = user.id
+    } else {
+      // Fallback to auth()
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    }
+  } catch (error) {
+    console.error("❌ [Permissions] Auth error:", error)
+    // Try auth() as fallback
+    try {
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    } catch (fallbackError) {
+      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
+    }
+  }
 
   if (!userId) {
     return { authorized: false, user: null, reason: "Not authenticated" }
@@ -47,7 +67,27 @@ export async function checkPermission(requiredPermission: string | string[], mic
 }
 
 export async function checkRole(requiredRole: string | string[], microserviceCode?: string, request?: NextRequest) {
-  const { userId } = await auth()
+  // Try currentUser first (more reliable)
+  let userId: string | null = null
+  try {
+    const user = await currentUser()
+    if (user?.id) {
+      userId = user.id
+    } else {
+      // Fallback to auth()
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    }
+  } catch (error) {
+    console.error("❌ [Permissions] Auth error in checkRole:", error)
+    // Try auth() as fallback
+    try {
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    } catch (fallbackError) {
+      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
+    }
+  }
 
   if (!userId) {
     return { authorized: false, user: null, reason: "Not authenticated" }
@@ -92,7 +132,27 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
 }
 
 export async function requireAuth(request?: NextRequest) {
-  const { userId } = await auth()
+  // Try currentUser first (more reliable)
+  let userId: string | null = null
+  try {
+    const user = await currentUser()
+    if (user?.id) {
+      userId = user.id
+    } else {
+      // Fallback to auth()
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    }
+  } catch (error) {
+    console.error("❌ [Permissions] Auth error in requireAuth:", error)
+    // Try auth() as fallback
+    try {
+      const authResult = await auth()
+      userId = authResult?.userId || null
+    } catch (fallbackError) {
+      console.error("❌ [Permissions] Auth fallback also failed:", fallbackError)
+    }
+  }
 
   if (!userId) {
     throw new Error("Authentication required")
@@ -113,8 +173,8 @@ export async function requireAuth(request?: NextRequest) {
   return { userId, user }
 }
 
-export async function requirePermission(permission: string | string[], microserviceCode?: string) {
-  const result = await checkPermission(permission, microserviceCode)
+export async function requirePermission(permission: string | string[], microserviceCode?: string, request?: NextRequest) {
+  const result = await checkPermission(permission, microserviceCode, request)
 
   if (!result.authorized) {
     throw new Error(`Access denied: ${result.reason}`)
@@ -123,8 +183,8 @@ export async function requirePermission(permission: string | string[], microserv
   return result.user
 }
 
-export async function requireRole(role: string | string[], microserviceCode?: string) {
-  const result = await checkRole(role, microserviceCode)
+export async function requireRole(role: string | string[], microserviceCode?: string, request?: NextRequest) {
+  const result = await checkRole(role, microserviceCode, request)
 
   if (!result.authorized) {
     throw new Error(`Access denied: ${result.reason}`)
@@ -138,9 +198,10 @@ export async function withPermissionCheck(
   handler: (user: any) => Promise<Response>,
   requiredPermission: string | string[],
   microserviceCode?: string,
+  request?: NextRequest,
 ): Promise<Response> {
   try {
-    const user = await requirePermission(requiredPermission, microserviceCode)
+    const user = await requirePermission(requiredPermission, microserviceCode, request)
     return await handler(user)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Access denied"
@@ -156,9 +217,10 @@ export async function withRoleCheck(
   handler: (user: any) => Promise<Response>,
   requiredRole: string | string[],
   microserviceCode?: string,
+  request?: NextRequest,
 ): Promise<Response> {
   try {
-    const user = await requireRole(requiredRole, microserviceCode)
+    const user = await requireRole(requiredRole, microserviceCode, request)
     return await handler(user)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Access denied"
