@@ -176,6 +176,11 @@ export async function GET(request: NextRequest) {
     let clerkUserId
     try {
       const authResult = await auth()
+      console.log("🔍 [API] Auth result in impersonate GET:", { 
+        hasResult: !!authResult, 
+        userId: authResult?.userId,
+        keys: authResult ? Object.keys(authResult) : []
+      })
       clerkUserId = authResult?.userId
     } catch (authError) {
       console.error("❌ [API] Auth error in impersonate GET:", authError)
@@ -183,7 +188,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      console.log("⚠️ [API] No clerkUserId found in impersonate GET")
+      return NextResponse.json({ error: "Unauthorized", details: "No user ID from authentication" }, { status: 401 })
     }
 
     // Get impersonation cookies
