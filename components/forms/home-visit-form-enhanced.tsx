@@ -424,47 +424,150 @@ const EnhancedHomeVisitForm = ({
 
   // Load existing form data if available (takes precedence over prepopulation)
   useEffect(() => {
-    if (!existingFormData) return
+    if (!existingFormData) {
+      console.log("📝 [FORM] No existing form data provided")
+      return
+    }
 
     console.log("📝 [FORM] Loading existing form data:", existingFormData)
+    console.log("📝 [FORM] Existing form data keys:", Object.keys(existingFormData))
 
     try {
-      // Parse all JSON fields from the database
-      const parsedData = {
-        visitInfo: existingFormData.visit_info || formData.visitInfo,
-        fosterHome: existingFormData.family_info?.fosterHome || formData.fosterHome,
-        household: existingFormData.family_info?.household || formData.household,
-        childrenPresent: existingFormData.attendees?.childrenPresent || formData.childrenPresent,
-        homeCondition: existingFormData.home_environment?.homeCondition || formData.homeCondition,
-        outdoorSpace: existingFormData.home_environment?.outdoorSpace || formData.outdoorSpace,
-        observations: existingFormData.observations?.observations || formData.observations,
-        followUpItems: existingFormData.observations?.followUpItems || formData.followUpItems,
-        correctiveActions: existingFormData.observations?.correctiveActions || formData.correctiveActions,
-        visitSummary: existingFormData.recommendations?.visitSummary || formData.visitSummary,
-        signatures: existingFormData.signatures || formData.signatures,
-        placements: existingFormData.child_interviews?.placements || formData.placements,
-        fosterParentInterview: existingFormData.parent_interviews?.fosterParentInterview || formData.fosterParentInterview,
-        // Compliance sections
-        medication: existingFormData.compliance_review?.medication || formData.medication,
-        inspections: existingFormData.compliance_review?.inspections || formData.inspections,
-        healthSafety: existingFormData.compliance_review?.healthSafety || formData.healthSafety,
-        childrensRights: existingFormData.compliance_review?.childrensRights || formData.childrensRights,
-        bedrooms: existingFormData.compliance_review?.bedrooms || formData.bedrooms,
-        education: existingFormData.compliance_review?.education || formData.education,
-        indoorSpace: existingFormData.compliance_review?.indoorSpace || formData.indoorSpace,
-        documentation: existingFormData.compliance_review?.documentation || formData.documentation,
-        traumaInformedCare: existingFormData.compliance_review?.traumaInformedCare || formData.traumaInformedCare,
-        outdoorSpaceCompliance: existingFormData.compliance_review?.outdoorSpace || formData.outdoorSpaceCompliance,
-        vehicles: existingFormData.compliance_review?.vehicles || formData.vehicles,
-        swimming: existingFormData.compliance_review?.swimming || formData.swimming,
-        infants: existingFormData.compliance_review?.infants || formData.infants,
-        qualityEnhancement: existingFormData.compliance_review?.qualityEnhancement || formData.qualityEnhancement,
+      // Helper to parse JSON strings if needed
+      const parseIfString = (value: any) => {
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value)
+          } catch (e) {
+            console.warn("📝 [FORM] Failed to parse JSON string:", value)
+            return value
+          }
+        }
+        return value
       }
 
-      setFormData(parsedData)
+      // Parse JSON fields - API should already parse them, but handle both cases
+      const visitInfo = parseIfString(existingFormData.visit_info)
+      const familyInfo = parseIfString(existingFormData.family_info)
+      const attendees = parseIfString(existingFormData.attendees)
+      const observations = parseIfString(existingFormData.observations)
+      const recommendations = parseIfString(existingFormData.recommendations)
+      const signatures = parseIfString(existingFormData.signatures)
+      const homeEnvironment = parseIfString(existingFormData.home_environment)
+      const childInterviews = parseIfString(existingFormData.child_interviews)
+      const parentInterviews = parseIfString(existingFormData.parent_interviews)
+      const complianceReview = parseIfString(existingFormData.compliance_review)
+
+      console.log("📝 [FORM] Parsed visit_info:", visitInfo)
+      console.log("📝 [FORM] Parsed compliance_review:", complianceReview)
+
+      // Merge existing data with current formData to preserve all fields
+      setFormData(prev => ({
+        ...prev,
+        // Visit info - merge with existing to preserve structure
+        visitInfo: visitInfo ? {
+          ...prev.visitInfo,
+          ...visitInfo,
+          // Ensure date/time are set correctly
+          date: visitInfo.date || existingFormData.visit_date || prev.visitInfo.date,
+          time: visitInfo.time || existingFormData.visit_time || prev.visitInfo.time,
+          quarter: visitInfo.quarter || existingFormData.quarter || prev.visitInfo.quarter,
+          visitNumberThisQuarter: visitInfo.visitNumberThisQuarter || existingFormData.visit_number || prev.visitInfo.visitNumberThisQuarter,
+        } : prev.visitInfo,
+        // Family info
+        fosterHome: familyInfo?.fosterHome ? {
+          ...prev.fosterHome,
+          ...familyInfo.fosterHome
+        } : prev.fosterHome,
+        household: familyInfo?.household ? {
+          ...prev.household,
+          ...familyInfo.household
+        } : prev.household,
+        // Attendees
+        childrenPresent: attendees?.childrenPresent || prev.childrenPresent,
+        // Home environment
+        homeCondition: homeEnvironment?.homeCondition || prev.homeCondition,
+        outdoorSpace: homeEnvironment?.outdoorSpace || prev.outdoorSpace,
+        // Observations
+        observations: observations?.observations || prev.observations,
+        followUpItems: observations?.followUpItems || prev.followUpItems,
+        correctiveActions: observations?.correctiveActions || prev.correctiveActions,
+        // Recommendations
+        visitSummary: recommendations?.visitSummary || prev.visitSummary,
+        // Signatures
+        signatures: signatures ? {
+          ...prev.signatures,
+          ...signatures
+        } : prev.signatures,
+        // Child interviews
+        placements: childInterviews?.placements || prev.placements,
+        // Parent interviews
+        fosterParentInterview: parentInterviews?.fosterParentInterview || prev.fosterParentInterview,
+        // Compliance sections - merge to preserve structure
+        medication: complianceReview?.medication ? {
+          ...prev.medication,
+          ...complianceReview.medication
+        } : prev.medication,
+        inspections: complianceReview?.inspections ? {
+          ...prev.inspections,
+          ...complianceReview.inspections
+        } : prev.inspections,
+        healthSafety: complianceReview?.healthSafety ? {
+          ...prev.healthSafety,
+          ...complianceReview.healthSafety
+        } : prev.healthSafety,
+        childrensRights: complianceReview?.childrensRights ? {
+          ...prev.childrensRights,
+          ...complianceReview.childrensRights
+        } : prev.childrensRights,
+        bedrooms: complianceReview?.bedrooms ? {
+          ...prev.bedrooms,
+          ...complianceReview.bedrooms
+        } : prev.bedrooms,
+        education: complianceReview?.education ? {
+          ...prev.education,
+          ...complianceReview.education
+        } : prev.education,
+        indoorSpace: complianceReview?.indoorSpace ? {
+          ...prev.indoorSpace,
+          ...complianceReview.indoorSpace
+        } : prev.indoorSpace,
+        documentation: complianceReview?.documentation ? {
+          ...prev.documentation,
+          ...complianceReview.documentation
+        } : prev.documentation,
+        traumaInformedCare: complianceReview?.traumaInformedCare ? {
+          ...prev.traumaInformedCare,
+          ...complianceReview.traumaInformedCare
+        } : prev.traumaInformedCare,
+        outdoorSpaceCompliance: complianceReview?.outdoorSpace ? {
+          ...prev.outdoorSpaceCompliance,
+          ...complianceReview.outdoorSpace
+        } : prev.outdoorSpaceCompliance,
+        vehicles: complianceReview?.vehicles ? {
+          ...prev.vehicles,
+          ...complianceReview.vehicles
+        } : prev.vehicles,
+        swimming: complianceReview?.swimming ? {
+          ...prev.swimming,
+          ...complianceReview.swimming
+        } : prev.swimming,
+        infants: complianceReview?.infants ? {
+          ...prev.infants,
+          ...complianceReview.infants
+        } : prev.infants,
+        qualityEnhancement: complianceReview?.qualityEnhancement ? {
+          ...prev.qualityEnhancement,
+          ...complianceReview.qualityEnhancement
+        } : prev.qualityEnhancement,
+      }))
       console.log("✅ [FORM] Existing form data loaded successfully")
     } catch (error) {
       console.error("❌ [FORM] Error loading existing form data:", error)
+      console.error("❌ [FORM] Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      })
     }
   }, [existingFormData])
 
