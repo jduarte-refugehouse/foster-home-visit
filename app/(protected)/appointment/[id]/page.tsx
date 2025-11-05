@@ -171,22 +171,33 @@ export default function AppointmentDetailPage() {
   }
 
   const fetchFormData = async () => {
-    if (formDataLoading || appointmentData) return // Don't fetch if already loading or loaded
+    if (formDataLoading) return // Don't fetch if already loading
     
     try {
       setFormDataLoading(true)
       console.log("📋 [FORM] Fetching form data for appointment:", appointmentId)
+      console.log("📋 [FORM] Current appointment:", appointment)
 
       // 1. Get appointment details (we already have this, but need it in the right format)
+      // Set appointmentData immediately so form can render
       setAppointmentData({ appointment })
+      console.log("📋 [FORM] Set appointmentData:", { appointment })
 
       // 2. Check for existing visit form
       const existingFormResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
       if (existingFormResponse.ok) {
         const existingFormResult = await existingFormResponse.json()
+        console.log("📋 [FORM] Existing form response:", existingFormResult)
         if (existingFormResult.visitForms && existingFormResult.visitForms.length > 0) {
+          console.log("📋 [FORM] Found existing form:", existingFormResult.visitForms[0])
           setExistingFormData(existingFormResult.visitForms[0])
+          // Also update visit form status
+          setVisitFormStatus(existingFormResult.visitForms[0].status)
+        } else {
+          console.log("📋 [FORM] No existing form found")
         }
+      } else {
+        console.error("❌ [FORM] Failed to fetch existing form:", existingFormResponse.status)
       }
 
       // 3. Get home GUID and prepopulation data
@@ -231,8 +242,11 @@ export default function AppointmentDetailPage() {
 
   // Load form data when Visit Form tab is activated
   useEffect(() => {
-    if (activeTab === "form" && appointment) {
+    if (activeTab === "form" && appointment && !appointmentData) {
+      console.log("📋 [FORM] Tab activated, fetching form data...")
       fetchFormData()
+    } else if (activeTab === "form" && appointment && appointmentData) {
+      console.log("📋 [FORM] Tab activated, form data already loaded")
     }
   }, [activeTab, appointment])
 
@@ -623,7 +637,7 @@ export default function AppointmentDetailPage() {
                 <p className="text-muted-foreground">Loading visit form...</p>
               </CardContent>
             </Card>
-          ) : appointmentData ? (
+          ) : appointmentData && appointment ? (
             <EnhancedHomeVisitForm
               appointmentId={appointmentId}
               appointmentData={appointmentData}
@@ -632,11 +646,21 @@ export default function AppointmentDetailPage() {
               onSave={handleSaveForm}
               onSubmit={handleSubmitForm}
             />
+          ) : appointment ? (
+            <Card className="rounded-xl shadow-sm">
+              <CardContent className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+                <p className="text-muted-foreground mb-4">Loading form data...</p>
+                <Button onClick={fetchFormData} variant="outline">
+                  Load Visit Form
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-12 text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
-                <p className="text-muted-foreground">Click to load the visit form</p>
+                <p className="text-muted-foreground">Appointment not loaded</p>
               </CardContent>
             </Card>
           )}
