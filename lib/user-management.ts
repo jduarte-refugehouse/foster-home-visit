@@ -530,22 +530,47 @@ export async function updateUserRoles(
       .input("microservice_id", microserviceId)
       .query("UPDATE user_roles SET is_active = 0 WHERE user_id = @user_id AND microservice_id = @microservice_id")
 
+    // Get existing roles from database to support database-defined roles
+    const existingDbRoles = await transaction
+      .request()
+      .input("microservice_id", microserviceId)
+      .query("SELECT DISTINCT role_name, MAX(role_display_name) as role_display_name, MAX(role_level) as role_level FROM user_roles WHERE microservice_id = @microservice_id GROUP BY role_name")
+    
+    const dbRoleMap = new Map<string, { role_display_name: string | null; role_level: number | null }>()
+    existingDbRoles.recordset.forEach((r: any) => {
+      dbRoleMap.set(r.role_name, { role_display_name: r.role_display_name, role_level: r.role_level })
+    })
+
     // Grant new roles
     for (const roleName of roleNames) {
+      // Check if role exists in config or database
       const roleConfig = Object.entries(MICROSERVICE_ROLES).find(([key, value]) => value === roleName)
-      if (!roleConfig) {
-        console.warn(`Role ${roleName} not found in MICROSERVICE_ROLES`)
-        continue
+      const dbRoleInfo = dbRoleMap.get(roleName)
+
+      // Use database role info if available, otherwise use config or defaults
+      let roleLevel = dbRoleInfo?.role_level
+      let roleDisplayName = dbRoleInfo?.role_display_name
+
+      if (!roleLevel) {
+        // Calculate role level if not in database
+        roleLevel = roleName.includes("admin") || roleName === "global_admin"
+          ? 4
+          : roleName.includes("director")
+            ? 3
+            : roleName.includes("liaison")
+              ? 2
+              : 1
       }
 
-      const roleLevel = roleName.includes("admin")
-        ? 4
-        : roleName.includes("director")
-          ? 3
-          : roleName.includes("liaison")
-            ? 2
-            : 1
-      const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      if (!roleDisplayName) {
+        // Generate display name if not in database
+        roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      }
+
+      // If role doesn't exist in config or database, we still create it (it was validated in the API)
+      if (!roleConfig && !dbRoleInfo) {
+        console.log(`Creating new role assignment for ${roleName} (not in config or database)`)
+      }
 
       // Check if role assignment already exists but is inactive
       const existingRole = await transaction

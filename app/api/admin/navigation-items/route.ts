@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     const microserviceId = microservice[0].id
+    console.log(`🔍 [API] Fetching navigation items for microservice: ${CURRENT_MICROSERVICE} (ID: ${microserviceId})`)
 
     // Fetch navigation items with permission info
     const navigationItems = await query<{
@@ -82,6 +83,8 @@ export async function GET(request: NextRequest) {
     `,
       [microserviceId]
     )
+
+    console.log(`✅ [API] Found ${navigationItems.length} navigation items for microservice ${CURRENT_MICROSERVICE}`)
 
     return NextResponse.json({
       success: true,

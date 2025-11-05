@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, UserPlus, Settings, UserCheck } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 
 interface User {
@@ -28,6 +30,9 @@ export default function UsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const [assigningRolesToUser, setAssigningRolesToUser] = useState<User | null>(null)
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false)
+  const [availableRoles, setAvailableRoles] = useState<Array<{ role_name: string; role_display_name: string; role_level: number }>>([])
   const { toast } = useToast()
 
   useEffect(() => {
@@ -49,7 +54,14 @@ export default function UsersPage() {
       const response = await fetch("/api/admin/users")
       if (response.ok) {
         const data = await response.json()
-        setUsers(data.users || [])
+        // Use usersWithRoles if available, otherwise use users
+        const usersData = data.usersWithRoles || data.users || []
+        // Map to extract roles as string array for compatibility
+        const mappedUsers = usersData.map((user: any) => ({
+          ...user,
+          roles: user.roles || (user.microservice_roles || []).map((r: any) => r.role_name || r),
+        }))
+        setUsers(mappedUsers)
       } else {
         toast({
           title: "Error",
@@ -233,8 +245,27 @@ export default function UsersPage() {
                       <UserCheck className="h-4 w-4 mr-1" />
                       Impersonate
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setAssigningRolesToUser(user)
+                        setIsRoleDialogOpen(true)
+                        // Fetch available roles
+                        try {
+                          const response = await fetch("/api/admin/roles")
+                          if (response.ok) {
+                            const data = await response.json()
+                            setAvailableRoles(data.roles || [])
+                          }
+                        } catch (error) {
+                          console.error("Error fetching roles:", error)
+                        }
+                      }}
+                      title="Assign roles to this user"
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Roles
                     </Button>
                     <Button
                       variant="outline"
@@ -250,6 +281,147 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Role Assignment Dialog */}
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Assign Roles to {assigningRolesToUser?.first_name} {assigningRolesToUser?.last_name}
+            </DialogTitle>
+            <DialogDescription>
+              Select the roles to assign to this user for the Home Visits microservice
+            </DialogDescription>
+          </DialogHeader>
+          <RoleAssignmentDialog
+            user={assigningRolesToUser}
+            availableRoles={availableRoles}
+            currentRoles={assigningRolesToUser?.roles || []}
+            onClose={() => {
+              setIsRoleDialogOpen(false)
+              setAssigningRolesToUser(null)
+            }}
+            onSave={() => {
+              fetchUsers()
+              setIsRoleDialogOpen(false)
+              setAssigningRolesToUser(null)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+// Role Assignment Dialog Component
+function RoleAssignmentDialog({
+  user,
+  availableRoles,
+  currentRoles,
+  onClose,
+  onSave,
+}: {
+  user: User | null
+  availableRoles: Array<{ role_name: string; role_display_name: string; role_level: number }>
+  currentRoles: string[] | Array<{ role_name: string; role_display_name: string }>
+  onClose: () => void
+  onSave: () => void
+}) {
+  // Normalize currentRoles to string array
+  const currentRolesArray = useMemo(() => 
+    currentRoles.map((r) => (typeof r === "string" ? r : r.role_name)),
+    [currentRoles]
+  )
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(currentRolesArray)
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    setSelectedRoles(currentRolesArray)
+  }, [currentRolesArray])
+
+  const handleRoleToggle = (roleName: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(roleName) ? prev.filter((r) => r !== roleName) : [...prev, roleName]
+    )
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/roles`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roles: selectedRoles }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User roles updated successfully",
+        })
+        onSave()
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to update user roles",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user roles",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4 py-4 max-h-[400px] overflow-y-auto">
+        {availableRoles.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No roles available</div>
+        ) : (
+          <div className="space-y-2">
+            {availableRoles.map((role) => (
+              <div key={role.role_name} className="flex items-center space-x-2 p-2 rounded hover:bg-slate-50">
+                <Checkbox
+                  id={`role-${role.role_name}`}
+                  checked={selectedRoles.includes(role.role_name)}
+                  onCheckedChange={() => handleRoleToggle(role.role_name)}
+                />
+                <label
+                  htmlFor={`role-${role.role_name}`}
+                  className="flex-1 cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  <div className="flex items-center justify-between">
+                    <span>{role.role_display_name}</span>
+                    <Badge variant="outline" className="text-xs">
+                      Level {role.role_level}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{role.role_name}</p>
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Roles"}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
