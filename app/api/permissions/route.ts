@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
-import { getEffectiveUser } from "@/lib/impersonation"
 
 export const dynamic = "force-dynamic"
 
