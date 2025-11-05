@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { auth, currentUser } from "@clerk/nextjs/server"
 import { query } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
@@ -11,78 +10,41 @@ export const runtime = "nodejs"
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get Clerk user ID with detailed logging
-    let clerkUserId: string | null = null
-    let clerkUserEmail: string | null = null
+    // Get Clerk user ID from request headers (same pattern as /api/navigation)
+    // This works without clerkMiddleware()
+    const userClerkId = request.headers.get("x-user-clerk-id")
+    const userEmail = request.headers.get("x-user-email")
+    const userName = request.headers.get("x-user-name")
+    
     const debugInfo: any = {
-      currentUserAttempt: null,
-      authAttempt: null,
-      errors: [],
+      headers: {
+        "x-user-clerk-id": userClerkId || "missing",
+        "x-user-email": userEmail || "missing",
+        "x-user-name": userName || "missing",
+      },
       cookies: {},
-      headers: {},
     }
     
-    // Check cookies and headers for debugging
+    // Check cookies for debugging
     const cookies = request.cookies.getAll()
     debugInfo.cookies = cookies.reduce((acc, cookie) => {
       acc[cookie.name] = cookie.value ? 'present' : 'missing'
       return acc
     }, {} as Record<string, string>)
     
-    // Try currentUser first
-    try {
-      const user = await currentUser()
-      debugInfo.currentUserAttempt = {
-        success: !!user,
-        hasId: !!user?.id,
-        id: user?.id || null,
-        email: user?.emailAddresses?.[0]?.emailAddress || null,
-      }
-      if (user?.id) {
-        clerkUserId = user.id
-        clerkUserEmail = user.emailAddresses[0]?.emailAddress || null
-      }
-    } catch (currentUserError) {
-      debugInfo.errors.push({
-        method: 'currentUser',
-        error: currentUserError instanceof Error ? currentUserError.message : 'Unknown error',
-        stack: currentUserError instanceof Error ? currentUserError.stack : undefined,
-      })
-      console.error("❌ [Debug] Error calling currentUser():", currentUserError)
-    }
+    // Use Clerk ID from headers (set by client-side auth)
+    const clerkUserId = userClerkId
+    const clerkUserEmail = userEmail
 
-    // Fallback to auth() if currentUser didn't work
-    if (!clerkUserId) {
-      try {
-        const authResult = await auth()
-        debugInfo.authAttempt = {
-          success: !!authResult,
-          hasUserId: !!authResult?.userId,
-          userId: authResult?.userId || null,
-          keys: authResult ? Object.keys(authResult) : [],
-        }
-        clerkUserId = authResult?.userId || null
-      } catch (authError) {
-        debugInfo.errors.push({
-          method: 'auth',
-          error: authError instanceof Error ? authError.message : 'Unknown error',
-          stack: authError instanceof Error ? authError.stack : undefined,
-        })
-        console.error("❌ [Debug] Error calling auth():", authError)
-      }
-    }
-
-    // Return detailed debug info even if auth fails
-    if (!clerkUserId) {
+    if (!clerkUserId && !userEmail) {
       return NextResponse.json({
         error: "Not authenticated",
         clerkUserId: null,
         debug: debugInfo,
         suggestions: [
-          "Make sure you're logged in to Clerk",
-          "Check if the route is accessible (might need to be in a protected folder)",
-          "Check browser console for Clerk errors",
-          "Try accessing /api/permissions to see if auth works there",
+          "This endpoint requires x-user-clerk-id or x-user-email header",
+          "Access from a protected page (like /dashboard) which sets these headers",
+          "Or use the browser console to call it with headers",
         ],
       }, { status: 401 })
     }
