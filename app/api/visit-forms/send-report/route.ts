@@ -183,47 +183,97 @@ function generateCompleteReportHTML(
   visitTime: string,
   familyName: string,
 ): string {
-  // Helper to format compliance sections - show all items, not just those with status
+  // Helper to format signature field with image
+  const formatSignatureField = (label: string, name: string, signature: string, date: string) => {
+    if (!name && !signature) return ""
+    
+    const nameDisplay = name || "Not provided"
+    const dateDisplay = date || "Not provided"
+    const signatureImg = signature && typeof signature === 'string' && (signature.startsWith('data:image') || signature.startsWith('data:image/png') || signature.length > 100)
+      ? `<div style="margin-top: 8px;"><img src="${signature}" alt="${label} signature" style="max-width: 300px; border: 1px solid #d1d5db; border-radius: 4px;" /></div>`
+      : signature && typeof signature === 'string'
+        ? `<div style="margin-top: 8px; color: #6b7280; font-size: 12px;">Signature data present</div>`
+        : ""
+    
+    return `
+      <div style="margin-bottom: 15px;">
+        <p style="margin: 3px 0;"><strong>${label}:</strong> ${nameDisplay}</p>
+        ${signatureImg}
+        <p style="margin: 3px 0; font-size: 12px; color: #6b7280;">Date: ${dateDisplay}</p>
+      </div>
+    `
+  }
+
+  // Helper to format visit summary object
+  const formatVisitSummaryObject = (summary: any) => {
+    if (typeof summary === 'string') return `<p style="white-space: pre-wrap;">${summary}</p>`
+    if (!summary || typeof summary !== 'object') return ""
+    
+    let html = ""
+    if (summary.overallStatus) {
+      html += `<p style="margin: 5px 0;"><strong>Overall Status:</strong> ${summary.overallStatus}</p>`
+    }
+    if (summary.keyStrengths && Array.isArray(summary.keyStrengths)) {
+      const strengths = summary.keyStrengths.filter((s: string) => s && s.trim())
+      if (strengths.length > 0) {
+        html += `<p style="margin: 5px 0;"><strong>Key Strengths:</strong></p><ul style="margin: 5px 0; padding-left: 20px;">${strengths.map((s: string) => `<li>${s}</li>`).join("")}</ul>`
+      }
+    }
+    if (summary.priorityAreas && Array.isArray(summary.priorityAreas)) {
+      const areas = summary.priorityAreas.filter((a: any) => a && (a.priority || a.description))
+      if (areas.length > 0) {
+        html += `<p style="margin: 5px 0;"><strong>Priority Areas:</strong></p><ul style="margin: 5px 0; padding-left: 20px;">${areas.map((a: any) => `<li>${a.priority || ""}: ${a.description || ""}</li>`).join("")}</ul>`
+      }
+    }
+    if (summary.resourcesProvided && typeof summary.resourcesProvided === 'object') {
+      const resources = Object.entries(summary.resourcesProvided).filter(([k, v]: [string, any]) => v && String(v).trim())
+      if (resources.length > 0) {
+        html += `<p style="margin: 5px 0;"><strong>Resources Provided:</strong></p><ul style="margin: 5px 0; padding-left: 20px;">${resources.map(([k, v]: [string, any]) => `<li>${k}: ${v}</li>`).join("")}</ul>`
+      }
+    }
+    if (summary.nextVisit && typeof summary.nextVisit === 'object') {
+      const nextVisit = summary.nextVisit
+      if (nextVisit.date || nextVisit.time || nextVisit.location) {
+        html += `<p style="margin: 5px 0;"><strong>Next Visit:</strong> ${nextVisit.visitType || ""} ${nextVisit.date || ""} ${nextVisit.time || ""} ${nextVisit.location || ""}</p>`
+      }
+    }
+    return html || `<p style="white-space: pre-wrap;">${JSON.stringify(summary, null, 2)}</p>`
+  }
+  // Helper to format compliance sections - show ALL items, even unanswered ones
   const formatComplianceSection = (sectionData: any, sectionName: string) => {
     if (!sectionData) return ""
     
     // Handle case where sectionData might be an object with items, or just items array
     const items = sectionData.items || (Array.isArray(sectionData) ? sectionData : [])
     
+    // Show ALL items, regardless of whether they have status or not
     if (!items || items.length === 0) {
       // Still show section if there are combined notes
       if (sectionData.combinedNotes) {
         return `
           <div style="margin-bottom: 20px;">
             <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}</h3>
-            <p style="font-style: italic;">${sectionData.combinedNotes}</p>
+            <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
           </div>
         `
       }
       return ""
     }
 
-    // Show all items, not just those with status (but prioritize items with status)
-    const itemsWithStatus = items.filter((item: any) => item.status)
-    const itemsWithoutStatus = items.filter((item: any) => !item.status && (item.notes || item.requirement))
-    
-    // Only show section if there are items with data or combined notes
-    if (itemsWithStatus.length === 0 && itemsWithoutStatus.length === 0 && !sectionData.combinedNotes) {
-      return ""
-    }
-
-    const itemsList = [...itemsWithStatus, ...itemsWithoutStatus]
+    // Show ALL items - answered and unanswered
+    const itemsList = items
       .map((item: any) => {
         const statusBadge = item.status ? {
           compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
           "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
           na: '<span style="color: #6b7280;">N/A</span>',
-        }[item.status] || `<span>${item.status}</span>` : ""
+        }[item.status] || `<span style="color: #6b7280;">${item.status}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
         
-        const statusText = statusBadge ? ` - ${statusBadge}` : ""
+        const statusText = ` - ${statusBadge}`
         const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
-        const requirement = item.requirement || item.code || ""
-        return `<li>${item.code || ""}${requirement && item.code ? ": " : ""}${requirement}${statusText}${notes}</li>`
+        const requirement = item.requirement || ""
+        const code = item.code || ""
+        return `<li>${code}${requirement && code ? ": " : ""}${requirement}${statusText}${notes}</li>`
       })
       .join("")
 
@@ -299,24 +349,32 @@ function generateCompleteReportHTML(
     return content ? `<div style="margin-bottom: 20px;"><h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Inspection Documentation</h3>${content}</div>` : ""
   }
 
-  // Helper to format trauma-informed care section
+  // Helper to format trauma-informed care section - show ALL items
   const formatTraumaInformedCare = (traumaCare: any) => {
-    if (!traumaCare || !traumaCare.items || traumaCare.items.length === 0) return ""
+    if (!traumaCare || !traumaCare.items || traumaCare.items.length === 0) {
+      if (traumaCare.combinedNotes) {
+        return `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training</h3>
+            <p style="font-style: italic; white-space: pre-wrap;">${traumaCare.combinedNotes}</p>
+          </div>
+        `
+      }
+      return ""
+    }
     
+    // Show ALL items, not just those with status
     const items = traumaCare.items
-      .filter((item: any) => item.status)
       .map((item: any) => {
-        const statusBadge = {
+        const statusBadge = item.status ? {
           compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
           "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
           na: '<span style="color: #6b7280;">N/A</span>',
-        }[item.status] || item.status
+        }[item.status] || `<span style="color: #6b7280;">${item.status}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
         const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
         return `<li>${item.code || ""}: ${item.requirement || ""} - ${statusBadge}${notes}</li>`
       })
       .join("")
-    
-    if (!items) return ""
     
     return `
       <div style="margin-bottom: 20px;">
@@ -324,7 +382,7 @@ function generateCompleteReportHTML(
         <ul style="margin: 0; padding-left: 20px;">
           ${items}
         </ul>
-        ${traumaCare.combinedNotes ? `<p style="margin-top: 10px; font-style: italic;">${traumaCare.combinedNotes}</p>` : ""}
+        ${traumaCare.combinedNotes ? `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${traumaCare.combinedNotes}</p>` : ""}
       </div>
     `
   }
@@ -510,7 +568,7 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${formData.parentInterviews.fosterParentInterview}</p>
+          <p style="white-space: pre-wrap;">${typeof formData.parentInterviews.fosterParentInterview === 'string' ? formData.parentInterviews.fosterParentInterview : JSON.stringify(formData.parentInterviews.fosterParentInterview, null, 2)}</p>
         </div>
       </div>
       ` : ""}
@@ -544,7 +602,12 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Visit Summary</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${formData.recommendations.visitSummary}</p>
+          ${typeof formData.recommendations.visitSummary === 'string' 
+            ? `<p style="white-space: pre-wrap;">${formData.recommendations.visitSummary}</p>`
+            : typeof formData.recommendations.visitSummary === 'object'
+              ? `<div>${formatVisitSummaryObject(formData.recommendations.visitSummary)}</div>`
+              : `<p>${String(formData.recommendations.visitSummary)}</p>`
+          }
         </div>
       </div>
       ` : ""}
@@ -554,7 +617,7 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">General Observations</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${formData.observations.observations}</p>
+          <p style="white-space: pre-wrap;">${typeof formData.observations.observations === 'string' ? formData.observations.observations : JSON.stringify(formData.observations.observations, null, 2)}</p>
         </div>
       </div>
       ` : ""}
@@ -564,16 +627,11 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Signatures</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          ${formData.signatures.visitor ? `<div><p style="margin: 5px 0;"><strong>Visitor Signature:</strong> ${typeof formData.signatures.visitor === 'string' && formData.signatures.visitor.length > 50 ? 'Signed (signature data present)' : formData.signatures.visitor}</p></div>` : ""}
-          ${formData.signatures.parent1 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 1:</strong> ${typeof formData.signatures.parent1 === 'string' && formData.signatures.parent1.length > 50 ? 'Signed (signature data present)' : formData.signatures.parent1}</p></div>` : ""}
-          ${formData.signatures.parent2 ? `<div><p style="margin: 5px 0;"><strong>Foster Parent 2:</strong> ${typeof formData.signatures.parent2 === 'string' && formData.signatures.parent2.length > 50 ? 'Signed (signature data present)' : formData.signatures.parent2}</p></div>` : ""}
-          ${formData.signatures.supervisor ? `<div><p style="margin: 5px 0;"><strong>Supervisor:</strong> ${typeof formData.signatures.supervisor === 'string' && formData.signatures.supervisor.length > 50 ? 'Signed (signature data present)' : formData.signatures.supervisor}</p></div>` : ""}
+          ${formatSignatureField("Visitor", formData.signatures.visitor, formData.signatures.visitorSignature, formData.signatures.visitorDate)}
+          ${formatSignatureField("Foster Parent 1", formData.signatures.parent1, formData.signatures.parent1Signature, formData.signatures.parent1Date)}
+          ${formatSignatureField("Foster Parent 2", formData.signatures.parent2, formData.signatures.parent2Signature, formData.signatures.parent2Date)}
+          ${formatSignatureField("Supervisor", formData.signatures.supervisor, formData.signatures.supervisorSignature, formData.signatures.supervisorDate)}
         </div>
-        ${Object.keys(formData.signatures).filter(k => !['visitor', 'parent1', 'parent2', 'supervisor'].includes(k)).length > 0 ? `
-          <div style="margin-top: 10px;">
-            <p style="font-size: 12px; color: #6b7280;">Additional signature fields present</p>
-          </div>
-        ` : ""}
       </div>
       ` : ""}
 
@@ -663,19 +721,43 @@ function generateCompleteReportText(
     sections.forEach(({ key, name }) => {
       const section = formData.complianceReview[key]
       if (section && section.items && section.items.length > 0) {
-        const itemsWithStatus = section.items.filter((item: any) => item.status)
-        if (itemsWithStatus.length > 0) {
-          content += `${name}:\n`
-          itemsWithStatus.forEach((item: any) => {
-            content += `  - ${item.code || ""}: ${item.requirement || ""} - ${item.status}${item.notes ? ` (${item.notes})` : ""}\n`
-          })
-          if (section.combinedNotes) {
-            content += `  Notes: ${section.combinedNotes}\n`
-          }
-          content += `\n`
+        // Show ALL items, not just those with status
+        content += `${name}:\n`
+        section.items.forEach((item: any) => {
+          const status = item.status || "Not answered"
+          content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
+        })
+        if (section.combinedNotes) {
+          content += `  Notes: ${section.combinedNotes}\n`
         }
+        content += `\n`
       }
     })
+    
+    // Trauma-Informed Care
+    if (formData.complianceReview.traumaInformedCare && formData.complianceReview.traumaInformedCare.items) {
+      content += `Trauma-Informed Care & Training:\n`
+      formData.complianceReview.traumaInformedCare.items.forEach((item: any) => {
+        const status = item.status || "Not answered"
+        content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
+      })
+      if (formData.complianceReview.traumaInformedCare.combinedNotes) {
+        content += `  Notes: ${formData.complianceReview.traumaInformedCare.combinedNotes}\n`
+      }
+      content += `\n`
+    }
+    
+    // Quality Enhancement
+    if (formData.complianceReview.qualityEnhancement) {
+      content += `Quality Enhancement:\n`
+      if (formData.complianceReview.qualityEnhancement.activities && Array.isArray(formData.complianceReview.qualityEnhancement.activities)) {
+        content += `  Activities: ${formData.complianceReview.qualityEnhancement.activities.join(", ")}\n`
+      }
+      if (formData.complianceReview.qualityEnhancement.notes) {
+        content += `  Notes: ${formData.complianceReview.qualityEnhancement.notes}\n`
+      }
+      content += `\n`
+    }
   }
 
   if (formData.childInterviews?.placements && formData.childInterviews.placements.length > 0) {
@@ -690,7 +772,8 @@ function generateCompleteReportText(
 
   if (formData.parentInterviews?.fosterParentInterview) {
     content += `FOSTER PARENT INTERVIEW\n`
-    content += `${formData.parentInterviews.fosterParentInterview}\n\n`
+    const interview = formData.parentInterviews.fosterParentInterview
+    content += `${typeof interview === 'string' ? interview : JSON.stringify(interview, null, 2)}\n\n`
   }
 
   if (formData.observations?.followUpItems && formData.observations.followUpItems.length > 0) {
@@ -711,20 +794,76 @@ function generateCompleteReportText(
 
   if (formData.recommendations?.visitSummary) {
     content += `VISIT SUMMARY\n`
-    content += `${formData.recommendations.visitSummary}\n\n`
+    const summary = formData.recommendations.visitSummary
+    if (typeof summary === 'string') {
+      content += `${summary}\n\n`
+    } else if (typeof summary === 'object') {
+      if (summary.overallStatus) content += `Overall Status: ${summary.overallStatus}\n`
+      if (summary.keyStrengths && Array.isArray(summary.keyStrengths)) {
+        const strengths = summary.keyStrengths.filter((s: string) => s && s.trim())
+        if (strengths.length > 0) {
+          content += `Key Strengths:\n`
+          strengths.forEach((s: string) => content += `  - ${s}\n`)
+        }
+      }
+      if (summary.priorityAreas && Array.isArray(summary.priorityAreas)) {
+        const areas = summary.priorityAreas.filter((a: any) => a && (a.priority || a.description))
+        if (areas.length > 0) {
+          content += `Priority Areas:\n`
+          areas.forEach((a: any) => content += `  - ${a.priority || ""}: ${a.description || ""}\n`)
+        }
+      }
+      if (summary.resourcesProvided && typeof summary.resourcesProvided === 'object') {
+        const resources = Object.entries(summary.resourcesProvided).filter(([k, v]: [string, any]) => v && String(v).trim())
+        if (resources.length > 0) {
+          content += `Resources Provided:\n`
+          resources.forEach(([k, v]: [string, any]) => content += `  - ${k}: ${v}\n`)
+        }
+      }
+      if (summary.nextVisit && typeof summary.nextVisit === 'object') {
+        const nextVisit = summary.nextVisit
+        if (nextVisit.date || nextVisit.time || nextVisit.location) {
+          content += `Next Visit: ${nextVisit.visitType || ""} ${nextVisit.date || ""} ${nextVisit.time || ""} ${nextVisit.location || ""}\n`
+        }
+      }
+      content += `\n`
+    } else {
+      content += `${String(summary)}\n\n`
+    }
   }
 
   if (formData.observations?.observations) {
     content += `GENERAL OBSERVATIONS\n`
-    content += `${formData.observations.observations}\n\n`
+    const observations = formData.observations.observations
+    content += `${typeof observations === 'string' ? observations : JSON.stringify(observations, null, 2)}\n\n`
   }
 
   if (formData.signatures) {
     content += `SIGNATURES\n`
-    if (formData.signatures.visitor) content += `Visitor: ${formData.signatures.visitor}\n`
-    if (formData.signatures.parent1) content += `Foster Parent 1: ${formData.signatures.parent1}\n`
-    if (formData.signatures.parent2) content += `Foster Parent 2: ${formData.signatures.parent2}\n`
-    if (formData.signatures.supervisor) content += `Supervisor: ${formData.signatures.supervisor}\n`
+    if (formData.signatures.visitor) {
+      content += `Visitor: ${formData.signatures.visitor}`
+      if (formData.signatures.visitorDate) content += ` (Date: ${formData.signatures.visitorDate})`
+      if (formData.signatures.visitorSignature) content += ` [Signature: ${formData.signatures.visitorSignature.length > 100 ? 'Image data present' : formData.signatures.visitorSignature}]`
+      content += `\n`
+    }
+    if (formData.signatures.parent1) {
+      content += `Foster Parent 1: ${formData.signatures.parent1}`
+      if (formData.signatures.parent1Date) content += ` (Date: ${formData.signatures.parent1Date})`
+      if (formData.signatures.parent1Signature) content += ` [Signature: ${formData.signatures.parent1Signature.length > 100 ? 'Image data present' : formData.signatures.parent1Signature}]`
+      content += `\n`
+    }
+    if (formData.signatures.parent2) {
+      content += `Foster Parent 2: ${formData.signatures.parent2}`
+      if (formData.signatures.parent2Date) content += ` (Date: ${formData.signatures.parent2Date})`
+      if (formData.signatures.parent2Signature) content += ` [Signature: ${formData.signatures.parent2Signature.length > 100 ? 'Image data present' : formData.signatures.parent2Signature}]`
+      content += `\n`
+    }
+    if (formData.signatures.supervisor) {
+      content += `Supervisor: ${formData.signatures.supervisor}`
+      if (formData.signatures.supervisorDate) content += ` (Date: ${formData.signatures.supervisorDate})`
+      if (formData.signatures.supervisorSignature) content += ` [Signature: ${formData.signatures.supervisorSignature.length > 100 ? 'Image data present' : formData.signatures.supervisorSignature}]`
+      content += `\n`
+    }
     content += `\n`
   }
 
