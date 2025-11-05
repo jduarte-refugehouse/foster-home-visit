@@ -338,101 +338,112 @@ export default function AppointmentDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-full">
-      {/* Header with Back Button and Actions */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" onClick={() => router.back()} className="hover:bg-refuge-purple/10 hover:text-refuge-purple">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+    <div className="min-h-screen bg-gray-50">
+      {/* ROW 1: Navigation + Title + Actions */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-8 px-2">
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handlePopOut}
-              className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Pop Out
-            </Button>
-            {appointment.status === "scheduled" && (
-              <Button 
-                onClick={handleStartVisit}
-                className="bg-refuge-purple hover:bg-refuge-purple-dark text-white shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Start Visit
-              </Button>
-            )}
-            <CreateAppointmentDialog
-              editingAppointment={appointment}
-              onAppointmentCreated={() => {
-                fetchAppointmentDetails()
-                setEditDialogOpen(false)
-              }}
-              open={editDialogOpen}
-              onOpenChange={setEditDialogOpen}
-            >
-              <Button variant="outline" className="hover:bg-refuge-purple/10 hover:text-refuge-purple hover:border-refuge-purple/20">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            </CreateAppointmentDialog>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">{appointment.home_name || appointment.title}</h1>
           </div>
         </div>
-
-        {/* Title Section */}
-        <div className="flex items-start justify-between">
-          <div>
-            {appointment.home_name && (
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className="text-lg px-3 py-1 bg-refuge-purple/10 border-refuge-purple/20 text-refuge-purple dark:bg-refuge-purple/20 dark:text-refuge-purple-light">
-                  {appointment.home_name}
-                </Badge>
-              </div>
-            )}
-            <h1 className="text-3xl font-bold mb-2">{appointment.title}</h1>
-            <div className="flex flex-wrap gap-2">
-              <Badge className={getStatusColor(appointment.status)}>
-                {appointment.status.replace("_", " ").replace("-", " ")}
-              </Badge>
-              <Badge className={getPriorityColor(appointment.priority)}>{appointment.priority} priority</Badge>
-              {getVisitFormStatusBadge()}
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handlePopOut}
+            className="h-8 px-3"
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Pop Out
+          </Button>
+          {appointment.status === "scheduled" && (
+            <Button 
+              size="sm"
+              onClick={handleStartVisit}
+              className="h-8 px-3 bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+            >
+              <Play className="h-4 w-4 mr-1" />
+              Start Visit
+            </Button>
+          )}
+          <CreateAppointmentDialog
+            editingAppointment={appointment}
+            onAppointmentCreated={() => {
+              fetchAppointmentDetails()
+              setEditDialogOpen(false)
+            }}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+          >
+            <Button variant="outline" size="sm" className="h-8 px-3">
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+          </CreateAppointmentDialog>
         </div>
       </div>
 
-      {/* Tabbed Interface */}
+      {/* ROW 2: Status Badges */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2">
+        <Badge className={getStatusColor(appointment.status)}>
+          {appointment.status.replace("_", " ").replace("-", " ")}
+        </Badge>
+        <Badge className={getPriorityColor(appointment.priority)}>{appointment.priority} priority</Badge>
+        {getVisitFormStatusBadge()}
+      </div>
+
+      {/* ROW 3: Tab Menu */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl mb-6">
-          <TabsTrigger value="details" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="form" className="flex items-center gap-2">
-            <Edit className="h-4 w-4" />
-            <span className="hidden sm:inline">Visit Form</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            <span className="hidden sm:inline">History</span>
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">Notes</span>
-          </TabsTrigger>
-          <TabsTrigger value="attachments" className="flex items-center gap-2">
-            <Paperclip className="h-4 w-4" />
-            <span className="hidden sm:inline">Files</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="bg-white border-b border-slate-200">
+          <TabsList className="h-auto bg-transparent w-full justify-start rounded-none border-0 p-0">
+            <TabsTrigger 
+              value="details" 
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Details</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="form" 
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Visit Form</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="history" 
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <History className="h-4 w-4" />
+              <span>History</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="notes" 
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Notes</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="attachments" 
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+            >
+              <Paperclip className="h-4 w-4" />
+              <span>Files</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Details Tab */}
         <TabsContent value="details" className="mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Details */}
-        <div className="lg:col-span-2 space-y-6">
+          <div className="container mx-auto p-6 max-w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main Details */}
+              <div className="lg:col-span-2 space-y-6">
           {/* Date & Time */}
           <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
             <CardHeader>
@@ -584,12 +595,13 @@ export default function AppointmentDetailPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
         {/* Visit Form Tab */}
-        <TabsContent value="form" className="mt-0">
+        <TabsContent value="form" className="mt-0 p-0">
           {formDataLoading ? (
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-12 text-center">

@@ -678,120 +678,122 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ROW 1: Breadcrumbs + Title + Actions */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.history.back()}
-            className="h-8 px-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{formData.fosterHome.familyName || "Foster Home"}</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(window.location.href, '_blank')}
-            className="h-8 px-3"
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Pop Out
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-1">
+      {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
+      <div className="max-w-full mx-auto">
+        {/* Dark Gradient Header - FORM STYLE */}
+        <Card className="mb-1 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
+          <CardHeader className="py-2 px-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
+                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
+              </div>
+              <div className="text-right">
+                <Badge className="bg-white text-refuge-purple text-xs">
+                  {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
-      {/* ROW 2: Status Badges */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2">
-        <Badge variant="outline" className="text-xs">
-          {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          Draft Saved
-        </Badge>
-        <Badge className="text-xs bg-green-100 text-green-800">
-          Form Complete
-        </Badge>
-      </div>
-
-      {/* ROW 3: Tab Menu (Section Navigation) */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <CurrentSectionIcon className="w-4 h-4 text-refuge-purple" />
-            <span className="font-semibold text-sm">{sections[currentSection].title}</span>
-            <span className="text-xs text-gray-500">({currentSection + 1}/{sections.length})</span>
-            {sections[currentSection].quarterly && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Quarterly</Badge>
-            )}
-          </div>
-          <div className="w-32 bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-refuge-purple h-1.5 rounded-full transition-all"
-              style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
-            />
-          </div>
-        </div>
-        <Select 
-          value={currentSection.toString()} 
-          onValueChange={(value) => setCurrentSection(parseInt(value))}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Jump to section..." />
-          </SelectTrigger>
-          <SelectContent>
-            {sections.map((section, idx) => (
-              <SelectItem key={idx} value={idx.toString()} className="text-xs">
-                <div className="flex items-center gap-2">
-                  <span>{section.title}</span>
-                  {section.quarterly && <Badge variant="secondary" className="text-[10px] py-0">Q</Badge>}
+        {/* Compact Section Navigation */}
+        <Card className="mb-2">
+          <CardContent className="py-2 px-3">
+            {/* Current Section Display */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <CurrentSectionIcon className="w-5 h-5 text-refuge-purple" />
+                <div>
+                  <p className="font-semibold text-sm">{sections[currentSection].title}</p>
+                  <p className="text-xs text-gray-500">Section {currentSection + 1} of {sections.length}</p>
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              </div>
+              <div className="flex gap-1">
+                {sections[currentSection].quarterly && (
+                  <Badge variant="secondary" className="text-xs">Quarterly</Badge>
+                )}
+                {sections[currentSection].optional && (
+                  <Badge variant="outline" className="text-xs">Optional</Badge>
+                )}
+              </div>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="bg-gray-200 rounded-full h-1.5">
+              <div
+                className="bg-refuge-purple h-1.5 rounded-full transition-all"
+                style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
+              />
+            </div>
 
-      {/* Form Content - Reduced padding */}
-      <div className="p-2">
-        {renderSectionContent(sections[currentSection].id)}
-      </div>
+            {/* Section Jumper Dropdown */}
+            <div className="mt-2">
+              <Select 
+                value={currentSection.toString()} 
+                onValueChange={(value) => setCurrentSection(parseInt(value))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Jump to section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((section, idx) => (
+                    <SelectItem key={idx} value={idx.toString()} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span>{section.title}</span>
+                        {section.quarterly && <Badge variant="secondary" className="text-xs py-0">Q</Badge>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Navigation - Compact buttons - Fixed at bottom */}
-      <div className="sticky bottom-0 bg-white border-t border-slate-200 p-2 flex gap-2 shadow-lg">
-        <Button
-          onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-          disabled={currentSection === 0}
-          variant="outline"
-          size="default"
-          className="flex-1 h-12"
-        >
-          Previous
-        </Button>
-        {currentSection === sections.length - 1 ? (
-          <Button 
-            size="default"
-            className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
-            onClick={() => onSubmit?.(formData)}
-          >
-            Submit
-          </Button>
-        ) : (
+        {/* Form Content - Reduced padding */}
+        <Card className="mb-2">
+          <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
+        </Card>
+
+        {/* Navigation - Compact buttons */}
+        <div className="flex gap-2">
           <Button
-            onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+            onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
+            disabled={currentSection === 0}
+            variant="outline"
             size="default"
-            className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+            className="flex-1"
           >
-            Next
+            Previous
           </Button>
-        )}
+          <Button 
+            variant="outline" 
+            size="default" 
+            className="px-4"
+            onClick={() => onSave?.(formData)}
+          >
+            Save
+          </Button>
+          {currentSection === sections.length - 1 ? (
+            <Button 
+              size="default"
+              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+              onClick={() => onSubmit?.(formData)}
+            >
+              Submit
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+              size="default"
+              className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
+            >
+              Next
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )
