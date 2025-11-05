@@ -115,8 +115,8 @@ export function AppSidebar() {
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
-  const [usersOpen, setUsersOpen] = useState(true)
-  const [systemOpen, setSystemOpen] = useState(true)
+  const [usersOpen, setUsersOpen] = useState(false)
+  const [systemOpen, setSystemOpen] = useState(false)
 
   // Load navigation items
   useEffect(() => {
