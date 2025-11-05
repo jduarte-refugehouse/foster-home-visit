@@ -789,7 +789,15 @@ const EnhancedHomeVisitForm = ({
                 variant="outline" 
                 size="default" 
                 className="flex-shrink-0 font-semibold border-2 border-refuge-purple text-refuge-purple hover:bg-refuge-purple hover:text-white"
-                onClick={() => onSave?.(formData)}
+                onClick={async () => {
+                  if (onSave) {
+                    try {
+                      await onSave(formData)
+                    } catch (error) {
+                      console.error("Error in onSave callback:", error)
+                    }
+                  }
+                }}
               >
                 Save
               </Button>

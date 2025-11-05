@@ -136,10 +136,10 @@ export default function VisitFormPage() {
     try {
       console.log("💾 [FORM] Saving form draft:", formData)
 
-      if (!appointmentData) {
+      if (!appointmentId) {
         toast({
           title: "Error",
-          description: "No appointment data available",
+          description: "No appointment ID available",
           variant: "destructive",
         })
         return
