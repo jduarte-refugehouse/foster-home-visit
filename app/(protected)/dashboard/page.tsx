@@ -28,6 +28,10 @@ export default function DashboardPage() {
   // Check if user has home_liaison role
   const isHomeLiaison = permissions.hasRole("home_liaison", "home-visits")
 
+  // TEMPORARY: Show Liaison Dashboard for ALL users for testing
+  // TODO: Revert to role-based check once impersonation/auth is working
+  const showLiaisonDashboard = true // Changed from: isHomeLiaison
+
   const fetchDashboardData = async () => {
     try {
       const response = await fetch("/api/dashboard-data")
@@ -41,31 +45,10 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    // Always try to load liaison dashboard first if permissions are loaded
-    // If user has home_liaison role, show liaison dashboard
-    // Otherwise, show general dashboard
-    if (permissions.isLoaded) {
-      if (isHomeLiaison) {
-        fetchLiaisonDashboardData()
-      } else {
-        fetchDashboardData()
-      }
-    }
-    // If permissions not loaded yet, wait a bit and check again
-    // This ensures liaison dashboard loads even if permissions API is slow
-  }, [isHomeLiaison, permissions.isLoaded])
-  
-  // Also check for liaison role after a short delay in case permissions hook is slow
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!permissions.isLoaded && !liaisonLoading && !loading) {
-        // If permissions not loaded after 500ms, try fetching liaison data anyway
-        // (will show general dashboard if not liaison)
-        fetchLiaisonDashboardData()
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [permissions.isLoaded, liaisonLoading, loading])
+    // TEMPORARY: Always load liaison dashboard for all users
+    // TODO: Revert to role-based check: if (showLiaisonDashboard) { ... } else { ... }
+    fetchLiaisonDashboardData()
+  }, []) // Removed dependencies - always load liaison dashboard
 
   const fetchLiaisonDashboardData = async () => {
     try {
@@ -81,8 +64,9 @@ export default function DashboardPage() {
     }
   }
 
-  // Show Home Liaison dashboard
-  if (isHomeLiaison) {
+  // Show Home Liaison dashboard (TEMPORARY: for all users)
+  // TODO: Revert to: if (isHomeLiaison) {
+  if (showLiaisonDashboard) {
     if (liaisonLoading) {
       return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
