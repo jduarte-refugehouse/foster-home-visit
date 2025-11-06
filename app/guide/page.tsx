@@ -161,7 +161,17 @@ const RequirementItem = ({
   }
 
   // Create a clean ID from the code for anchor navigation
-  const itemId = code ? code.replace(/\s+/g, '-').replace(/§/g, '').replace(/[()]/g, '-').replace(/\./g, '-').toLowerCase() : undefined
+  // Handle formats like "TAC §749.1521(6), (7), (8)" or "749.1521(6), (7), (8)"
+  const itemId = code ? code
+    .replace(/§/g, '') // Remove section symbol
+    .replace(/tac\s*/gi, '') // Remove "TAC" prefix if present
+    .replace(/\s*,\s*/g, '-') // Replace commas and spaces with single dash
+    .replace(/[()]/g, '-') // Replace parentheses with dashes
+    .replace(/\./g, '-') // Replace dots with dashes
+    .replace(/\s+/g, '-') // Replace remaining spaces with dashes
+    .replace(/-+/g, '-') // Replace multiple dashes with single dash
+    .replace(/^-|-$/g, '') // Remove leading/trailing dashes
+    .toLowerCase() : undefined
 
   return (
     <div 

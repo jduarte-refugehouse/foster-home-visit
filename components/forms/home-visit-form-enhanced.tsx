@@ -1907,12 +1907,16 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
     
     // Clean the TAC code to create a specific item anchor
     // This matches the format used in RequirementItem component
-    // Format: tac-749-1463-b-2 for "TAC §749.1463(b)(2)"
+    // Handle formats like "749.1521(6), (7), (8)" or "TAC §749.1521(6), (7), (8)"
     const cleanCode = code
-      .replace(/§/g, "")
-      .replace(/[()]/g, "-")
-      .replace(/\./g, "-")
-      .replace(/\s+/g, "-")
+      .replace(/§/g, '') // Remove section symbol
+      .replace(/tac\s*/gi, '') // Remove "TAC" prefix if present
+      .replace(/\s*,\s*/g, '-') // Replace commas and spaces with single dash
+      .replace(/[()]/g, '-') // Replace parentheses with dashes
+      .replace(/\./g, '-') // Replace dots with dashes
+      .replace(/\s+/g, '-') // Replace remaining spaces with dashes
+      .replace(/-+/g, '-') // Replace multiple dashes with single dash
+      .replace(/^-|-$/g, '') // Remove leading/trailing dashes
       .toLowerCase()
     
     // Return link that opens in new tab to specific section with hash
