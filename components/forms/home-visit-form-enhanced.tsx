@@ -1885,21 +1885,28 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
   const getGuideLink = (code, requirement) => {
     if (!code) return "/guide"
     
-    // Map section names to guide anchor links from the reference guide
-    const sectionAnchorMap = {
-      medication: "medication-section",
-      healthSafety: "health-and-safety-section",
-      childrensRights: "rights", // May need adjustment based on actual guide structure
-      bedrooms: "bedrooms-section",
-      education: "education", // May need adjustment
-      indoorSpace: "indoor-space-section",
-      documentation: "documentation", // May need adjustment
+    // Map form sections to guide tabs
+    const sectionToTabMap = {
+      medication: "medication",
+      healthSafety: "safety",
+      childrensRights: "rights",
+      bedrooms: "bedroom",
+      education: "education",
+      indoorSpace: "indoor",
+      documentation: "documentation",
+      outdoorSpace: "outdoor",
+      vehicles: "vehicles",
+      swimming: "swimming",
+      infants: "infants",
+      traumaCare: "safety", // Trauma care might be in safety or rights section
+      packageCompliance: "packages",
     }
     
-    // Get the section anchor
-    const sectionAnchor = sectionAnchorMap[section] || "overview"
+    // Get the appropriate guide tab
+    const guideTab = sectionToTabMap[section] || "overview"
     
     // Clean the TAC code to create a specific item anchor
+    // This matches the format used in RequirementItem component
     // Format: tac-749-1463-b-2 for "TAC §749.1463(b)(2)"
     const cleanCode = code
       .replace(/§/g, "")
@@ -1908,19 +1915,8 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
       .replace(/\s+/g, "-")
       .toLowerCase()
     
-    // Link to guide with section tab and specific item anchor
-    const guideSection = {
-      medication: "medication",
-      healthSafety: "safety",
-      childrensRights: "rights",
-      bedrooms: "bedroom",
-      education: "education",
-      indoorSpace: "indoor",
-      documentation: "documentation",
-    }[section] || "overview"
-    
-    // Return link that opens in new tab to specific section
-    return `/guide?tab=${guideSection}#${sectionAnchor}-${cleanCode}`
+    // Return link that opens in new tab to specific section with hash
+    return `/guide?tab=${guideTab}#${cleanCode}`
   }
 
   return (

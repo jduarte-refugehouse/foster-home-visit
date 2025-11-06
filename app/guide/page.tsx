@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -159,8 +160,14 @@ const RequirementItem = ({
     window.location.href = `mailto:?subject=${subject}&body=${body}`
   }
 
+  // Create a clean ID from the code for anchor navigation
+  const itemId = code ? code.replace(/\s+/g, '-').replace(/§/g, '').replace(/[()]/g, '-').replace(/\./g, '-').toLowerCase() : undefined
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-3 shadow-sm hover:shadow-md transition-shadow">
+    <div 
+      id={itemId}
+      className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-3 shadow-sm hover:shadow-md transition-shadow scroll-mt-20"
+    >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 flex items-start gap-2">
           <div className="flex-1">
