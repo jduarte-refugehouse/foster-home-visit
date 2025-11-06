@@ -22,7 +22,9 @@ import {
   Play,
   History,
   MessageSquare,
-  Paperclip
+  Paperclip,
+  Navigation,
+  MapPin as MapPinIcon
 } from "lucide-react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -52,6 +54,14 @@ interface Appointment {
   created_by_name?: string
   created_at?: string
   updated_at?: string
+  // Mileage tracking fields
+  start_drive_latitude?: number
+  start_drive_longitude?: number
+  start_drive_timestamp?: string
+  arrived_latitude?: number
+  arrived_longitude?: number
+  arrived_timestamp?: string
+  calculated_mileage?: number
 }
 
 export default function AppointmentDetailPage() {
@@ -66,10 +76,11 @@ export default function AppointmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
-  const [appointmentData, setAppointmentData] = useState(null)
+  const [appointmentData, setAppointmentData] = useState<{ appointment: Appointment } | null>(null)
   const [prepopulationData, setPrepopulationData] = useState(null)
   const [existingFormData, setExistingFormData] = useState(null)
   const [formDataLoading, setFormDataLoading] = useState(false)
+  const [capturingLocation, setCapturingLocation] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -168,6 +179,134 @@ export default function AppointmentDetailPage() {
     }
   }
 
+  const captureLocation = (action: "start_drive" | "arrived") => {
+    return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is not supported by your browser"))
+        return
+      }
+
+      setCapturingLocation(true)
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCapturingLocation(false)
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+        },
+        (error) => {
+          setCapturingLocation(false)
+          reject(error)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      )
+    })
+  }
+
+  const handleStartDrive = async () => {
+    try {
+      const location = await captureLocation("start_drive")
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "start_drive",
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Drive Started",
+          description: "Starting location captured",
+        })
+        fetchAppointmentDetails()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to capture starting location",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error starting drive:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to capture location. Please ensure location permissions are enabled.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleArrived = async () => {
+    try {
+      const location = await captureLocation("arrived")
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "arrived",
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Arrived",
+          description: data.mileage
+            ? `Arrival location captured. Distance: ${data.mileage.toFixed(2)} miles`
+            : "Arrival location captured",
+        })
+        fetchAppointmentDetails()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to capture arrival location",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error capturing arrival:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to capture location. Please ensure location permissions are enabled.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handlePopOut = () => {
     window.open(`/appointment/${appointmentId}`, '_blank')
   }
@@ -182,8 +321,10 @@ export default function AppointmentDetailPage() {
 
       // 1. Get appointment details (we already have this, but need it in the right format)
       // Set appointmentData immediately so form can render
-      setAppointmentData({ appointment })
-      console.log("📋 [FORM] Set appointmentData:", { appointment })
+      if (appointment) {
+        setAppointmentData({ appointment })
+        console.log("📋 [FORM] Set appointmentData:", { appointment })
+      }
 
       // 2. Check for existing visit form
       const existingFormResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
@@ -340,8 +481,8 @@ export default function AppointmentDetailPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || "system",
-        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || "System",
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || "System",
         isAutoSave: false,
       }
 
@@ -677,7 +818,33 @@ export default function AppointmentDetailPage() {
         
         {/* Right: Action Buttons */}
         <div className="flex items-center gap-2">
-          {appointment.status === "scheduled" && (
+          {/* Mileage Tracking Buttons */}
+          {appointment && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
+            <>
+              {!appointment.start_drive_timestamp ? (
+                <Button 
+                  size="sm"
+                  onClick={handleStartDrive}
+                  disabled={capturingLocation}
+                  className="h-8 px-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Navigation className="h-4 w-4 mr-1.5" />
+                  {capturingLocation ? "Capturing..." : "Start Drive"}
+                </Button>
+              ) : !appointment.arrived_timestamp ? (
+                <Button 
+                  size="sm"
+                  onClick={handleArrived}
+                  disabled={capturingLocation}
+                  className="h-8 px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <MapPinIcon className="h-4 w-4 mr-1.5" />
+                  {capturingLocation ? "Capturing..." : "Arrived"}
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+          {appointment && appointment.status === "scheduled" && (
             <Button 
               size="sm"
               onClick={handleStartVisit}
@@ -756,13 +923,27 @@ export default function AppointmentDetailPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Appointment Details</h2>
               <CreateAppointmentDialog
-                editingAppointment={appointment}
+                editingAppointment={appointment ? {
+                  appointment_id: appointment.appointment_id,
+                  title: appointment.title,
+                  start_datetime: appointment.start_datetime,
+                  end_datetime: appointment.end_datetime,
+                  status: appointment.status,
+                  appointment_type: appointment.appointment_type,
+                  home_name: appointment.home_name,
+                  home_xref: typeof appointment.home_xref === 'number' ? appointment.home_xref : (appointment.home_xref ? Number.parseInt(String(appointment.home_xref)) : undefined),
+                  location_address: appointment.location_address,
+                  assigned_to_name: appointment.assigned_to_name,
+                  assigned_to_role: appointment.assigned_to_role,
+                  assigned_to_user_id: appointment.assigned_to_user_id,
+                  priority: appointment.priority,
+                  description: appointment.description,
+                  preparation_notes: appointment.preparation_notes,
+                } : null}
                 onAppointmentCreated={() => {
                   fetchAppointmentDetails()
                   setEditDialogOpen(false)
                 }}
-                open={editDialogOpen}
-                onOpenChange={setEditDialogOpen}
               >
                 <Button variant="outline" size="sm" className="h-8 px-3">
                   <Edit className="h-4 w-4 mr-1" />
@@ -837,6 +1018,54 @@ export default function AppointmentDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Mileage Tracking */}
+          {appointment && (appointment.start_drive_timestamp || appointment.arrived_timestamp || (appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined)) && (
+            <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Navigation className="h-5 w-5" />
+                  Mileage Tracking
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {appointment.start_drive_timestamp && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Drive Started</p>
+                    <p className="text-sm">
+                      {format(new Date(appointment.start_drive_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                    {appointment.start_drive_latitude && appointment.start_drive_longitude && (
+                      <p className="text-xs text-muted-foreground">
+                        {appointment.start_drive_latitude.toFixed(6)}, {appointment.start_drive_longitude.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {appointment.arrived_timestamp && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Arrived</p>
+                    <p className="text-sm">
+                      {format(new Date(appointment.arrived_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                    {appointment.arrived_latitude && appointment.arrived_longitude && (
+                      <p className="text-xs text-muted-foreground">
+                        {appointment.arrived_latitude.toFixed(6)}, {appointment.arrived_longitude.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined && (
+                  <div className="pt-2 border-t">
+                    <p className="text-sm text-muted-foreground">Distance</p>
+                    <p className="text-2xl font-bold text-refuge-purple">
+                      {appointment.calculated_mileage.toFixed(2)} miles
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Description */}
           {appointment.description && (
