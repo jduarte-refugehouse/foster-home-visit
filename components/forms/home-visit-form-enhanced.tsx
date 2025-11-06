@@ -1305,6 +1305,11 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <Alert className="mb-4 bg-blue-50 border-blue-200">
+            <AlertDescription className="text-sm text-gray-700">
+              <strong>Instructions:</strong> Check the box beside each person who is present during the home visit. Add any other persons present in the home during the visit.
+            </AlertDescription>
+          </Alert>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Column: Home Residents */}
             <div className="space-y-3">
@@ -1637,16 +1642,6 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="homeId" className="text-sm">Home ID *</Label>
-              <Input
-                id="homeId"
-                value={formData.fosterHome.homeId}
-                onChange={(e) => onChange("fosterHome.homeId", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
             <div className="md:col-span-2">
               <Label htmlFor="address" className="text-sm">Address *</Label>
               <Input
@@ -1743,15 +1738,6 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="licenseNumber" className="text-sm">License # *</Label>
-                <Input
-                  id="licenseNumber"
-                  value={formData.fosterHome.licenseNumber}
-                  onChange={(e) => onChange("fosterHome.licenseNumber", e.target.value)}
-                  className="text-sm"
-                />
-              </div>
 
               <div>
                 <Label htmlFor="licenseExpiration" className="text-sm">License Expiration *</Label>
