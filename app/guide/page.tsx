@@ -7,6 +7,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { useToast } from "@/hooks/use-toast"
+import {
   Home,
   FileText,
   Pill,
@@ -31,6 +56,11 @@ import {
   Activity,
   Brain,
   Stethoscope,
+  ExternalLink,
+  Mail,
+  Copy,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 
 const tabs = [
@@ -83,35 +113,238 @@ const AlertBox = ({
   )
 }
 
+interface RequirementItemProps {
+  code?: string
+  title: string
+  frequency?: "Monthly" | "Quarterly" | "Weekly" | "Annually"
+  children: React.ReactNode
+  helpText?: string
+  detailedHelp?: {
+    whatToCheck?: string[]
+    redFlags?: string[]
+    questionsToAsk?: string[]
+    commonIssues?: Array<{ issue: string; solution: string }>
+    resources?: Array<{ title: string; url: string }>
+    regulatoryLinks?: Array<{ code: string; url: string }>
+  }
+  quickHint?: string
+}
+
 const RequirementItem = ({ 
   code, 
   title, 
   frequency, 
-  children 
-}: { 
-  code?: string
-  title: string
-  frequency?: "Monthly" | "Quarterly" | "Weekly" | "Annually"
-  children: React.ReactNode 
-}) => (
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-3 shadow-sm">
-    <div className="flex items-start justify-between gap-2 mb-2">
-      <div className="flex-1">
-        {code && <div className="text-sm font-mono text-blue-600 dark:text-blue-400 mb-1">{code}</div>}
-        <div className="font-semibold text-gray-900 dark:text-gray-100">{title}</div>
+  children,
+  helpText,
+  detailedHelp,
+  quickHint,
+}: RequirementItemProps) => {
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const { toast } = useToast()
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/guide${code ? `#${code.replace(/\s+/g, '-').toLowerCase()}` : ''}`
+    navigator.clipboard.writeText(url)
+    toast({
+      title: "Link copied!",
+      description: "Share this guide section with others",
+    })
+  }
+
+  const handleSendReference = () => {
+    const url = `${window.location.origin}/guide${code ? `#${code.replace(/\s+/g, '-').toLowerCase()}` : ''}`
+    const subject = encodeURIComponent(`Home Visit Guide: ${title}`)
+    const body = encodeURIComponent(`Reference for: ${title}\n\n${url}`)
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-3 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex-1 flex items-start gap-2">
+          <div className="flex-1">
+            {code && (
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{code}</span>
+                {detailedHelp?.regulatoryLinks && detailedHelp.regulatoryLinks.length > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={detailedHelp.regulatoryLinks[0].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View regulatory reference</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{title}</span>
+              {(helpText || detailedHelp || quickHint) && (
+                <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{title}</DialogTitle>
+                      {code && (
+                        <DialogDescription className="font-mono text-sm">{code}</DialogDescription>
+                      )}
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      {helpText && (
+                        <div>
+                          <h4 className="font-semibold mb-2">Why This Matters</h4>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{helpText}</p>
+                        </div>
+                      )}
+                      
+                      {detailedHelp?.whatToCheck && detailedHelp.whatToCheck.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-2">What to Check</h4>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                            {detailedHelp.whatToCheck.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {detailedHelp?.redFlags && detailedHelp.redFlags.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-2 text-red-600 dark:text-red-400">Red Flags</h4>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                            {detailedHelp.redFlags.map((flag, idx) => (
+                              <li key={idx} className="text-red-700 dark:text-red-300">{flag}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {detailedHelp?.questionsToAsk && detailedHelp.questionsToAsk.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-2">Questions to Ask</h4>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                            {detailedHelp.questionsToAsk.map((q, idx) => (
+                              <li key={idx}>{q}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {detailedHelp?.commonIssues && detailedHelp.commonIssues.length > 0 && (
+                        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                            {detailsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            Common Issues & Solutions
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-2 space-y-3">
+                            {detailedHelp.commonIssues.map((item, idx) => (
+                              <div key={idx} className="bg-gray-50 dark:bg-gray-900 p-3 rounded text-sm">
+                                <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                                  Issue: {item.issue}
+                                </p>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                  Solution: {item.solution}
+                                </p>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
+                      {detailedHelp?.resources && detailedHelp.resources.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-2">Resources</h4>
+                          <ul className="space-y-2">
+                            {detailedHelp.resources.map((resource, idx) => (
+                              <li key={idx}>
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-sm"
+                                >
+                                  {resource.title}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCopyLink}
+                          className="flex items-center gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy Link
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSendReference}
+                          className="flex items-center gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          Send Reference
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+          </div>
+          {frequency && (
+            <Badge 
+              variant={frequency === "Monthly" ? "default" : frequency === "Quarterly" ? "secondary" : "outline"}
+              className="ml-2 whitespace-nowrap"
+            >
+              {frequency}
+            </Badge>
+          )}
+        </div>
       </div>
-      {frequency && (
-        <Badge 
-          variant={frequency === "Monthly" ? "default" : frequency === "Quarterly" ? "secondary" : "outline"}
-          className="ml-2 whitespace-nowrap"
-        >
-          {frequency}
-        </Badge>
+      <div className="text-gray-700 dark:text-gray-300">{children}</div>
+      {quickHint && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic cursor-help">
+                💡 Quick tip: {quickHint}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">{quickHint}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
     </div>
-    <div className="text-gray-700 dark:text-gray-300">{children}</div>
-  </div>
-)
+  )
+}
 
 const TipBox = ({ children }: { children: React.ReactNode }) => (
   <div className="bg-blue-50 dark:bg-blue-950 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4 relative">
@@ -145,6 +378,17 @@ const InterviewQuestion = ({ title, children }: { title: string; children: React
 
 export default function GuidePage() {
   const [activeTab, setActiveTab] = useState("overview")
+  
+  // Wrap in TooltipProvider for tooltips to work
+  return (
+    <TooltipProvider delayDuration={200}>
+      <GuideContent activeTab={activeTab} setActiveTab={setActiveTab} />
+    </TooltipProvider>
+  )
+}
+
+function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
+  const { toast } = useToast()
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -375,27 +619,248 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Storage Requirements:</h3>
 
-                  <RequirementItem code="TAC §749.1463(b)(2)" title="Original Containers" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1463(b)(2)" 
+                    title="Medications stored in original containers" 
+                    frequency="Monthly"
+                    helpText="Proper medication storage and handling prevents accidental poisoning, substance misuse, and ensures medications remain effective. Children in foster care often have complex medication regimens requiring careful management."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "All medications in pharmacy-labeled bottles or original packaging",
+                        "Labels clearly legible with child's name, medication name, dosage, prescriber",
+                        "No medications in unlabeled containers, pill organizers, or baggies"
+                      ],
+                      redFlags: [
+                        "Medications transferred to different containers",
+                        "Multiple children's medications mixed together",
+                        "Labels missing or illegible",
+                        "Expired prescriptions still in use"
+                      ],
+                      questionsToAsk: [
+                        "\"Can you show me where all medications are stored?\"",
+                        "\"Are there any over-the-counter medications or vitamins?\"",
+                        "\"Do any children have emergency medications (EpiPen, inhaler, seizure meds)?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent uses weekly pill organizer for convenience",
+                          solution: "Explain that this violates TAC requirements. Medications must stay in original containers. Consider using a checklist system instead."
+                        },
+                        {
+                          issue: "Old medications not disposed of properly",
+                          solution: "Provide information on medication take-back programs or safe disposal methods. Most pharmacies accept medication returns."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "DFPS Medication Management Training",
+                          url: "https://www.dfps.state.tx.us/Training/"
+                        },
+                        {
+                          title: "DFPS Psychotropic Medication Guidelines",
+                          url: "https://www.dfps.state.tx.us/Child_Protection/Medical_Services/psychotropic_medications.asp"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1463",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1463"
+                        },
+                        {
+                          code: "TAC §749.1521",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1521"
+                        }
+                      ]
+                    }}
+                    quickHint="Check labels are intact and match current child's name"
+                  >
                     All medications must be stored in original containers with labels intact. Check that prescription
                     labels are legible and match the child's current name.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.1521(1), (2), (3)" title="Double Lock Requirement" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1521(1), (2), (3)" 
+                    title="All medications locked; Schedule II double-locked" 
+                    frequency="Monthly"
+                    helpText="Schedule II medications have high abuse potential. Verify youth do not have access to keys or combinations. This is a critical safety requirement."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "ALL medications (prescription and OTC) in locked location",
+                        "Schedule II controlled substances under DOUBLE lock",
+                        "Lock functional (test it!)",
+                        "Key access limited to designated adults only"
+                      ],
+                      redFlags: [
+                        "Two separate locks on same cabinet door (NOT double lock)",
+                        "Schedule II medications accessible to youth",
+                        "Lock not functional or keys accessible to children",
+                        "No separate secure container for Schedule II"
+                      ],
+                      questionsToAsk: [
+                        "\"Where are the keys kept?\"",
+                        "\"Who has access to medication storage?\"",
+                        "\"Can you show me how the double lock works?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent thinks two locks on one door is double lock",
+                          solution: "Double lock means locked box INSIDE locked cabinet. Verify the Schedule II medications are in a separate locked container within the main locked storage."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "DEA Schedule II Drug List",
+                          url: "https://www.dea.gov/drug-information/drug-scheduling"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1521",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1521"
+                        }
+                      ]
+                    }}
+                    quickHint="Double lock = locked box INSIDE locked cabinet, not two locks on one door"
+                  >
                     All medications stored in locked container; Schedule II controlled substances under double lock in separate, secure container. Both locks must
                     be functioning and keys controlled.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.1521(4)" title="Refrigerated Medications" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1521(4)" 
+                    title="Refrigerated medications properly stored" 
+                    frequency="Monthly"
+                    helpText="Refrigerated medications must be locked inside the refrigerator to prevent access while maintaining proper temperature. Critical medications like insulin can lose effectiveness if not stored correctly."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Refrigerated medications in locked container INSIDE refrigerator",
+                        "Temperature appropriate (35-46°F / 2-8°C is typical for medications)",
+                        "Medications separated from food to prevent contamination",
+                        "Labels clearly visible"
+                      ],
+                      redFlags: [
+                        "Shelf in regular refrigerator without lock",
+                        "Mixed with food items without separation",
+                        "Insulin or other critical medications stored without proper temperature control"
+                      ],
+                      questionsToAsk: [
+                        "\"Do any children have medications that need refrigeration?\"",
+                        "\"Where are these stored?\"",
+                        "\"How do you ensure children can't access them?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Medications stored on refrigerator shelf without lock",
+                          solution: "Must use locked medication box, drawer, or dedicated mini-fridge. Provide lock boxes if needed."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1521",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1521"
+                        }
+                      ]
+                    }}
+                    quickHint="Common refrigerated meds: Insulin, some antibiotics, growth hormone"
+                  >
                     Medications requiring refrigeration properly stored in locked container within refrigerator. Box should be clearly labeled and not used for food
                     storage.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.1521(5)" title="Storage Area Cleanliness" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1521(5)" 
+                    title="Medication storage areas clean and orderly" 
+                    frequency="Monthly"
+                    helpText="Disorganized medication storage increases risk of medication errors, missing doses, and giving expired medications. Clean, organized storage is essential for safety."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "No dust, spills, or debris in medication storage area",
+                        "Medications organized (not jumbled together)",
+                        "Easy to locate specific medication quickly",
+                        "No expired medications mixed with current ones",
+                        "Storage area not cluttered with non-medication items"
+                      ],
+                      redFlags: [
+                        "Medications loose in drawer with other items",
+                        "Spilled pills or liquids",
+                        "Sticky residue or dust accumulation",
+                        "Unable to quickly locate a specific medication"
+                      ],
+                      questionsToAsk: [
+                        "\"Can you quickly find [child's name]'s morning medication?\"",
+                        "\"How do you organize medications?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Medications disorganized and hard to find",
+                          solution: "Recommend organizing by child, then by time of day. Use small containers or bags to separate. Keep medication log nearby."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1521",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1521"
+                        }
+                      ]
+                    }}
+                    quickHint="Rate organization: Well-organized / Adequate / Needs improvement / Unsafe"
+                  >
                     Medication storage area(s) clean, orderly, and free from expired/discontinued medications. No expired medications should be mixed
                     with current medications.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.1521(6), (7), (8)" title="Discontinued/Expired Medications" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1521(6), (7), (8)" 
+                    title="Expired/discontinued medications properly managed" 
+                    frequency="Monthly"
+                    helpText="Three-step process: Immediate removal, separate locked storage, then disposal within 30 days. Expired medications pose safety risks and must be managed properly."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "No expired medications in active storage",
+                        "Discontinued medications removed (child discharged, prescription changed)",
+                        "Separated medications clearly labeled \"For Disposal\"",
+                        "Documentation of disposal plan"
+                      ],
+                      redFlags: [
+                        "Expired medications from more than 30 days ago still on premises",
+                        "Medications from discharged children mixed with current children's meds",
+                        "No tracking system for disposal",
+                        "Caregiver unaware of disposal requirements"
+                      ],
+                      questionsToAsk: [
+                        "\"Have any children been discharged recently? Where are their medications?\"",
+                        "\"Do you have any medications waiting to be disposed of?\"",
+                        "\"When were they set aside for disposal?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent doesn't know how to dispose of medications",
+                          solution: "Provide information on medication take-back programs (most pharmacies accept), DEA-approved collection sites, or safe home disposal methods."
+                        },
+                        {
+                          issue: "Old medications still in active storage",
+                          solution: "Immediately remove and place in separate locked container labeled \"For Disposal\". Set 30-day deadline for disposal."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "Find DEA Collection Sites",
+                          url: "https://apps.deadiversion.usdoj.gov/pubdispsearch/"
+                        },
+                        {
+                          title: "FDA Medication Disposal Guidelines",
+                          url: "https://www.fda.gov/drugs/safe-disposal-medicines"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1521",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1521"
+                        }
+                      ]
+                    }}
+                    quickHint="Three steps: Remove → Separate → Dispose (within 30 days)"
+                  >
                     Discontinued medications, expired medications, or medications of discharged/deceased child removed immediately from active storage and stored separately until properly destroyed (within 30 days).
                   </RequirementItem>
                 </div>
@@ -456,7 +921,66 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Annual Inspections:</h3>
 
-                  <RequirementItem code="TAC §749.2902, §749.2903, §749.2905" title="Fire & Health Inspections" frequency="Quarterly">
+                  <RequirementItem 
+                    code="TAC §749.2902, §749.2903, §749.2905" 
+                    title="Fire and health inspections current" 
+                    frequency="Quarterly"
+                    helpText="Fire and health inspections ensure the home meets safety and health codes. Overdue inspections may require pausing new placements until compliance is verified."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Inspection certificates posted or available",
+                        "Inspection dates within required timeframe",
+                        "No outstanding violations or corrections pending",
+                        "Contact information for local fire marshal/health dept current"
+                      ],
+                      redFlags: [
+                        "No documentation of inspections",
+                        "Inspections expired more than 30 days",
+                        "Outstanding violations not corrected",
+                        "Foster parent unaware of inspection requirement"
+                      ],
+                      questionsToAsk: [
+                        "\"Can I see your fire and health inspection certificates?\"",
+                        "\"When do they expire?\"",
+                        "\"Are there any outstanding violations?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "New foster parents unaware they need inspections",
+                          solution: "Explain requirement and help coordinate with local authorities. Provide contact information for fire marshal and health department."
+                        },
+                        {
+                          issue: "Lost documentation but inspection was completed",
+                          solution: "Contact local authorities to get copies. Verify inspection date with authorities."
+                        },
+                        {
+                          issue: "Inspections overdue",
+                          solution: "Document the gap, verify no changes to home since last inspection, contact authorities to schedule immediately, follow up within 2 weeks. May need to pause new placements until current."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "Texas Fire Marshal's Office",
+                          url: "https://www.tdi.texas.gov/fire/fmabout.html"
+                        },
+                        {
+                          title: "County Health Department Directory",
+                          url: "https://www.dshs.texas.gov/region-local-health-departments-lhds"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2902",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2902"
+                        },
+                        {
+                          code: "TAC §749.2903",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2903"
+                        }
+                      ]
+                    }}
+                    quickHint="Typical: Fire = annual, Health = varies by county (annual to every 2 years)"
+                  >
                     Current fire safety inspection and health department evaluation on file; any required corrections completed. Check current inspection date and expiration. Certificate should be on file. If expiring within 30
                     days, remind family to schedule renewal.
                   </RequirementItem>
@@ -494,11 +1018,112 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Fire Safety:</h3>
 
-                  <RequirementItem code="TAC §749.2909" title="Smoke Detectors" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.2909" 
+                    title="Smoke detectors properly installed and functional" 
+                    frequency="Monthly"
+                    helpText="Smoke detectors are critical life safety devices. Non-functional detectors are an immediate safety hazard requiring correction within 24 hours."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Hallways or open areas OUTSIDE all sleeping rooms",
+                        "On EACH LEVEL of the home (including basement)",
+                        "Test each detector - press test button, hear loud beep",
+                        "Check age - detectors expire after 10 years",
+                        "Not in kitchens or bathrooms (causes false alarms)"
+                      ],
+                      redFlags: [
+                        "Detector doesn't sound when tested",
+                        "Weak or chirping sound (dead battery)",
+                        "Detector older than 10 years",
+                        "Wrong placement (in kitchen, bathroom, basement only)",
+                        "Detector removed or covered",
+                        "Foster parent can't remember last time tested"
+                      ],
+                      questionsToAsk: [
+                        "\"May I test your smoke detectors?\"",
+                        "\"When were batteries last changed?\"",
+                        "\"How old are these detectors?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Detector doesn't work when tested",
+                          solution: "This is an immediate safety issue. Provide batteries if available, or require installation/repair within 24 hours. Document as non-compliance."
+                        },
+                        {
+                          issue: "Detectors older than 10 years",
+                          solution: "Check manufacture date on back of detector. Replace if >10 years old. Recommend interconnected/hardwired systems."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "NFPA Smoke Alarm Safety",
+                          url: "https://www.nfpa.org/Public-Education/Fire-causes-and-risks/Top-fire-causes/Smoking/Smoke-alarms"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2909",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2909"
+                        }
+                      ]
+                    }}
+                    quickHint="Test each detector during visit. Replace if >10 years old or not functional"
+                  >
                     Smoke detectors installed in hallways or open areas outside all sleeping rooms and on each level of the home; functional and tested. Test during visit if possible.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.2913" title="Fire Extinguishers" frequency="Quarterly">
+                  <RequirementItem 
+                    code="TAC §749.2913" 
+                    title="Fire extinguishers present and current" 
+                    frequency="Quarterly"
+                    helpText="Fire extinguishers must be accessible, properly maintained, and inspected annually. Gauge in red zone requires immediate attention."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Each kitchen has extinguisher",
+                        "Each level of the home has extinguisher",
+                        "Gauge needle in green zone (proper pressure)",
+                        "Inspection tag within last year",
+                        "No visible damage (dents, rust, broken seal)",
+                        "Easily accessible (not blocked by furniture)"
+                      ],
+                      redFlags: [
+                        "No fire extinguisher present",
+                        "Gauge in red zone (needs recharge/replacement)",
+                        "Inspection tag older than 1 year",
+                        "Visible damage (dents, rust, broken seal)",
+                        "Wrong type (CO2 only, foam only)",
+                        "Inaccessible location (buried in closet, under sink)"
+                      ],
+                      questionsToAsk: [
+                        "\"Can you show me where your fire extinguishers are located?\"",
+                        "\"Do you know how to use them?\"",
+                        "\"When were they last inspected?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Extinguisher gauge in red zone",
+                          solution: "Needs immediate recharge or replacement. Provide resources for fire extinguisher inspection services or replacement. Many fire departments offer free inspections."
+                        },
+                        {
+                          issue: "Foster parent doesn't know extinguisher needs annual inspection",
+                          solution: "Explain requirement. Annual professional inspection needed. Provide local service information."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "NFPA Fire Extinguisher Guide",
+                          url: "https://www.nfpa.org/Public-Education/Staying-safe/Safety-equipment/Fire-extinguishers"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2913",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2913"
+                        }
+                      ]
+                    }}
+                    quickHint="PASS method: Pull, Aim, Squeeze, Sweep. Gauge must be in green zone"
+                  >
                     Fire extinguishers located in each kitchen and on each level of the home; current inspection tags visible; accessible. Check:
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>Gauge is in green zone</li>
@@ -512,8 +1137,63 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Weapon Storage:</h3>
 
-                  <RequirementItem code="TAC §749.2961" title="Weapons & Firearms Storage" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.2961" 
+                    title="Weapons stored per requirements" 
+                    frequency="Monthly"
+                    helpText="CRITICAL SAFETY ITEM - Verify carefully. Non-compliance requires immediate supervisor contact. This is a serious safety issue that may affect placement."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Weapons UNLOADED at all times",
+                        "Stored in LOCKED location",
+                        "Ammunition stored SEPARATELY in locked location",
+                        "Keys/combinations accessible to adults ONLY",
+                        "Location not disclosed to children"
+                      ],
+                      redFlags: [
+                        "Foster parent defensive or unclear about storage",
+                        "Weapons visible during home visit",
+                        "Children mention knowing where guns are",
+                        "Ammunition observed in accessible locations",
+                        "Inadequate locking mechanisms",
+                        "Guns and ammunition stored together"
+                      ],
+                      questionsToAsk: [
+                        "\"Do you have any firearms or weapons in the home?\"",
+                        "\"Where are they stored?\" (general location, not specific)",
+                        "\"Are they kept unloaded and locked?\"",
+                        "\"Where is the ammunition kept?\"",
+                        "\"Who has access to the keys or combination?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent thinks trigger lock only is sufficient",
+                          solution: "Trigger lock must be PLUS locked storage. Guns must be in locked safe, cabinet, or container, not just trigger-locked."
+                        },
+                        {
+                          issue: "Non-compliance found",
+                          solution: "Document non-compliance, provide written notice, set 24-48 hour deadline, consider whether children can remain safely, contact supervisor immediately."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "Project ChildSafe (free gun locks)",
+                          url: "https://projectchildsafe.org/"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2961",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2961"
+                        }
+                      ]
+                    }}
+                    quickHint="⚠️ DO NOT ask to see weapons. DO verify presence and locking mechanism. Non-compliance = immediate supervisor contact"
+                  >
                     Weapons, firearms, explosive materials, and projectiles stored unloaded in locked location; ammunition stored separately in locked location.
+                    <AlertBox type="danger">
+                      <strong>⚠️ IMMEDIATE SUPERVISOR CONTACT REQUIRED IF:</strong> Loaded weapons accessible to children, children know location, or foster parent refuses to secure properly.
+                    </AlertBox>
                     <AlertBox type="info">
                       <strong>Note:</strong> Trigger lock with ammunition stored in same locked container is acceptable. Gun safe meets all requirements.
                     </AlertBox>
@@ -528,7 +1208,58 @@ export default function GuidePage() {
                     locked storage.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.2917" title="Pets/Animals" frequency="Quarterly">
+                  <RequirementItem 
+                    code="TAC §749.2917" 
+                    title="Animals vaccinated and disease-free" 
+                    frequency="Quarterly"
+                    helpText="All animals on premises must be current on vaccinations (especially rabies), free from disease, and not exhibiting aggressive behavior. This protects children from injury and disease."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Current vaccinations (especially rabies for dogs/cats)",
+                        "Vaccination records available (tags, certificates, vet records)",
+                        "Animals appear healthy (no visible signs of illness)",
+                        "Animal behavior appropriate around children",
+                        "Clean living conditions for animals"
+                      ],
+                      redFlags: [
+                        "No documentation of rabies vaccination",
+                        "Vaccinations expired more than 30 days",
+                        "Animal appears ill (lethargy, discharge, limping, etc.)",
+                        "Aggressive behavior toward children",
+                        "Unsanitary animal living conditions",
+                        "No established veterinary care"
+                      ],
+                      questionsToAsk: [
+                        "\"Can I see vaccination records for your pets?\"",
+                        "\"When was the last time they saw a veterinarian?\"",
+                        "\"Have you had any concerns about your pet's health?\"",
+                        "\"How do your pets typically interact with foster children?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Vaccination records not available",
+                          solution: "Check rabies tag on collar (shows year). If no tag, require proof from veterinarian. Most counties require annual rabies vaccination."
+                        },
+                        {
+                          issue: "Animal appears ill but foster parent says it's fine",
+                          solution: "Document observations. Require veterinary visit within 7 days. Animal must be free from disease to remain in home."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "Texas Rabies Laws",
+                          url: "https://www.dshs.texas.gov/immunize/rabies/"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2917",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2917"
+                        }
+                      ]
+                    }}
+                    quickHint="Required: Rabies (annual or 3-year), other vaccines typically annual. Check tags or vet records"
+                  >
                     All animals on premises kept free of disease, current on required vaccinations; documentation available for review. Verify vaccination records are current and animals appear healthy and non-aggressive.
                   </RequirementItem>
 
@@ -662,7 +1393,48 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Space Requirements:</h3>
 
-                  <RequirementItem code="TAC §749.3021" title="Bedroom Square Footage" frequency="Quarterly">
+                  <RequirementItem 
+                    code="TAC §749.3021" 
+                    title="Bedroom square footage meets requirements" 
+                    frequency="Quarterly"
+                    helpText="Bedroom size ensures adequate personal space for children. Measure when room appears small, layout changes, or capacity questions arise."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "ONE child in bedroom: Minimum 80 square feet",
+                        "MULTIPLE children: Minimum 40 square feet PER CHILD",
+                        "MAXIMUM 4 children per bedroom (NO EXCEPTIONS)",
+                        "Measure length × width = square footage"
+                      ],
+                      redFlags: [
+                        "Room obviously too small",
+                        "More than 4 children sharing room",
+                        "Unable to fit required furniture comfortably",
+                        "No walking space between beds"
+                      ],
+                      questionsToAsk: [
+                        "\"How many children share this bedroom?\"",
+                        "\"Can you show me the measurements?\"",
+                        "\"Does each child have their own space?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent converted small bedroom to take more children",
+                          solution: "Measure room. If doesn't meet 40 sq ft per child, must reduce number of children in room. Document non-compliance."
+                        },
+                        {
+                          issue: "Irregular shaped room (L-shaped)",
+                          solution: "Divide into rectangles, calculate each section separately, add sections together. Only count main bedroom space, not closets (unless door removed)."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.3021",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=3021"
+                        }
+                      ]
+                    }}
+                    quickHint="Example: 10ft × 8ft = 80 sq ft (1-2 children). 12ft × 10ft = 120 sq ft (1-3 children)"
+                  >
                     <p>Minimum requirements:</p>
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>
@@ -675,6 +1447,9 @@ export default function GuidePage() {
                         <strong>Maximum:</strong> NO MORE THAN 4 CHILDREN PER BEDROOM
                       </li>
                     </ul>
+                    <TipBox>
+                      <strong>Measurement tips:</strong> Measure length × width. Count closet only if door removed. Don't count bathroom or hallway space. If borderline, recommend fewer children for comfort.
+                    </TipBox>
                   </RequirementItem>
 
                   <RequirementItem code="TAC §749.3023(a), (c)" title="Bedroom Adequacy" frequency="Monthly">
@@ -2534,12 +3309,81 @@ export default function GuidePage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-            <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl p-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">🏠 Home Visit Liaison Reference Guide</h1>
-            <p className="text-lg opacity-95">Enhanced Digital Monitoring - TAC Chapter 749, RCC Contract & T3C Blueprint</p>
-            <p className="text-sm opacity-90 mt-2">Version 3.0 - Enhanced with Package-Specific Requirements</p>
-            <p className="text-xs opacity-80 mt-1">November 2025 - Revision 3.0</p>
+          <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl p-8">
+            <div className="text-center mb-4">
+              <h1 className="text-3xl font-bold mb-2">🏠 Home Visit Liaison Reference Guide</h1>
+              <p className="text-lg opacity-95">Enhanced Digital Monitoring - TAC Chapter 749, RCC Contract & T3C Blueprint</p>
+              <p className="text-sm opacity-90 mt-2">Version 3.0 - Enhanced with Package-Specific Requirements</p>
+              <p className="text-xs opacity-80 mt-1">November 2025 - Revision 3.0</p>
+            </div>
+            <div className="flex flex-wrap gap-3 justify-center items-center mt-4 pt-4 border-t border-white/20">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const url = window.location.href
+                  const subject = encodeURIComponent("Home Visit Liaison Reference Guide")
+                  const body = encodeURIComponent(`Complete Home Visit Liaison Reference Guide\n\nAccess the guide online: ${url}`)
+                  window.location.href = `mailto:?subject=${subject}&body=${body}`
+                }}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send Guide
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href)
+                  toast({
+                    title: "Link copied!",
+                    description: "Share this guide with others",
+                  })
+                }}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Link
+              </Button>
+            </div>
           </div>
+          
+          {/* Interactive Features Help */}
+          <Card className="mt-4 border-blue-200 dark:border-blue-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                Interactive Features - How to Use This Guide
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>ℹ️ Info Icon:</strong> Click the info icon next to any requirement to see detailed help, checklists, red flags, questions to ask, and resources.
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>🔗 External Link:</strong> Click the link icon next to TAC codes to view the full regulatory text.
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>💡 Quick Tips:</strong> Hover over quick tip text to see expanded hints.
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>📧 Share:</strong> Use "Copy Link" or "Send Reference" buttons in help dialogs to share specific sections with colleagues or foster parents.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl mb-6">
