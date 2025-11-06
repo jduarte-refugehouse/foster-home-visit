@@ -266,8 +266,16 @@ function generateCompleteReportHTML(
     }
     return html || `<p style="white-space: pre-wrap;">${JSON.stringify(summary, null, 2)}</p>`
   }
-  // Helper to format compliance sections - show ALL items, even unanswered ones
-  const formatComplianceSection = (sectionData: any, sectionName: string) => {
+  // Helper to format monthly compliance status
+  const formatMonthlyStatus = (monthData: any) => {
+    if (!monthData) return ""
+    if (monthData.na) return '<span style="color: #6b7280;">N/A</span>'
+    if (monthData.compliant) return '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>'
+    return '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+  }
+
+  // Helper to format compliance sections - show ALL items with monthly tracking
+  const formatComplianceSection = (sectionData: any, sectionName: string, showMonthly = true) => {
     if (!sectionData) return ""
     
     // Handle case where sectionData might be an object with items, or just items array
@@ -287,17 +295,50 @@ function generateCompleteReportHTML(
       return ""
     }
 
+    // Check if this section uses monthly tracking (has month1, month2, month3)
+    const hasMonthlyTracking = items.some((item: any) => item.month1 || item.month2 || item.month3)
+    
     // Show ALL items - answered and unanswered
     const itemsList = items
       .map((item: any) => {
-        const statusBadge = item.status ? {
-          compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
-          "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
-          na: '<span style="color: #6b7280;">N/A</span>',
-        }[item.status] || `<span style="color: #6b7280;">${item.status}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+        let statusText = ""
         
-        const statusText = ` - ${statusBadge}`
-        const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
+        if (hasMonthlyTracking && showMonthly) {
+          // Monthly tracking format
+          const m1 = formatMonthlyStatus(item.month1)
+          const m2 = formatMonthlyStatus(item.month2)
+          const m3 = formatMonthlyStatus(item.month3)
+          statusText = ` - Month 1: ${m1}, Month 2: ${m2}, Month 3: ${m3}`
+        } else if (item.status) {
+          // Old single status format
+          const statusBadge = {
+            compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
+            "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
+            na: '<span style="color: #6b7280;">N/A</span>',
+          }[item.status] || `<span style="color: #6b7280;">${item.status}</span>`
+          statusText = ` - ${statusBadge}`
+        } else if (item.month1) {
+          // Single status mode (singleStatus sections)
+          statusText = ` - ${formatMonthlyStatus(item.month1)}`
+        } else {
+          statusText = ' - <span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+        }
+        
+        // Collect notes from all months if monthly tracking
+        let notes = ""
+        if (hasMonthlyTracking && showMonthly) {
+          const allNotes = [
+            item.month1?.notes,
+            item.month2?.notes,
+            item.month3?.notes,
+          ].filter(n => n && n.trim())
+          if (allNotes.length > 0) {
+            notes = ` - <em>Notes: ${allNotes.join("; ")}</em>`
+          }
+        } else {
+          notes = item.notes ? ` - <em>${item.notes}</em>` : ""
+        }
+        
         const requirement = item.requirement || ""
         const code = item.code || ""
         return `<li>${code}${requirement && code ? ": " : ""}${requirement}${statusText}${notes}</li>`
@@ -414,6 +455,40 @@ function generateCompleteReportHTML(
     `
   }
 
+  // Helper to format package-specific compliance section
+  const formatPackageComplianceSection = (packageCompliance: any) => {
+    if (!packageCompliance) return ""
+    
+    const credentialedPackages = packageCompliance.credentialedPackages || []
+    if (credentialedPackages.length === 0) return ""
+    
+    const packageNames: Record<string, string> = {
+      "substance-use": "Substance Use Treatment",
+      "stass": "STASS (Sexual Trauma and Abuse Support Services)",
+      "t3c-treatment": "T3C Treatment",
+      "mental-behavioral": "Mental/Behavioral Health",
+      "idd-autism": "IDD/Autism",
+    }
+    
+    let content = ""
+    
+    // Format each selected package
+    credentialedPackages.forEach((pkgId: string) => {
+      const pkgName = packageNames[pkgId] || pkgId
+      const sectionData = packageCompliance[pkgId]
+      
+      if (sectionData && sectionData.items && sectionData.items.length > 0) {
+        content += formatComplianceSection(sectionData, pkgName, true)
+      }
+    })
+    
+    if (packageCompliance.combinedNotes) {
+      content += `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${packageCompliance.combinedNotes}</p>`
+    }
+    
+    return content ? `<div style="margin-bottom: 20px;"><h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">14. Package-Specific Compliance</h3>${content}</div>` : ""
+  }
+
   // Helper to format quality enhancement section
   const formatQualityEnhancement = (quality: any) => {
     if (!quality) return ""
@@ -514,12 +589,18 @@ function generateCompleteReportHTML(
       </div>
       ` : ""}
 
-      <!-- Children Present -->
-      ${formData.attendees?.childrenPresent && formData.attendees.childrenPresent.length > 0 ? `
+      <!-- Attendance -->
+      ${formData.attendees?.attendance ? `
       <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Children Present During Visit</h2>
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Attendance</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          ${formData.attendees.childrenPresent.map((child: any) => `<p style="margin: 3px 0;">${child.name || child}${child.age ? ` (Age: ${child.age})` : ""}</p>`).join("")}
+          ${Object.entries(formData.attendees.attendance)
+            .filter(([_, present]: [string, any]) => present === true)
+            .map(([name, _]: [string, any]) => `<p style="margin: 3px 0;">✓ ${name}</p>`)
+            .join("")}
+          ${Object.entries(formData.attendees.attendance).filter(([_, present]: [string, any]) => present === true).length === 0 
+            ? "<p style="margin: 3px 0; font-style: italic; color: #6b7280;">No attendance recorded</p>" 
+            : ""}
         </div>
       </div>
       ` : ""}
@@ -547,10 +628,11 @@ function generateCompleteReportHTML(
         ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space") : ""}
         ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation") : ""}
         ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
-        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space") : ""}
-        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles") : ""}
-        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas") : ""}
-        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants") : ""}
+        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false) : ""}
+        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false) : ""}
+        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false) : ""}
+        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false) : ""}
+        ${formData.complianceReview.packageCompliance ? formatPackageComplianceSection(formData.complianceReview.packageCompliance) : ""}
         ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""}
       </div>
       ` : formData.medication || formData.healthSafety || formData.childrensRights ? `
@@ -566,10 +648,11 @@ function generateCompleteReportHTML(
         ${formData.indoorSpace ? formatComplianceSection(formData.indoorSpace, "6. Indoor Space") : ""}
         ${formData.documentation ? formatComplianceSection(formData.documentation, "7. Documentation") : ""}
         ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""}
-        ${formData.outdoorSpaceCompliance || formData.outdoorSpace ? formatComplianceSection(formData.outdoorSpaceCompliance || formData.outdoorSpace, "8. Outdoor Space") : ""}
-        ${formData.vehicles ? formatComplianceSection(formData.vehicles, "9. Vehicles") : ""}
-        ${formData.swimming ? formatComplianceSection(formData.swimming, "10. Swimming Areas") : ""}
-        ${formData.infants ? formatComplianceSection(formData.infants, "11. Infants") : ""}
+        ${formData.outdoorSpaceCompliance || formData.outdoorSpace ? formatComplianceSection(formData.outdoorSpaceCompliance || formData.outdoorSpace, "8. Outdoor Space", false) : ""}
+        ${formData.vehicles ? formatComplianceSection(formData.vehicles, "9. Vehicles", false) : ""}
+        ${formData.swimming ? formatComplianceSection(formData.swimming, "10. Swimming Areas", false) : ""}
+        ${formData.infants ? formatComplianceSection(formData.infants, "11. Infants", false) : ""}
+        ${formData.packageCompliance ? formatPackageComplianceSection(formData.packageCompliance) : ""}
         ${formData.qualityEnhancement ? formatQualityEnhancement(formData.qualityEnhancement) : ""}
       </div>
       ` : ""}
@@ -654,10 +737,49 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Signatures</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          ${formatSignatureField("Visitor", formData.signatures.visitor, formData.signatures.visitorSignature, formData.signatures.visitorDate)}
-          ${formatSignatureField("Foster Parent 1", formData.signatures.parent1, formData.signatures.parent1Signature, formData.signatures.parent1Date)}
-          ${formatSignatureField("Foster Parent 2", formData.signatures.parent2, formData.signatures.parent2Signature, formData.signatures.parent2Date)}
-          ${formatSignatureField("Supervisor", formData.signatures.supervisor, formData.signatures.supervisorSignature, formData.signatures.supervisorDate)}
+          ${(() => {
+            let signatureHtml = ""
+            
+            // Foster parent signatures (from household.providers)
+            if (formData.familyInfo?.household?.providers) {
+              formData.familyInfo.household.providers.forEach((provider: any, index: number) => {
+                const sigKey = `parent${index + 1}` as keyof typeof formData.signatures
+                const sigData = formData.signatures[sigKey] || {}
+                signatureHtml += formatSignatureField(
+                  provider.name || `Foster Parent ${index + 1}`,
+                  sigData.name || provider.name || "",
+                  sigData.signature || "",
+                  sigData.date || ""
+                )
+              })
+            } else {
+              // Fallback to old format
+              signatureHtml += formatSignatureField("Foster Parent 1", formData.signatures.parent1?.name || formData.signatures.parent1 || "", formData.signatures.parent1?.signature || formData.signatures.parent1Signature || "", formData.signatures.parent1?.date || formData.signatures.parent1Date || "")
+              signatureHtml += formatSignatureField("Foster Parent 2", formData.signatures.parent2?.name || formData.signatures.parent2 || "", formData.signatures.parent2?.signature || formData.signatures.parent2Signature || "", formData.signatures.parent2?.date || formData.signatures.parent2Date || "")
+            }
+            
+            // Staff signature
+            if (formData.signatures.staff) {
+              signatureHtml += formatSignatureField(
+                formData.signatures.staff.name || formData.visitInfo?.conductedBy || "Staff",
+                formData.signatures.staff.name || formData.visitInfo?.conductedBy || "",
+                formData.signatures.staff.signature || "",
+                formData.signatures.staff.date || ""
+              )
+            }
+            
+            // Supervisor signature
+            if (formData.signatures.supervisor) {
+              signatureHtml += formatSignatureField(
+                formData.signatures.supervisor.name || "Supervisor",
+                formData.signatures.supervisor.name || formData.signatures.supervisor || "",
+                formData.signatures.supervisor.signature || formData.signatures.supervisorSignature || "",
+                formData.signatures.supervisor.date || formData.signatures.supervisorDate || ""
+              )
+            }
+            
+            return signatureHtml
+          })()}
         </div>
       </div>
       ` : ""}
