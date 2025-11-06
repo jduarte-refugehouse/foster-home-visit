@@ -92,12 +92,64 @@ export default function MobileAppointmentDetailPage() {
     }
   }
 
-  const parseLocalDatetime = (sqlDatetime: string): Date => {
-    const cleaned = sqlDatetime.replace(" ", "T").replace("Z", "")
-    const [datePart, timePart] = cleaned.split("T")
-    const [year, month, day] = datePart.split("-").map(Number)
-    const [hour, minute] = timePart.split(":").map(Number)
-    return new Date(year, month - 1, day, hour, minute, 0)
+  const parseLocalDatetime = (sqlDatetime: string | null | undefined): Date | null => {
+    if (!sqlDatetime) return null
+    
+    try {
+      // Handle various datetime formats from SQL Server
+      // Format 1: "2025-01-15T17:30:00" (ISO-like)
+      // Format 2: "2025-01-15 17:30:00" (SQL Server default)
+      // Format 3: "2025-01-15T17:30:00.000Z" (with milliseconds and Z)
+      // Format 4: "2025-01-15T17:30:00.000" (with milliseconds, no Z)
+      
+      let cleaned = sqlDatetime.trim()
+      
+      // Remove milliseconds if present
+      cleaned = cleaned.replace(/\.\d{3,7}/, "")
+      
+      // Replace space with T for ISO format
+      cleaned = cleaned.replace(" ", "T")
+      
+      // Remove Z if present
+      cleaned = cleaned.replace("Z", "")
+      
+      // Split into date and time parts
+      const parts = cleaned.split("T")
+      if (parts.length !== 2) {
+        console.error("Invalid datetime format:", sqlDatetime)
+        return null
+      }
+      
+      const [datePart, timePart] = parts
+      
+      // Parse date part (YYYY-MM-DD)
+      const dateComponents = datePart.split("-")
+      if (dateComponents.length !== 3) {
+        console.error("Invalid date format:", datePart)
+        return null
+      }
+      const [year, month, day] = dateComponents.map(Number)
+      
+      // Parse time part (HH:mm:ss or HH:mm)
+      const timeComponents = timePart.split(":")
+      if (timeComponents.length < 2) {
+        console.error("Invalid time format:", timePart)
+        return null
+      }
+      const [hour, minute] = timeComponents.map(Number)
+      const second = timeComponents[2] ? Number(timeComponents[2]) : 0
+      
+      // Validate parsed values
+      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+        console.error("Invalid datetime values:", { year, month, day, hour, minute })
+        return null
+      }
+      
+      return new Date(year, month - 1, day, hour, minute, second)
+    } catch (error) {
+      console.error("Error parsing datetime:", sqlDatetime, error)
+      return null
+    }
   }
 
   const captureLocation = (action: "start_drive" | "arrived") => {
@@ -285,6 +337,14 @@ export default function MobileAppointmentDetailPage() {
   const endTime = parseLocalDatetime(appointment.end_datetime)
   const hasStartedDrive = !!appointment.start_drive_timestamp
   const hasArrived = !!appointment.arrived_timestamp
+  
+  // Validate dates before rendering
+  if (!startTime || !endTime) {
+    console.error("Invalid appointment times:", { 
+      start: appointment.start_datetime, 
+      end: appointment.end_datetime 
+    })
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -322,7 +382,13 @@ export default function MobileAppointmentDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <Clock className="h-4 w-4 flex-shrink-0" />
                   <span>
-                    {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
+                    {startTime && endTime ? (
+                      <>
+                        {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
+                      </>
+                    ) : (
+                      <span className="text-gray-400">Time not available</span>
+                    )}
                   </span>
                 </div>
               </div>
