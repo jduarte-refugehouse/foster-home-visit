@@ -986,9 +986,9 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-100 p-1">
-      {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
-      <div className="max-w-full mx-auto">
+    <div className="min-h-screen bg-gray-100 p-1 sm:p-2 md:p-3">
+      {/* Responsive Layout - Adapts to viewport */}
+      <div className="w-full max-w-full mx-auto">
         {/* Dark Gradient Header - FORM STYLE */}
         <Card className="mb-1 bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl shadow-md">
           <CardHeader className="py-2 px-3">
