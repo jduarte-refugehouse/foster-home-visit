@@ -4,8 +4,8 @@
 
 The Enhanced Home Visit Form implements the updated operating requirements based on Chapter 749 Standards with RCC (Residential Child Care) Requirements and T3C (Trauma-Competent Care) Elements.
 
-**Version:** 3.1  
-**Last Updated:** November 2025  
+**Version:** 3.2  
+**Last Updated:** November 5, 2025  
 **Based On:** `enhanced-monitoring-checklist.md`
 
 ---
@@ -219,9 +219,9 @@ The form automatically adjusts based on:
 ## Status Indicators
 
 ### Compliance Items
-- **✓ Compliant** (Green): Meets requirements
-- **⚠ Non-Compliant** (Red): Deficiency identified
-- **N/A** (Gray): Not applicable
+- **✓ Compliant** (Green button): Meets requirements - click to toggle
+- **N/A** (Gray button): Not applicable - only shown for items where N/A is reasonable
+- **Notes** (Expandable): Optional notes for each month, expandable per item
 
 ### Inspection Expiration
 - **Current** (Green): >60 days remaining
@@ -296,9 +296,10 @@ Monthly visits capture all necessary data to generate quarterly summaries:
 ## Technical Implementation
 
 ### Files
-- `components/forms/home-visit-form-enhanced.tsx`: Main form component
-- `components/forms/home-visit-form-enhanced-sections.tsx`: Additional section components
+- `components/forms/home-visit-form-enhanced.tsx`: Main form component with monthly tracking
+- `components/forms/home-visit-form-enhanced-sections.tsx`: Compliance section components with compact table layout
 - `docs/enhanced-monitoring-checklist.md`: Original requirement specifications
+- `docs/daily-activity-summary-2025-11-05.md`: Detailed changelog for version 3.2
 
 ### Key Technologies
 - React hooks for state management
@@ -368,6 +369,14 @@ For questions or issues with the Enhanced Home Visit Form:
 ---
 
 ## Version History
+
+### Version 3.2 (November 5, 2025)
+- **Compact Checklist Format**: Redesigned compliance sections to match paper checklist
+- **Monthly Tracking**: Added month1, month2, month3 tracking for quarterly sections
+- **Toggle Buttons**: Replaced checkboxes with Compliant/N/A toggle buttons
+- **Conditional N/A**: N/A button only shown for items where it's reasonable
+- **Recipient Selection**: Dialog to choose email recipient (me only / case manager) during testing
+- **Database Fixes**: Corrected column references in prepopulate route
 
 ### Version 3.1 (November 2025)
 - Initial release of enhanced form
