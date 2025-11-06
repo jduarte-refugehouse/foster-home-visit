@@ -382,6 +382,52 @@ export function CreateAppointmentDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Location - Moved to top */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="home">Foster Home *</Label>
+                <Select value={formData.homeXref} onValueChange={handleHomeChange} disabled={loadingData} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingData ? "Loading homes..." : "Select a home"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {homes.map((home) => (
+                      <SelectItem key={home.xref} value={home.xref.toString()}>
+                        {home.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationAddress">Address</Label>
+                <Input
+                  id="locationAddress"
+                  value={formData.locationAddress}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, locationAddress: e.target.value }))}
+                  placeholder="Full address (auto-filled from home)"
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="locationNotes">Location Notes</Label>
+              <Textarea
+                id="locationNotes"
+                value={formData.locationNotes}
+                onChange={(e) => setFormData((prev) => ({ ...prev, locationNotes: e.target.value }))}
+                placeholder="Special instructions, parking info, etc."
+                rows={2}
+              />
+            </div>
+          </div>
+
           {/* Basic Information */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -537,49 +583,6 @@ export function CreateAppointmentDialog({
             </div>
           </div>
 
-          {/* Location */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Location
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="home">Foster Home</Label>
-                <Select value={formData.homeXref} onValueChange={handleHomeChange} disabled={loadingData}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingData ? "Loading homes..." : "Select a home"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {homes.map((home) => (
-                      <SelectItem key={home.xref} value={home.xref.toString()}>
-                        {home.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="locationAddress">Address</Label>
-                <Input
-                  id="locationAddress"
-                  value={formData.locationAddress}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, locationAddress: e.target.value }))}
-                  placeholder="Full address"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="locationNotes">Location Notes</Label>
-              <Textarea
-                id="locationNotes"
-                value={formData.locationNotes}
-                onChange={(e) => setFormData((prev) => ({ ...prev, locationNotes: e.target.value }))}
-                placeholder="Special instructions, parking info, etc."
-                rows={2}
-              />
-            </div>
-          </div>
 
           {/* Staff Assignment */}
           <div className="space-y-4">

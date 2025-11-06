@@ -677,6 +677,7 @@ export default function VisitsCalendarPage() {
                   timeslots={2}
                   min={new Date(2025, 0, 1, 0, 0)}
                   max={new Date(2025, 0, 1, 23, 59)}
+                  scrollToTime={new Date(2025, 0, 1, 8, 0)}
                 />
               </div>
             </CardContent>

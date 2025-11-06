@@ -1448,39 +1448,6 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
           </Card>
         )}
 
-        {/* Visitor Signature - Keep for backward compatibility */}
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Visitor Signature *</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label className="text-sm">Name *</Label>
-              <Input
-                value={getSignatureValue("visitor")}
-                onChange={(e) => handleSignatureChange("visitor", e.target.value)}
-                placeholder="Type your full name"
-                className="text-sm"
-              />
-            </div>
-
-            <SignaturePad
-              label="Signature *"
-              value={getSignatureValue("visitorSignature")}
-              onChange={(sig) => handleSignatureChange("visitorSignature", sig)}
-            />
-
-            <div>
-              <Label className="text-sm">Date *</Label>
-              <Input
-                type="date"
-                value={getSignatureValue("visitorDate") || new Date().toISOString().split("T")[0]}
-                onChange={(e) => handleSignatureChange("visitorDate", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Alert className="border-green-200 bg-green-50 py-2">
