@@ -31,9 +31,10 @@ export async function POST(
         a.assigned_to_user_id,
         a.assigned_to_name,
         a.title,
-        a.home_name,
-        a.start_datetime
+        a.start_datetime,
+        h.HomeName as home_name
       FROM appointments a
+      LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
       WHERE a.appointment_id = @param0 AND a.is_deleted = 0
     `,
       [appointmentId],

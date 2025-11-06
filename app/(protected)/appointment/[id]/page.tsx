@@ -91,6 +91,7 @@ export default function AppointmentDetailPage() {
   const [sendingLink, setSendingLink] = useState(false)
   const [showPhoneMissingDialog, setShowPhoneMissingDialog] = useState(false)
   const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
+  const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -1015,7 +1016,7 @@ export default function AppointmentDetailPage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={handleSendAppointmentLink}
+              onClick={() => setShowSendLinkDialog(true)}
               disabled={sendingLink}
               className="h-8 px-3 text-sm font-medium"
             >
@@ -1466,6 +1467,36 @@ export default function AppointmentDetailPage() {
               setPendingFormData(null)
             }}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Link Confirmation Dialog */}
+      <Dialog open={showSendLinkDialog} onOpenChange={setShowSendLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Appointment Link</DialogTitle>
+            <DialogDescription>
+              Send a text message with the appointment link to <strong>{appointment?.assigned_to_name}</strong>?
+              <br />
+              <br />
+              The link will open the mobile-optimized appointment view where they can access directions, start drive tracking, and other quick actions.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendLinkDialog(false)} disabled={sendingLink}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowSendLinkDialog(false)
+                handleSendAppointmentLink()
+              }} 
+              disabled={sendingLink}
+              className="bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+            >
+              {sendingLink ? "Sending..." : "Send Link"}
             </Button>
           </DialogFooter>
         </DialogContent>
