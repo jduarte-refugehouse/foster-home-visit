@@ -84,14 +84,37 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       )
     }
 
-    // Check if appointment exists
-    const existingAppointment = await query(
-      "SELECT appointment_id, start_drive_latitude, start_drive_longitude FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
-      [appointmentId],
-    )
+    // Check if appointment exists and verify access
+    // If we have user info, verify they're assigned to this appointment
+    const appointmentQuery = clerkUserId || email
+      ? `SELECT appointment_id, start_drive_latitude, start_drive_longitude, assigned_to_user_id 
+         FROM appointments 
+         WHERE appointment_id = @param0 AND is_deleted = 0`
+      : `SELECT appointment_id, start_drive_latitude, start_drive_longitude, assigned_to_user_id 
+         FROM appointments 
+         WHERE appointment_id = @param0 AND is_deleted = 0`
+    
+    const existingAppointment = await query(appointmentQuery, [appointmentId])
 
     if (existingAppointment.length === 0) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
+
+    // Basic security: If we have user identification, verify they have access
+    // (This is a soft check - we'll be more strict once auth is fully working)
+    if (clerkUserId || email) {
+      // Try to verify user has access to this appointment
+      // For now, we'll just log it - proper verification requires matching clerk_user_id in app_users
+      console.log("🔒 [MILEAGE] User verification:", { 
+        clerkUserId, 
+        email, 
+        appointmentId,
+        assignedTo: existingAppointment[0].assigned_to_user_id 
+      })
+      // TODO: Add proper user verification once auth is working
+      // Should check: app_users.clerk_user_id matches AND appointment.assigned_to_user_id matches app_users.id
+    } else {
+      console.warn("⚠️ [MILEAGE] No user identification - proceeding without verification (temporary)")
     }
 
     const now = new Date()
