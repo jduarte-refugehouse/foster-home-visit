@@ -54,6 +54,11 @@ export default function MobileAppointmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [capturingLocation, setCapturingLocation] = useState(false)
 
+  // Debug logging
+  useEffect(() => {
+    console.log("Mobile Appointment Page - Auth State:", { isLoaded, hasUser: !!user, userId: user?.id })
+  }, [isLoaded, user])
+
   useEffect(() => {
     // Optional: Redirect to regular appointment page if not mobile
     // Commented out to allow testing on desktop browsers
@@ -127,23 +132,20 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
-      // Wait for user to be loaded
-      if (!isLoaded || !user || !user.id) {
-        toast({
-          title: "Please wait",
-          description: "Authentication is still loading. Please try again in a moment.",
-          variant: "default",
-        })
-        return
-      }
-
       const location = await captureLocation("start_drive")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-        "x-user-clerk-id": user.id,
-        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      }
+      
+      // Add auth headers - user should be available since page is protected
+      // If user isn't loaded yet, try without headers (API will reject but we'll get better error)
+      if (user?.id) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      } else {
+        console.warn("User not available from useUser() hook - attempting request anyway")
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -179,23 +181,19 @@ export default function MobileAppointmentDetailPage() {
 
   const handleArrived = async () => {
     try {
-      // Wait for user to be loaded
-      if (!isLoaded || !user || !user.id) {
-        toast({
-          title: "Please wait",
-          description: "Authentication is still loading. Please try again in a moment.",
-          variant: "default",
-        })
-        return
-      }
-
       const location = await captureLocation("arrived")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-        "x-user-clerk-id": user.id,
-        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      }
+      
+      // Add auth headers - user should be available since page is protected
+      if (user?.id) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      } else {
+        console.warn("User not available from useUser() hook - attempting request anyway")
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -379,24 +377,24 @@ export default function MobileAppointmentDetailPage() {
           {!hasStartedDrive && appointment.status === "scheduled" && (
             <Button
               onClick={handleStartDrive}
-              disabled={!isLoaded || !user || capturingLocation}
+              disabled={capturingLocation}
               className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
-              {!isLoaded || !user ? "Loading..." : capturingLocation ? "Capturing Location..." : "Start Drive"}
+              {capturingLocation ? "Capturing Location..." : "Start Drive"}
             </Button>
           )}
 
           {hasStartedDrive && !hasArrived && (
             <Button
               onClick={handleArrived}
-              disabled={!isLoaded || !user || capturingLocation}
+              disabled={capturingLocation}
               className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {!isLoaded || !user ? "Loading..." : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+              {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
             </Button>
           )}
 
