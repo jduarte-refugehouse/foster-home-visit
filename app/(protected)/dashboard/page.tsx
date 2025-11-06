@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Home, Map, Users, Shield, ExternalLink, Calendar, Clock, CheckCircle2, BookOpen, AlertCircle, Phone } from "lucide-react"
 import { usePermissions } from "@/hooks/use-permissions"
+import { useDeviceType } from "@/hooks/use-device-type"
 import Link from "next/link"
 import { format, parseISO, isToday, isTomorrow } from "date-fns"
 
@@ -19,7 +21,9 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const { user } = useUser()
+  const router = useRouter()
   const permissions = usePermissions()
+  const { isMobile } = useDeviceType()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [liaisonData, setLiaisonData] = useState<any>(null)
@@ -31,6 +35,14 @@ export default function DashboardPage() {
   // TEMPORARY: Show Liaison Dashboard for ALL users for testing
   // TODO: Revert to role-based check once impersonation/auth is working
   const showLiaisonDashboard = true // Changed from: isHomeLiaison
+
+  // Optional: Redirect mobile users to mobile-optimized dashboard
+  // Uncomment the lines below if you want automatic redirection
+  // useEffect(() => {
+  //   if (isMobile) {
+  //     router.replace("/mobile")
+  //   }
+  // }, [isMobile, router])
 
   const fetchDashboardData = async () => {
     try {
