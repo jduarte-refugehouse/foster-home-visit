@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { 
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
@@ -471,6 +471,10 @@ const EnhancedHomeVisitForm = ({
 
   const [currentSection, setCurrentSection] = useState(0)
   const [errors, setErrors] = useState({})
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const previousSectionRef = useRef<number | null>(null)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Pre-populate form with data from database
   useEffect(() => {
@@ -728,6 +732,59 @@ const EnhancedHomeVisitForm = ({
     }))
   }, [formData.inspections.fire.expirationDate, formData.inspections.health.expirationDate])
 
+  // Auto-save when navigating between sections
+  useEffect(() => {
+    // Skip auto-save on initial mount or if we haven't moved sections yet
+    if (previousSectionRef.current === null) {
+      previousSectionRef.current = currentSection
+      return
+    }
+
+    // Only auto-save if we've actually changed sections
+    if (previousSectionRef.current !== currentSection && onSave) {
+      // Clear any pending save timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+
+      // Debounce the save slightly to avoid saving too quickly
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          setIsSaving(true)
+          setSaveStatus("saving")
+          // Use the latest formData by accessing it from state
+          await onSave(formData)
+          setSaveStatus("saved")
+          
+          // Clear the "saved" status after 2 seconds
+          setTimeout(() => {
+            setSaveStatus("idle")
+          }, 2000)
+        } catch (error) {
+          console.error("Auto-save failed:", error)
+          setSaveStatus("error")
+          setTimeout(() => {
+            setSaveStatus("idle")
+          }, 3000)
+        } finally {
+          setIsSaving(false)
+        }
+      }, 300) // 300ms debounce
+    }
+
+    previousSectionRef.current = currentSection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection, onSave]) // Only depend on currentSection and onSave
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
+
   // ALL sections shown on EVERY monthly visit
   // Liaisons can complete quarterly items across 3 visits or all at once
   const sections = [
@@ -932,7 +989,22 @@ const EnhancedHomeVisitForm = ({
                 <CardTitle className="text-lg font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
                 <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex items-center gap-2">
+                {saveStatus === "saving" && (
+                  <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-xs">
+                    <span className="animate-pulse">Saving...</span>
+                  </Badge>
+                )}
+                {saveStatus === "saved" && (
+                  <Badge variant="outline" className="bg-green-500/20 text-white border-green-300/30 text-xs">
+                    ✓ Saved
+                  </Badge>
+                )}
+                {saveStatus === "error" && (
+                  <Badge variant="outline" className="bg-red-500/20 text-white border-red-300/30 text-xs">
+                    Save failed
+                  </Badge>
+                )}
                 <Badge className="bg-white text-refuge-purple text-xs">
                   {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
                 </Badge>
