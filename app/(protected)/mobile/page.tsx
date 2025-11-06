@@ -112,11 +112,18 @@ export default function MobileDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="max-w-md mx-auto space-y-4">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Today's Visits</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Compact Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-md mx-auto px-3 py-2 flex items-center gap-2">
+          <h1 className="text-base font-semibold flex-1 text-gray-900 dark:text-gray-100">Home Visits</h1>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto p-4 space-y-4">
+        {/* Date Header */}
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Today's Visits</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
 

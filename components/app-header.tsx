@@ -18,6 +18,9 @@ export function AppHeader() {
   // Special handling for appointment detail pages - use simpler breadcrumb
   const isAppointmentDetail = pathname.startsWith("/appointment/") && pathname.split("/").length === 3
   
+  // Special handling for mobile routes - hide header (they have custom headers)
+  const isMobileRoute = pathname.startsWith("/mobile")
+  
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split("/").filter(Boolean)
   const breadcrumbs: Array<{ href: string; label: string }> = []
@@ -26,6 +29,12 @@ export function AppHeader() {
     // For appointment detail pages, link back to visits calendar and stop
     if (isAppointmentDetail && segment === "appointment") {
       breadcrumbs.push({ href: "/visits-calendar", label: "Appointments" })
+      return
+    }
+    
+    // Special handling for mobile routes
+    if (segment === "mobile") {
+      breadcrumbs.push({ href: "/mobile", label: "Mobile View" })
       return
     }
     
@@ -72,11 +81,17 @@ export function AppHeader() {
       invitations: "Invitations",
       "visit-form": "Visit Form",
       "visit-forms": "Visit Forms",
+      mobile: "Home Visits",
     }
 
     // Special handling for dynamic routes (appointment/[id], etc.)
     if (segments[0] === "appointment" && segments.length === 2) {
       return "Appointment Details"
+    }
+    
+    // Special handling for mobile routes
+    if (segments[0] === "mobile") {
+      return "Home Visits"
     }
 
     return (
@@ -90,8 +105,8 @@ export function AppHeader() {
 
   const pageTitle = generatePageTitle(pathname)
 
-  // Hide header for appointment detail pages - they have their own custom header
-  if (isAppointmentDetail) {
+  // Hide header for appointment detail pages and mobile routes - they have their own custom headers
+  if (isAppointmentDetail || isMobileRoute) {
     return null
   }
 
