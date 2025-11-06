@@ -127,17 +127,23 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
+      // Wait for user to be loaded
+      if (!isLoaded || !user || !user.id) {
+        toast({
+          title: "Please wait",
+          description: "Authentication is still loading. Please try again in a moment.",
+          variant: "default",
+        })
+        return
+      }
+
       const location = await captureLocation("start_drive")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-      }
-      
-      // Add authentication headers if user is available
-      if (user) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+        "x-user-clerk-id": user.id,
+        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -173,17 +179,23 @@ export default function MobileAppointmentDetailPage() {
 
   const handleArrived = async () => {
     try {
+      // Wait for user to be loaded
+      if (!isLoaded || !user || !user.id) {
+        toast({
+          title: "Please wait",
+          description: "Authentication is still loading. Please try again in a moment.",
+          variant: "default",
+        })
+        return
+      }
+
       const location = await captureLocation("arrived")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-      }
-      
-      // Add authentication headers if user is available
-      if (user) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+        "x-user-clerk-id": user.id,
+        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -367,24 +379,24 @@ export default function MobileAppointmentDetailPage() {
           {!hasStartedDrive && appointment.status === "scheduled" && (
             <Button
               onClick={handleStartDrive}
-              disabled={capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+              disabled={!isLoaded || !user || capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Start Drive"}
+              {!isLoaded || !user ? "Loading..." : capturingLocation ? "Capturing Location..." : "Start Drive"}
             </Button>
           )}
 
           {hasStartedDrive && !hasArrived && (
             <Button
               onClick={handleArrived}
-              disabled={capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+              disabled={!isLoaded || !user || capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+              {!isLoaded || !user ? "Loading..." : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
             </Button>
           )}
 
