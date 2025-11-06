@@ -30,12 +30,14 @@ export default function MobileDashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Redirect to regular dashboard if not mobile
-  useEffect(() => {
-    if (isLoaded && !isMobile) {
-      router.replace("/dashboard")
-    }
-  }, [isLoaded, isMobile, router])
+  // Optional: Redirect to regular dashboard if not mobile
+  // Commented out to allow testing on desktop browsers
+  // Uncomment if you want to force mobile-only access
+  // useEffect(() => {
+  //   if (isLoaded && !isMobile) {
+  //     router.replace("/dashboard")
+  //   }
+  // }, [isLoaded, isMobile, router])
 
   useEffect(() => {
     if (isLoaded) {
@@ -99,7 +101,7 @@ export default function MobileDashboardPage() {
     return <Badge variant="outline">Scheduled</Badge>
   }
 
-  if (!isLoaded || !isMobile) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

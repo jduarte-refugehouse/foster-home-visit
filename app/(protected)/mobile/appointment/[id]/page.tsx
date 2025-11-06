@@ -55,10 +55,13 @@ export default function MobileAppointmentDetailPage() {
   const [capturingLocation, setCapturingLocation] = useState(false)
 
   useEffect(() => {
-    if (!isMobile) {
-      router.replace(`/appointment/${appointmentId}`)
-      return
-    }
+    // Optional: Redirect to regular appointment page if not mobile
+    // Commented out to allow testing on desktop browsers
+    // Uncomment if you want to force mobile-only access
+    // if (!isMobile) {
+    //   router.replace(`/appointment/${appointmentId}`)
+    //   return
+    // }
     if (appointmentId) {
       fetchAppointmentDetails()
     }
