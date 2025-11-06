@@ -838,12 +838,17 @@ function generateCompleteReportText(
     content += `\n`
   }
 
-  if (formData.attendees?.childrenPresent && formData.attendees.childrenPresent.length > 0) {
-    content += `CHILDREN PRESENT DURING VISIT\n`
-    formData.attendees.childrenPresent.forEach((child: any) => {
-      content += `  - ${child.name || child}${child.age ? ` (Age: ${child.age})` : ""}\n`
-    })
-    content += `\n`
+  if (formData.attendees?.attendance) {
+    const present = Object.entries(formData.attendees.attendance)
+      .filter(([_, present]: [string, any]) => present === true)
+      .map(([name, _]: [string, any]) => name)
+    if (present.length > 0) {
+      content += `ATTENDANCE\n`
+      present.forEach((name: string) => {
+        content += `  - ✓ ${name}\n`
+      })
+      content += `\n`
+    }
   }
 
   if (formData.homeEnvironment?.homeCondition) {
@@ -870,11 +875,30 @@ function generateCompleteReportText(
     sections.forEach(({ key, name }) => {
       const section = formData.complianceReview[key]
       if (section && section.items && section.items.length > 0) {
-        // Show ALL items, not just those with status
+        // Check if this section uses monthly tracking
+        const hasMonthlyTracking = section.items.some((item: any) => item.month1 || item.month2 || item.month3)
+        
         content += `${name}:\n`
         section.items.forEach((item: any) => {
-          const status = item.status || "Not answered"
-          content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
+          if (hasMonthlyTracking) {
+            const m1 = item.month1?.na ? "N/A" : item.month1?.compliant ? "Compliant" : "Not answered"
+            const m2 = item.month2?.na ? "N/A" : item.month2?.compliant ? "Compliant" : "Not answered"
+            const m3 = item.month3?.na ? "N/A" : item.month3?.compliant ? "Compliant" : "Not answered"
+            const allNotes = [
+              item.month1?.notes,
+              item.month2?.notes,
+              item.month3?.notes,
+            ].filter(n => n && n.trim())
+            content += `  - ${item.code || ""}: ${item.requirement || ""} - Month 1: ${m1}, Month 2: ${m2}, Month 3: ${m3}${allNotes.length > 0 ? ` (Notes: ${allNotes.join("; ")})` : ""}\n`
+          } else if (item.month1) {
+            // Single status mode
+            const status = item.month1.na ? "N/A" : item.month1.compliant ? "Compliant" : "Not answered"
+            content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.month1.notes ? ` (${item.month1.notes})` : ""}\n`
+          } else {
+            // Old format
+            const status = item.status || "Not answered"
+            content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
+          }
         })
         if (section.combinedNotes) {
           content += `  Notes: ${section.combinedNotes}\n`
@@ -894,6 +918,48 @@ function generateCompleteReportText(
         content += `  Notes: ${formData.complianceReview.traumaInformedCare.combinedNotes}\n`
       }
       content += `\n`
+    }
+    
+    // Package-Specific Compliance
+    if (formData.complianceReview.packageCompliance) {
+      const pkgCompliance = formData.complianceReview.packageCompliance
+      const credentialedPackages = pkgCompliance.credentialedPackages || []
+      if (credentialedPackages.length > 0) {
+        content += `14. Package-Specific Compliance:\n`
+        const packageNames: Record<string, string> = {
+          "substance-use": "Substance Use Treatment",
+          "stass": "STASS",
+          "t3c-treatment": "T3C Treatment",
+          "mental-behavioral": "Mental/Behavioral Health",
+          "idd-autism": "IDD/Autism",
+        }
+        credentialedPackages.forEach((pkgId: string) => {
+          const pkgName = packageNames[pkgId] || pkgId
+          const sectionData = pkgCompliance[pkgId]
+          if (sectionData && sectionData.items && sectionData.items.length > 0) {
+            content += `  ${pkgName}:\n`
+            sectionData.items.forEach((item: any) => {
+              const hasMonthlyTracking = item.month1 && item.month2 && item.month3
+              if (hasMonthlyTracking) {
+                const m1 = item.month1?.na ? "N/A" : item.month1?.compliant ? "Compliant" : "Not answered"
+                const m2 = item.month2?.na ? "N/A" : item.month2?.compliant ? "Compliant" : "Not answered"
+                const m3 = item.month3?.na ? "N/A" : item.month3?.compliant ? "Compliant" : "Not answered"
+                content += `    - ${item.code || ""}: ${item.requirement || ""} - Month 1: ${m1}, Month 2: ${m2}, Month 3: ${m3}\n`
+              } else if (item.month1) {
+                const status = item.month1.na ? "N/A" : item.month1.compliant ? "Compliant" : "Not answered"
+                content += `    - ${item.code || ""}: ${item.requirement || ""} - ${status}\n`
+              } else {
+                const status = item.status || "Not answered"
+                content += `    - ${item.code || ""}: ${item.requirement || ""} - ${status}\n`
+              }
+            })
+          }
+        })
+        if (pkgCompliance.combinedNotes) {
+          content += `  Notes: ${pkgCompliance.combinedNotes}\n`
+        }
+        content += `\n`
+      }
     }
     
     // Quality Enhancement
@@ -989,30 +1055,64 @@ function generateCompleteReportText(
 
   if (formData.signatures) {
     content += `SIGNATURES\n`
-    if (formData.signatures.visitor) {
-      content += `Visitor: ${formData.signatures.visitor}`
-      if (formData.signatures.visitorDate) content += ` (Date: ${formData.signatures.visitorDate})`
-      if (formData.signatures.visitorSignature) content += ` [Signature: ${formData.signatures.visitorSignature.length > 100 ? 'Image data present' : formData.signatures.visitorSignature}]`
+    
+    // Foster parent signatures (from household.providers)
+    if (formData.familyInfo?.household?.providers) {
+      formData.familyInfo.household.providers.forEach((provider: any, index: number) => {
+        const sigKey = `parent${index + 1}` as keyof typeof formData.signatures
+        const sigData = formData.signatures[sigKey] || {}
+        const name = sigData.name || provider.name || `Foster Parent ${index + 1}`
+        const date = sigData.date || ""
+        const signature = sigData.signature || ""
+        content += `${name}:`
+        if (date) content += ` (Date: ${date})`
+        if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+        content += `\n`
+      })
+    } else {
+      // Fallback to old format
+      if (formData.signatures.parent1?.name || formData.signatures.parent1) {
+        const name = formData.signatures.parent1?.name || formData.signatures.parent1 || ""
+        const date = formData.signatures.parent1?.date || formData.signatures.parent1Date || ""
+        const signature = formData.signatures.parent1?.signature || formData.signatures.parent1Signature || ""
+        content += `Foster Parent 1: ${name}`
+        if (date) content += ` (Date: ${date})`
+        if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+        content += `\n`
+      }
+      if (formData.signatures.parent2?.name || formData.signatures.parent2) {
+        const name = formData.signatures.parent2?.name || formData.signatures.parent2 || ""
+        const date = formData.signatures.parent2?.date || formData.signatures.parent2Date || ""
+        const signature = formData.signatures.parent2?.signature || formData.signatures.parent2Signature || ""
+        content += `Foster Parent 2: ${name}`
+        if (date) content += ` (Date: ${date})`
+        if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+        content += `\n`
+      }
+    }
+    
+    // Staff signature
+    if (formData.signatures.staff) {
+      const name = formData.signatures.staff.name || formData.visitInfo?.conductedBy || "Staff"
+      const date = formData.signatures.staff.date || ""
+      const signature = formData.signatures.staff.signature || ""
+      content += `${name}:`
+      if (date) content += ` (Date: ${date})`
+      if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
       content += `\n`
     }
-    if (formData.signatures.parent1) {
-      content += `Foster Parent 1: ${formData.signatures.parent1}`
-      if (formData.signatures.parent1Date) content += ` (Date: ${formData.signatures.parent1Date})`
-      if (formData.signatures.parent1Signature) content += ` [Signature: ${formData.signatures.parent1Signature.length > 100 ? 'Image data present' : formData.signatures.parent1Signature}]`
-      content += `\n`
-    }
-    if (formData.signatures.parent2) {
-      content += `Foster Parent 2: ${formData.signatures.parent2}`
-      if (formData.signatures.parent2Date) content += ` (Date: ${formData.signatures.parent2Date})`
-      if (formData.signatures.parent2Signature) content += ` [Signature: ${formData.signatures.parent2Signature.length > 100 ? 'Image data present' : formData.signatures.parent2Signature}]`
-      content += `\n`
-    }
+    
+    // Supervisor signature
     if (formData.signatures.supervisor) {
-      content += `Supervisor: ${formData.signatures.supervisor}`
-      if (formData.signatures.supervisorDate) content += ` (Date: ${formData.signatures.supervisorDate})`
-      if (formData.signatures.supervisorSignature) content += ` [Signature: ${formData.signatures.supervisorSignature.length > 100 ? 'Image data present' : formData.signatures.supervisorSignature}]`
+      const name = formData.signatures.supervisor.name || formData.signatures.supervisor || "Supervisor"
+      const date = formData.signatures.supervisor.date || formData.signatures.supervisorDate || ""
+      const signature = formData.signatures.supervisor.signature || formData.signatures.supervisorSignature || ""
+      content += `${name}:`
+      if (date) content += ` (Date: ${date})`
+      if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
       content += `\n`
     }
+    
     content += `\n`
   }
 
