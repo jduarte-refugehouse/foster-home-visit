@@ -127,34 +127,10 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
-      // Check if user is loaded and available
-      console.log("Start Drive - Auth Check:", { isLoaded, hasUser: !!user, userId: user?.id })
-      
-      if (!isLoaded) {
-        toast({
-          title: "Loading...",
-          description: "Please wait for authentication to complete.",
-          variant: "default",
-        })
-        return
-      }
-      
-      if (!user || !user.id) {
-        toast({
-          title: "Authentication Required",
-          description: "You must be signed in to use this feature. Please sign in and try again.",
-          variant: "destructive",
-        })
-        return
-      }
-
       const location = await captureLocation("start_drive")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-        "x-user-clerk-id": user.id,
-        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -190,34 +166,10 @@ export default function MobileAppointmentDetailPage() {
 
   const handleArrived = async () => {
     try {
-      // Check if user is loaded and available
-      console.log("Arrived - Auth Check:", { isLoaded, hasUser: !!user, userId: user?.id })
-      
-      if (!isLoaded) {
-        toast({
-          title: "Loading...",
-          description: "Please wait for authentication to complete.",
-          variant: "default",
-        })
-        return
-      }
-      
-      if (!user || !user.id) {
-        toast({
-          title: "Authentication Required",
-          description: "You must be signed in to use this feature. Please sign in and try again.",
-          variant: "destructive",
-        })
-        return
-      }
-
       const location = await captureLocation("arrived")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-        "x-user-clerk-id": user.id,
-        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -401,24 +353,24 @@ export default function MobileAppointmentDetailPage() {
           {!hasStartedDrive && appointment.status === "scheduled" && (
             <Button
               onClick={handleStartDrive}
-              disabled={!isLoaded || !user || capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
-              {!isLoaded ? "Loading..." : !user ? "Sign In Required" : capturingLocation ? "Capturing Location..." : "Start Drive"}
+              {capturingLocation ? "Capturing Location..." : "Start Drive"}
             </Button>
           )}
 
           {hasStartedDrive && !hasArrived && (
             <Button
               onClick={handleArrived}
-              disabled={!isLoaded || !user || capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {!isLoaded ? "Loading..." : !user ? "Sign In Required" : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+              {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
             </Button>
           )}
 

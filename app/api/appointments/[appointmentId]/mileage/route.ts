@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { auth } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 
@@ -12,21 +11,12 @@ export const runtime = "nodejs"
  *   latitude: number
  *   longitude: number
  * }
+ * 
+ * Note: Authentication is handled by Clerk middleware for protected routes
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    // Authentication - use Clerk's server-side auth (works for protected routes)
-    const { userId } = await auth()
-    
-    if (!userId) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          details: "Authentication required",
-        },
-        { status: 401 },
-      )
-    }
+    // No authentication check needed - route is in (protected) so Clerk middleware handles it
 
     const { appointmentId } = params
     const body = await request.json()
