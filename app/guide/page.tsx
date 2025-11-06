@@ -993,7 +993,52 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                 <div>
                   <h3 className="font-semibold mb-3">New/Enhanced Requirements:</h3>
 
-                  <RequirementItem code="§749.2907" title="Written Disaster Plan">
+                  <RequirementItem 
+                    code="TAC §749.2907" 
+                    title="Written disaster plan" 
+                    frequency="Annually"
+                    helpText="Written disaster plan ensures all household members know what to do in emergencies. Plan should be simple, accessible, and reviewed with all family members."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Written plan is present and accessible",
+                        "Evacuation routes clearly described",
+                        "Designated meeting place identified",
+                        "Out-of-area contact person listed with phone number",
+                        "Plan for pets included (if applicable)",
+                        "Plan reviewed with household members"
+                      ],
+                      redFlags: [
+                        "No written plan exists",
+                        "Plan not accessible or lost",
+                        "Contact information outdated",
+                        "Household members unaware of plan",
+                        "Evacuation routes not clear"
+                      ],
+                      questionsToAsk: [
+                        "\"Can I see your disaster plan?\"",
+                        "\"When did you last review it with the family?\"",
+                        "\"Where is your designated meeting place?\"",
+                        "\"Who is your out-of-area contact?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Foster parent doesn't have a written plan",
+                          solution: "Provide template immediately. Can be simple one-page document. Help them complete it during visit. Set deadline for completion."
+                        },
+                        {
+                          issue: "Plan exists but family members don't know about it",
+                          solution: "Review plan with family. Practice evacuation if possible. Ensure all children know meeting place and contact person."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2907",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2907"
+                        }
+                      ]
+                    }}
+                    quickHint="Must include: Evacuation routes, meeting place, out-of-area contact, pet plan. Provide template if missing"
+                  >
                     <p>Must include:</p>
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>Evacuation routes for the home</li>
@@ -1009,7 +1054,56 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                     all household members evacuated to meeting spot in X minutes."
                   </RequirementItem>
 
-                  <RequirementItem code="§749.1003(7)(b)" title="Rights Posters in English AND Spanish">
+                  <RequirementItem 
+                    code="TAC §749.1003(7)(b)" 
+                    title="Rights posters in English AND Spanish" 
+                    frequency="Quarterly"
+                    helpText="Rights posters inform children of their rights in foster care. Both English and Spanish versions must be posted regardless of languages spoken in home."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Rights poster in English visible in common area",
+                        "Rights poster in Spanish visible in common area",
+                        "Posters are current and not damaged",
+                        "Posters posted at appropriate height for children",
+                        "Both posters posted regardless of languages spoken"
+                      ],
+                      redFlags: [
+                        "Only one language posted",
+                        "Posters missing or damaged",
+                        "Posters not visible to children",
+                        "Posters outdated or incorrect",
+                        "Foster parent unaware of requirement"
+                      ],
+                      questionsToAsk: [
+                        "\"Can you show me where the rights posters are posted?\"",
+                        "\"Do you have both English and Spanish versions?\"",
+                        "\"Are they current and readable?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Only English poster posted, Spanish missing",
+                          solution: "Both languages required regardless of languages spoken. Provide Spanish poster immediately. Both must be visible in common area."
+                        },
+                        {
+                          issue: "Posters posted but not visible to children",
+                          solution: "Posters must be at appropriate height for children to see and read. Reposition if needed."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "DFPS Foster Care Rights",
+                          url: "https://www.dfps.state.tx.us/Child_Protection/Foster_Care/rights.asp"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1003",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1003"
+                        }
+                      ]
+                    }}
+                    quickHint="BOTH languages required regardless of languages spoken. Must be visible in common area at child-appropriate height"
+                  >
                     Must be visibly posted in common area. Both languages required regardless of languages spoken in
                     home. Provide if missing.
                   </RequirementItem>
@@ -1203,7 +1297,50 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                 <div>
                   <h3 className="font-semibold mb-3">General Safety:</h3>
 
-                  <RequirementItem code="TAC §749.3041(7)" title="Hazardous Substances" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.3041(7)" 
+                    title="Hazardous substances stored appropriately" 
+                    frequency="Monthly"
+                    helpText="Cleaning supplies, pesticides, and other hazardous materials must be stored out of reach or locked to prevent accidental poisoning or injury."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Cleaning supplies stored out of reach or locked",
+                        "Pesticides and chemicals secured",
+                        "Flammable liquids properly stored",
+                        "All hazardous materials clearly labeled",
+                        "Storage separate from food items"
+                      ],
+                      redFlags: [
+                        "Cleaning supplies under sink accessible to children",
+                        "Chemicals in unlocked cabinets in reach of children",
+                        "Hazardous materials mixed with food storage",
+                        "Unlabeled containers",
+                        "Spills or leaks visible"
+                      ],
+                      questionsToAsk: [
+                        "\"Where do you store cleaning supplies and chemicals?\"",
+                        "\"Are they locked or out of reach of children?\"",
+                        "\"Do you have any pesticides or other hazardous materials?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Cleaning supplies under kitchen/bathroom sink accessible",
+                          solution: "Must move to locked cabinet or high shelf out of children's reach. Provide lock boxes if needed."
+                        },
+                        {
+                          issue: "Chemicals stored with food items",
+                          solution: "Separate storage required. Hazardous materials should never be stored with food or in food preparation areas."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.3041",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=3041"
+                        }
+                      ]
+                    }}
+                    quickHint="Check: Under sinks, garage, laundry room. Must be locked or high shelf out of reach"
+                  >
                     Flammable or poisonous substances (cleaning supplies, pesticides, etc.) stored out of reach of children or in locked cabinets. All cleaning supplies, chemicals, and hazardous materials must be out of reach of children or in
                     locked storage.
                   </RequirementItem>
@@ -1263,7 +1400,50 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                     All animals on premises kept free of disease, current on required vaccinations; documentation available for review. Verify vaccination records are current and animals appear healthy and non-aggressive.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.2915" title="Tools & Equipment Storage" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.2915" 
+                    title="Tools and dangerous equipment stored appropriately" 
+                    frequency="Monthly"
+                    helpText="Power tools, sharp implements, and dangerous equipment must be secured from children's access. Age-appropriate considerations apply based on children in home."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "Power tools (drills, saws, nail guns) locked or secured",
+                        "Sharp tools (axes, machetes, large knives) out of reach",
+                        "Tall ladders secured from children",
+                        "Automotive equipment (jacks, air compressors) secured",
+                        "Tools stored separately from play areas"
+                      ],
+                      redFlags: [
+                        "Power tools accessible in open garage",
+                        "Sharp implements within children's reach",
+                        "Chemicals stored with tools (double hazard)",
+                        "Tools in common areas or play spaces",
+                        "No awareness of where tools are"
+                      ],
+                      questionsToAsk: [
+                        "\"Where do you keep your tools and equipment?\"",
+                        "\"Do any children have access to the garage/workshop?\"",
+                        "\"Are any older youth permitted to use tools with supervision?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Teenage child interested in woodworking",
+                          solution: "Supervised use of hand tools acceptable. Power tools must remain locked when not supervised. Ensure proper supervision and safety training."
+                        },
+                        {
+                          issue: "Tools needed for home maintenance left accessible",
+                          solution: "Tools must be locked or secured when not in use. Use locked toolbox, keys kept by adults only. Never leave tools out after use."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.2915",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=2915"
+                        }
+                      ]
+                    }}
+                    quickHint="Check: Garage, workshop, sheds, basements. Age-appropriate: Young children = all locked, Teens = supervised access OK"
+                  >
                     Tools, power equipment, and dangerous equipment stored appropriately and secured from children's access.
                   </RequirementItem>
 
@@ -1271,7 +1451,50 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                     Indoor areas, equipment, and furniture are safe for children, kept clean, and maintained in good repair.
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.3041(3)" title="Exit Access" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.3041(3)" 
+                    title="Exit access clear" 
+                    frequency="Monthly"
+                    helpText="Clear exit routes are critical for fire safety and emergency evacuation. Blocked exits can prevent safe escape in emergencies."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "All doors leading outside are accessible",
+                        "No furniture blocking exit routes",
+                        "No items stacked in front of doors",
+                        "Hallways clear of obstructions",
+                        "Windows used for emergency egress are accessible"
+                      ],
+                      redFlags: [
+                        "Furniture blocking doorways",
+                        "Items stacked in front of exits",
+                        "Hallways cluttered with belongings",
+                        "Exit doors blocked or difficult to open",
+                        "Path to exit not clear"
+                      ],
+                      questionsToAsk: [
+                        "\"Can you show me all the exits from this area?\"",
+                        "\"Are these exits always kept clear?\"",
+                        "\"What would happen if we needed to evacuate quickly?\""
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Furniture moved to block exit during visit",
+                          solution: "Immediate correction required. Explain fire safety importance. Furniture must be repositioned to allow clear exit access."
+                        },
+                        {
+                          issue: "Clutter accumulating in hallways",
+                          solution: "Require cleanup. Establish system for keeping exits clear. Regular checks needed."
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.3041",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=3041"
+                        }
+                      ]
+                    }}
+                    quickHint="Critical for fire safety. All exits must be accessible and clear at all times"
+                  >
                     Exits in living areas are not blocked by furniture or other items; egress routes clear.
                   </RequirementItem>
 
@@ -1499,7 +1722,64 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
                     Children have adequate, accessible storage space for clothing and personal belongings (dresser, closet space, shelving).
                   </RequirementItem>
 
-                  <RequirementItem code="TAC §749.1003(b)(12), (14)" title="Clothing Requirements" frequency="Monthly">
+                  <RequirementItem 
+                    code="TAC §749.1003(b)(12), (14)" 
+                    title="Adequate clothing for children" 
+                    frequency="Monthly"
+                    helpText="Children should have adequate, suitable, comparable, protective, and choice-driven clothing. Clothing should preserve dignity and allow children to fit in with peers."
+                    detailedHelp={{
+                      whatToCheck: [
+                        "7-10 complete outfits appropriate to season",
+                        "Sufficient underwear/socks for week",
+                        "Appropriate sleepwear",
+                        "School clothes (if school-age)",
+                        "Play clothes/casual wear",
+                        "At least one \"special occasion\" outfit",
+                        "Weather-appropriate outerwear",
+                        "Properly fitting shoes (at least 2 pairs)",
+                        "Clothing visible in bedroom/closet",
+                        "Condition of clothing (clean, good repair)"
+                      ],
+                      redFlags: [
+                        "Very limited clothing visible",
+                        "Clothing obviously too small or too large",
+                        "Only \"hand-me-downs,\" no new items",
+                        "Inappropriate for weather (no winter coat in winter)",
+                        "Significant wear, stains, or damage",
+                        "Child appears uncomfortable with clothing situation",
+                        "Foster parent describes inability to afford clothing"
+                      ],
+                      questionsToAsk: [
+                        "\"Does [child's name] have enough clothes?\"",
+                        "\"How often do we shop for new clothes for [child]?\"",
+                        "\"Does [child] get to choose their own clothes?\"",
+                        "\"Do they have weather-appropriate items?\" (coat, boots, etc.)"
+                      ],
+                      commonIssues: [
+                        {
+                          issue: "Clothing inadequate due to financial constraints",
+                          solution: "Connect family to DFPS Foster Care Clothing Allowance, community clothing banks, school uniform assistance programs, back-to-school events. Set timeline for improvement, follow up within 30 days."
+                        },
+                        {
+                          issue: "Child only has hand-me-downs, nothing new",
+                          solution: "Children need some new items appropriate to their age and preferences. Connect to resources. Remind that clothing allowance is available from DFPS."
+                        }
+                      ],
+                      resources: [
+                        {
+                          title: "DFPS Foster Care Clothing Allowance",
+                          url: "https://www.dfps.state.tx.us/Child_Protection/Foster_Care/clothing.asp"
+                        }
+                      ],
+                      regulatoryLinks: [
+                        {
+                          code: "TAC §749.1003",
+                          url: "https://texreg.sos.state.tx.us/public/readtac$ext.TacPage?sl=R&app=9&p_dir=&p_rloc=&p_tloc=&p_ploc=&pg=1&p_tac=&ti=26&pt=1&ch=749&rl=1003"
+                        }
+                      ]
+                    }}
+                    quickHint="Check: Adequate (7-10 outfits), Suitable (age/size), Comparable (to peers), Protective (weather), Choice (child input)"
+                  >
                     Children have adequate personal clothing suitable to age and size, comparable to clothing of other children in community; adequate protective clothing against weather; reasonable opportunity to select own clothing.
                   </RequirementItem>
                 </div>
