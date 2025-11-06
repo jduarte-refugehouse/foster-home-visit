@@ -402,6 +402,84 @@ const EnhancedHomeVisitForm = ({
       ],
       combinedNotes: "",
     },
+    // Section 14: Package-Specific Compliance Requirements
+    packageCompliance: {
+      credentialedPackages: [], // Array of package names: "substance-use", "stass", "t3c-treatment", "mental-behavioral", "idd-autism"
+      // Substance Use Support Services
+      substanceUse: {
+        items: [
+          { code: "T3C Blueprint p.56-66; RCC Term 7", requirement: "Substance-free environment verified (no alcohol, illegal drugs, or non-prescribed controlled substances accessible)", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Drug testing supplies stored securely with privacy and dignity", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66; RCC Term 7", requirement: "Recovery support environment with minimal triggers and healthy recreational activities", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Private counseling space for substance use counseling (in-home or teletherapy)", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Peer support resources accessible; caregiver knowledge of local recovery resources", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Crisis response protocols posted for substance use emergencies; naloxone available if prescribed", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Enhanced security for Medication-Assisted Treatment medications (if applicable)", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.56-66", requirement: "Therapeutic activities access (exercise equipment, art supplies, journals, mindfulness tools)", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        ],
+      },
+      // Short-Term Assessment Support Services (STASS)
+      stass: {
+        items: [
+          { code: "T3C Blueprint p.67-75; RCC Term 7", requirement: "Assessment environment: calm, structured, conducive to behavioral observation", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Observation documentation space: quiet space with computer access for timely documentation", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Multi-purpose assessment areas for observing youth in different settings", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75; RCC Term 7", requirement: "Professional meeting space suitable for assessment team meetings and virtual consultations", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Crisis safety preparedness: de-escalation spaces, crisis protocols posted", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Comprehensive documentation systems: behavioral tracking tools, daily observation logs", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Privacy and confidentiality: assessment materials stored securely", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.67-75", requirement: "Flexible scheduling accommodation for assessments and team meetings", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        ],
+      },
+      // T3C Treatment Foster Family Care Support Services
+      t3cTreatment: {
+        items: [
+          { code: "T3C Blueprint p.135-147; TAC §749.863(c)", requirement: "Enhanced therapeutic environment: trauma-informed design, calming colors, sensory regulation tools", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147; RCC Term 7", requirement: "Intensive treatment support space: private space for therapeutic activities and treatment team meetings", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Advanced crisis management capability: multiple de-escalation spaces, comprehensive safety protocols", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Sophisticated documentation infrastructure: advanced systems supporting intensive treatment model", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147; RCC Term 7", requirement: "Enhanced medication management: treatment-level administration systems, psychotropic monitoring protocols", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Multi-modal therapeutic resources: art therapy, play therapy, bibliotherapy, mindfulness tools", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Family therapy accommodation: spaces and scheduling flexibility for intensive family therapy sessions", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Professional collaboration infrastructure: supports frequent coordination with multiple providers", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147; RCC Term 7", requirement: "Intensive behavioral support systems: visual supports, data collection systems, positive reinforcement", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147; TAC §749.863(c)", requirement: "Treatment Foster Care training: 20 hours additional training beyond basic requirements", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Enhanced safety infrastructure: advanced monitoring systems (if approved), multiple safety zones", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.135-147", requirement: "Respite care support system: established relationships with treatment-trained respite providers", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        ],
+      },
+      // Mental & Behavioral Health Support Services
+      mentalBehavioral: {
+        items: [
+          { code: "T3C Blueprint p.82; RCC Term 7", requirement: "Crisis safety assessment: items that could be used for self-harm secured or removed", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Enhanced medication security: psychotropic medications under enhanced double-lock system", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Safe de-escalation spaces: calm-down area free from hazards with soft seating and visual privacy", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Therapeutic environment: sensory regulation tools available (weighted blankets, fidget items, calming music)", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82; RCC Term 7", requirement: "Crisis communication systems: reliable phone and high-speed internet for 24/7 crisis support", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Crisis intervention protocols posted; emergency contact numbers accessible; first aid kit stocked", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.78-93; RCC Term 7", requirement: "Private therapy space: quiet, confidential space for in-home therapy or teletherapy", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Behavioral monitoring tools: systems for tracking behavioral patterns accessible to caregivers", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.82", requirement: "Secondary trauma prevention: evidence of caregiver self-care systems and support resources", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        ],
+      },
+      // IDD/Autism Spectrum Disorder Support Services
+      iddAutism: {
+        items: [
+          { code: "T3C Blueprint p.123-135", requirement: "Sensory-friendly spaces: quiet areas with adjustable lighting and sensory regulation tools", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135; RCC Term 7", requirement: "Wandering/elopement safety: door alarms, secure fencing (4ft+), window locks functional", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Visual supports system: visual schedules posted, spaces labeled, consistent organization", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Accessibility features: wheelchair accessibility, grab bars, ramps/lifts (if needed)", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135; RCC Term 7", requirement: "Technology readiness: high-speed internet for teletherapy, AAC device charging stations", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Specialized medical equipment space: adequate storage for feeding equipment, adaptive devices", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Structured routine environment: organized spaces, minimal clutter, consistent item placement", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Communication systems: alternative communication (picture boards, PECS, AAC devices) present and functional", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Sensory accommodations: environmental modifications based on child's sensory profile", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Educational support space: designated homework area with minimal distractions", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+          { code: "T3C Blueprint p.123-135", requirement: "Medical management systems: medication administration, specialized diet storage, emergency protocols", allowNA: false, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        ],
+      },
+      combinedNotes: "",
+    },
     // Quality Enhancement Discussion (T3C Preparation)
     qualityEnhancement: {
       traumaInformedPractices: [
@@ -808,6 +886,7 @@ const EnhancedHomeVisitForm = ({
     { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
     { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
     { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
+    { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true },
     { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
     { id: "observations", title: "Observations", icon: FileText, required: true },
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
@@ -2145,6 +2224,131 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
           />
         </div>
       )}
+    </div>
+  )
+}
+
+// Package-Specific Compliance Section Component
+const PackageComplianceSection = ({ formData, onChange, onNotesChange }) => {
+  const packageData = formData.packageCompliance || {}
+  const credentialedPackages = packageData.credentialedPackages || []
+  
+  const packageOptions = [
+    { id: "substance-use", label: "Substance Use Support Services", section: "substanceUse" },
+    { id: "stass", label: "Short-Term Assessment Support Services (STASS)", section: "stass" },
+    { id: "t3c-treatment", label: "T3C Treatment Foster Family Care", section: "t3cTreatment" },
+    { id: "mental-behavioral", label: "Mental & Behavioral Health Support Services", section: "mentalBehavioral" },
+    { id: "idd-autism", label: "IDD/Autism Spectrum Disorder Support Services", section: "iddAutism" },
+  ]
+
+  const handlePackageToggle = (packageId) => {
+    const currentPackages = [...credentialedPackages]
+    const index = currentPackages.indexOf(packageId)
+    
+    if (index > -1) {
+      currentPackages.splice(index, 1)
+    } else {
+      currentPackages.push(packageId)
+    }
+    
+    onChange("packageCompliance.credentialedPackages", currentPackages)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-refuge-purple" />
+          Package-Specific Compliance Requirements
+        </h2>
+      </div>
+
+      <Alert className="bg-blue-50 border-blue-200">
+        <AlertDescription className="text-sm">
+          <strong>Instructions:</strong> Select the packages this home is credentialed for. Only compliance items for selected packages will be displayed below.
+        </AlertDescription>
+      </Alert>
+
+      {/* Package Selection Checkboxes */}
+      <Card className="bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Credentialed Packages</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {packageOptions.map((pkg) => (
+              <div key={pkg.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`package-${pkg.id}`}
+                  checked={credentialedPackages.includes(pkg.id)}
+                  onCheckedChange={() => handlePackageToggle(pkg.id)}
+                />
+                <Label htmlFor={`package-${pkg.id}`} className="cursor-pointer text-sm">
+                  {pkg.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Display compliance sections for selected packages */}
+      {credentialedPackages.length > 0 ? (
+        <div className="space-y-6">
+          {packageOptions
+            .filter((pkg) => credentialedPackages.includes(pkg.id))
+            .map((pkg) => {
+              const sectionData = packageData[pkg.section]
+              if (!sectionData || !sectionData.items || sectionData.items.length === 0) return null
+
+              // Create a wrapper formData object with the nested section at the top level
+              const wrappedFormData = {
+                ...formData,
+                [`packageCompliance_${pkg.section}`]: sectionData
+              }
+
+              return (
+                <ComplianceSection
+                  key={pkg.id}
+                  title={pkg.label}
+                  section={`packageCompliance_${pkg.section}`}
+                  formData={wrappedFormData}
+                  onChange={(section, index, field, value, monthField) => {
+                    // Handle nested path updates
+                    if (monthField) {
+                      handleComplianceChange(`packageCompliance.${pkg.section}`, index, field, monthField, value)
+                    } else {
+                      handleComplianceChange(`packageCompliance.${pkg.section}`, index, field, value)
+                    }
+                  }}
+                  onNotesChange={(path, value) => {
+                    onNotesChange(`packageCompliance.${pkg.section}.${path.split('.').pop()}`, value)
+                  }}
+                  singleStatus={true}
+                />
+              )
+            })}
+        </div>
+      ) : (
+        <Alert>
+          <AlertDescription className="text-sm">
+            No packages selected. Select one or more packages above to view their compliance requirements.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Section Notes */}
+      <div className="border-t pt-2 mt-2">
+        <Label htmlFor="package-compliance-notes" className="text-sm font-medium">Section Notes (Optional)</Label>
+        <Textarea
+          id="package-compliance-notes"
+          value={packageData.combinedNotes || ""}
+          onChange={(e) => onNotesChange("packageCompliance.combinedNotes", e.target.value)}
+          placeholder="Additional observations for package-specific compliance..."
+          rows={2}
+          className="mt-1 text-sm"
+        />
+      </div>
     </div>
   )
 }
