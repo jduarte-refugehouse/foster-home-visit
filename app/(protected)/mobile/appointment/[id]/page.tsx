@@ -127,11 +127,22 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
-      // Check if user is loaded
-      if (!isLoaded || !user) {
+      // Check if user is loaded and available
+      console.log("Start Drive - Auth Check:", { isLoaded, hasUser: !!user, userId: user?.id })
+      
+      if (!isLoaded) {
+        toast({
+          title: "Loading...",
+          description: "Please wait for authentication to complete.",
+          variant: "default",
+        })
+        return
+      }
+      
+      if (!user || !user.id) {
         toast({
           title: "Authentication Required",
-          description: "Please wait for authentication to complete, then try again.",
+          description: "You must be signed in to use this feature. Please sign in and try again.",
           variant: "destructive",
         })
         return
@@ -179,11 +190,22 @@ export default function MobileAppointmentDetailPage() {
 
   const handleArrived = async () => {
     try {
-      // Check if user is loaded
-      if (!isLoaded || !user) {
+      // Check if user is loaded and available
+      console.log("Arrived - Auth Check:", { isLoaded, hasUser: !!user, userId: user?.id })
+      
+      if (!isLoaded) {
+        toast({
+          title: "Loading...",
+          description: "Please wait for authentication to complete.",
+          variant: "default",
+        })
+        return
+      }
+      
+      if (!user || !user.id) {
         toast({
           title: "Authentication Required",
-          description: "Please wait for authentication to complete, then try again.",
+          description: "You must be signed in to use this feature. Please sign in and try again.",
           variant: "destructive",
         })
         return
@@ -379,24 +401,24 @@ export default function MobileAppointmentDetailPage() {
           {!hasStartedDrive && appointment.status === "scheduled" && (
             <Button
               onClick={handleStartDrive}
-              disabled={!isLoaded || capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+              disabled={!isLoaded || !user || capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50 disabled:cursor-not-allowed"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
-              {!isLoaded ? "Loading..." : capturingLocation ? "Capturing Location..." : "Start Drive"}
+              {!isLoaded ? "Loading..." : !user ? "Sign In Required" : capturingLocation ? "Capturing Location..." : "Start Drive"}
             </Button>
           )}
 
           {hasStartedDrive && !hasArrived && (
             <Button
               onClick={handleArrived}
-              disabled={!isLoaded || capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+              disabled={!isLoaded || !user || capturingLocation}
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50 disabled:cursor-not-allowed"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {!isLoaded ? "Loading..." : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+              {!isLoaded ? "Loading..." : !user ? "Sign In Required" : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
             </Button>
           )}
 
