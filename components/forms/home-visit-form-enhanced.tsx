@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { 
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
-  GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink
+  GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink,
+  Info, ChevronDown, ChevronUp
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -79,18 +80,65 @@ const EnhancedHomeVisitForm = ({
       serviceLevels: [], // basic, moderate, specialized, intense
       respiteOnly: false,
     },
-    // Section 1: Medication
+    // Section 1: Medication - Quarterly tracking with Month 1, 2, 3
     medication: {
       items: [
-        { code: "§749.1463(b)(2)", requirement: "Medications stored in original containers", status: "", notes: "" },
-        { code: "§749.1521(1-3)", requirement: "All medications under double lock", status: "", notes: "" },
-        { code: "§749.1521", requirement: '"External use only" medications stored separately', status: "", notes: "" },
-        { code: "§749.1521(4)", requirement: "Refrigerated medications securely stored", status: "", notes: "" },
-        { code: "§749.1521(5)", requirement: "Medication storage area clean and orderly", status: "", notes: "" },
-        { code: "§749.1521", requirement: "Expired/discontinued meds removed & properly stored for disposal (within 30 days)", status: "", notes: "" },
-        { code: "RCC 5420", requirement: "Medication Administration Record (MAR) current & accurate", status: "", notes: "" },
-        { code: "RCC 5420", requirement: "Psychotropic medication documentation (Form 4526 submitted within 5 days)", status: "", notes: "" },
-        { code: "T3C-Dev", requirement: "PRN usage documented with specific behaviors/symptoms (preparing for T3C)", status: "developing", notes: "" },
+        { 
+          code: "749.1463(b)(2)", 
+          requirement: "Medications stored in original containers", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.1521(1), (2), (3)", 
+          requirement: "All medications locked; Schedule II double-locked", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.1521", 
+          requirement: '"External use only" medications stored separately', 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.1521(4)", 
+          requirement: "Refrigerated medications properly stored", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.1521(5)", 
+          requirement: "Medication storage areas clean and orderly", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.1521(6), (7), (8)", 
+          requirement: "Expired/discontinued medications properly managed", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "RCC 5420", 
+          requirement: "Medication Administration Record (MAR) current & accurate", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "RCC 5420", 
+          requirement: "Psychotropic medication documentation (Form 4526 submitted within 5 days)", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
       ],
       combinedNotes: "",
     },
@@ -123,21 +171,86 @@ const EnhancedHomeVisitForm = ({
       ],
       combinedNotes: "",
     },
-    // Section 2B: General Health and Safety
+    // Section 2B: General Health and Safety - Quarterly tracking
     healthSafety: {
       items: [
-        { code: "§749.2907 / RCC 1600", requirement: "Written disaster and emergency plan on file", status: "", notes: "" },
-        { code: "§749.2908 / RCC 1610", requirement: "Annual disaster drill practiced and documented", status: "", notes: "" },
-        { code: "§749.2909", requirement: "Smoke detectors in hallways/outside bedrooms & each level", status: "", notes: "" },
-        { code: "§749.2913", requirement: "Fire extinguishers in kitchen & each level (inspected)", status: "", notes: "" },
-        { code: "§749.2915", requirement: "Tools and dangerous equipment stored appropriately", status: "", notes: "" },
-        { code: "§749.2917", requirement: "Animals vaccinated and free of disease", status: "", notes: "" },
-        { code: "§749.2961", requirement: "Weapons/firearms stored per requirements (trigger lock w/ammo OK per 2021)", status: "", notes: "" },
-        { code: "§749.3041(1-2)", requirement: "Indoor areas clean, safe, in good repair", status: "", notes: "" },
-        { code: "§749.3041(3)", requirement: "Exits not blocked by furniture", status: "", notes: "" },
-        { code: "§749.3041(6)", requirement: "Windows/doors for ventilation screened", status: "", notes: "" },
-        { code: "§749.3041(7)", requirement: "Hazardous substances out of reach", status: "", notes: "" },
-        { code: "§749.3041(8)", requirement: "Home free of rodents and insects", status: "", notes: "" },
+        { 
+          code: "749.2902, 2903, 2905", 
+          requirement: "Fire and health inspections current", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.2909", 
+          requirement: "Smoke detectors properly installed and functional", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.2913", 
+          requirement: "Fire extinguishers present and current", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.2915", 
+          requirement: "Tools and dangerous equipment stored appropriately", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.2917", 
+          requirement: "Animals vaccinated and disease-free", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.2961", 
+          requirement: "Weapons stored per requirements", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.3041(1), (2)", 
+          requirement: "Indoor areas safe, clean, in good repair", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.3041(3)", 
+          requirement: "Exit access clear", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.3041(6)", 
+          requirement: "Ventilation screens in place", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.3041(7)", 
+          requirement: "Hazardous substances stored appropriately", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
+        { 
+          code: "749.3041(8)", 
+          requirement: "Home free of rodents and insects", 
+          month1: { compliant: false, notes: "" },
+          month2: { compliant: false, notes: "" },
+          month3: { compliant: false, notes: "" },
+        },
       ],
       combinedNotes: "",
     },
@@ -654,17 +767,31 @@ const EnhancedHomeVisitForm = ({
     })
   }
 
-  // Handle compliance item status change
-  const handleComplianceChange = (section, index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        items: prev[section].items.map((item, idx) =>
-          idx === index ? { ...item, [field]: value } : item
-        ),
-      },
-    }))
+  // Handle compliance item status change - updated for monthly tracking
+  const handleComplianceChange = (section, index, month, field, value) => {
+    setFormData((prev) => {
+      const sectionData = prev[section]
+      if (!sectionData || !sectionData.items) return prev
+      
+      return {
+        ...prev,
+        [section]: {
+          ...sectionData,
+          items: sectionData.items.map((item, idx) => {
+            if (idx === index) {
+              return {
+                ...item,
+                [month]: {
+                  ...(item[month] || { compliant: false, notes: "" }),
+                  [field]: value,
+                },
+              }
+            }
+            return item
+          }),
+        },
+      }
+    })
   }
 
   // Add child to children present list
@@ -1356,115 +1483,224 @@ const FosterHomeSection = ({ formData, onChange }) => {
 
 const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }) => {
   const sectionData = formData[section]
+  const [expandedRows, setExpandedRows] = useState(new Set())
+
+  const toggleRowExpansion = (index) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(index)) {
+        newSet.delete(index)
+      } else {
+        newSet.add(index)
+      }
+      return newSet
+    })
+  }
+
+  // Helper to get guide link for a requirement code
+  const getGuideLink = (code: string) => {
+    // Clean code and create anchor link to guide
+    const cleanCode = code.replace(/§/g, "").replace(/[^\w\s]/g, "-").toLowerCase()
+    // Link to guide with section based on current section
+    const sectionMap = {
+      medication: "medication",
+      healthSafety: "safety",
+      childrensRights: "rights",
+      bedrooms: "bedroom",
+      education: "education",
+      indoorSpace: "indoor",
+      documentation: "documentation",
+    }
+    const guideSection = sectionMap[section] || "overview"
+    return `/guide?tab=${guideSection}#${cleanCode}`
+  }
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-        <CheckCircle className="h-5 w-5 text-refuge-purple" />
-        {title}
-      </h2>
-
-      <Alert className="py-2">
-        <AlertDescription className="text-xs">
-          Tap to select status. Notes field appears when needed.
-        </AlertDescription>
-      </Alert>
-
-      <div className="space-y-2">
-        {sectionData.items.map((item, index) => (
-          <Card key={index} className={`${item.code.includes("T3C") ? "border-blue-200 bg-blue-50/30" : ""} shadow-sm`}>
-            <CardContent className="p-3">
-              <div className="space-y-2">
-                {/* Requirement Text and Code */}
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {item.code}
-                    </Badge>
-                    {item.code.includes("T3C") && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800">
-                        T3C
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium leading-snug">{item.requirement}</p>
-                </div>
-
-                {/* Compact Status Buttons and Notes - Side by Side */}
-                <div className="flex gap-2">
-                  {/* Buttons - 1/2 width total (1/6 each) */}
-                  <div className="flex gap-1 w-1/2">
-                    <Button
-                      size="sm"
-                      variant={item.status === "compliant" ? "default" : "outline"}
-                      className={`h-6 flex-1 ${
-                        item.status === "compliant"
-                          ? "bg-green-600 hover:bg-green-700 text-white"
-                          : "hover:bg-green-50"
-                      }`}
-                      onClick={() => onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")}
-                    >
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      <span className="text-xs font-semibold">Compliant</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.status === "non-compliant" ? "default" : "outline"}
-                      className={`h-6 flex-1 ${
-                        item.status === "non-compliant"
-                          ? "bg-red-600 hover:bg-red-700 text-white"
-                          : "hover:bg-red-50"
-                      }`}
-                      onClick={() =>
-                        onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
-                      }
-                    >
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      <span className="text-xs font-semibold">Non-Compliant</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.status === "na" ? "default" : "outline"}
-                      className={`h-6 flex-1 ${
-                        item.status === "na"
-                          ? "bg-slate-600 hover:bg-slate-700 text-white"
-                          : "hover:bg-slate-50"
-                      }`}
-                      onClick={() => onChange(section, index, "status", item.status === "na" ? "" : "na")}
-                    >
-                      <span className="text-xs font-semibold">N/A</span>
-                    </Button>
-                  </div>
-
-                  {/* Notes Field - 1/2 width, required only for non-compliant */}
-                  <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-                    <Textarea
-                      placeholder={item.status === "non-compliant" ? "Notes required..." : item.status ? "Add notes if needed..." : ""}
-                      value={item.notes || ""}
-                      onChange={(e) => onChange(section, index, "notes", e.target.value)}
-                      className={`text-sm min-h-[24px] h-6 resize-none ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
-                      rows={1}
-                      disabled={!item.status}
-                      required={item.status === "non-compliant"}
-                      aria-required={item.status === "non-compliant"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-refuge-purple" />
+          {title}
+        </h2>
+        <Badge variant="secondary" className="text-xs">Quarterly</Badge>
       </div>
 
-      <div className="border-t pt-3 mt-4">
-        <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes</Label>
+      {/* Compact Table Format */}
+      <div className="border rounded-lg overflow-hidden bg-white">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-1.5 text-xs font-semibold">
+          <div className="col-span-2 text-gray-700">Number</div>
+          <div className="col-span-5 text-gray-700">Minimum Standard</div>
+          <div className="col-span-1 text-center text-gray-700">Month 1</div>
+          <div className="col-span-1 text-center text-gray-700">Month 2</div>
+          <div className="col-span-1 text-center text-gray-700">Month 3</div>
+          <div className="col-span-2 text-center text-gray-700">Notes</div>
+        </div>
+
+        {/* Table Rows */}
+        <div className="divide-y divide-gray-200">
+          {sectionData.items.map((item, index) => {
+            const isExpanded = expandedRows.has(index)
+            // Support both new format (month1/month2/month3) and old format (status/notes) for backward compatibility
+            const hasNewFormat = item.month1 !== undefined || item.month2 !== undefined || item.month3 !== undefined
+            const hasNotes = hasNewFormat 
+              ? (item.month1?.notes || item.month2?.notes || item.month3?.notes)
+              : item.notes
+            const showExpandButton = hasNotes || item.requirement.length > 60
+
+            return (
+              <div key={index} className="bg-white">
+                {/* Main Row */}
+                <div className="grid grid-cols-12 gap-1 p-1.5 items-center text-xs hover:bg-gray-50">
+                  {/* Number Column */}
+                  <div className="col-span-2 flex items-center gap-1">
+                    <span className="font-mono text-[10px] text-gray-600">{item.code?.replace(/§/g, "") || ""}</span>
+                    <a
+                      href={getGuideLink(item.code || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      title="View help in guide"
+                    >
+                      <Info className="h-3 w-3" />
+                    </a>
+                  </div>
+
+                  {/* Minimum Standard Column */}
+                  <div className="col-span-5 text-gray-900 leading-tight text-[11px]">
+                    {item.requirement}
+                  </div>
+
+                  {/* Month 1 Checkbox */}
+                  <div className="col-span-1 flex justify-center">
+                    {hasNewFormat ? (
+                      <Checkbox
+                        checked={item.month1?.compliant || false}
+                        onCheckedChange={(checked) => {
+                          onChange(section, index, "month1", "compliant", checked === true)
+                        }}
+                        className="h-4 w-4"
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">-</span>
+                    )}
+                  </div>
+
+                  {/* Month 2 Checkbox */}
+                  <div className="col-span-1 flex justify-center">
+                    {hasNewFormat ? (
+                      <Checkbox
+                        checked={item.month2?.compliant || false}
+                        onCheckedChange={(checked) => {
+                          onChange(section, index, "month2", "compliant", checked === true)
+                        }}
+                        className="h-4 w-4"
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">-</span>
+                    )}
+                  </div>
+
+                  {/* Month 3 Checkbox */}
+                  <div className="col-span-1 flex justify-center">
+                    {hasNewFormat ? (
+                      <Checkbox
+                        checked={item.month3?.compliant || false}
+                        onCheckedChange={(checked) => {
+                          onChange(section, index, "month3", "compliant", checked === true)
+                        }}
+                        className="h-4 w-4"
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">-</span>
+                    )}
+                  </div>
+
+                  {/* Notes Column - Always show expand button for notes */}
+                  <div className="col-span-2 flex items-center justify-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-6 w-6 p-0 ${hasNotes ? "text-blue-600" : "text-gray-400"}`}
+                      onClick={() => toggleRowExpansion(index)}
+                      title={isExpanded ? "Hide notes" : "Add/edit notes"}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Expanded Notes Row */}
+                {isExpanded && (
+                  <div className="bg-gray-50 border-t px-1.5 py-2 space-y-2">
+                    {hasNewFormat ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 1 Notes</Label>
+                          <Textarea
+                            value={item.month1?.notes || ""}
+                            onChange={(e) => onChange(section, index, "month1", "notes", e.target.value)}
+                            placeholder="Optional..."
+                            className="text-xs h-8 resize-none p-1.5"
+                            rows={2}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 2 Notes</Label>
+                          <Textarea
+                            value={item.month2?.notes || ""}
+                            onChange={(e) => onChange(section, index, "month2", "notes", e.target.value)}
+                            placeholder="Optional..."
+                            className="text-xs h-8 resize-none p-1.5"
+                            rows={2}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 3 Notes</Label>
+                          <Textarea
+                            value={item.month3?.notes || ""}
+                            onChange={(e) => onChange(section, index, "month3", "notes", e.target.value)}
+                            placeholder="Optional..."
+                            className="text-xs h-8 resize-none p-1.5"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label className="text-[10px] text-gray-600 mb-1 block">Notes</Label>
+                        <Textarea
+                          value={item.notes || ""}
+                          onChange={(e) => onChange(section, index, "notes", e.target.value)}
+                          placeholder="Optional..."
+                          className="text-xs h-8 resize-none p-1.5"
+                          rows={2}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Section Notes */}
+      <div className="border-t pt-2 mt-2">
+        <Label htmlFor={`${section}-combined-notes`} className="text-xs font-medium">Section Notes (Optional)</Label>
         <Textarea
           id={`${section}-combined-notes`}
-          value={sectionData.combinedNotes}
+          value={sectionData.combinedNotes || ""}
           onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
           placeholder="Additional observations for this section..."
-          rows={3}
-          className="mt-1 text-sm"
+          rows={2}
+          className="mt-1 text-xs"
         />
       </div>
     </div>
