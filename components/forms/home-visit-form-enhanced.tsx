@@ -2030,6 +2030,40 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             </Button>
                           )}
                         </>
+                      ) : hasNewFormat ? (
+                        /* New format (month1/month2/month3) - use month1 for single status */
+                        <>
+                          <Button
+                            size="sm"
+                            variant={item.month1?.compliant ? "default" : "outline"}
+                            className={`h-8 w-full text-xs px-2 font-medium ${
+                              item.month1?.compliant
+                                ? "bg-green-600 hover:bg-green-700 text-white"
+                                : "hover:bg-green-50"
+                            }`}
+                            onClick={() => {
+                              onChange(section, index, "month1", "compliant", !item.month1?.compliant)
+                            }}
+                          >
+                            {item.month1?.compliant ? "✓" : "Compliant"}
+                          </Button>
+                          {item.allowNA && (
+                            <Button
+                              size="sm"
+                              variant={item.month1?.na ? "default" : "outline"}
+                              className={`h-6 w-full text-xs px-1 ${
+                                item.month1?.na
+                                  ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                  : "hover:bg-slate-50"
+                              }`}
+                              onClick={() => {
+                                onChange(section, index, "month1", "na", !item.month1?.na)
+                              }}
+                            >
+                              N/A
+                            </Button>
+                          )}
+                        </>
                       ) : (
                         <span className="text-gray-400 text-xs">-</span>
                       )}
