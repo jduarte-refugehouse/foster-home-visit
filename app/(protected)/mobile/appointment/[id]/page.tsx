@@ -127,15 +127,23 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
+      // Check if user is loaded
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please wait for authentication to complete, then try again.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const location = await captureLocation("start_drive")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-      }
-      if (user) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+        "x-user-clerk-id": user.id,
+        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -157,13 +165,13 @@ export default function MobileAppointmentDetailPage() {
         })
         fetchAppointmentDetails()
       } else {
-        throw new Error(data.error || "Failed to start drive")
+        throw new Error(data.error || data.details || "Failed to start drive")
       }
     } catch (error) {
       console.error("Error starting drive:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to capture location",
+        description: error instanceof Error ? error.message : "Failed to capture location. Please ensure location permissions are enabled in your browser settings.",
         variant: "destructive",
       })
     }
@@ -171,15 +179,23 @@ export default function MobileAppointmentDetailPage() {
 
   const handleArrived = async () => {
     try {
+      // Check if user is loaded
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please wait for authentication to complete, then try again.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const location = await captureLocation("arrived")
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-      }
-      if (user) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+        "x-user-clerk-id": user.id,
+        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -197,17 +213,19 @@ export default function MobileAppointmentDetailPage() {
       if (response.ok) {
         toast({
           title: "Arrived",
-          description: "Arrival location captured. Mileage calculated.",
+          description: data.mileage
+            ? `Arrival location captured. Distance: ${data.mileage.toFixed(2)} miles`
+            : "Arrival location captured",
         })
         fetchAppointmentDetails()
       } else {
-        throw new Error(data.error || "Failed to record arrival")
+        throw new Error(data.error || data.details || "Failed to record arrival")
       }
     } catch (error) {
       console.error("Error recording arrival:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to capture location",
+        description: error instanceof Error ? error.message : "Failed to capture location. Please ensure location permissions are enabled in your browser settings.",
         variant: "destructive",
       })
     }
