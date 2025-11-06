@@ -1017,6 +1017,8 @@ const EnhancedHomeVisitForm = ({
         return <ComplianceSection title="Swimming Areas" section="swimmingAreas" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "infants":
         return <ComplianceSection title="Infants" section="infants" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
+      case "package-compliance":
+        return <PackageComplianceSection formData={formData} onChange={handleChange} onComplianceChange={handleComplianceChange} onNotesChange={handleChange} />
       case "quality-enhancement":
         return <QualityEnhancementSection formData={formData} onChange={handleChange} />
       case "observations":
@@ -2229,7 +2231,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
 }
 
 // Package-Specific Compliance Section Component
-const PackageComplianceSection = ({ formData, onChange, onNotesChange }) => {
+const PackageComplianceSection = ({ formData, onChange, onComplianceChange, onNotesChange }) => {
   const packageData = formData.packageCompliance || {}
   const credentialedPackages = packageData.credentialedPackages || []
   
@@ -2313,16 +2315,15 @@ const PackageComplianceSection = ({ formData, onChange, onNotesChange }) => {
                   title={pkg.label}
                   section={`packageCompliance_${pkg.section}`}
                   formData={wrappedFormData}
-                  onChange={(section, index, field, value, monthField) => {
-                    // Handle nested path updates
-                    if (monthField) {
-                      handleComplianceChange(`packageCompliance.${pkg.section}`, index, field, monthField, value)
-                    } else {
-                      handleComplianceChange(`packageCompliance.${pkg.section}`, index, field, value)
-                    }
+                  onChange={(section, index, month, field, value) => {
+                    // ComplianceSection calls: onChange(section, index, month, field, value)
+                    // Map to nested path: packageCompliance.{pkg.section}
+                    onComplianceChange(`packageCompliance.${pkg.section}`, index, month, field, value)
                   }}
                   onNotesChange={(path, value) => {
-                    onNotesChange(`packageCompliance.${pkg.section}.${path.split('.').pop()}`, value)
+                    // Extract the field name from the path
+                    const fieldName = path.split('.').pop() || path.split('_').pop()
+                    onNotesChange(`packageCompliance.${pkg.section}.${fieldName}`, value)
                   }}
                   singleStatus={true}
                 />
