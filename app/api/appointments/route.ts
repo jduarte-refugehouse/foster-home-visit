@@ -214,32 +214,50 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Parse dates - if string, parse as local time; if already Date, use as-is
     // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
     // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
-    let start: Date
-    let end: Date
+    // We pass the string directly to SQL Server to avoid timezone conversion
+    let startStr: string
+    let endStr: string
     
     if (typeof startDateTime === 'string') {
-      // Parse as local time (no UTC conversion)
-      const [datePart, timePart] = startDateTime.split('T')
-      const [year, month, day] = datePart.split('-').map(Number)
-      const [hour, minute, second] = (timePart || '').split(':').map(Number)
-      start = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startDateTime)) {
+        return NextResponse.json({ error: "Invalid startDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      startStr = startDateTime
     } else {
-      start = new Date(startDateTime)
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(startDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      startStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
     
     if (typeof endDateTime === 'string') {
-      const [datePart, timePart] = endDateTime.split('T')
-      const [year, month, day] = datePart.split('-').map(Number)
-      const [hour, minute, second] = (timePart || '').split(':').map(Number)
-      end = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endDateTime)) {
+        return NextResponse.json({ error: "Invalid endDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      endStr = endDateTime
     } else {
-      end = new Date(endDateTime)
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(endDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      endStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
     
-    if (start >= end) {
+    // Validate that end is after start by parsing as local time
+    const [startDatePart, startTimePart] = startStr.split('T')
+    const [startYear, startMonth, startDay] = startDatePart.split('-').map(Number)
+    const [startHour, startMinute] = startTimePart.split(':').map(Number)
+    const startDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute, 0)
+    
+    const [endDatePart, endTimePart] = endStr.split('T')
+    const [endYear, endMonth, endDay] = endDatePart.split('-').map(Number)
+    const [endHour, endMinute] = endTimePart.split(':').map(Number)
+    const endDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute, 0)
+    
+    if (startDate >= endDate) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
 
@@ -247,10 +265,8 @@ export async function POST(request: NextRequest) {
       title, 
       appointmentType, 
       assignedToName,
-      startDateTime,
-      endDateTime,
-      startParsed: start.toISOString(),
-      endParsed: end.toISOString(),
+      startDateTime: startStr,
+      endDateTime: endStr,
     })
 
     const result = await query(
@@ -289,8 +305,8 @@ export async function POST(request: NextRequest) {
         title,
         description,
         appointmentType,
-        start,
-        end,
+        startStr, // Pass as string to avoid timezone conversion
+        endStr, // Pass as string to avoid timezone conversion
         homeXref,
         locationAddress,
         locationNotes,
@@ -384,30 +400,50 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Parse dates - if string, parse as local time; if already Date, use as-is
     // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
-    let start: Date
-    let end: Date
+    // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
+    // We pass the string directly to SQL Server to avoid timezone conversion
+    let startStr: string
+    let endStr: string
     
     if (typeof startDateTime === 'string') {
-      const [datePart, timePart] = startDateTime.split('T')
-      const [year, month, day] = datePart.split('-').map(Number)
-      const [hour, minute, second] = (timePart || '').split(':').map(Number)
-      start = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startDateTime)) {
+        return NextResponse.json({ error: "Invalid startDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      startStr = startDateTime
     } else {
-      start = new Date(startDateTime)
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(startDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      startStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
     
     if (typeof endDateTime === 'string') {
-      const [datePart, timePart] = endDateTime.split('T')
-      const [year, month, day] = datePart.split('-').map(Number)
-      const [hour, minute, second] = (timePart || '').split(':').map(Number)
-      end = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endDateTime)) {
+        return NextResponse.json({ error: "Invalid endDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      endStr = endDateTime
     } else {
-      end = new Date(endDateTime)
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(endDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      endStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
     
-    if (start >= end) {
+    // Validate that end is after start by parsing as local time
+    const [startDatePart, startTimePart] = startStr.split('T')
+    const [startYear, startMonth, startDay] = startDatePart.split('-').map(Number)
+    const [startHour, startMinute] = startTimePart.split(':').map(Number)
+    const startDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute, 0)
+    
+    const [endDatePart, endTimePart] = endStr.split('T')
+    const [endYear, endMonth, endDay] = endDatePart.split('-').map(Number)
+    const [endHour, endMinute] = endTimePart.split(':').map(Number)
+    const endDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute, 0)
+    
+    if (startDate >= endDate) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
 
@@ -415,10 +451,8 @@ export async function PUT(request: NextRequest) {
       appointmentId, 
       title, 
       assignedToName,
-      startDateTime,
-      endDateTime,
-      startParsed: start.toISOString(),
-      endParsed: end.toISOString(),
+      startDateTime: startStr,
+      endDateTime: endStr,
     })
 
     await query(
@@ -446,8 +480,8 @@ export async function PUT(request: NextRequest) {
         title,
         description,
         appointmentType,
-        start,
-        end,
+        startStr, // Pass as string to avoid timezone conversion
+        endStr, // Pass as string to avoid timezone conversion
         homeXref,
         locationAddress,
         locationNotes,

@@ -83,8 +83,21 @@ export function CreateAppointmentDialog({
 
   const initializeFormData = () => {
     if (editingAppointment) {
-      const startDate = new Date(editingAppointment.start_datetime)
-      const endDate = new Date(editingAppointment.end_datetime)
+      // Parse datetime strings as LOCAL time (not UTC)
+      // SQL Server DATETIME2 has no timezone, so we parse as local time
+      const parseLocalDatetime = (sqlDatetime: string): Date => {
+        // Handle formats: "2025-11-08T10:00:00" or "2025-11-08 10:00:00" or "2025-11-08T10:00:00.000"
+        const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '').split('.')[0]
+        const [datePart, timePart] = cleaned.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        
+        // Create Date in LOCAL timezone (not UTC)
+        return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      }
+
+      const startDate = parseLocalDatetime(editingAppointment.start_datetime)
+      const endDate = parseLocalDatetime(editingAppointment.end_datetime)
       const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
 
       // Format date as YYYY-MM-DD string for the date input

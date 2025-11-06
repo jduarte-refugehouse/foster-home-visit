@@ -37,14 +37,30 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     const appointment = appointments[0]
     console.log(`✅ [API] Retrieved appointment: ${appointment.title}`)
 
+    // Format datetime as local time string (no timezone conversion)
+    // SQL Server DATETIME2 has no timezone, so we return as local time string
+    const formatLocalDatetime = (dt: any): string => {
+      if (!dt) return ""
+      // If it's already a string in format YYYY-MM-DDTHH:mm:ss, return as-is
+      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
+        return dt.split('.')[0].split('Z')[0] // Remove milliseconds and Z if present
+      }
+      // If it's a Date object or SQL datetime, format as local time
+      const date = new Date(dt)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+
     return NextResponse.json({
       success: true,
       appointment: {
         ...appointment,
-        start_datetime: new Date(appointment.start_datetime).toISOString(),
-        end_datetime: new Date(appointment.end_datetime).toISOString(),
-        created_at: new Date(appointment.created_at).toISOString(),
-        updated_at: new Date(appointment.updated_at).toISOString(),
+        // Return datetime strings WITHOUT timezone conversion
+        // The form will parse these as local time
+        start_datetime: formatLocalDatetime(appointment.start_datetime),
+        end_datetime: formatLocalDatetime(appointment.end_datetime),
+        created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
+        updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
       },
       timestamp: new Date().toISOString(),
     })
