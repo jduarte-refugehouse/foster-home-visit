@@ -934,7 +934,7 @@ const EnhancedHomeVisitForm = ({
       case "visit-info":
         return <VisitInfoSection formData={formData} onChange={handleChange} />
       case "foster-home":
-        return <FosterHomeSection formData={formData} onChange={handleChange} />
+        return <FosterHomeSection formData={formData} onChange={handleChange} appointmentData={appointmentData} />
       case "medication":
         return <ComplianceSection title="Medication" section="medication" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} />
       case "inspections":
@@ -1270,7 +1270,7 @@ const VisitInfoSection = ({ formData, onChange }) => (
   </div>
 )
 
-const FosterHomeSection = ({ formData, onChange }) => {
+const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   const providers = formData.household?.providers || []
   const biologicalChildren = formData.household?.biologicalChildren || []
   const otherMembers = formData.household?.otherMembers || []
