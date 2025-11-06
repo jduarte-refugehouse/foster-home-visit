@@ -46,7 +46,7 @@ export default function MobileAppointmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
   const { isMobile } = useDeviceType()
   const appointmentId = params.id as string
 
@@ -128,7 +128,7 @@ export default function MobileAppointmentDetailPage() {
   const handleStartDrive = async () => {
     try {
       // Check if user is loaded
-      if (!user) {
+      if (!isLoaded || !user) {
         toast({
           title: "Authentication Required",
           description: "Please wait for authentication to complete, then try again.",
@@ -180,7 +180,7 @@ export default function MobileAppointmentDetailPage() {
   const handleArrived = async () => {
     try {
       // Check if user is loaded
-      if (!user) {
+      if (!isLoaded || !user) {
         toast({
           title: "Authentication Required",
           description: "Please wait for authentication to complete, then try again.",
@@ -379,24 +379,24 @@ export default function MobileAppointmentDetailPage() {
           {!hasStartedDrive && appointment.status === "scheduled" && (
             <Button
               onClick={handleStartDrive}
-              disabled={capturingLocation}
+              disabled={!isLoaded || capturingLocation}
               className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Start Drive"}
+              {!isLoaded ? "Loading..." : capturingLocation ? "Capturing Location..." : "Start Drive"}
             </Button>
           )}
 
           {hasStartedDrive && !hasArrived && (
             <Button
               onClick={handleArrived}
-              disabled={capturingLocation}
+              disabled={!isLoaded || capturingLocation}
               className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+              {!isLoaded ? "Loading..." : capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
             </Button>
           )}
 
