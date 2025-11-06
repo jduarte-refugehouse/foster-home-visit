@@ -196,18 +196,54 @@ export function CreateAppointmentDialog({
       if (!formData.title || !formData.assignedToUserId || !formData.assignedToName) {
         toast({
           title: "Validation Error",
-          description: "Please fill in all required fields",
+          description: "Please fill in all required fields (title, assigned staff)",
           variant: "destructive",
         })
+        setLoading(false)
+        return
+      }
+
+      // Validate date and time fields
+      if (!formData.date || !formData.startTime || !formData.endTime) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a date and time for the appointment",
+          variant: "destructive",
+        })
+        setLoading(false)
         return
       }
 
       // Create start and end datetime objects in local timezone
       // Parse the date string and time separately to avoid timezone issues
       // IMPORTANT: Treat user input as local time, not UTC
-      const [year, month, day] = formData.date.split("-").map(Number)
-      const [startHours, startMinutes] = formData.startTime.split(":").map(Number)
-      const [endHours, endMinutes] = formData.endTime.split(":").map(Number)
+      const dateParts = formData.date.split("-")
+      if (dateParts.length !== 3) {
+        toast({
+          title: "Validation Error",
+          description: "Invalid date format",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const [year, month, day] = dateParts.map(Number)
+      const startTimeParts = formData.startTime.split(":")
+      const endTimeParts = formData.endTime.split(":")
+      
+      if (startTimeParts.length < 2 || endTimeParts.length < 2) {
+        toast({
+          title: "Validation Error",
+          description: "Invalid time format. Please use HH:mm format",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const [startHours, startMinutes] = startTimeParts.map(Number)
+      const [endHours, endMinutes] = endTimeParts.map(Number)
       
       // Create dates using Date constructor with components (avoids timezone conversion)
       // This creates a date in LOCAL timezone
@@ -244,6 +280,8 @@ export function CreateAppointmentDialog({
       const url = isEditing ? `/api/appointments/${editingAppointment.appointment_id}` : "/api/appointments"
       const method = isEditing ? "PUT" : "POST"
 
+      console.log("📅 [DIALOG] Submitting appointment:", appointmentData)
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -252,8 +290,16 @@ export function CreateAppointmentDialog({
         body: JSON.stringify(appointmentData),
       })
 
+      const responseData = await response.json()
+
       if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? "update" : "create"} appointment`)
+        const errorMessage = responseData.error || responseData.details || `Failed to ${isEditing ? "update" : "create"} appointment`
+        console.error("❌ [DIALOG] Appointment API error:", {
+          status: response.status,
+          error: errorMessage,
+          responseData,
+        })
+        throw new Error(errorMessage)
       }
 
       toast({
@@ -399,15 +445,19 @@ export function CreateAppointmentDialog({
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span className="truncate">
-                        {formData.date ? format(formData.date, "MMMM do, yyyy") : "Pick a date"}
+                        {formData.date ? format(new Date(formData.date + "T00:00:00"), "MMMM do, yyyy") : "Pick a date"}
                       </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={8} alignOffset={0}>
                     <Calendar
                       mode="single"
-                      selected={formData.date}
-                      onSelect={(date) => date && setFormData((prev) => ({ ...prev, date }))}
+                      selected={formData.date ? new Date(formData.date + "T00:00:00") : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormData((prev) => ({ ...prev, date: format(date, "yyyy-MM-dd") }))
+                        }
+                      }}
                       initialFocus
                       className="rounded-md border-0"
                       classNames={{

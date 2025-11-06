@@ -1,5 +1,6 @@
 import { query } from "@/lib/db"
 import sgMail from "@sendgrid/mail"
+import { logCommunication } from "@/lib/communication-logging"
 
 /**
  * Check if a user has access to the platform
@@ -74,6 +75,7 @@ export async function checkUserAccess(
 
 /**
  * Send email notification when a new user (without app_user or invitation) tries to access
+ * Includes deduplication to prevent sending multiple emails for the same user
  */
 async function notifyNewUserAccessAttempt(
   email: string,
@@ -82,9 +84,31 @@ async function notifyNewUserAccessAttempt(
   clerkUserId?: string,
 ): Promise<void> {
   try {
+    // Check if we've already sent a notification for this user in the last 24 hours
+    // This prevents duplicate emails when multiple endpoints check access simultaneously
+    // We check by looking for notifications sent to admin with subject containing the user's email
+    const adminEmail = "jduarte@refugehouse.org"
+    const recentNotification = await query<{ id: string; created_at: Date }>(
+      `SELECT id, created_at 
+       FROM communication_logs 
+       WHERE recipient_email = @param0 
+         AND communication_type = 'notification'
+         AND subject LIKE @param1
+         AND created_at >= DATEADD(hour, -24, GETDATE())
+       ORDER BY created_at DESC`,
+      [adminEmail, `%New User Access Request - ${email}%`],
+    )
+
+    if (recentNotification.length > 0) {
+      console.log(
+        `⏭️ [ACCESS CHECK] Skipping duplicate notification for ${email} - already sent ${new Date(recentNotification[0].created_at).toLocaleString()}`,
+      )
+      return
+    }
+
     const apiKey = process.env.SENDGRID_API_KEY
     const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
-    const adminEmail = "jduarte@refugehouse.org"
+    // adminEmail already defined above
 
     if (!apiKey) {
       console.error("❌ [ACCESS CHECK] SendGrid API key not configured - cannot send notification")
@@ -152,7 +176,32 @@ This is an automated notification from the Foster Home Visit platform.
       html: htmlContent,
     }
 
-    await sgMail.send(msg)
+    const response = await sgMail.send(msg)
+    const messageId = response[0]?.headers?.["x-message-id"] || null
+
+    // Log the notification to communication_logs table
+    try {
+      await logCommunication({
+        source_application: "home-visit-app",
+        source_feature: "access-control",
+        communication_type: "notification",
+        delivery_method: "email",
+        recipient_email: adminEmail,
+        recipient_name: "Admin",
+        email_sent_from: fromEmail,
+        email_sent_from_name: "Foster Home Visit System",
+        subject: subject,
+        message_text: textContent,
+        message_html: htmlContent,
+        sendgrid_message_id: messageId || undefined,
+        status: "sent",
+        sent_at: new Date(),
+      })
+    } catch (logError) {
+      // Don't fail if logging fails - email was already sent
+      console.error("⚠️ [ACCESS CHECK] Failed to log notification:", logError)
+    }
+
     console.log(`✅ [ACCESS CHECK] Notification sent to ${adminEmail} for new user access attempt: ${email}`)
   } catch (error) {
     console.error("❌ [ACCESS CHECK] Failed to send notification email:", error)
