@@ -599,7 +599,7 @@ function generateCompleteReportHTML(
             .map(([name, _]: [string, any]) => `<p style="margin: 3px 0;">✓ ${name}</p>`)
             .join("")}
           ${Object.entries(formData.attendees.attendance).filter(([_, present]: [string, any]) => present === true).length === 0 
-            ? "<p style="margin: 3px 0; font-style: italic; color: #6b7280;">No attendance recorded</p>" 
+            ? '<p style="margin: 3px 0; font-style: italic; color: #6b7280;">No attendance recorded</p>' 
             : ""}
         </div>
       </div>
