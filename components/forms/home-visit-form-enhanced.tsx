@@ -359,47 +359,47 @@ const EnhancedHomeVisitForm = ({
       },
       combinedNotes: "",
     },
-    // Section 10: Outdoor Space (If Applicable)
+    // Section 10: Outdoor Space (If Applicable) - Quarterly only (single status)
     outdoorSpace: {
       applicable: true,
       items: [
-        { code: "§749.3039(a-d)", requirement: "Outdoor equipment safe and maintained", status: "", notes: "" },
-        { code: "§749.3039(e)", requirement: "Trampoline meets requirements (if approved)", status: "", notes: "" },
-        { code: "§749.3041(4-5)", requirement: "Outdoor areas safe and well-drained", status: "", notes: "" },
+        { code: "§749.3039(a-d)", requirement: "Outdoor equipment safe and maintained", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.3039(e)", requirement: "Trampoline meets requirements (if approved)", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.3041(4-5)", requirement: "Outdoor areas safe and well-drained", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
       ],
       combinedNotes: "",
     },
-    // Section 11: Vehicles (If Used for Transport)
+    // Section 11: Vehicles (If Used for Transport) - Quarterly only (single status)
     vehicles: {
       applicable: true,
       items: [
-        { code: "§749.3101-3109", requirement: "Vehicles safe, registered, insured", status: "", notes: "" },
-        { code: "§749.2967", requirement: "Weapons in vehicles unloaded/inaccessible", status: "", notes: "" },
-        { code: "RCC 3620", requirement: "Transportation provided for all required services", status: "", notes: "" },
+        { code: "§749.3101-3109", requirement: "Vehicles safe, registered, insured", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.2967", requirement: "Weapons in vehicles unloaded/inaccessible", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "RCC 3620", requirement: "Transportation provided for all required services", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
       ],
       combinedNotes: "",
     },
-    // Section 12: Swimming Areas (If Applicable)
+    // Section 12: Swimming Areas (If Applicable) - Quarterly only (single status)
     swimmingAreas: {
       applicable: false,
       items: [
-        { code: "§749.3133(d-e)", requirement: "Fence ≥4 ft with self-closing gates", status: "", notes: "" },
-        { code: "§749.3133(h)", requirement: "Life-saving devices available", status: "", notes: "" },
-        { code: "§749.3133(n)", requirement: "Pool chemicals inaccessible", status: "", notes: "" },
-        { code: "§749.3147", requirement: "Hot tub has locking cover", status: "", notes: "" },
+        { code: "§749.3133(d-e)", requirement: "Fence ≥4 ft with self-closing gates", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.3133(h)", requirement: "Life-saving devices available", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.3133(n)", requirement: "Pool chemicals inaccessible", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.3147", requirement: "Hot tub has locking cover", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
       ],
       combinedNotes: "",
     },
-    // Section 13: Infants (If Applicable)
+    // Section 13: Infants (If Applicable) - Quarterly only (single status)
     infants: {
       applicable: false,
       items: [
-        { code: "§749.1803(c)", requirement: "Environment safe for infants", status: "", notes: "" },
-        { code: "§749.1805(1)", requirement: "Each infant has own crib", status: "", notes: "" },
-        { code: "§749.1807", requirement: "Crib meets all safety standards", status: "", notes: "" },
-        { code: "§749.1813(b)", requirement: "Crib bare except fitted sheet (<12 months)", status: "", notes: "" },
-        { code: "§749.1815", requirement: "Safe sleep practices followed", status: "", notes: "" },
-        { code: "RCC 4810", requirement: "ECI services notification (within 3 days)", status: "", notes: "" },
+        { code: "§749.1803(c)", requirement: "Environment safe for infants", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.1805(1)", requirement: "Each infant has own crib", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.1807", requirement: "Crib meets all safety standards", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.1813(b)", requirement: "Crib bare except fitted sheet (<12 months)", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "§749.1815", requirement: "Safe sleep practices followed", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
+        { code: "RCC 4810", requirement: "ECI services notification (within 3 days)", allowNA: true, month1: { compliant: false, na: false, notes: "" }, month2: { compliant: false, na: false, notes: "" }, month3: { compliant: false, na: false, notes: "" } },
       ],
       combinedNotes: "",
     },
@@ -798,15 +798,15 @@ const EnhancedHomeVisitForm = ({
   const sections = [
     { id: "visit-info", title: "Visit Information", icon: Calendar, required: true },
     { id: "foster-home", title: "Foster Home Info", icon: Home, required: true },
-    { id: "medication", title: "Section 1: Medication", icon: Activity, quarterly: true },
-    { id: "inspections", title: "Section 2A: Inspections", icon: Flame, quarterly: true },
-    { id: "health-safety", title: "Section 2B: Health & Safety", icon: Shield, quarterly: true },
-    { id: "childrens-rights", title: "Section 3: Children's Rights", icon: Heart, quarterly: true },
-    { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home, quarterly: true },
-    { id: "education", title: "Section 5: Education", icon: GraduationCap, quarterly: true },
-    { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home, quarterly: true },
-    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList, quarterly: true },
-    { id: "trauma-care", title: "Section 8: Trauma Care", icon: Brain, quarterly: true },
+    { id: "medication", title: "Section 1: Medication", icon: Activity },
+    { id: "inspections", title: "Section 2A: Inspections", icon: Flame },
+    { id: "health-safety", title: "Section 2B: Health & Safety", icon: Shield },
+    { id: "childrens-rights", title: "Section 3: Children's Rights", icon: Heart },
+    { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home },
+    { id: "education", title: "Section 5: Education", icon: GraduationCap },
+    { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home },
+    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList },
+    { id: "trauma-care", title: "Section 8: Trauma Care", icon: Brain },
     { id: "foster-parent-interview", title: "Section 9: Foster Parent Interview", icon: Users, required: true },
     { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true },
     { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
@@ -956,13 +956,13 @@ const EnhancedHomeVisitForm = ({
       case "foster-parent-interview":
         return <FosterParentInterviewSection formData={formData} onChange={handleChange} />
       case "outdoor-space":
-        return <ConditionalComplianceSection title="Outdoor Space" section="outdoorSpace" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} />
+        return <ComplianceSection title="Outdoor Space" section="outdoorSpace" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "vehicles":
-        return <ConditionalComplianceSection title="Vehicles" section="vehicles" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} />
+        return <ComplianceSection title="Vehicles" section="vehicles" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "swimming":
-        return <ConditionalComplianceSection title="Swimming Areas" section="swimmingAreas" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} />
+        return <ComplianceSection title="Swimming Areas" section="swimmingAreas" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "infants":
-        return <ConditionalComplianceSection title="Infants" section="infants" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} />
+        return <ComplianceSection title="Infants" section="infants" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "quality-enhancement":
         return <QualityEnhancementSection formData={formData} onChange={handleChange} />
       case "children-present":
@@ -1034,9 +1034,6 @@ const EnhancedHomeVisitForm = ({
                 </div>
               </div>
               <div className="flex gap-1">
-                {sections[currentSection].quarterly && (
-                  <Badge variant="secondary" className="text-xs">Quarterly</Badge>
-                )}
                 {sections[currentSection].optional && (
                   <Badge variant="outline" className="text-xs">Optional</Badge>
                 )}
@@ -1076,10 +1073,7 @@ const EnhancedHomeVisitForm = ({
                 <SelectContent>
                   {sections.map((section, idx) => (
                     <SelectItem key={idx} value={idx.toString()} className="text-sm">
-                      <div className="flex items-center gap-2">
-                        <span>{section.title}</span>
-                        {section.quarterly && <Badge variant="secondary" className="text-xs py-0">Q</Badge>}
-                      </div>
+                      <span>{section.title}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1748,9 +1742,12 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   )
 }
 
-const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, singleStatus = false }) => {
+const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, singleStatus = false, onApplicableChange }) => {
   const sectionData = formData[section]
   const [expandedRows, setExpandedRows] = useState(new Set())
+  
+  // Check if this section has an "applicable" field (for optional sections)
+  const hasApplicable = sectionData && typeof sectionData.applicable === 'boolean'
 
   // Safety check
   if (!sectionData || !sectionData.items || sectionData.items.length === 0) {
@@ -1831,9 +1828,24 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
           <CheckCircle className="h-4 w-4 text-refuge-purple" />
           {title}
         </h2>
-        <Badge variant="secondary" className="text-xs">Quarterly</Badge>
       </div>
 
+      {/* Applicable Checkbox for Optional Sections */}
+      {hasApplicable && (
+        <div className="flex items-center space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+          <Checkbox
+            id={`${section}-applicable`}
+            checked={sectionData.applicable}
+            onCheckedChange={(checked) => onApplicableChange && onApplicableChange(`${section}.applicable`, checked)}
+          />
+          <Label htmlFor={`${section}-applicable`} className="cursor-pointer font-semibold text-sm">
+            This section applies to this home
+          </Label>
+        </div>
+      )}
+
+      {/* Show content only if applicable (or if no applicable field) */}
+      {(!hasApplicable || sectionData.applicable) && (
       {/* Compact Table Format */}
       <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
         {/* Table Header */}
@@ -2142,19 +2154,22 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
           })}
         </div>
       </div>
+      )}
 
-      {/* Section Notes */}
-      <div className="border-t pt-2 mt-2">
-        <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes (Optional)</Label>
-        <Textarea
-          id={`${section}-combined-notes`}
-          value={sectionData.combinedNotes || ""}
-          onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
-          placeholder="Additional observations for this section..."
-          rows={2}
-          className="mt-1 text-sm"
-        />
-      </div>
+      {/* Section Notes - Only show if applicable (or if no applicable field) */}
+      {(!hasApplicable || sectionData.applicable) && (
+        <div className="border-t pt-2 mt-2">
+          <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes (Optional)</Label>
+          <Textarea
+            id={`${section}-combined-notes`}
+            value={sectionData.combinedNotes || ""}
+            onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
+            placeholder="Additional observations for this section..."
+            rows={2}
+            className="mt-1 text-sm"
+          />
+        </div>
+      )}
     </div>
   )
 }
