@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
+import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -279,13 +280,59 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
   }
 }
 
-// DELETE - Soft delete appointment
+// DELETE - Soft delete appointment and all related documentation
+// ONLY available to jduarte@refugehouse.org for testing purposes
 export async function DELETE(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
     const { appointmentId } = params
 
-    console.log(`📅 [API] Deleting appointment: ${appointmentId}`)
+    // Check authorization - ONLY jduarte@refugehouse.org can delete
+    const { email } = getClerkUserIdFromRequest(request)
+    const AUTHORIZED_EMAIL = "jduarte@refugehouse.org"
 
+    if (!email || email.toLowerCase() !== AUTHORIZED_EMAIL.toLowerCase()) {
+      console.log(`❌ [API] Unauthorized delete attempt by: ${email}`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          message: "Only authorized administrators can delete appointments",
+        },
+        { status: 403 },
+      )
+    }
+
+    console.log(`📅 [API] Authorized delete request for appointment: ${appointmentId} by ${email}`)
+
+    // First, soft delete all related visit forms
+    const visitForms = await query(
+      `SELECT visit_form_id FROM visit_forms WHERE appointment_id = @param0 AND is_deleted = 0`,
+      [appointmentId],
+    )
+
+    if (visitForms.length > 0) {
+      console.log(`🗑️ [API] Deleting ${visitForms.length} related visit form(s)`)
+      
+      for (const form of visitForms) {
+        await query(
+          `
+          UPDATE visit_forms 
+          SET 
+            is_deleted = 1,
+            deleted_at = GETUTCDATE(),
+            deleted_by_user_id = @param0,
+            deleted_by_name = @param1,
+            updated_at = GETUTCDATE()
+          WHERE visit_form_id = @param2 AND is_deleted = 0
+        `,
+          ["system", "System Administrator", form.visit_form_id],
+        )
+      }
+      
+      console.log(`✅ [API] Deleted ${visitForms.length} visit form(s)`)
+    }
+
+    // Then soft delete the appointment
     await query(
       `
       UPDATE appointments 
@@ -297,14 +344,15 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
         updated_by_user_id = @param0
       WHERE appointment_id = @param1 AND is_deleted = 0
     `,
-      ["system", appointmentId], // Use system user instead of Clerk userId
+      ["system", appointmentId],
     )
 
-    console.log(`✅ [API] Deleted appointment: ${appointmentId}`)
+    console.log(`✅ [API] Deleted appointment: ${appointmentId} and ${visitForms.length} related visit form(s)`)
 
     return NextResponse.json({
       success: true,
-      message: "Appointment deleted successfully",
+      message: "Appointment and all related documentation deleted successfully",
+      deletedVisitForms: visitForms.length,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

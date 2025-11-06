@@ -25,7 +25,8 @@ import {
   MessageSquare,
   Paperclip,
   Navigation,
-  MapPin as MapPinIcon
+  MapPin as MapPinIcon,
+  Trash2
 } from "lucide-react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -84,6 +85,8 @@ export default function AppointmentDetailPage() {
   const [capturingLocation, setCapturingLocation] = useState(false)
   const [showRecipientDialog, setShowRecipientDialog] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<any>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -313,6 +316,58 @@ export default function AppointmentDetailPage() {
   const handlePopOut = () => {
     window.open(`/appointment/${appointmentId}`, '_blank')
   }
+
+  const handleDeleteAppointment = async () => {
+    if (!appointmentId) return
+
+    try {
+      setDeleting(true)
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "DELETE",
+        headers,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Appointment Deleted",
+          description: data.message || "Appointment and all related documentation have been deleted successfully.",
+        })
+        // Redirect to appointments list
+        router.push("/visits-calendar")
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || data.error || "Failed to delete appointment",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting appointment:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete appointment",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
+    }
+  }
+
+  // Check if current user is authorized to delete (only jduarte@refugehouse.org)
+  const isAuthorizedToDelete = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() === "jduarte@refugehouse.org"
 
   const fetchFormData = async () => {
     if (formDataLoading) return // Don't fetch if already loading
@@ -891,6 +946,17 @@ export default function AppointmentDetailPage() {
             <ExternalLink className="h-4 w-4 mr-1.5" />
             Pop Out
           </Button>
+          {isAuthorizedToDelete && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="h-8 px-3 text-sm font-medium"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Delete
+            </Button>
+          )}
         </div>
       </header>
 
@@ -1323,6 +1389,40 @@ export default function AppointmentDetailPage() {
               setPendingFormData(null)
             }}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Appointment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this appointment? This will permanently delete:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>The appointment record</li>
+                <li>All associated visit forms</li>
+                <li>All related documentation</li>
+              </ul>
+              <p className="mt-3 font-semibold text-destructive">This action cannot be undone.</p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAppointment}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete Appointment"}
             </Button>
           </DialogFooter>
         </DialogContent>
