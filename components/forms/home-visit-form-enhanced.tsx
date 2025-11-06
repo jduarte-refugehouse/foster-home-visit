@@ -1622,215 +1622,121 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         </CardContent>
       </Card>
 
-      {/* SECTION 2: Home Logistics */}
+      {/* SECTION 2: Home Logistics - Display Only */}
       <Card className="bg-white shadow-sm">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Home className="h-5 w-5 text-refuge-purple" />
             Home Logistics
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <Label htmlFor="familyName" className="text-sm">Foster Family Name *</Label>
-              <Input
-                id="familyName"
-                value={formData.fosterHome.familyName}
-                onChange={(e) => onChange("fosterHome.familyName", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label htmlFor="address" className="text-sm">Address *</Label>
-              <Input
-                id="address"
-                value={formData.fosterHome.address}
-                onChange={(e) => onChange("fosterHome.address", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-
+        <CardContent className="pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
-              <Label htmlFor="city" className="text-sm">City *</Label>
-              <Input
-                id="city"
-                value={formData.fosterHome.city}
-                onChange={(e) => onChange("fosterHome.city", e.target.value)}
-                className="text-sm"
-              />
+              <span className="text-gray-600 font-medium">Family Name:</span>
+              <span className="ml-2">{formData.fosterHome.familyName || "—"}</span>
             </div>
-
             <div>
-              <Label htmlFor="state" className="text-sm">State *</Label>
-              <Input
-                id="state"
-                value={formData.fosterHome.state}
-                onChange={(e) => onChange("fosterHome.state", e.target.value)}
-                placeholder="TX"
-                className="text-sm"
-              />
+              <span className="text-gray-600 font-medium">Address:</span>
+              <span className="ml-2">{formData.fosterHome.address || "—"}</span>
             </div>
-
             <div>
-              <Label htmlFor="zip" className="text-sm">ZIP *</Label>
-              <Input
-                id="zip"
-                value={formData.fosterHome.zip}
-                onChange={(e) => onChange("fosterHome.zip", e.target.value)}
-                className="text-sm"
-              />
+              <span className="text-gray-600 font-medium">City:</span>
+              <span className="ml-2">{formData.fosterHome.city || "—"}</span>
             </div>
-
             <div>
-              <Label htmlFor="phone" className="text-sm">Phone *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.fosterHome.phone}
-                onChange={(e) => onChange("fosterHome.phone", e.target.value)}
-                className="text-sm"
-              />
+              <span className="text-gray-600 font-medium">State:</span>
+              <span className="ml-2">{formData.fosterHome.state || "—"}</span>
             </div>
-
             <div>
-              <Label htmlFor="email" className="text-sm">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.fosterHome.email}
-                onChange={(e) => onChange("fosterHome.email", e.target.value)}
-                className="text-sm"
-              />
+              <span className="text-gray-600 font-medium">ZIP:</span>
+              <span className="ml-2">{formData.fosterHome.zip || "—"}</span>
             </div>
+            <div>
+              <span className="text-gray-600 font-medium">Phone:</span>
+              <span className="ml-2">{formData.fosterHome.phone || "—"}</span>
+            </div>
+            {formData.fosterHome.email && (
+              <div>
+                <span className="text-gray-600 font-medium">Email:</span>
+                <span className="ml-2">{formData.fosterHome.email}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* SECTION 3: License & Regulatory Information */}
+      {/* SECTION 3: License & Regulatory Information - Display Only */}
       <Card className="bg-white shadow-sm">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5 text-refuge-purple" />
             License & Regulatory Information
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-2 space-y-3">
           {/* License Information */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-3">License Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h4 className="font-medium text-sm text-gray-700 mb-2">License Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div>
-                <Label htmlFor="licenseType" className="text-sm">License Type *</Label>
-                <Select
-                  value={formData.fosterHome.licenseType}
-                  onValueChange={(value) => onChange("fosterHome.licenseType", value)}
-                >
-                  <SelectTrigger className="text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Full">Full</SelectItem>
-                    <SelectItem value="Provisional">Provisional</SelectItem>
-                    <SelectItem value="Kinship">Kinship</SelectItem>
-                  </SelectContent>
-                </Select>
+                <span className="text-gray-600 font-medium">License Type:</span>
+                <span className="ml-2">{formData.fosterHome.licenseType || "—"}</span>
               </div>
-
-
               <div>
-                <Label htmlFor="licenseExpiration" className="text-sm">License Expiration *</Label>
-                <Input
-                  id="licenseExpiration"
-                  type="date"
-                  value={formData.fosterHome.licenseExpiration}
-                  onChange={(e) => onChange("fosterHome.licenseExpiration", e.target.value)}
-                  className="text-sm"
-                />
+                <span className="text-gray-600 font-medium">License Expiration:</span>
+                <span className="ml-2">
+                  {formData.fosterHome.licenseExpiration 
+                    ? new Date(formData.fosterHome.licenseExpiration).toLocaleDateString()
+                    : "—"}
+                </span>
               </div>
-
-              <div className="flex items-center space-x-2 pt-6">
-                <Checkbox
-                  id="respiteOnly"
-                  checked={formData.fosterHome.respiteOnly}
-                  onCheckedChange={(checked) => onChange("fosterHome.respiteOnly", checked)}
-                />
-                <Label htmlFor="respiteOnly" className="cursor-pointer text-sm">
-                  Respite Only
-                </Label>
+              <div>
+                <span className="text-gray-600 font-medium">Respite Only:</span>
+                <span className="ml-2">{formData.fosterHome.respiteOnly ? "Yes" : "No"}</span>
               </div>
             </div>
           </div>
 
           {/* Capacity Information */}
-          <div className="border-t pt-4">
-            <h4 className="font-medium text-sm text-gray-700 mb-3">Capacity Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="border-t pt-3">
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Capacity Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div>
-                <Label htmlFor="totalCapacity" className="text-sm">Total Capacity *</Label>
-                <Input
-                  id="totalCapacity"
-                  type="number"
-                  value={formData.fosterHome.totalCapacity}
-                  onChange={(e) => onChange("fosterHome.totalCapacity", parseInt(e.target.value) || 0)}
-                  className="text-sm"
-                />
+                <span className="text-gray-600 font-medium">Total Capacity:</span>
+                <span className="ml-2">{formData.fosterHome.totalCapacity || "—"}</span>
               </div>
-
               <div>
-                <Label htmlFor="fosterCareCapacity" className="text-sm">Foster Care Capacity *</Label>
-                <Input
-                  id="fosterCareCapacity"
-                  type="number"
-                  value={formData.fosterHome.fosterCareCapacity}
-                  onChange={(e) => onChange("fosterHome.fosterCareCapacity", parseInt(e.target.value) || 0)}
-                  className="text-sm"
-                />
+                <span className="text-gray-600 font-medium">Foster Care Capacity:</span>
+                <span className="ml-2">{formData.fosterHome.fosterCareCapacity || "—"}</span>
               </div>
-
               <div>
-                <Label htmlFor="currentCensus" className="text-sm">Current Census *</Label>
-                <Input
-                  id="currentCensus"
-                  type="number"
-                  value={formData.fosterHome.currentCensus}
-                  onChange={(e) => onChange("fosterHome.currentCensus", parseInt(e.target.value) || 0)}
-                  className="text-sm"
-                />
+                <span className="text-gray-600 font-medium">Current Census:</span>
+                <span className="ml-2">{formData.fosterHome.currentCensus || "—"}</span>
               </div>
             </div>
           </div>
 
           {/* Service Levels Approved */}
-          <div className="border-t pt-4">
-            <h4 className="font-medium text-sm text-gray-700 mb-3">Service Levels Approved</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {["basic", "moderate", "specialized", "intense"].map((level) => (
-                <div key={level} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={level}
-                    checked={formData.fosterHome.serviceLevels.includes(level)}
-                    onCheckedChange={(checked) => {
-                      const current = formData.fosterHome.serviceLevels
-                      onChange(
-                        "fosterHome.serviceLevels",
-                        checked ? [...current, level] : current.filter((l) => l !== level)
-                      )
-                    }}
-                  />
-                  <Label htmlFor={level} className="capitalize cursor-pointer text-sm">
+          <div className="border-t pt-3">
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Service Levels Approved</h4>
+            <div className="flex flex-wrap gap-2">
+              {formData.fosterHome.serviceLevels && formData.fosterHome.serviceLevels.length > 0 ? (
+                formData.fosterHome.serviceLevels.map((level) => (
+                  <Badge key={level} variant="secondary" className="text-xs capitalize">
                     {level}
-                  </Label>
-                </div>
-              ))}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-gray-500 italic">None specified</span>
+              )}
             </div>
           </div>
 
           {/* Credentialed Packages - Stub */}
-          <div className="border-t pt-4">
-            <h4 className="font-medium text-sm text-gray-700 mb-3">Credentialed Packages</h4>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="border-t pt-3">
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Credentialed Packages</h4>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <p className="text-sm text-gray-600 italic">
                 Package credentialing information will be displayed here once the data structure is finalized.
               </p>
