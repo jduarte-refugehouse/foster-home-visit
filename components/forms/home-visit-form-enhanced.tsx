@@ -20,7 +20,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   FosterParentInterviewSection,
   QualityEnhancementSection,
-  ChildrenPresentSection,
   ObservationsSection,
   FollowUpItemsSection,
   CorrectiveActionsSection,
@@ -428,8 +427,6 @@ const EnhancedHomeVisitForm = ({
       other: "",
       combinedNotes: "",
     },
-    // Children Present (Simplified for Liaisons)
-    childrenPresent: [],
     // Attendance at Visit
     attendance: {
       fosterParents: [], // Array of { name: string, present: boolean }
@@ -610,7 +607,6 @@ const EnhancedHomeVisitForm = ({
           ...familyInfo.household
         } : prev.household,
         // Attendees
-        childrenPresent: attendees?.childrenPresent || prev.childrenPresent,
         attendance: attendees?.attendance || prev.attendance,
         // Home environment
         homeCondition: homeEnvironment?.homeCondition || prev.homeCondition,
@@ -813,7 +809,6 @@ const EnhancedHomeVisitForm = ({
     { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
     { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
     { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
-    { id: "children-present", title: "Children Present", icon: Users, required: true },
     { id: "observations", title: "Observations", icon: FileText, required: true },
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
     { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true },
@@ -870,26 +865,6 @@ const EnhancedHomeVisitForm = ({
         },
       }
     })
-  }
-
-  // Add child to children present list
-  const addChild = () => {
-    setFormData((prev) => ({
-      ...prev,
-      childrenPresent: [
-        ...prev.childrenPresent,
-        {
-          name: "",
-          age: "",
-          present: true,
-          behaviorNotes: "",
-          schoolNotes: "",
-          medicalTherapyNotes: "",
-          asqScreeningDue: false,
-          asqCompleted: false,
-        },
-      ],
-    }))
   }
 
   // Add follow-up item
@@ -965,8 +940,6 @@ const EnhancedHomeVisitForm = ({
         return <ComplianceSection title="Infants" section="infants" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} onApplicableChange={handleChange} singleStatus={true} />
       case "quality-enhancement":
         return <QualityEnhancementSection formData={formData} onChange={handleChange} />
-      case "children-present":
-        return <ChildrenPresentSection formData={formData} onChange={handleChange} onAddChild={addChild} prepopulationData={prepopulationData} />
       case "observations":
         return <ObservationsSection formData={formData} onChange={handleChange} />
       case "follow-up":

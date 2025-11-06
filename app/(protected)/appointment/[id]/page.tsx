@@ -517,7 +517,6 @@ export default function AppointmentDetailPage() {
           household: formData.household,
         },
         attendees: {
-          childrenPresent: formData.childrenPresent,
           attendance: formData.attendance,
         },
         homeEnvironment: {
@@ -673,7 +672,6 @@ export default function AppointmentDetailPage() {
           household: formData.household,
         },
         attendees: {
-          childrenPresent: formData.childrenPresent,
           attendance: formData.attendance,
         },
         homeEnvironment: {
