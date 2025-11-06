@@ -25,6 +25,12 @@ import {
   CheckCircle,
   Info,
   Lightbulb,
+  Car,
+  Waves,
+  Baby,
+  Activity,
+  Brain,
+  Stethoscope,
 } from "lucide-react"
 
 const tabs = [
@@ -36,9 +42,13 @@ const tabs = [
   { id: "bedroom", title: "Bedrooms", icon: Bed },
   { id: "indoor", title: "Indoor", icon: Building },
   { id: "outdoor", title: "Outdoor", icon: Trees },
+  { id: "vehicles", title: "Vehicles", icon: Car },
+  { id: "swimming", title: "Swimming Area", icon: Waves },
+  { id: "infants", title: "Infants/Toddlers", icon: Baby },
   { id: "education", title: "Education", icon: GraduationCap },
   { id: "interview-child", title: "Child Interview", icon: MessageCircle },
   { id: "interview-parent", title: "Parent Interview", icon: Users },
+  { id: "packages", title: "Package Requirements", icon: Activity },
   { id: "normalcy", title: "T3C Prep", icon: Heart },
   { id: "documentation", title: "Documentation", icon: BookOpen },
   { id: "resources", title: "Resources", icon: HelpCircle },
@@ -73,10 +83,32 @@ const AlertBox = ({
   )
 }
 
-const RequirementItem = ({ code, title, children }: { code?: string; title: string; children: React.ReactNode }) => (
+const RequirementItem = ({ 
+  code, 
+  title, 
+  frequency, 
+  children 
+}: { 
+  code?: string
+  title: string
+  frequency?: "Monthly" | "Quarterly" | "Weekly" | "Annually"
+  children: React.ReactNode 
+}) => (
   <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-3 shadow-sm">
-    {code && <div className="text-sm font-mono text-blue-600 dark:text-blue-400 mb-2">{code}</div>}
-    <div className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{title}</div>
+    <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex-1">
+        {code && <div className="text-sm font-mono text-blue-600 dark:text-blue-400 mb-1">{code}</div>}
+        <div className="font-semibold text-gray-900 dark:text-gray-100">{title}</div>
+      </div>
+      {frequency && (
+        <Badge 
+          variant={frequency === "Monthly" ? "default" : frequency === "Quarterly" ? "secondary" : "outline"}
+          className="ml-2 whitespace-nowrap"
+        >
+          {frequency}
+        </Badge>
+      )}
+    </div>
     <div className="text-gray-700 dark:text-gray-300">{children}</div>
   </div>
 )
@@ -120,9 +152,8 @@ export default function GuidePage() {
         return (
           <div className="space-y-6">
             <AlertBox type="info">
-              <strong>Important Phase 1 Note:</strong> This guide supports the enhanced monitoring form Version 25.1.
-              Core Chapter 749 requirements remain unchanged. T3C sections are for discussion and development only, NOT
-              compliance monitoring.
+              <strong>Enhanced Monitoring Checklist:</strong> This guide incorporates requirements from TAC Chapter 749, RCC Contract (Term 7), and T3C Blueprint.
+              All requirements now include monthly/quarterly frequency designations. Package-specific requirements apply ONLY to homes credentialed for those specialized service packages.
             </AlertBox>
 
             <AlertBox type="danger">
@@ -298,29 +329,28 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Storage Requirements:</h3>
 
-                  <RequirementItem code="§749.1463(b)(2)" title="Original Containers">
+                  <RequirementItem code="TAC §749.1463(b)(2)" title="Original Containers" frequency="Monthly">
                     All medications must be stored in original containers with labels intact. Check that prescription
                     labels are legible and match the child's current name.
                   </RequirementItem>
 
-                  <RequirementItem code="§749.1521(1-3)" title="Double Lock Requirement">
-                    All medications must be under double lock (e.g., locked box within locked cabinet). Both locks must
+                  <RequirementItem code="TAC §749.1521(1), (2), (3)" title="Double Lock Requirement" frequency="Monthly">
+                    All medications stored in locked container; Schedule II controlled substances under double lock in separate, secure container. Both locks must
                     be functioning and keys controlled.
                   </RequirementItem>
 
-                  <RequirementItem code="§749.1521" title="External Use Medications">
-                    Topical medications, creams, and ointments marked "external use only" must be stored separately from
-                    oral medications.
-                  </RequirementItem>
-
-                  <RequirementItem code="§749.1521(4)" title="Refrigerated Medications">
-                    Must be in a locked box within the refrigerator. Box should be clearly labeled and not used for food
+                  <RequirementItem code="TAC §749.1521(4)" title="Refrigerated Medications" frequency="Monthly">
+                    Medications requiring refrigeration properly stored in locked container within refrigerator. Box should be clearly labeled and not used for food
                     storage.
                   </RequirementItem>
 
-                  <RequirementItem code="§749.1521(5)" title="Storage Area Cleanliness">
-                    Medication storage area must be clean, dry, and organized. No expired medications should be mixed
+                  <RequirementItem code="TAC §749.1521(5)" title="Storage Area Cleanliness" frequency="Monthly">
+                    Medication storage area(s) clean, orderly, and free from expired/discontinued medications. No expired medications should be mixed
                     with current medications.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1521(6), (7), (8)" title="Discontinued/Expired Medications" frequency="Monthly">
+                    Discontinued medications, expired medications, or medications of discharged/deceased child removed immediately from active storage and stored separately until properly destroyed (within 30 days).
                   </RequirementItem>
                 </div>
 
@@ -380,14 +410,9 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Annual Inspections:</h3>
 
-                  <RequirementItem code="§749.2905" title="Fire Inspection">
-                    Check current inspection date and expiration. Certificate should be on file. If expiring within 30
+                  <RequirementItem code="TAC §749.2902, §749.2903, §749.2905" title="Fire & Health Inspections" frequency="Quarterly">
+                    Current fire safety inspection and health department evaluation on file; any required corrections completed. Check current inspection date and expiration. Certificate should be on file. If expiring within 30
                     days, remind family to schedule renewal.
-                  </RequirementItem>
-
-                  <RequirementItem code="§749.2905" title="Health Inspection">
-                    Verify current health inspection is on file. Check expiration date and remind if renewal needed
-                    soon.
                   </RequirementItem>
                 </div>
 
@@ -423,12 +448,12 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Fire Safety:</h3>
 
-                  <RequirementItem code="§749.2909" title="Smoke Detectors">
-                    Required in hallways outside bedrooms and on each level. Test during visit if possible.
+                  <RequirementItem code="TAC §749.2909" title="Smoke Detectors" frequency="Monthly">
+                    Smoke detectors installed in hallways or open areas outside all sleeping rooms and on each level of the home; functional and tested. Test during visit if possible.
                   </RequirementItem>
 
-                  <RequirementItem code="§749.2913" title="Fire Extinguishers">
-                    <p>Required in kitchen and on each level. Check:</p>
+                  <RequirementItem code="TAC §749.2913" title="Fire Extinguishers" frequency="Quarterly">
+                    Fire extinguishers located in each kitchen and on each level of the home; current inspection tags visible; accessible. Check:
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>Gauge is in green zone</li>
                       <li>Inspection tag is current</li>
@@ -441,11 +466,10 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Weapon Storage:</h3>
 
-                  <RequirementItem code="§749.2961" title="Firearms Storage (2021 Update)">
+                  <RequirementItem code="TAC §749.2961" title="Weapons & Firearms Storage" frequency="Monthly">
+                    Weapons, firearms, explosive materials, and projectiles stored unloaded in locked location; ammunition stored separately in locked location.
                     <AlertBox type="info">
-                      <strong>2021 Change:</strong> Trigger lock with ammunition stored in same locked container is now
-                      acceptable. Previous requirement of separate storage still acceptable. Gun safe meets all
-                      requirements.
+                      <strong>Note:</strong> Trigger lock with ammunition stored in same locked container is acceptable. Gun safe meets all requirements.
                     </AlertBox>
                   </RequirementItem>
                 </div>
@@ -453,13 +477,33 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">General Safety:</h3>
 
-                  <RequirementItem code="§749.3041(7)" title="Hazardous Substances">
-                    All cleaning supplies, chemicals, and hazardous materials must be out of reach of children or in
+                  <RequirementItem code="TAC §749.3041(7)" title="Hazardous Substances" frequency="Monthly">
+                    Flammable or poisonous substances (cleaning supplies, pesticides, etc.) stored out of reach of children or in locked cabinets. All cleaning supplies, chemicals, and hazardous materials must be out of reach of children or in
                     locked storage.
                   </RequirementItem>
 
-                  <RequirementItem code="§749.2917" title="Pets/Animals">
-                    Verify vaccination records are current and animals appear healthy and non-aggressive.
+                  <RequirementItem code="TAC §749.2917" title="Pets/Animals" frequency="Quarterly">
+                    All animals on premises kept free of disease, current on required vaccinations; documentation available for review. Verify vaccination records are current and animals appear healthy and non-aggressive.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.2915" title="Tools & Equipment Storage" frequency="Monthly">
+                    Tools, power equipment, and dangerous equipment stored appropriately and secured from children's access.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(1), (2)" title="Indoor Safety & Cleanliness" frequency="Monthly">
+                    Indoor areas, equipment, and furniture are safe for children, kept clean, and maintained in good repair.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(3)" title="Exit Access" frequency="Monthly">
+                    Exits in living areas are not blocked by furniture or other items; egress routes clear.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(6)" title="Ventilation Screens" frequency="Quarterly">
+                    Windows and doors used for ventilation are properly screened.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(8)" title="Pest Control" frequency="Monthly">
+                    Home is free of rodent and insect infestation; pest control measures current.
                   </RequirementItem>
                 </div>
               </CardContent>
@@ -572,42 +616,70 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Space Requirements:</h3>
 
-                  <RequirementItem code="§749.3029(a)" title="Bedroom Square Footage">
+                  <RequirementItem code="TAC §749.3021" title="Bedroom Square Footage" frequency="Quarterly">
                     <p>Minimum requirements:</p>
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>
-                        <strong>Single occupancy:</strong> 80 square feet
+                        <strong>Bedroom for one child:</strong> minimum 80 square feet
                       </li>
                       <li>
-                        <strong>Multiple occupancy:</strong> 40 square feet per child
+                        <strong>Bedroom for multiple children:</strong> minimum 40 square feet per child
                       </li>
                       <li>
-                        <strong>Maximum:</strong> 4 children per bedroom
+                        <strong>Maximum:</strong> NO MORE THAN 4 CHILDREN PER BEDROOM
                       </li>
                     </ul>
                   </RequirementItem>
 
-                  <RequirementItem code="§749.3029(b)" title="Bedroom Requirements">
-                    <p>Each bedroom must have:</p>
+                  <RequirementItem code="TAC §749.3023(a), (c)" title="Bedroom Adequacy" frequency="Monthly">
+                    Bedroom is adequate for rest, sleep, and privacy; has functional door that closes for privacy.
+                    <p className="mt-2">Each bedroom must have:</p>
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>Window to outside for ventilation/emergency exit</li>
                       <li>Door for privacy</li>
                       <li>Adequate lighting</li>
                       <li>Comfortable temperature control</li>
                     </ul>
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3023(b)" title="Natural Light Source" frequency="Quarterly">
+                    Bedroom has at least one source of natural light (window).
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3023(c)(1), (2)" title="Prohibited Bedroom Spaces" frequency="Quarterly">
+                    Dining room, living room, hallway, porch, garage, or any room serving as passageway to other rooms NOT used as bedroom.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3025" title="Child-Adult Room Sharing" frequency="Quarterly">
+                    Child shares bedroom with adult in care only if agency has assessed and approved arrangement in writing.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3027" title="Child-Caregiver Room Sharing" frequency="Quarterly">
+                    Child shares bedroom with caregiver only if child is under 3 years old, arrangement is in best interests of child, and approved by service planning team.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3029" title="Opposite Gender Room Sharing" frequency="Quarterly">
+                    Child over six years old does not share bedroom with person of opposite sex, unless sharing with parent or meets other specified criteria (siblings, etc.).
                   </RequirementItem>
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-3">Furnishings:</h3>
 
-                  <RequirementItem code="§749.3033" title="Required Furnishings Per Child">
+                  <RequirementItem code="TAC §749.3031" title="Bedding Requirements" frequency="Monthly">
+                    Each child has own clean, comfortable bed with mattress cover or mattress protector; bed linens washed at least weekly; bedding appropriate for season.
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Individual bed with mattress in good condition</li>
                       <li>Clean bedding (sheets, blanket, pillow)</li>
-                      <li>Storage for clothing (dresser/closet space)</li>
-                      <li>Personal storage space for belongings</li>
+                      <li>Mattress cover or protector</li>
                     </ul>
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3033" title="Storage Space" frequency="Monthly">
+                    Children have adequate, accessible storage space for clothing and personal belongings (dresser, closet space, shelving).
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1003(b)(12), (14)" title="Clothing Requirements" frequency="Monthly">
+                    Children have adequate personal clothing suitable to age and size, comparable to clothing of other children in community; adequate protective clothing against weather; reasonable opportunity to select own clothing.
                   </RequirementItem>
                 </div>
 
@@ -631,9 +703,12 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Bathroom Facilities:</h3>
 
-                  <RequirementItem code="§749.3035(a)" title="Bathroom Ratios">
-                    Minimum of one toilet, sink, and tub/shower per 8 household members. Must have hot and cold running
-                    water.
+                  <RequirementItem code="TAC §749.3035(a)" title="Bathroom Ratios" frequency="Quarterly">
+                    Home has one toilet, sink, and shower/tub for every eight household members.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3035(b)" title="Hot and Cold Water" frequency="Monthly">
+                    All sinks and showers/tubs have hot and cold running water with safe temperature.
                   </RequirementItem>
                 </div>
 
@@ -670,8 +745,9 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Video Surveillance:</h3>
 
-                  <RequirementItem code="§749.2595" title="No Unauthorized Video Surveillance">
-                    <p>Cameras or monitoring devices are prohibited in:</p>
+                  <RequirementItem code="TAC §749.2595" title="No Unauthorized Video Surveillance" frequency="Quarterly">
+                    No video cameras or electronic monitoring used for child supervision unless specified in child's service plan; exception for infants and toddlers under one year.
+                    <p className="mt-2">Cameras or monitoring devices are prohibited in:</p>
                     <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
                       <li>Bedrooms</li>
                       <li>Bathrooms</li>
@@ -685,15 +761,20 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Activity Space:</h3>
 
-                  <RequirementItem code="§749.3037" title="Indoor Activity Space">
-                    Minimum 40 square feet of indoor activity space per child (excluding bedrooms and bathrooms).
+                  <RequirementItem code="TAC §749.3037" title="Indoor Activity Space" frequency="Quarterly">
+                    Home has minimum 40 square feet per child of indoor activity space for children's recreational use (excluding bedrooms, bathrooms, hallways).
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1893(4)" title="Study/Homework Space" frequency="Monthly">
+                    Children have quiet, well-lighted space designated for study/homework and regular scheduled time for homework completion.
                   </RequirementItem>
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-3">Food Storage & Kitchen:</h3>
 
-                  <RequirementItem code="§749.3079(1-4)" title="Food Storage Requirements">
+                  <RequirementItem code="TAC §749.3079(1), (2), (3), (4)" title="Food Storage Requirements" frequency="Monthly">
+                    Food is covered and stored off floor on clean surfaces; protected from contamination; containers provide protection from insects and rodents.
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Food properly stored and protected from contamination</li>
                       <li>All food in sealed containers or original packaging</li>
@@ -702,7 +783,8 @@ export default function GuidePage() {
                     </ul>
                   </RequirementItem>
 
-                  <RequirementItem code="§749.3079(5-6)" title="Refrigeration">
+                  <RequirementItem code="TAC §749.3079(5), (6)" title="Refrigeration" frequency="Monthly">
+                    Food requiring refrigeration is refrigerated immediately after use and after meals; stored in covered containers.
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Perishables refrigerated promptly</li>
                       <li>Refrigerator temperature 40°F or below</li>
@@ -711,41 +793,14 @@ export default function GuidePage() {
                     </ul>
                   </RequirementItem>
 
-                  <RequirementItem code="§749.3081(a)" title="Kitchen Cleanliness">
+                  <RequirementItem code="TAC §749.3081(a)" title="Kitchen Cleanliness" frequency="Monthly">
+                    Caregivers keep furniture, equipment, food contact surfaces, and food preparation/storage areas clean and in good repair.
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Food preparation areas clean and sanitized</li>
                       <li>Dishes washed and properly stored</li>
                       <li>Garbage disposed of regularly</li>
                       <li>No evidence of pests</li>
                     </ul>
-                  </RequirementItem>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-3">General Indoor Requirements:</h3>
-
-                  <RequirementItem code="§749.3041(1-2)" title="Indoor Areas">
-                    <p>All indoor areas must be clean, safe, and in good repair. Check for:</p>
-                    <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>No exposed wiring or electrical hazards</li>
-                      <li>Floors free of tripping hazards</li>
-                      <li>Adequate lighting in all rooms</li>
-                      <li>Functioning locks on exterior doors</li>
-                    </ul>
-                  </RequirementItem>
-
-                  <RequirementItem code="§749.3041(3)" title="Exit Access">
-                    Exits must not be blocked by furniture or other items. All household members must be able to exit
-                    quickly in emergency.
-                  </RequirementItem>
-
-                  <RequirementItem code="§749.3041(6)" title="Ventilation">
-                    Windows and doors used for ventilation must have intact screens to prevent insect entry.
-                  </RequirementItem>
-
-                  <RequirementItem code="§749.3041(8)" title="Pest Control">
-                    Home must be free of rodents and insects. Evidence of infestation requires immediate corrective
-                    action.
                   </RequirementItem>
                 </div>
               </CardContent>
@@ -768,62 +823,32 @@ export default function GuidePage() {
                 <div>
                   <h3 className="font-semibold mb-3">Outdoor Activity Space:</h3>
 
-                  <RequirementItem code="§749.3039" title="Outdoor Play Area">
-                    <p>Minimum 80 square feet of outdoor activity space per child. Area must be:</p>
-                    <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>Safe and free from hazards</li>
-                      <li>Appropriately fenced if near traffic or water</li>
-                      <li>Free of toxic plants</li>
-                      <li>Equipment age-appropriate and in good repair</li>
-                    </ul>
+                  <RequirementItem code="TAC §749.3039(a)" title="Outdoor Play Equipment Safety" frequency="Quarterly">
+                    Outdoor play equipment does not have openings, angles, or protrusions that can entangle child's clothing or entrap child's body or body parts.
                   </RequirementItem>
-                </div>
 
-                <div>
-                  <h3 className="font-semibold mb-3">Pool and Water Safety:</h3>
-
-                  <RequirementItem code="§749.3043" title="Swimming Pools and Hot Tubs">
-                    <p>If property has pool or hot tub:</p>
-                    <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>Must be fenced with self-closing, self-latching gate</li>
-                      <li>Fence minimum 4 feet high</li>
-                      <li>Safety equipment readily available</li>
-                      <li>Posted rules for use</li>
-                      <li>Adult supervision required for children under 12</li>
-                      <li>Hot tub covers must lock when not in use</li>
-                    </ul>
+                  <RequirementItem code="TAC §749.3039(b)" title="Equipment Anchoring" frequency="Quarterly">
+                    Outdoor play equipment securely anchored to prevent collapsing, tipping, sliding, moving, or overturning.
                   </RequirementItem>
-                </div>
 
-                <div>
-                  <h3 className="font-semibold mb-3">Outdoor Hazards:</h3>
-
-                  <RequirementItem code="§749.3045" title="Outdoor Safety Check">
-                    <p>Inspect outdoor areas for:</p>
-                    <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>Broken glass or sharp objects</li>
-                      <li>Holes or uneven surfaces</li>
-                      <li>Toxic plants or mushrooms</li>
-                      <li>Standing water (mosquito breeding)</li>
-                      <li>Unsafe structures (sheds, playhouses)</li>
-                      <li>Proper storage of lawn equipment</li>
-                      <li>Secure garbage/recycling containers</li>
-                    </ul>
+                  <RequirementItem code="TAC §749.3039(c)" title="Fall Surfaces" frequency="Quarterly">
+                    Climbing equipment, swings, and slides not installed over asphalt or concrete; appropriate fall surface present.
                   </RequirementItem>
-                </div>
 
-                <div>
-                  <h3 className="font-semibold mb-3">Trampolines:</h3>
+                  <RequirementItem code="TAC §749.3039(d)" title="Equipment Maintenance" frequency="Quarterly">
+                    Outdoor equipment age-appropriate, cleaned regularly, maintained, and repaired as needed.
+                  </RequirementItem>
 
-                  <RequirementItem code="§749.3047" title="Trampoline Safety">
-                    <p>If trampoline present:</p>
-                    <ul className="list-disc list-inside mt-2 ml-4 space-y-1">
-                      <li>Safety net enclosure required</li>
-                      <li>Padding on springs and frame</li>
-                      <li>One child at a time rule</li>
-                      <li>Adult supervision for children under 12</li>
-                      <li>Regular inspection for wear/damage</li>
-                    </ul>
+                  <RequirementItem code="TAC §749.3039(e)" title="Trampoline Safety" frequency="Quarterly">
+                    Trampolines (if present) used only if approved by agency management; meet safety requirements: comply with manufacturer capacity; shock-absorbing pads cover springs, hooks, frame; ladder removed when not in use; caregiver supervision provided during use.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(5)" title="Outdoor Drainage" frequency="Quarterly">
+                    Outdoor play areas are well drained without standing water.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3041(4)" title="Outdoor Area Safety" frequency="Monthly">
+                    Outdoor areas are safe for children, kept clean, and maintained in good repair.
                   </RequirementItem>
                 </div>
 
@@ -840,6 +865,247 @@ export default function GuidePage() {
                     <li>"Do you have rules for outdoor play?"</li>
                   </ul>
                 </InterviewQuestion>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "vehicles":
+        return (
+          <div className="space-y-6">
+            <AlertBox type="info">
+              <strong>Note:</strong> Vehicle requirements apply to any vehicle used to transport children in foster care.
+            </AlertBox>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="h-5 w-5" />
+                  Vehicle Safety Requirements
+                  <Badge variant="destructive">REQUIRED</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RequirementItem code="TAC §749.3101(1), (2); TAC §749.3103" title="Vehicle Safety & Registration" frequency="Quarterly">
+                  Vehicles used to transport children are safe, currently inspected, and registered; vehicles have current liability insurance; appropriate child passenger safety systems and seat belts for all occupants.
+                </RequirementItem>
+
+                <RequirementItem code="TAC §749.2967" title="Weapons in Vehicles" frequency="Quarterly">
+                  Weapons, firearms, explosive materials, or projectiles in vehicles are unloaded and inaccessible to children.
+                </RequirementItem>
+
+                <TipBox>
+                  <strong>Inspection Tip:</strong> Check vehicle registration and insurance cards. Verify car seats are age-appropriate and properly installed. Check for any safety recalls.
+                </TipBox>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "swimming":
+        return (
+          <div className="space-y-6">
+            <AlertBox type="info">
+              <strong>Note:</strong> Mark "N/A" if home has no pool, spa, or wading pool. If present, all requirements must be met.
+            </AlertBox>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Waves className="h-5 w-5" />
+                  Swimming Area Safety Requirements
+                  <Badge variant="destructive">REQUIRED</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-3">Pool Fencing & Barriers:</h3>
+
+                  <RequirementItem code="TAC §749.3133(c), (d)" title="Pool Fence Requirements" frequency="Quarterly">
+                    Pool has well-constructed fence or wall at least 4 feet high installed completely around pool area; no gaps or openings.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(e)" title="Fence Gates" frequency="Monthly">
+                    Fence gates are self-closing, self-latching, and locked when pool not in use; keys not accessible to children under 16 years old or children receiving treatment services.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(f)" title="Door Access to Pool" frequency="Monthly">
+                    Doors leading from home to pool area have lock that only adults or children over 10 years old can reach; OR door alarm installed if lock height not feasible due to fire code.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(g)" title="Fence Climbing Prevention" frequency="Quarterly">
+                    Furniture, equipment, or large materials are not positioned to allow child to scale fence or release lock.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Safety Equipment:</h3>
+
+                  <RequirementItem code="TAC §749.3133(h)" title="Life-Saving Devices" frequency="Monthly">
+                    At least 2 life-saving devices available and accessible; one additional device for each 2,000 square feet of water surface.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(i)" title="Drain Grates" frequency="Quarterly">
+                    Drain grates in place, in good repair, and capable of removal only with tools.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(j)" title="Supervision Visibility" frequency="Quarterly">
+                    Caregivers able to clearly see all parts of swimming area when supervising children in area.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(k)" title="Water Clarity" frequency="Monthly">
+                    Bottom of pool visible at all times; water clarity maintained.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(l)" title="Pool Covers" frequency="Monthly">
+                    Pool covers completely removed prior to pool use; never partially covering pool during use.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(m)" title="Pump Control" frequency="Quarterly">
+                    Adult present who can immediately turn off pump and filtering system when any child is in pool.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Pool Chemicals & Equipment:</h3>
+
+                  <RequirementItem code="TAC §749.3133(n)" title="Chemical Storage" frequency="Monthly">
+                    Pool chemicals and pumps inaccessible to children; stored in locked area.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(o)" title="Pool Machinery Rooms" frequency="Monthly">
+                    Pool machinery rooms locked to prevent children's access.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3133(p)" title="Above-Ground Pools" frequency="Quarterly">
+                    Above-ground pool has barrier preventing child's access; inaccessible to children when not in use; meets all other pool safety requirements.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Wading Pools & Hot Tubs:</h3>
+
+                  <RequirementItem code="TAC §749.3145" title="Wading Pools" frequency="Weekly">
+                    Wading pools stored out of children's reach; stored to prevent water accumulation; drained at least daily when in use.
+                    <TipBox>Weekly monitoring applies during active use season.</TipBox>
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.3147" title="Hot Tubs" frequency="Monthly">
+                    Hot tub has locking cover when not in use OR is enclosed meeting requirements of §749.3133.
+                  </RequirementItem>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "infants":
+        return (
+          <div className="space-y-6">
+            <AlertBox type="info">
+              <strong>Note:</strong> Mark "N/A" if home has no infants or toddlers. These requirements apply specifically to children under 3 years old.
+            </AlertBox>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Baby className="h-5 w-5" />
+                  Infants & Toddlers Safety Requirements
+                  <Badge variant="destructive">REQUIRED</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-3">Environment Safety:</h3>
+
+                  <RequirementItem code="TAC §749.1803(c)" title="Safe Environment" frequency="Monthly">
+                    Environment safe for infants/toddlers: free from choking hazards, electrical shock hazards, unstable or broken furniture.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1805(1)" title="Individual Cribs" frequency="Monthly">
+                    Each infant has own crib (no crib sharing).
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1805(2)" title="Age-Appropriate Toys" frequency="Monthly">
+                    Sufficient number of age-appropriate toys available for infant/toddler development.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Crib Safety Requirements:</h3>
+
+                  <RequirementItem code="TAC §749.1807(a)(1)" title="Crib Mattress" frequency="Monthly">
+                    Crib has firm, flat mattress that snugly fits sides of crib; mattress not supplemented with foam materials or pads.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(2)" title="Crib Sheets" frequency="Monthly">
+                    Crib sheets fit snugly; not an entanglement hazard.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(3)" title="Mattress Protection" frequency="Monthly">
+                    Crib mattress is waterproof or has washable mattress cover.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(4)" title="Crib Hardware" frequency="Monthly">
+                    Crib has secure mattress support hangers; no loose hardware, improperly installed parts, or damaged parts.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(5)" title="Crib Slat Spacing" frequency="Quarterly">
+                    Crib slats/poles have maximum spacing of 2⅜ inches between them.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(6)" title="Corner Posts" frequency="Quarterly">
+                    Crib corner posts no more than 1/16 inch above end panels.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(7)" title="Crib Headboard/Footboard" frequency="Quarterly">
+                    Crib has no cutout areas in headboard or footboard that would entrap child's head or body.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1807(a)(8)" title="Drop Rails" frequency="Monthly">
+                    Crib drop rails (if present) fasten securely and cannot be opened by child.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1809(2)(A), (B)" title="Mesh Cribs/Play Yards" frequency="Monthly">
+                    Mesh crib/play yard has mesh securely attached to top rail, side rail, and floor plate; if has folding sides, they securely latch into place when raised.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Equipment Safety:</h3>
+
+                  <RequirementItem code="TAC §749.1811(a)" title="Safety Straps" frequency="Monthly">
+                    High chair, swing, stroller, infant carrier, rocker, and bouncer seat have functional safety straps; used consistently.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1813(a)" title="Prohibited Items" frequency="Monthly">
+                    Baby walker, baby bungee jumper, accordion-style safety gate, and toys small enough to swallow or create choking hazard NOT USED.
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1813(b)" title="Sleeping Surfaces" frequency="Monthly">
+                    Infants do not sleep on bean bags, waterbeds, or foam pads.
+                  </RequirementItem>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Safe Sleep Practices:</h3>
+
+                  <AlertBox type="danger">
+                    <strong>CRITICAL: Safe Sleep Requirements</strong>
+                  </AlertBox>
+
+                  <RequirementItem code="TAC §749.1813(b)" title="Bare Crib for Infants Under 12 Months" frequency="Monthly">
+                    Crib is BARE for infant younger than twelve months (only tight-fitting sheet and mattress cover meeting TAC requirements; NO bumpers, blankets, pillows, stuffed animals, or other items).
+                  </RequirementItem>
+
+                  <RequirementItem code="TAC §749.1815" title="Safe Sleep Position & Environment" frequency="Monthly">
+                    Infants not yet able to turn over independently placed on backs to sleep; infants NEVER sleep with sleeping adult (including in caregiver's bed, on couch, in recliner); nothing covering infant's head, face, or crib.
+                  </RequirementItem>
+                </div>
+
+                <TipBox>
+                  <strong>Important:</strong> Safe sleep practices are critical for preventing SIDS. Always verify compliance with these requirements during monthly visits when infants are present.
+                </TipBox>
               </CardContent>
             </Card>
           </div>
@@ -1348,6 +1614,296 @@ export default function GuidePage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )
+
+      case "packages":
+        return (
+          <div className="space-y-6">
+            <AlertBox type="warning">
+              <strong>Package-Specific Requirements:</strong> These requirements apply ONLY to homes credentialed for specific T3C specialized service packages. 
+              Core requirements apply to ALL homes. Only assess package-specific requirements if the home is credentialed for that package.
+            </AlertBox>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  ☑ Mental & Behavioral Health Support Services
+                  <Badge variant="secondary">Package-Specific</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <AlertBox type="info">
+                  <strong>Apply ONLY to homes credentialed for Mental & Behavioral Health Support Services Package</strong>
+                </AlertBox>
+
+                <RequirementItem code="T3C Blueprint p.82; RCC Term 7" title="Crisis Safety Assessment" frequency="Monthly">
+                  Home assessed for items that could be used for self-harm; all identified risk items (sharp objects, cords, medications, chemicals) secured or removed from accessible areas.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Enhanced Medication Security" frequency="Monthly">
+                  All psychotropic and controlled substance medications stored under enhanced double-lock system accessible only to designated caregivers; medication storage location not disclosed to youth with self-harm risk.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Safe De-escalation Spaces" frequency="Quarterly">
+                  Designated calm-down/regulation area available that is free from hazards, contains soft seating/cushions, provides visual privacy, and allows for caregiver monitoring.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Sensory Regulation Tools" frequency="Quarterly">
+                  Sensory regulation tools readily available including weighted blankets, fidget items, calming music options, and adjustable lighting capability in regulation spaces.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82; RCC Term 7" title="Crisis Communication Systems" frequency="Quarterly">
+                  Reliable phone and high-speed internet access verified functional for 24/7 crisis support line, teletherapy participation, psychiatric consultation, and emergency communication with case management.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Crisis Intervention Protocols" frequency="Quarterly">
+                  Posted crisis intervention protocols visible and current; emergency contact numbers for crisis team, on-call supervisor, and emergency services readily accessible; first aid kit stocked and accessible.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.78-93; RCC Term 7" title="Private Therapy Space" frequency="Quarterly">
+                  Quiet, confidential space available for in-home therapy sessions or teletherapy participation; free from interruptions; adequate technology setup for virtual sessions.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Behavioral Monitoring Tools" frequency="Quarterly">
+                  Systems in place for tracking behavioral patterns (charts, apps, or logs); accessible to caregivers; used consistently.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.82" title="Secondary Trauma Prevention" frequency="Quarterly">
+                  Evidence of caregiver self-care systems including respite care arrangements, support group participation, and stress management resources.
+                </RequirementItem>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Stethoscope className="h-5 w-5" />
+                  ☑ Substance Use Support Services
+                  <Badge variant="secondary">Package-Specific</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <AlertBox type="info">
+                  <strong>Apply ONLY to homes credentialed for Substance Use Support Services Package</strong>
+                </AlertBox>
+
+                <RequirementItem code="T3C Blueprint p.56-66; RCC Term 7" title="Substance-Free Environment" frequency="Monthly">
+                  <strong>Substance-Free Environment:</strong> Home verified substance-free with no alcohol, illegal drugs, or non-prescribed controlled substances accessible to youth; prescription medications properly secured.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Drug Testing Supplies Storage" frequency="Quarterly">
+                  Secure, private storage location for drug screening supplies (if applicable); testing conducted with dignity and privacy.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66; RCC Term 7" title="Recovery Support Environment" frequency="Quarterly">
+                  Home environment supports recovery with minimal triggers; access to healthy recreational activities; structured routine supporting sobriety.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Private Counseling Space" frequency="Quarterly">
+                  Designated private, confidential space for substance use counseling sessions (in-home or teletherapy); appropriate technology for virtual sessions.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Peer Support Resources" frequency="Quarterly">
+                  Evidence of connection to recovery support resources; information about peer support groups accessible; caregiver knowledge of local recovery resources.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66; RCC Term 7" title="Crisis Response Protocols" frequency="Quarterly">
+                  Posted crisis response protocols for substance use emergencies including overdose response; naloxone (Narcan) available if prescribed; emergency contacts accessible.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Medication Management for MAT" frequency="Monthly">
+                  Enhanced security for Medication-Assisted Treatment medications; administration logs maintained; only designated caregivers administer. (If applicable)
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Therapeutic Activities Access" frequency="Quarterly">
+                  Resources supporting healthy coping strategies including exercise equipment, art supplies, journals, mindfulness tools.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.56-66" title="Caregiver Substance Abuse Awareness Training" frequency="Annually">
+                  Documented completion of 4-hour Substance Abuse Awareness training; understanding of addiction, recovery, and relapse prevention.
+                </RequirementItem>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  ☑ Short-Term Assessment Support Services (STASS)
+                  <Badge variant="secondary">Package-Specific</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <AlertBox type="info">
+                  <strong>Apply ONLY to homes credentialed for Short-Term Assessment Support Services Package</strong>
+                </AlertBox>
+
+                <RequirementItem code="T3C Blueprint p.67-75; RCC Term 7" title="Assessment Environment" frequency="Quarterly">
+                  Calm, structured environment conducive to behavioral observation and assessment; minimal overstimulation; predictable daily routines.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Observation Documentation Space" frequency="Quarterly">
+                  Designated quiet space for caregivers to complete detailed observation documentation; computer access for timely documentation entry.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Multi-Purpose Assessment Areas" frequency="Quarterly">
+                  Variety of environments to observe youth in different settings (structured activities, unstructured time, meal times, homework, recreational); appropriate materials for age-appropriate activities.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75; RCC Term 7" title="Professional Meeting Space" frequency="Quarterly">
+                  Private, professional space suitable for assessment team meetings, family meetings, and consultation with treatment professionals; technology for virtual meetings functional.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Crisis Safety Preparedness" frequency="Monthly">
+                  Enhanced crisis management readiness given short-term nature and assessment focus; de-escalation spaces available; crisis protocols posted; emergency communication systems functional.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Comprehensive Documentation Systems" frequency="Quarterly">
+                  Robust documentation infrastructure including behavioral tracking tools, daily observation logs, assessment forms; secure storage for assessment materials.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Privacy and Confidentiality" frequency="Monthly">
+                  Assessment materials, observation notes, and documentation stored securely; conversations about assessment private and confidential.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Flexible Scheduling Accommodation" frequency="Quarterly">
+                  Home environment supports flexible scheduling for assessments, evaluations, team meetings; caregivers available for intensive collaboration during assessment period.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.67-75" title="Short-Term Assessment Training" frequency="Annually">
+                  Documented completion of 4-hour Short-Term Assessment Skills training; caregiver understanding of assessment process, observation techniques, documentation requirements.
+                </RequirementItem>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  ☑ T3C Treatment Foster Family Care Support Services
+                  <Badge variant="secondary">Package-Specific</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <AlertBox type="info">
+                  <strong>Apply ONLY to homes credentialed for T3C Treatment Foster Family Care Package</strong>
+                </AlertBox>
+
+                <RequirementItem code="T3C Blueprint p.135-147; TAC §749.863(c)" title="Enhanced Therapeutic Environment" frequency="Quarterly">
+                  Home demonstrates highest level of therapeutic milieu with trauma-informed design throughout; calming colors; minimal clutter; organized spaces; sensory regulation tools readily available.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147; RCC Term 7" title="Intensive Treatment Support Space" frequency="Quarterly">
+                  Dedicated, private space for intensive therapeutic activities and treatment team meetings; appropriate for both individual and small group sessions; soundproof or private location.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Advanced Crisis Management Capability" frequency="Monthly">
+                  Enhanced crisis intervention infrastructure including multiple de-escalation spaces; comprehensive crisis response equipment; advanced safety protocols posted; 24/7 crisis support access verified.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Sophisticated Documentation Infrastructure" frequency="Quarterly">
+                  Advanced documentation systems supporting intensive treatment model; multiple concurrent treatment plans manageable; technology supports real-time documentation; secure data management.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147; RCC Term 7" title="Enhanced Medication Management" frequency="Monthly">
+                  Treatment-level medication administration systems; psychotropic medication monitoring protocols; medication administration logs current; only specially-trained caregivers administer complex regimens.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Multi-Modal Therapeutic Resources" frequency="Quarterly">
+                  Variety of therapeutic modalities supported including art therapy supplies, play therapy materials, bibliotherapy resources, mindfulness tools, physical activity options.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Family Therapy Accommodation" frequency="Quarterly">
+                  Spaces and scheduling flexibility to accommodate intensive family therapy sessions; private areas for family meetings; technology for virtual family sessions functional.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Professional Collaboration Infrastructure" frequency="Quarterly">
+                  Home setup supports frequent professional collaboration including school liaison meetings, therapy coordination, psychiatrist consultations; technology supports multiple professional connections.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147; RCC Term 7" title="Intensive Behavioral Support Systems" frequency="Monthly">
+                  Environmental modifications supporting intensive behavioral interventions; visual supports for behavior plans; data collection systems; positive reinforcement systems visible.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147; TAC §749.863(c)" title="Treatment Foster Care Training Completion" frequency="Annually">
+                  Documented completion of 20 hours additional Treatment Foster Care training beyond basic requirements; demonstrated advanced therapeutic parenting competencies.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Enhanced Safety Infrastructure" frequency="Quarterly">
+                  Highest level of safety modifications including advanced monitoring systems (when approved in service plan); multiple safety zones; emergency response equipment; backup communication systems.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.135-147" title="Respite Care Support System" frequency="Quarterly">
+                  Established respite care relationships with treatment-trained respite providers; documented respite care plan; respite providers familiar with child's treatment needs.
+                </RequirementItem>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  ☑ IDD/Autism Spectrum Disorder Support Services
+                  <Badge variant="secondary">Package-Specific</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <AlertBox type="info">
+                  <strong>Apply ONLY to homes credentialed for IDD/Autism Spectrum Disorder Support Services Package</strong>
+                </AlertBox>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Sensory-Friendly Spaces" frequency="Quarterly">
+                  Designated quiet spaces available with adjustable/dimmable lighting options; sensory regulation tools accessible including weighted blankets, noise-canceling headphones, fidget tools, and other sensory items matched to child's needs.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135; RCC Term 7" title="Wandering/Elopement Safety Systems" frequency="Monthly">
+                  Door alarms installed and functional on all exterior doors; secure fencing around yard perimeter (minimum 4 feet high); window locks functional on all accessible windows; safety plan posted and current.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Visual Supports System" frequency="Quarterly">
+                  Visual schedules posted in common areas and child's bedroom; spaces clearly labeled with pictures and/or words; consistent organization maintained; predictable physical layout; transition warnings visible.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Accessibility Features" frequency="Quarterly">
+                  Wheelchair accessibility verified throughout home (if needed for placement); grab bars installed in bathrooms (if needed); ramps or lifts functional (if applicable); adequate space for mobility devices; doorways meet width requirements.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135; RCC Term 7" title="Technology Readiness" frequency="Quarterly">
+                  Reliable high-speed internet connection for teletherapy, educational technology, and virtual IEP/ARD meetings; designated charging stations for AAC (augmentative/alternative communication) devices; devices stored safely and accessibly; backup communication systems available.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Specialized Medical Equipment Space" frequency="Monthly">
+                  Adequate, clean, organized storage for feeding equipment (if applicable), positioning devices, adaptive equipment, or specialized medical supplies; equipment maintained in good working order.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Structured Routine Environment" frequency="Quarterly">
+                  Organized physical spaces supporting predictable daily routines; minimal clutter in common areas; consistent placement of frequently used items; labeled storage systems; designated spaces for specific activities.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Communication Systems" frequency="Monthly">
+                  Alternative communication systems (picture boards, PECS, AAC devices) present and functional; charged and accessible; backup systems available; visual supports for daily communication needs.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Sensory Accommodations" frequency="Quarterly">
+                  Environmental modifications in place based on child's sensory profile including appropriate lighting levels, noise reduction measures, tactile-friendly surfaces, temperature control, and designated sensory regulation areas.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Educational Support Space" frequency="Quarterly">
+                  Designated homework area with minimal distractions; adaptive learning tools available; organized materials for school activities; technology for educational supports functional.
+                </RequirementItem>
+
+                <RequirementItem code="T3C Blueprint p.123-135" title="Medical Management Systems" frequency="Monthly">
+                  Medication administration system appropriate for complexity of regimen; specialized diet food storage (if applicable); medical equipment properly maintained; emergency medical protocols posted.
+                </RequirementItem>
+              </CardContent>
+            </Card>
+
+            <TipBox>
+              <strong>Package Credentialing:</strong> Always verify which packages a home is credentialed for before assessing package-specific requirements. 
+              Core requirements apply to ALL homes regardless of package credentials.
+            </TipBox>
           </div>
         )
 
@@ -1896,10 +2452,11 @@ export default function GuidePage() {
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl p-8 text-center">
+            <div className="bg-gradient-to-r from-refuge-purple to-refuge-magenta text-white rounded-xl p-8 text-center">
             <h1 className="text-3xl font-bold mb-2">🏠 Home Visit Liaison Reference Guide</h1>
-            <p className="text-lg opacity-95">Enhanced Digital Monitoring - TAC Chapter 749 & RCC Requirements</p>
-            <p className="text-sm opacity-90 mt-2">Version 25.1 - Phase 1 Implementation</p>
+            <p className="text-lg opacity-95">Enhanced Digital Monitoring - TAC Chapter 749, RCC Contract & T3C Blueprint</p>
+            <p className="text-sm opacity-90 mt-2">Version 3.0 - Enhanced with Package-Specific Requirements</p>
+            <p className="text-xs opacity-80 mt-1">November 2025 - Revision 3.0</p>
           </div>
         </div>
 
