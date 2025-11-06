@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  TraumaInformedCareSection,
   FosterParentInterviewSection,
   QualityEnhancementSection,
   ChildrenPresentSection,
@@ -888,7 +887,7 @@ const EnhancedHomeVisitForm = ({
       case "documentation":
         return <ComplianceSection title="Documentation & Service Planning" section="documentation" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} />
       case "trauma-care":
-        return <TraumaInformedCareSection formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} />
+        return <ComplianceSection title="Trauma-Informed Care & Training" section="traumaInformedCare" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} singleStatus={true} />
       case "foster-parent-interview":
         return <FosterParentInterviewSection formData={formData} onChange={handleChange} />
       case "outdoor-space":
@@ -1495,7 +1494,7 @@ const FosterHomeSection = ({ formData, onChange }) => {
   )
 }
 
-const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }) => {
+const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, singleStatus = false }) => {
   const sectionData = formData[section]
   const [expandedRows, setExpandedRows] = useState(new Set())
 
@@ -1584,13 +1583,22 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
       {/* Compact Table Format */}
       <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold">
+        <div className={`grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold`}>
           <div className="col-span-2 text-gray-700">Number</div>
-          <div className="col-span-5 text-gray-700">Minimum Standard</div>
-          <div className="col-span-1 text-center text-gray-700">Month 1</div>
-          <div className="col-span-1 text-center text-gray-700">Month 2</div>
-          <div className="col-span-1 text-center text-gray-700">Month 3</div>
-          <div className="col-span-2 text-center text-gray-700">Notes</div>
+          <div className={singleStatus ? "col-span-7 text-gray-700" : "col-span-5 text-gray-700"}>Minimum Standard</div>
+          {singleStatus ? (
+            <>
+              <div className="col-span-1 text-center text-gray-700">Status</div>
+              <div className="col-span-2 text-center text-gray-700">Notes</div>
+            </>
+          ) : (
+            <>
+              <div className="col-span-1 text-center text-gray-700">Month 1</div>
+              <div className="col-span-1 text-center text-gray-700">Month 2</div>
+              <div className="col-span-1 text-center text-gray-700">Month 3</div>
+              <div className="col-span-2 text-center text-gray-700">Notes</div>
+            </>
+          )}
         </div>
 
         {/* Table Rows */}
@@ -1599,9 +1607,11 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
             const isExpanded = expandedRows.has(index)
             // Support both new format (month1/month2/month3) and old format (status/notes) for backward compatibility
             const hasNewFormat = item.month1 !== undefined || item.month2 !== undefined || item.month3 !== undefined
-            const hasNotes = hasNewFormat 
-              ? (item.month1?.notes || item.month2?.notes || item.month3?.notes)
-              : item.notes
+            const hasNotes = singleStatus
+              ? item.notes
+              : hasNewFormat 
+                ? (item.month1?.notes || item.month2?.notes || item.month3?.notes)
+                : item.notes
             const showExpandButton = hasNotes || item.requirement.length > 60
 
             return (
@@ -1624,129 +1634,174 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                   </div>
 
                   {/* Minimum Standard Column */}
-                  <div className="col-span-5 text-gray-900 leading-tight text-sm">
+                  <div className={singleStatus ? "col-span-7 text-gray-900 leading-tight text-sm" : "col-span-5 text-gray-900 leading-tight text-sm"}>
                     {item.requirement}
                   </div>
 
-                  {/* Month 1 - Compliant/N/A Buttons */}
-                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
-                    {hasNewFormat ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant={item.month1?.compliant ? "default" : "outline"}
-                          className={`h-8 w-full text-xs px-2 font-medium ${
-                            item.month1?.compliant
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "hover:bg-green-50"
-                          }`}
-                          onClick={() => {
-                            onChange(section, index, "month1", "compliant", !item.month1?.compliant)
-                          }}
-                        >
-                          {item.month1?.compliant ? "✓" : "Compliant"}
-                        </Button>
-                        {item.allowNA && (
+                  {singleStatus ? (
+                    /* Single Status Column - For quarterly sections without monthly tracking */
+                    <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
+                      {/* Support old format (status/notes) for Trauma Informed Care */}
+                      {item.status !== undefined ? (
+                        <>
                           <Button
                             size="sm"
-                            variant={item.month1?.na ? "default" : "outline"}
-                            className={`h-6 w-full text-xs px-1 ${
-                              item.month1?.na
-                                ? "bg-slate-600 hover:bg-slate-700 text-white"
-                                : "hover:bg-slate-50"
+                            variant={item.status === "compliant" ? "default" : "outline"}
+                            className={`h-8 w-full text-xs px-2 font-medium ${
+                              item.status === "compliant"
+                                ? "bg-green-600 hover:bg-green-700 text-white"
+                                : "hover:bg-green-50"
                             }`}
                             onClick={() => {
-                              onChange(section, index, "month1", "na", !item.month1?.na)
+                              onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")
                             }}
                           >
-                            N/A
+                            {item.status === "compliant" ? "✓" : "Compliant"}
                           </Button>
+                          {item.allowNA && (
+                            <Button
+                              size="sm"
+                              variant={item.status === "na" ? "default" : "outline"}
+                              className={`h-6 w-full text-xs px-1 ${
+                                item.status === "na"
+                                  ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                  : "hover:bg-slate-50"
+                              }`}
+                              onClick={() => {
+                                onChange(section, index, "status", item.status === "na" ? "" : "na")
+                              }}
+                            >
+                              N/A
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Month 1 - Compliant/N/A Buttons */}
+                      <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
+                        {hasNewFormat ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={item.month1?.compliant ? "default" : "outline"}
+                              className={`h-8 w-full text-xs px-2 font-medium ${
+                                item.month1?.compliant
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                  : "hover:bg-green-50"
+                              }`}
+                              onClick={() => {
+                                onChange(section, index, "month1", "compliant", !item.month1?.compliant)
+                              }}
+                            >
+                              {item.month1?.compliant ? "✓" : "Compliant"}
+                            </Button>
+                            {item.allowNA && (
+                              <Button
+                                size="sm"
+                                variant={item.month1?.na ? "default" : "outline"}
+                                className={`h-6 w-full text-xs px-1 ${
+                                  item.month1?.na
+                                    ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                    : "hover:bg-slate-50"
+                                }`}
+                                onClick={() => {
+                                  onChange(section, index, "month1", "na", !item.month1?.na)
+                                }}
+                              >
+                                N/A
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
                         )}
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
-                  </div>
+                      </div>
 
-                  {/* Month 2 - Compliant/N/A Buttons */}
-                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
-                    {hasNewFormat ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant={item.month2?.compliant ? "default" : "outline"}
-                          className={`h-8 w-full text-xs px-2 font-medium ${
-                            item.month2?.compliant
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "hover:bg-green-50"
-                          }`}
-                          onClick={() => {
-                            onChange(section, index, "month2", "compliant", !item.month2?.compliant)
-                          }}
-                        >
-                          {item.month2?.compliant ? "✓" : "Compliant"}
-                        </Button>
-                        {item.allowNA && (
-                          <Button
-                            size="sm"
-                            variant={item.month2?.na ? "default" : "outline"}
-                            className={`h-6 w-full text-xs px-1 ${
-                              item.month2?.na
-                                ? "bg-slate-600 hover:bg-slate-700 text-white"
-                                : "hover:bg-slate-50"
-                            }`}
-                            onClick={() => {
-                              onChange(section, index, "month2", "na", !item.month2?.na)
-                            }}
-                          >
-                            N/A
-                          </Button>
+                      {/* Month 2 - Compliant/N/A Buttons */}
+                      <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
+                        {hasNewFormat ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={item.month2?.compliant ? "default" : "outline"}
+                              className={`h-8 w-full text-xs px-2 font-medium ${
+                                item.month2?.compliant
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                  : "hover:bg-green-50"
+                              }`}
+                              onClick={() => {
+                                onChange(section, index, "month2", "compliant", !item.month2?.compliant)
+                              }}
+                            >
+                              {item.month2?.compliant ? "✓" : "Compliant"}
+                            </Button>
+                            {item.allowNA && (
+                              <Button
+                                size="sm"
+                                variant={item.month2?.na ? "default" : "outline"}
+                                className={`h-6 w-full text-xs px-1 ${
+                                  item.month2?.na
+                                    ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                    : "hover:bg-slate-50"
+                                }`}
+                                onClick={() => {
+                                  onChange(section, index, "month2", "na", !item.month2?.na)
+                                }}
+                              >
+                                N/A
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
                         )}
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
-                  </div>
+                      </div>
 
-                  {/* Month 3 - Compliant/N/A Buttons */}
-                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
-                    {hasNewFormat ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant={item.month3?.compliant ? "default" : "outline"}
-                          className={`h-8 w-full text-xs px-2 font-medium ${
-                            item.month3?.compliant
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "hover:bg-green-50"
-                          }`}
-                          onClick={() => {
-                            onChange(section, index, "month3", "compliant", !item.month3?.compliant)
-                          }}
-                        >
-                          {item.month3?.compliant ? "✓" : "Compliant"}
-                        </Button>
-                        {item.allowNA && (
-                          <Button
-                            size="sm"
-                            variant={item.month3?.na ? "default" : "outline"}
-                            className={`h-6 w-full text-xs px-1 ${
-                              item.month3?.na
-                                ? "bg-slate-600 hover:bg-slate-700 text-white"
-                                : "hover:bg-slate-50"
-                            }`}
-                            onClick={() => {
-                              onChange(section, index, "month3", "na", !item.month3?.na)
-                            }}
-                          >
-                            N/A
-                          </Button>
+                      {/* Month 3 - Compliant/N/A Buttons */}
+                      <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
+                        {hasNewFormat ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={item.month3?.compliant ? "default" : "outline"}
+                              className={`h-8 w-full text-xs px-2 font-medium ${
+                                item.month3?.compliant
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
+                                  : "hover:bg-green-50"
+                              }`}
+                              onClick={() => {
+                                onChange(section, index, "month3", "compliant", !item.month3?.compliant)
+                              }}
+                            >
+                              {item.month3?.compliant ? "✓" : "Compliant"}
+                            </Button>
+                            {item.allowNA && (
+                              <Button
+                                size="sm"
+                                variant={item.month3?.na ? "default" : "outline"}
+                                className={`h-6 w-full text-xs px-1 ${
+                                  item.month3?.na
+                                    ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                    : "hover:bg-slate-50"
+                                }`}
+                                onClick={() => {
+                                  onChange(section, index, "month3", "na", !item.month3?.na)
+                                }}
+                              >
+                                N/A
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
                         )}
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* Notes Column - Always show expand button for notes */}
                   <div className="col-span-2 flex items-center justify-center gap-1">
@@ -1769,7 +1824,19 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                 {/* Expanded Notes Row */}
                 {isExpanded && (
                   <div className="bg-gray-50 border-t px-2 py-2 space-y-2">
-                    {hasNewFormat ? (
+                    {singleStatus ? (
+                      /* Single notes field for single-status sections */
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
+                        <Textarea
+                          value={item.notes || ""}
+                          onChange={(e) => onChange(section, index, "notes", e.target.value)}
+                          placeholder="Optional..."
+                          className="text-sm h-10 resize-none p-2"
+                          rows={2}
+                        />
+                      </div>
+                    ) : hasNewFormat ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 1 Notes</Label>
@@ -2008,7 +2075,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="fireCurrentDate">Current Inspection Date *</Label>
                 <Input
@@ -2055,7 +2122,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-2">
+              <div className="flex items-center space-x-2 pt-6">
                 <Checkbox
                   id="fireCopyOnFile"
                   checked={inspections.fire.copyOnFile}
@@ -2066,7 +2133,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                 </Label>
               </div>
 
-              <div>
+              <div className="md:col-span-3">
                 <Label htmlFor="fireNotes">Notes</Label>
                 <Textarea
                   id="fireNotes"
@@ -2088,7 +2155,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="healthCurrentDate">Current Inspection Date *</Label>
                 <Input
@@ -2135,7 +2202,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-2">
+              <div className="flex items-center space-x-2 pt-6">
                 <Checkbox
                   id="healthCopyOnFile"
                   checked={inspections.health.copyOnFile}
@@ -2146,7 +2213,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                 </Label>
               </div>
 
-              <div>
+              <div className="md:col-span-3">
                 <Label htmlFor="healthNotes">Notes</Label>
                 <Textarea
                   id="healthNotes"
