@@ -518,6 +518,7 @@ export default function AppointmentDetailPage() {
         },
         attendees: {
           childrenPresent: formData.childrenPresent,
+          attendance: formData.attendance,
         },
         homeEnvironment: {
           homeCondition: formData.homeCondition,
@@ -673,6 +674,7 @@ export default function AppointmentDetailPage() {
         },
         attendees: {
           childrenPresent: formData.childrenPresent,
+          attendance: formData.attendance,
         },
         homeEnvironment: {
           homeCondition: formData.homeCondition,

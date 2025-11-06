@@ -430,6 +430,12 @@ const EnhancedHomeVisitForm = ({
     },
     // Children Present (Simplified for Liaisons)
     childrenPresent: [],
+    // Attendance at Visit
+    attendance: {
+      fosterParents: [], // Array of { name: string, present: boolean }
+      staff: [], // Array of { name: string, role: string, present: boolean }
+      others: [], // Array of { name: string, role: string, present: boolean }
+    },
     // Visit Summary
     visitSummary: {
       overallStatus: "", // fully-compliant, substantially-compliant, corrective-action, immediate-intervention
@@ -605,6 +611,7 @@ const EnhancedHomeVisitForm = ({
         } : prev.household,
         // Attendees
         childrenPresent: attendees?.childrenPresent || prev.childrenPresent,
+        attendance: attendees?.attendance || prev.attendance,
         // Home environment
         homeCondition: homeEnvironment?.homeCondition || prev.homeCondition,
         outdoorSpace: homeEnvironment?.outdoorSpace || prev.outdoorSpace,
@@ -1560,6 +1567,182 @@ const FosterHomeSection = ({ formData, onChange }) => {
               </Label>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Attendance Section */}
+    <div className="border-t pt-3 mt-3">
+      <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+        <Users className="h-4 w-4" />
+        Attendance at Visit
+      </h3>
+      
+      {/* Foster Parents Attendance */}
+      {providers.length > 0 && (
+        <div className="mb-3">
+          <Label className="text-xs font-medium text-gray-700 mb-2 block">Foster Parents</Label>
+          <div className="space-y-2">
+            {providers.map((provider, idx) => {
+              const attendanceKey = `fosterParent_${idx}`
+              const isPresent = formData.attendance?.fosterParents?.find(p => p.name === provider.name)?.present || false
+              
+              return (
+                <div key={idx} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={attendanceKey}
+                    checked={isPresent}
+                    onCheckedChange={(checked) => {
+                      const current = formData.attendance?.fosterParents || []
+                      const existing = current.findIndex(p => p.name === provider.name)
+                      
+                      if (existing >= 0) {
+                        const updated = [...current]
+                        updated[existing].present = checked
+                        onChange("attendance.fosterParents", updated)
+                      } else {
+                        onChange("attendance.fosterParents", [...current, { name: provider.name, present: checked }])
+                      }
+                    }}
+                  />
+                  <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
+                    {provider.name}
+                    {provider.relationship && <span className="text-gray-500 ml-1">({provider.relationship})</span>}
+                  </Label>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Staff Attendance */}
+      <div className="mb-3">
+        <Label className="text-xs font-medium text-gray-700 mb-2 block">Staff Conducting Visit</Label>
+        {appointmentData?.appointment?.assigned_to_name ? (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="staff_conducting"
+              checked={formData.attendance?.staff?.find(s => s.name === appointmentData.appointment.assigned_to_name)?.present || false}
+              onCheckedChange={(checked) => {
+                const staffName = appointmentData.appointment.assigned_to_name
+                const staffRole = appointmentData.appointment.assigned_to_role || "Staff"
+                const current = formData.attendance?.staff || []
+                const existing = current.findIndex(s => s.name === staffName)
+                
+                if (existing >= 0) {
+                  const updated = [...current]
+                  updated[existing].present = checked
+                  onChange("attendance.staff", updated)
+                } else {
+                  onChange("attendance.staff", [...current, { name: staffName, role: staffRole, present: checked }])
+                }
+              }}
+            />
+            <Label htmlFor="staff_conducting" className="cursor-pointer text-sm">
+              {appointmentData.appointment.assigned_to_name}
+              {appointmentData.appointment.assigned_to_role && (
+                <span className="text-gray-500 ml-1">({appointmentData.appointment.assigned_to_role})</span>
+              )}
+            </Label>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">No staff assigned to this appointment</p>
+        )}
+      </div>
+
+      {/* Other Attendees */}
+      <div>
+        <Label className="text-xs font-medium text-gray-700 mb-2 block">Other Attendees (Optional)</Label>
+        <div className="space-y-2">
+          {(formData.attendance?.others || []).map((other, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Checkbox
+                id={`other_${idx}`}
+                checked={other.present}
+                onCheckedChange={(checked) => {
+                  const current = formData.attendance?.others || []
+                  const updated = [...current]
+                  updated[idx].present = checked
+                  onChange("attendance.others", updated)
+                }}
+              />
+              <Label htmlFor={`other_${idx}`} className="cursor-pointer text-sm flex-1">
+                {other.name}
+                {other.role && <span className="text-gray-500 ml-1">({other.role})</span>}
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                onClick={() => {
+                  const current = formData.attendance?.others || []
+                  onChange("attendance.others", current.filter((_, i) => i !== idx))
+                }}
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+          
+          {/* Add Other Attendee */}
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder="Name"
+              value={formData.attendance?.newOtherName || ""}
+              onChange={(e) => onChange("attendance.newOtherName", e.target.value)}
+              className="flex-1 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && formData.attendance?.newOtherName) {
+                  const current = formData.attendance?.others || []
+                  onChange("attendance.others", [...current, { 
+                    name: formData.attendance.newOtherName, 
+                    role: formData.attendance.newOtherRole || "",
+                    present: true 
+                  }])
+                  onChange("attendance.newOtherName", "")
+                  onChange("attendance.newOtherRole", "")
+                }
+              }}
+            />
+            <Input
+              placeholder="Role (optional)"
+              value={formData.attendance?.newOtherRole || ""}
+              onChange={(e) => onChange("attendance.newOtherRole", e.target.value)}
+              className="w-32 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && formData.attendance?.newOtherName) {
+                  const current = formData.attendance?.others || []
+                  onChange("attendance.others", [...current, { 
+                    name: formData.attendance.newOtherName, 
+                    role: formData.attendance.newOtherRole || "",
+                    present: true 
+                  }])
+                  onChange("attendance.newOtherName", "")
+                  onChange("attendance.newOtherRole", "")
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (formData.attendance?.newOtherName) {
+                  const current = formData.attendance?.others || []
+                  onChange("attendance.others", [...current, { 
+                    name: formData.attendance.newOtherName, 
+                    role: formData.attendance.newOtherRole || "",
+                    present: true 
+                  }])
+                  onChange("attendance.newOtherName", "")
+                  onChange("attendance.newOtherRole", "")
+                }
+              }}
+              disabled={!formData.attendance?.newOtherName}
+            >
+              Add
+            </Button>
+          </div>
         </div>
       </div>
     </div>
