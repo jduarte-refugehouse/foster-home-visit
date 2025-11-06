@@ -55,10 +55,8 @@ const EnhancedHomeVisitForm = ({
       mode: "in-home",
       conductedBy: "",
       staffTitle: "",
-      licenseNumber: "",
       supervisor: "",
       agency: "Refuge House, Inc.",
-      region: "",
     },
     fosterHome: {
       familyName: "",
@@ -1020,7 +1018,7 @@ const EnhancedHomeVisitForm = ({
   const renderSectionContent = (sectionId) => {
     switch (sectionId) {
       case "visit-info":
-        return <VisitInfoSection formData={formData} onChange={handleChange} />
+        return <VisitInfoSection formData={formData} onChange={handleChange} appointmentData={appointmentData} prepopulationData={prepopulationData} />
       case "foster-home":
         return <FosterHomeSection formData={formData} onChange={handleChange} appointmentData={appointmentData} />
       case "medication":
@@ -1227,130 +1225,146 @@ const EnhancedHomeVisitForm = ({
 }
 
 // Section Components
-const VisitInfoSection = ({ formData, onChange }) => (
-  <div className="space-y-3">
-    <Alert className="py-2">
-      <AlertDescription className="text-xs">
-        <strong>Monthly Visit:</strong> Items marked "Quarterly" can be completed across any of the 3 visits or all at once.
-      </AlertDescription>
-    </Alert>
+const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationData }) => {
+  // Get staff name from appointment (whoever clicked start visit/drive)
+  const staffName = appointmentData?.appointment?.assigned_to_name || ""
+  
+  // Get case manager from home data (check multiple possible locations)
+  const caseManager = 
+    appointmentData?.appointment?.CaseManager || 
+    prepopulationData?.homeInfo?.contactPersonName || 
+    prepopulationData?.familyInfo?.caseManager || 
+    ""
+  
+  // Auto-populate fields if not already set
+  useEffect(() => {
+    // Auto-populate staff name
+    if (staffName && (!formData.visitInfo.conductedBy || formData.visitInfo.conductedBy === "")) {
+      onChange("visitInfo.conductedBy", staffName)
+    }
+    
+    // Default title to "Home Visit Liaison"
+    if (!formData.visitInfo.staffTitle || formData.visitInfo.staffTitle === "") {
+      onChange("visitInfo.staffTitle", "Home Visit Liaison")
+    }
+    
+    // Auto-populate supervisor (case manager)
+    if (caseManager && (!formData.visitInfo.supervisor || formData.visitInfo.supervisor === "")) {
+      onChange("visitInfo.supervisor", caseManager)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffName, caseManager]) // Only run when staffName or caseManager changes
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+  return (
+    <div className="space-y-3">
+      <Alert className="py-2">
+        <AlertDescription className="text-xs">
+          <strong>Monthly Visit:</strong> Items marked "Quarterly" can be completed across any of the 3 visits or all at once.
+        </AlertDescription>
+      </Alert>
 
-      <div>
-        <Label htmlFor="visitType">Visit Type *</Label>
-        <Select value={formData.visitInfo.visitType} onValueChange={(value) => onChange("visitInfo.visitType", value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="announced">Announced</SelectItem>
-            <SelectItem value="unannounced">Unannounced</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="visitType">Visit Type *</Label>
+          <Select value={formData.visitInfo.visitType} onValueChange={(value) => onChange("visitInfo.visitType", value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="announced">Announced</SelectItem>
+              <SelectItem value="unannounced">Unannounced</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="visitDate">Visit Date *</Label>
+          <Input
+            id="visitDate"
+            type="date"
+            value={formData.visitInfo.date}
+            onChange={(e) => onChange("visitInfo.date", e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="visitTime">Visit Time *</Label>
+          <Input
+            id="visitTime"
+            type="time"
+            value={formData.visitInfo.time}
+            onChange={(e) => onChange("visitInfo.time", e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="quarter">Quarter (Auto-calculated)</Label>
+          <Input id="quarter" value={formData.visitInfo.quarter} disabled className="bg-gray-100" />
+        </div>
+
+        <div>
+          <Label htmlFor="visitNumber">Visit Number This Quarter *</Label>
+          <Select
+            value={(formData.visitInfo.visitNumberThisQuarter || 1).toString()}
+            onValueChange={(value) => onChange("visitInfo.visitNumberThisQuarter", parseInt(value))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1st</SelectItem>
+              <SelectItem value="2">2nd</SelectItem>
+              <SelectItem value="3">3rd</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="visitDate">Visit Date *</Label>
-        <Input
-          id="visitDate"
-          type="date"
-          value={formData.visitInfo.date}
-          onChange={(e) => onChange("visitInfo.date", e.target.value)}
-        />
-      </div>
+      <div className="border-t pt-6">
+        <h3 className="font-semibold text-lg mb-4">Staff Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="conductedBy">Staff Name *</Label>
+            <Input
+              id="conductedBy"
+              value={formData.visitInfo.conductedBy || staffName}
+              onChange={(e) => onChange("visitInfo.conductedBy", e.target.value)}
+              placeholder="Your name"
+              className="text-sm"
+            />
+          </div>
 
-      <div>
-        <Label htmlFor="visitTime">Visit Time *</Label>
-        <Input
-          id="visitTime"
-          type="time"
-          value={formData.visitInfo.time}
-          onChange={(e) => onChange("visitInfo.time", e.target.value)}
-        />
-      </div>
+          <div>
+            <Label htmlFor="staffTitle">Title *</Label>
+            <Input
+              id="staffTitle"
+              value={formData.visitInfo.staffTitle || "Home Visit Liaison"}
+              onChange={(e) => onChange("visitInfo.staffTitle", e.target.value)}
+              placeholder="Home Visit Liaison"
+              className="text-sm"
+            />
+          </div>
 
-      <div>
-        <Label htmlFor="quarter">Quarter (Auto-calculated)</Label>
-        <Input id="quarter" value={formData.visitInfo.quarter} disabled className="bg-gray-100" />
-      </div>
+          <div>
+            <Label htmlFor="supervisor">Supervisor *</Label>
+            <Input
+              id="supervisor"
+              value={formData.visitInfo.supervisor || caseManager}
+              onChange={(e) => onChange("visitInfo.supervisor", e.target.value)}
+              placeholder="Case Manager"
+              className="text-sm"
+            />
+          </div>
 
-      <div>
-        <Label htmlFor="visitNumber">Visit Number This Quarter *</Label>
-        <Select
-          value={(formData.visitInfo.visitNumberThisQuarter || 1).toString()}
-          onValueChange={(value) => onChange("visitInfo.visitNumberThisQuarter", parseInt(value))}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">1st</SelectItem>
-            <SelectItem value="2">2nd</SelectItem>
-            <SelectItem value="3">3rd</SelectItem>
-          </SelectContent>
-        </Select>
+          <div>
+            <Label htmlFor="agency">Agency</Label>
+            <Input id="agency" value={formData.visitInfo.agency || "Refuge House"} disabled className="bg-gray-100 text-sm" />
+          </div>
+        </div>
       </div>
     </div>
-
-    <div className="border-t pt-6">
-      <h3 className="font-semibold text-lg mb-4">Staff Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="conductedBy">Staff Name *</Label>
-          <Input
-            id="conductedBy"
-            value={formData.visitInfo.conductedBy}
-            onChange={(e) => onChange("visitInfo.conductedBy", e.target.value)}
-            placeholder="Your name"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="staffTitle">Title *</Label>
-          <Input
-            id="staffTitle"
-            value={formData.visitInfo.staffTitle}
-            onChange={(e) => onChange("visitInfo.staffTitle", e.target.value)}
-            placeholder="e.g., Home Visit Liaison"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="licenseNumber">License # *</Label>
-          <Input
-            id="licenseNumber"
-            value={formData.visitInfo.licenseNumber}
-            onChange={(e) => onChange("visitInfo.licenseNumber", e.target.value)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="supervisor">Supervisor *</Label>
-          <Input
-            id="supervisor"
-            value={formData.visitInfo.supervisor}
-            onChange={(e) => onChange("visitInfo.supervisor", e.target.value)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="agency">Agency</Label>
-          <Input id="agency" value={formData.visitInfo.agency} disabled className="bg-gray-100" />
-        </div>
-
-        <div>
-          <Label htmlFor="region">Region</Label>
-          <Input
-            id="region"
-            value={formData.visitInfo.region}
-            onChange={(e) => onChange("visitInfo.region", e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-)
+  )
+}
 
 const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   const providers = formData.household?.providers || []
