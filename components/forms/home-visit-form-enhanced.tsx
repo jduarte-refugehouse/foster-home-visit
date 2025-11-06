@@ -100,16 +100,18 @@ const EnhancedHomeVisitForm = ({
         { 
           code: "749.1521", 
           requirement: '"External use only" medications stored separately', 
-          month1: { compliant: false, notes: "" },
-          month2: { compliant: false, notes: "" },
-          month3: { compliant: false, notes: "" },
+          allowNA: true, // Can be N/A if no external use medications
+          month1: { compliant: false, na: false, notes: "" },
+          month2: { compliant: false, na: false, notes: "" },
+          month3: { compliant: false, na: false, notes: "" },
         },
         { 
           code: "749.1521(4)", 
           requirement: "Refrigerated medications properly stored", 
-          month1: { compliant: false, notes: "" },
-          month2: { compliant: false, notes: "" },
-          month3: { compliant: false, notes: "" },
+          allowNA: true, // Can be N/A if no refrigerated medications
+          month1: { compliant: false, na: false, notes: "" },
+          month2: { compliant: false, na: false, notes: "" },
+          month3: { compliant: false, na: false, notes: "" },
         },
         { 
           code: "749.1521(5)", 
@@ -779,12 +781,22 @@ const EnhancedHomeVisitForm = ({
           ...sectionData,
           items: sectionData.items.map((item, idx) => {
             if (idx === index) {
+              const monthData = item[month] || { compliant: false, na: false, notes: "" }
+              
+              // If setting compliant to true, clear na. If setting na to true, clear compliant.
+              if (field === "compliant" && value === true) {
+                monthData.na = false
+                monthData.compliant = true
+              } else if (field === "na" && value === true) {
+                monthData.compliant = false
+                monthData.na = true
+              } else {
+                monthData[field] = value
+              }
+              
               return {
                 ...item,
-                [month]: {
-                  ...(item[month] || { compliant: false, notes: "" }),
-                  [field]: value,
-                },
+                [month]: monthData,
               }
             }
             return item
@@ -1485,6 +1497,23 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
   const sectionData = formData[section]
   const [expandedRows, setExpandedRows] = useState(new Set())
 
+  // Safety check
+  if (!sectionData || !sectionData.items || sectionData.items.length === 0) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-refuge-purple" />
+            {title}
+          </h2>
+        </div>
+        <Alert>
+          <AlertDescription>No items found for this section.</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   const toggleRowExpansion = (index) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev)
@@ -1498,7 +1527,8 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
   }
 
   // Helper to get guide link for a requirement code
-  const getGuideLink = (code: string) => {
+  const getGuideLink = (code) => {
+    if (!code) return "/guide"
     // Clean code and create anchor link to guide
     const cleanCode = code.replace(/§/g, "").replace(/[^\w\s]/g, "-").toLowerCase()
     // Link to guide with section based on current section
@@ -1572,46 +1602,121 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                     {item.requirement}
                   </div>
 
-                  {/* Month 1 Checkbox */}
-                  <div className="col-span-1 flex justify-center">
+                  {/* Month 1 - Compliant/N/A Buttons */}
+                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
                     {hasNewFormat ? (
-                      <Checkbox
-                        checked={item.month1?.compliant || false}
-                        onCheckedChange={(checked) => {
-                          onChange(section, index, "month1", "compliant", checked === true)
-                        }}
-                        className="h-4 w-4"
-                      />
+                      <>
+                        <Button
+                          size="sm"
+                          variant={item.month1?.compliant ? "default" : "outline"}
+                          className={`h-7 w-full text-[10px] px-1 ${
+                            item.month1?.compliant
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "hover:bg-green-50"
+                          }`}
+                          onClick={() => {
+                            onChange(section, index, "month1", "compliant", !item.month1?.compliant)
+                          }}
+                        >
+                          {item.month1?.compliant ? "✓" : "Compliant"}
+                        </Button>
+                        {item.allowNA && (
+                          <Button
+                            size="sm"
+                            variant={item.month1?.na ? "default" : "outline"}
+                            className={`h-5 w-full text-[9px] px-1 ${
+                              item.month1?.na
+                                ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                : "hover:bg-slate-50"
+                            }`}
+                            onClick={() => {
+                              onChange(section, index, "month1", "na", !item.month1?.na)
+                            }}
+                          >
+                            N/A
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <span className="text-gray-400 text-[10px]">-</span>
                     )}
                   </div>
 
-                  {/* Month 2 Checkbox */}
-                  <div className="col-span-1 flex justify-center">
+                  {/* Month 2 - Compliant/N/A Buttons */}
+                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
                     {hasNewFormat ? (
-                      <Checkbox
-                        checked={item.month2?.compliant || false}
-                        onCheckedChange={(checked) => {
-                          onChange(section, index, "month2", "compliant", checked === true)
-                        }}
-                        className="h-4 w-4"
-                      />
+                      <>
+                        <Button
+                          size="sm"
+                          variant={item.month2?.compliant ? "default" : "outline"}
+                          className={`h-7 w-full text-[10px] px-1 ${
+                            item.month2?.compliant
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "hover:bg-green-50"
+                          }`}
+                          onClick={() => {
+                            onChange(section, index, "month2", "compliant", !item.month2?.compliant)
+                          }}
+                        >
+                          {item.month2?.compliant ? "✓" : "Compliant"}
+                        </Button>
+                        {item.allowNA && (
+                          <Button
+                            size="sm"
+                            variant={item.month2?.na ? "default" : "outline"}
+                            className={`h-5 w-full text-[9px] px-1 ${
+                              item.month2?.na
+                                ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                : "hover:bg-slate-50"
+                            }`}
+                            onClick={() => {
+                              onChange(section, index, "month2", "na", !item.month2?.na)
+                            }}
+                          >
+                            N/A
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <span className="text-gray-400 text-[10px]">-</span>
                     )}
                   </div>
 
-                  {/* Month 3 Checkbox */}
-                  <div className="col-span-1 flex justify-center">
+                  {/* Month 3 - Compliant/N/A Buttons */}
+                  <div className="col-span-1 flex flex-col gap-0.5 justify-center items-center">
                     {hasNewFormat ? (
-                      <Checkbox
-                        checked={item.month3?.compliant || false}
-                        onCheckedChange={(checked) => {
-                          onChange(section, index, "month3", "compliant", checked === true)
-                        }}
-                        className="h-4 w-4"
-                      />
+                      <>
+                        <Button
+                          size="sm"
+                          variant={item.month3?.compliant ? "default" : "outline"}
+                          className={`h-7 w-full text-[10px] px-1 ${
+                            item.month3?.compliant
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "hover:bg-green-50"
+                          }`}
+                          onClick={() => {
+                            onChange(section, index, "month3", "compliant", !item.month3?.compliant)
+                          }}
+                        >
+                          {item.month3?.compliant ? "✓" : "Compliant"}
+                        </Button>
+                        {item.allowNA && (
+                          <Button
+                            size="sm"
+                            variant={item.month3?.na ? "default" : "outline"}
+                            className={`h-5 w-full text-[9px] px-1 ${
+                              item.month3?.na
+                                ? "bg-slate-600 hover:bg-slate-700 text-white"
+                                : "hover:bg-slate-50"
+                            }`}
+                            onClick={() => {
+                              onChange(section, index, "month3", "na", !item.month3?.na)
+                            }}
+                          >
+                            N/A
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <span className="text-gray-400 text-[10px]">-</span>
                     )}
