@@ -1529,12 +1529,35 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
   }
 
   // Helper to get guide link for a requirement code
-  const getGuideLink = (code) => {
+  // Maps to specific sections in the Interactive Home Monitoring Form Reference Guide
+  const getGuideLink = (code, requirement) => {
     if (!code) return "/guide"
-    // Clean code and create anchor link to guide
-    const cleanCode = code.replace(/§/g, "").replace(/[^\w\s]/g, "-").toLowerCase()
-    // Link to guide with section based on current section
-    const sectionMap = {
+    
+    // Map section names to guide anchor links from the reference guide
+    const sectionAnchorMap = {
+      medication: "medication-section",
+      healthSafety: "health-and-safety-section",
+      childrensRights: "rights", // May need adjustment based on actual guide structure
+      bedrooms: "bedrooms-section",
+      education: "education", // May need adjustment
+      indoorSpace: "indoor-space-section",
+      documentation: "documentation", // May need adjustment
+    }
+    
+    // Get the section anchor
+    const sectionAnchor = sectionAnchorMap[section] || "overview"
+    
+    // Clean the TAC code to create a specific item anchor
+    // Format: tac-749-1463-b-2 for "TAC §749.1463(b)(2)"
+    const cleanCode = code
+      .replace(/§/g, "")
+      .replace(/[()]/g, "-")
+      .replace(/\./g, "-")
+      .replace(/\s+/g, "-")
+      .toLowerCase()
+    
+    // Link to guide with section tab and specific item anchor
+    const guideSection = {
       medication: "medication",
       healthSafety: "safety",
       childrensRights: "rights",
@@ -1542,9 +1565,10 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
       education: "education",
       indoorSpace: "indoor",
       documentation: "documentation",
-    }
-    const guideSection = sectionMap[section] || "overview"
-    return `/guide?tab=${guideSection}#${cleanCode}`
+    }[section] || "overview"
+    
+    // Return link that opens in new tab to specific section
+    return `/guide?tab=${guideSection}#${sectionAnchor}-${cleanCode}`
   }
 
   return (
@@ -1560,7 +1584,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
       {/* Compact Table Format */}
       <div className="border rounded-lg overflow-hidden bg-white">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-1.5 text-xs font-semibold">
+        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold">
           <div className="col-span-2 text-gray-700">Number</div>
           <div className="col-span-5 text-gray-700">Minimum Standard</div>
           <div className="col-span-1 text-center text-gray-700">Month 1</div>
@@ -1583,24 +1607,24 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
             return (
               <div key={index} className="bg-white">
                 {/* Main Row */}
-                <div className="grid grid-cols-12 gap-1 p-1.5 items-center text-xs hover:bg-gray-50">
+                <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-gray-50">
                   {/* Number Column */}
-                  <div className="col-span-2 flex items-center gap-1">
-                    <span className="font-mono text-[10px] text-gray-600">{item.code?.replace(/§/g, "") || ""}</span>
+                  <div className="col-span-2 flex items-center gap-1.5">
+                    <span className="font-mono text-xs text-gray-600">{item.code?.replace(/§/g, "") || ""}</span>
                     <a
-                      href={getGuideLink(item.code || "")}
+                      href={getGuideLink(item.code || "", item.requirement || "")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
-                      title="View help in guide"
+                      title="View detailed help in guide (opens in new tab)"
                     >
-                      <Info className="h-3 w-3" />
+                      <Info className="h-4 w-4" />
                     </a>
                   </div>
 
                   {/* Minimum Standard Column */}
-                  <div className="col-span-5 text-gray-900 leading-tight text-[11px]">
+                  <div className="col-span-5 text-gray-900 leading-tight text-sm">
                     {item.requirement}
                   </div>
 
@@ -1611,7 +1635,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         <Button
                           size="sm"
                           variant={item.month1?.compliant ? "default" : "outline"}
-                          className={`h-7 w-full text-[10px] px-1 ${
+                          className={`h-8 w-full text-xs px-2 font-medium ${
                             item.month1?.compliant
                               ? "bg-green-600 hover:bg-green-700 text-white"
                               : "hover:bg-green-50"
@@ -1626,7 +1650,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                           <Button
                             size="sm"
                             variant={item.month1?.na ? "default" : "outline"}
-                            className={`h-5 w-full text-[9px] px-1 ${
+                            className={`h-6 w-full text-xs px-1 ${
                               item.month1?.na
                                 ? "bg-slate-600 hover:bg-slate-700 text-white"
                                 : "hover:bg-slate-50"
@@ -1640,7 +1664,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         )}
                       </>
                     ) : (
-                      <span className="text-gray-400 text-[10px]">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
                   </div>
 
@@ -1651,7 +1675,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         <Button
                           size="sm"
                           variant={item.month2?.compliant ? "default" : "outline"}
-                          className={`h-7 w-full text-[10px] px-1 ${
+                          className={`h-8 w-full text-xs px-2 font-medium ${
                             item.month2?.compliant
                               ? "bg-green-600 hover:bg-green-700 text-white"
                               : "hover:bg-green-50"
@@ -1666,7 +1690,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                           <Button
                             size="sm"
                             variant={item.month2?.na ? "default" : "outline"}
-                            className={`h-5 w-full text-[9px] px-1 ${
+                            className={`h-6 w-full text-xs px-1 ${
                               item.month2?.na
                                 ? "bg-slate-600 hover:bg-slate-700 text-white"
                                 : "hover:bg-slate-50"
@@ -1680,7 +1704,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         )}
                       </>
                     ) : (
-                      <span className="text-gray-400 text-[10px]">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
                   </div>
 
@@ -1691,7 +1715,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         <Button
                           size="sm"
                           variant={item.month3?.compliant ? "default" : "outline"}
-                          className={`h-7 w-full text-[10px] px-1 ${
+                          className={`h-8 w-full text-xs px-2 font-medium ${
                             item.month3?.compliant
                               ? "bg-green-600 hover:bg-green-700 text-white"
                               : "hover:bg-green-50"
@@ -1706,7 +1730,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                           <Button
                             size="sm"
                             variant={item.month3?.na ? "default" : "outline"}
-                            className={`h-5 w-full text-[9px] px-1 ${
+                            className={`h-6 w-full text-xs px-1 ${
                               item.month3?.na
                                 ? "bg-slate-600 hover:bg-slate-700 text-white"
                                 : "hover:bg-slate-50"
@@ -1720,7 +1744,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                         )}
                       </>
                     ) : (
-                      <span className="text-gray-400 text-[10px]">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
                   </div>
 
@@ -1729,14 +1753,14 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`h-6 w-6 p-0 ${hasNotes ? "text-blue-600" : "text-gray-400"}`}
+                      className={`h-7 w-7 p-0 ${hasNotes ? "text-blue-600" : "text-gray-400"}`}
                       onClick={() => toggleRowExpansion(index)}
                       title={isExpanded ? "Hide notes" : "Add/edit notes"}
                     >
                       {isExpanded ? (
-                        <ChevronUp className="h-3 w-3" />
+                        <ChevronUp className="h-4 w-4" />
                       ) : (
-                        <ChevronDown className="h-3 w-3" />
+                        <ChevronDown className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
@@ -1744,48 +1768,48 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
 
                 {/* Expanded Notes Row */}
                 {isExpanded && (
-                  <div className="bg-gray-50 border-t px-1.5 py-2 space-y-2">
+                  <div className="bg-gray-50 border-t px-2 py-2 space-y-2">
                     {hasNewFormat ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 1 Notes</Label>
+                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 1 Notes</Label>
                           <Textarea
                             value={item.month1?.notes || ""}
                             onChange={(e) => onChange(section, index, "month1", "notes", e.target.value)}
                             placeholder="Optional..."
-                            className="text-xs h-8 resize-none p-1.5"
+                            className="text-sm h-10 resize-none p-2"
                             rows={2}
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 2 Notes</Label>
+                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 2 Notes</Label>
                           <Textarea
                             value={item.month2?.notes || ""}
                             onChange={(e) => onChange(section, index, "month2", "notes", e.target.value)}
                             placeholder="Optional..."
-                            className="text-xs h-8 resize-none p-1.5"
+                            className="text-sm h-10 resize-none p-2"
                             rows={2}
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-gray-600 mb-1 block">Month 3 Notes</Label>
+                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 3 Notes</Label>
                           <Textarea
                             value={item.month3?.notes || ""}
                             onChange={(e) => onChange(section, index, "month3", "notes", e.target.value)}
                             placeholder="Optional..."
-                            className="text-xs h-8 resize-none p-1.5"
+                            className="text-sm h-10 resize-none p-2"
                             rows={2}
                           />
                         </div>
                       </div>
                     ) : (
                       <div>
-                        <Label className="text-[10px] text-gray-600 mb-1 block">Notes</Label>
+                        <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
                         <Textarea
                           value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
                           placeholder="Optional..."
-                          className="text-xs h-8 resize-none p-1.5"
+                          className="text-sm h-10 resize-none p-2"
                           rows={2}
                         />
                       </div>
@@ -1800,14 +1824,14 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
 
       {/* Section Notes */}
       <div className="border-t pt-2 mt-2">
-        <Label htmlFor={`${section}-combined-notes`} className="text-xs font-medium">Section Notes (Optional)</Label>
+        <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes (Optional)</Label>
         <Textarea
           id={`${section}-combined-notes`}
           value={sectionData.combinedNotes || ""}
           onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
           placeholder="Additional observations for this section..."
           rows={2}
-          className="mt-1 text-xs"
+          className="mt-1 text-sm"
         />
       </div>
     </div>
