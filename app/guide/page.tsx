@@ -396,6 +396,41 @@ export default function GuidePage() {
 
 function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+
+  // Handle hash navigation and tab switching from URL
+  useEffect(() => {
+    // Check for tab parameter in URL
+    const tabParam = searchParams.get('tab')
+    if (tabParam && tabs.some(t => t.id === tabParam)) {
+      setActiveTab(tabParam)
+    }
+
+    // Handle hash navigation after a short delay to ensure content is rendered
+    const handleHashNavigation = () => {
+      if (window.location.hash) {
+        const hash = window.location.hash.substring(1) // Remove the #
+        const element = document.getElementById(hash)
+        if (element) {
+          // Small delay to ensure tab content is rendered
+          setTimeout(() => {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            // Highlight the element briefly
+            element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2')
+            setTimeout(() => {
+              element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
+            }, 2000)
+          }, 300)
+        }
+      }
+    }
+
+    // Run immediately and also after a short delay
+    handleHashNavigation()
+    const timeout = setTimeout(handleHashNavigation, 500)
+
+    return () => clearTimeout(timeout)
+  }, [searchParams, setActiveTab, activeTab])
 
   const renderTabContent = () => {
     switch (activeTab) {
