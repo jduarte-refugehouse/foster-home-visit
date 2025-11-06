@@ -137,11 +137,9 @@ export async function POST(request: NextRequest) {
     let recipientDescription: string
 
     if (sendTo === "me") {
-      // Send to current user only, CC case manager (if available)
+      // Send to current user only, NO CC
       toEmail = ccEmail
-      if (caseManagerEmail) {
-        ccEmailList = caseManagerEmail
-      }
+      ccEmailList = null
       recipientDescription = "you"
     } else {
       // Send to case manager, CC current user (default behavior)
@@ -210,7 +208,7 @@ function generateCompleteReportHTML(
   visitTime: string,
   familyName: string,
 ): string {
-  // Helper to format signature field with image
+  // Helper to format signature field with image (handles flat structure: parent1, parent1Signature, parent1Date)
   const formatSignatureField = (label: string, name: string, signature: string, date: string) => {
     if (!name && !signature) return ""
     
@@ -218,7 +216,7 @@ function generateCompleteReportHTML(
     const dateDisplay = date || "Not provided"
     const signatureImg = signature && typeof signature === 'string' && (signature.startsWith('data:image') || signature.startsWith('data:image/png') || signature.length > 100)
       ? `<div style="margin-top: 8px;"><img src="${signature}" alt="${label} signature" style="max-width: 300px; border: 1px solid #d1d5db; border-radius: 4px;" /></div>`
-      : signature && typeof signature === 'string'
+      : signature && typeof signature === 'string' && signature.trim().length > 0
         ? `<div style="margin-top: 8px; color: #6b7280; font-size: 12px;">Signature data present</div>`
         : ""
     
@@ -420,7 +418,7 @@ function generateCompleteReportHTML(
   // Helper to format trauma-informed care section - show ALL items
   const formatTraumaInformedCare = (traumaCare: any) => {
     if (!traumaCare || !traumaCare.items || traumaCare.items.length === 0) {
-      if (traumaCare.combinedNotes) {
+      if (traumaCare && traumaCare.combinedNotes) {
         return `
           <div style="margin-bottom: 20px;">
             <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training</h3>
@@ -431,16 +429,26 @@ function generateCompleteReportHTML(
       return ""
     }
     
-    // Show ALL items, not just those with status
+    // Show ALL items, handle both status (string) and month1 (object) formats
     const items = traumaCare.items
       .map((item: any) => {
-        const statusBadge = item.status ? {
-          compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
-          "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
-          na: '<span style="color: #6b7280;">N/A</span>',
-        }[item.status] || `<span style="color: #6b7280;">${item.status}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+        let statusBadge = '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+        
+        // Check if using month1 format (single status mode)
+        if (item.month1) {
+          statusBadge = formatMonthlyStatus(item.month1)
+        } else if (item.status) {
+          // Handle string status
+          const statusStr = typeof item.status === 'string' ? item.status : String(item.status)
+          statusBadge = {
+            compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
+            "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
+            na: '<span style="color: #6b7280;">N/A</span>',
+          }[statusStr] || (statusStr && statusStr.trim() ? `<span style="color: #6b7280;">${statusStr}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>')
+        }
+        
         const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
-        return `<li>${item.code || ""}: ${item.requirement || ""} - ${statusBadge}${notes}</li>`
+        return `<li>${item.code || ""}${item.code && item.requirement ? ": " : ""}${item.requirement || ""} - ${statusBadge}${notes}</li>`
       })
       .join("")
     
@@ -564,43 +572,84 @@ function generateCompleteReportHTML(
         </div>
       </div>
 
-      <!-- Household Information -->
-      ${formData.familyInfo?.household ? `
+      <!-- Household Information with Integrated Attendance -->
+      ${formData.familyInfo?.household || formData.placements?.children ? `
       <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Household Members</h2>
-        ${formData.familyInfo.household.providers && formData.familyInfo.household.providers.length > 0 ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="font-size: 14px; margin-bottom: 8px;">Foster Parents/Providers:</h4>
-            ${formData.familyInfo.household.providers.map((p: any) => `<p style="margin: 3px 0;">${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}</p>`).join("")}
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Household Members & Attendance</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- Left Column: Home Residents -->
+          <div>
+            ${formData.familyInfo?.household?.providers && formData.familyInfo.household.providers.length > 0 ? `
+              <div style="margin-bottom: 15px;">
+                <h4 style="font-size: 14px; margin-bottom: 8px;">Foster Parents/Providers:</h4>
+                ${formData.familyInfo.household.providers.map((p: any) => {
+                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object' 
+                    ? (formData.attendees.attendance[p.name] === true || formData.attendees.attendance[`fosterParent_${p.name}`] === true)
+                    : false
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}</p>`
+                }).join("")}
+              </div>
+            ` : ""}
+            ${formData.familyInfo?.household?.biologicalChildren && formData.familyInfo.household.biologicalChildren.length > 0 ? `
+              <div style="margin-bottom: 15px;">
+                <h4 style="font-size: 14px; margin-bottom: 8px;">Biological Children:</h4>
+                ${formData.familyInfo.household.biologicalChildren.map((c: any) => {
+                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+                    ? formData.attendees.attendance[c.name] === true
+                    : false
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${c.name}${c.age ? ` (Age: ${c.age})` : ""}</p>`
+                }).join("")}
+              </div>
+            ` : ""}
+            ${formData.familyInfo?.household?.otherMembers && formData.familyInfo.household.otherMembers.length > 0 ? `
+              <div style="margin-bottom: 15px;">
+                <h4 style="font-size: 14px; margin-bottom: 8px;">Other Household Members:</h4>
+                ${formData.familyInfo.household.otherMembers.map((m: any) => {
+                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+                    ? formData.attendees.attendance[m.name] === true
+                    : false
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}</p>`
+                }).join("")}
+              </div>
+            ` : ""}
           </div>
-        ` : ""}
-        ${formData.familyInfo.household.biologicalChildren && formData.familyInfo.household.biologicalChildren.length > 0 ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="font-size: 14px; margin-bottom: 8px;">Biological Children:</h4>
-            ${formData.familyInfo.household.biologicalChildren.map((c: any) => `<p style="margin: 3px 0;">${c.name}${c.age ? ` (Age: ${c.age})` : ""}</p>`).join("")}
+          <!-- Right Column: Foster Children -->
+          <div>
+            ${formData.placements?.children && formData.placements.children.length > 0 ? `
+              <div style="margin-bottom: 15px;">
+                <h4 style="font-size: 14px; margin-bottom: 8px;">Foster Children:</h4>
+                ${formData.placements.children.map((child: any) => {
+                  const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim() || "Unknown"
+                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+                    ? formData.attendees.attendance[childName] === true
+                    : false
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${childName}${child.age ? ` (Age: ${child.age})` : ""}</p>`
+                }).join("")}
+              </div>
+            ` : ""}
+            ${formData.attendees?.attendance && typeof formData.attendees.attendance === 'object' ? (() => {
+              // Show any additional attendees not in household or placements
+              const allKnownNames = new Set([
+                ...(formData.familyInfo?.household?.providers || []).map((p: any) => p.name),
+                ...(formData.familyInfo?.household?.biologicalChildren || []).map((c: any) => c.name),
+                ...(formData.familyInfo?.household?.otherMembers || []).map((m: any) => m.name),
+                ...(formData.placements?.children || []).map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim()),
+              ])
+              const additionalAttendees = Object.entries(formData.attendees.attendance)
+                .filter(([name, present]: [string, any]) => present === true && !allKnownNames.has(name))
+                .map(([name, _]: [string, any]) => name)
+              
+              if (additionalAttendees.length > 0) {
+                return `
+                  <div style="margin-bottom: 15px;">
+                    <h4 style="font-size: 14px; margin-bottom: 8px;">Additional Attendees:</h4>
+                    ${additionalAttendees.map((name: string) => `<p style="margin: 3px 0;"><span style="color: #16a34a; font-weight: bold;">✓</span> ${name}</p>`).join("")}
+                  </div>
+                `
+              }
+              return ""
+            })() : ""}
           </div>
-        ` : ""}
-        ${formData.familyInfo.household.otherMembers && formData.familyInfo.household.otherMembers.length > 0 ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="font-size: 14px; margin-bottom: 8px;">Other Household Members:</h4>
-            ${formData.familyInfo.household.otherMembers.map((m: any) => `<p style="margin: 3px 0;">${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}</p>`).join("")}
-          </div>
-        ` : ""}
-      </div>
-      ` : ""}
-
-      <!-- Attendance -->
-      ${formData.attendees?.attendance ? `
-      <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Attendance</h2>
-        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          ${Object.entries(formData.attendees.attendance)
-            .filter(([_, present]: [string, any]) => present === true)
-            .map(([name, _]: [string, any]) => `<p style="margin: 3px 0;">✓ ${name}</p>`)
-            .join("")}
-          ${Object.entries(formData.attendees.attendance).filter(([_, present]: [string, any]) => present === true).length === 0 
-            ? '<p style="margin: 3px 0; font-style: italic; color: #6b7280;">No attendance recorded</p>' 
-            : ""}
         </div>
       </div>
       ` : ""}
@@ -635,8 +684,8 @@ function generateCompleteReportHTML(
         ${formData.complianceReview.packageCompliance ? formatPackageComplianceSection(formData.complianceReview.packageCompliance) : ""}
         ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""}
       </div>
-      ` : formData.medication || formData.healthSafety || formData.childrensRights ? `
-      <!-- Compliance Review (from formData root) -->
+      ` : formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare ? `
+      <!-- Compliance Review (from formData root - legacy format) -->
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
         ${formData.medication ? formatComplianceSection(formData.medication, "1. Medication") : ""}
@@ -740,41 +789,61 @@ function generateCompleteReportHTML(
           ${(() => {
             let signatureHtml = ""
             
-            // Foster parent signatures (from household.providers)
+            // Foster parent signatures (from household.providers) - handle flat structure
             if (formData.familyInfo?.household?.providers) {
               formData.familyInfo.household.providers.forEach((provider: any, index: number) => {
-                const sigKey = `parent${index + 1}` as keyof typeof formData.signatures
-                const sigData = formData.signatures[sigKey] || {}
+                const sigKey = `parent${index + 1}`
+                // Handle flat structure: parent1, parent1Signature, parent1Date
+                const name = formData.signatures[sigKey] || provider.name || `Foster Parent ${index + 1}`
+                const signature = formData.signatures[`${sigKey}Signature`] || ""
+                const date = formData.signatures[`${sigKey}Date`] || ""
                 signatureHtml += formatSignatureField(
                   provider.name || `Foster Parent ${index + 1}`,
-                  sigData.name || provider.name || "",
-                  sigData.signature || "",
-                  sigData.date || ""
+                  name,
+                  signature,
+                  date
                 )
               })
             } else {
-              // Fallback to old format
-              signatureHtml += formatSignatureField("Foster Parent 1", formData.signatures.parent1?.name || formData.signatures.parent1 || "", formData.signatures.parent1?.signature || formData.signatures.parent1Signature || "", formData.signatures.parent1?.date || formData.signatures.parent1Date || "")
-              signatureHtml += formatSignatureField("Foster Parent 2", formData.signatures.parent2?.name || formData.signatures.parent2 || "", formData.signatures.parent2?.signature || formData.signatures.parent2Signature || "", formData.signatures.parent2?.date || formData.signatures.parent2Date || "")
+              // Fallback to old format (flat structure)
+              const parent1Name = formData.signatures.parent1 || ""
+              const parent1Sig = formData.signatures.parent1Signature || ""
+              const parent1Date = formData.signatures.parent1Date || ""
+              if (parent1Name || parent1Sig) {
+                signatureHtml += formatSignatureField("Foster Parent 1", parent1Name, parent1Sig, parent1Date)
+              }
+              
+              const parent2Name = formData.signatures.parent2 || ""
+              const parent2Sig = formData.signatures.parent2Signature || ""
+              const parent2Date = formData.signatures.parent2Date || ""
+              if (parent2Name || parent2Sig) {
+                signatureHtml += formatSignatureField("Foster Parent 2", parent2Name, parent2Sig, parent2Date)
+              }
             }
             
-            // Staff signature
-            if (formData.signatures.staff) {
+            // Staff signature (flat structure: staff, staffSignature, staffDate)
+            const staffName = formData.signatures.staff || formData.visitInfo?.conductedBy || ""
+            const staffSig = formData.signatures.staffSignature || ""
+            const staffDate = formData.signatures.staffDate || ""
+            if (staffName || staffSig) {
               signatureHtml += formatSignatureField(
-                formData.signatures.staff.name || formData.visitInfo?.conductedBy || "Staff",
-                formData.signatures.staff.name || formData.visitInfo?.conductedBy || "",
-                formData.signatures.staff.signature || "",
-                formData.signatures.staff.date || ""
+                formData.visitInfo?.conductedBy || "Staff",
+                staffName,
+                staffSig,
+                staffDate
               )
             }
             
-            // Supervisor signature
-            if (formData.signatures.supervisor) {
+            // Supervisor signature (flat structure: supervisor, supervisorSignature, supervisorDate)
+            const supervisorName = formData.signatures.supervisor || ""
+            const supervisorSig = formData.signatures.supervisorSignature || ""
+            const supervisorDate = formData.signatures.supervisorDate || ""
+            if (supervisorName || supervisorSig) {
               signatureHtml += formatSignatureField(
-                formData.signatures.supervisor.name || "Supervisor",
-                formData.signatures.supervisor.name || formData.signatures.supervisor || "",
-                formData.signatures.supervisor.signature || formData.signatures.supervisorSignature || "",
-                formData.signatures.supervisor.date || formData.signatures.supervisorDate || ""
+                "Supervisor",
+                supervisorName,
+                supervisorSig,
+                supervisorDate
               )
             }
             
@@ -821,34 +890,71 @@ function generateCompleteReportText(
   content += `License Type: ${formData.familyInfo?.fosterHome?.licenseType || "N/A"}\n`
   content += `License Number: ${formData.familyInfo?.fosterHome?.licenseNumber || "N/A"}\n\n`
 
-  if (formData.familyInfo?.household) {
-    content += `HOUSEHOLD MEMBERS\n`
-    if (formData.familyInfo.household.providers && formData.familyInfo.household.providers.length > 0) {
+  if (formData.familyInfo?.household || formData.placements?.children) {
+    content += `HOUSEHOLD MEMBERS & ATTENDANCE\n`
+    
+    // Home Residents (Left Column)
+    if (formData.familyInfo?.household?.providers && formData.familyInfo.household.providers.length > 0) {
       content += `Foster Parents/Providers:\n`
       formData.familyInfo.household.providers.forEach((p: any) => {
-        content += `  - ${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}\n`
+        const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+          ? (formData.attendees.attendance[p.name] === true || formData.attendees.attendance[`fosterParent_${p.name}`] === true)
+          : false
+        content += `  ${isPresent ? "✓ " : ""}${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}\n`
       })
     }
-    if (formData.familyInfo.household.biologicalChildren && formData.familyInfo.household.biologicalChildren.length > 0) {
+    if (formData.familyInfo?.household?.biologicalChildren && formData.familyInfo.household.biologicalChildren.length > 0) {
       content += `Biological Children:\n`
       formData.familyInfo.household.biologicalChildren.forEach((c: any) => {
-        content += `  - ${c.name}${c.age ? ` (Age: ${c.age})` : ""}\n`
+        const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+          ? formData.attendees.attendance[c.name] === true
+          : false
+        content += `  ${isPresent ? "✓ " : ""}${c.name}${c.age ? ` (Age: ${c.age})` : ""}\n`
       })
     }
+    if (formData.familyInfo?.household?.otherMembers && formData.familyInfo.household.otherMembers.length > 0) {
+      content += `Other Household Members:\n`
+      formData.familyInfo.household.otherMembers.forEach((m: any) => {
+        const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+          ? formData.attendees.attendance[m.name] === true
+          : false
+        content += `  ${isPresent ? "✓ " : ""}${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}\n`
+      })
+    }
+    
+    // Foster Children (Right Column)
+    if (formData.placements?.children && formData.placements.children.length > 0) {
+      content += `Foster Children:\n`
+      formData.placements.children.forEach((child: any) => {
+        const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim() || "Unknown"
+        const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
+          ? formData.attendees.attendance[childName] === true
+          : false
+        content += `  ${isPresent ? "✓ " : ""}${childName}${child.age ? ` (Age: ${child.age})` : ""}\n`
+      })
+    }
+    
+    // Additional Attendees
+    if (formData.attendees?.attendance && typeof formData.attendees.attendance === 'object') {
+      const allKnownNames = new Set([
+        ...(formData.familyInfo?.household?.providers || []).map((p: any) => p.name),
+        ...(formData.familyInfo?.household?.biologicalChildren || []).map((c: any) => c.name),
+        ...(formData.familyInfo?.household?.otherMembers || []).map((m: any) => m.name),
+        ...(formData.placements?.children || []).map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim()),
+      ])
+      const additionalAttendees = Object.entries(formData.attendees.attendance)
+        .filter(([name, present]: [string, any]) => present === true && !allKnownNames.has(name))
+        .map(([name, _]: [string, any]) => name)
+      
+      if (additionalAttendees.length > 0) {
+        content += `Additional Attendees:\n`
+        additionalAttendees.forEach((name: string) => {
+          content += `  ✓ ${name}\n`
+        })
+      }
+    }
+    
     content += `\n`
-  }
-
-  if (formData.attendees?.attendance) {
-    const present = Object.entries(formData.attendees.attendance)
-      .filter(([_, present]: [string, any]) => present === true)
-      .map(([name, _]: [string, any]) => name)
-    if (present.length > 0) {
-      content += `ATTENDANCE\n`
-      present.forEach((name: string) => {
-        content += `  - ✓ ${name}\n`
-      })
-      content += `\n`
-    }
   }
 
   if (formData.homeEnvironment?.homeCondition) {
@@ -911,8 +1017,15 @@ function generateCompleteReportText(
     if (formData.complianceReview.traumaInformedCare && formData.complianceReview.traumaInformedCare.items) {
       content += `Trauma-Informed Care & Training:\n`
       formData.complianceReview.traumaInformedCare.items.forEach((item: any) => {
-        const status = item.status || "Not answered"
-        content += `  - ${item.code || ""}: ${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
+        let status = "Not answered"
+        if (item.month1) {
+          // Single status mode
+          status = item.month1.na ? "N/A" : item.month1.compliant ? "Compliant" : "Not answered"
+        } else if (item.status) {
+          const statusStr = typeof item.status === 'string' ? item.status : String(item.status)
+          status = statusStr || "Not answered"
+        }
+        content += `  - ${item.code || ""}${item.code && item.requirement ? ": " : ""}${item.requirement || ""} - ${status}${item.notes ? ` (${item.notes})` : ""}\n`
       })
       if (formData.complianceReview.traumaInformedCare.combinedNotes) {
         content += `  Notes: ${formData.complianceReview.traumaInformedCare.combinedNotes}\n`
@@ -1056,60 +1169,61 @@ function generateCompleteReportText(
   if (formData.signatures) {
     content += `SIGNATURES\n`
     
-    // Foster parent signatures (from household.providers)
+    // Foster parent signatures (from household.providers) - handle flat structure
     if (formData.familyInfo?.household?.providers) {
       formData.familyInfo.household.providers.forEach((provider: any, index: number) => {
-        const sigKey = `parent${index + 1}` as keyof typeof formData.signatures
-        const sigData = formData.signatures[sigKey] || {}
-        const name = sigData.name || provider.name || `Foster Parent ${index + 1}`
-        const date = sigData.date || ""
-        const signature = sigData.signature || ""
+        const sigKey = `parent${index + 1}`
+        // Handle flat structure: parent1, parent1Signature, parent1Date
+        const name = formData.signatures[sigKey] || provider.name || `Foster Parent ${index + 1}`
+        const signature = formData.signatures[`${sigKey}Signature`] || ""
+        const date = formData.signatures[`${sigKey}Date`] || ""
         content += `${name}:`
         if (date) content += ` (Date: ${date})`
         if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
         content += `\n`
       })
     } else {
-      // Fallback to old format
-      if (formData.signatures.parent1?.name || formData.signatures.parent1) {
-        const name = formData.signatures.parent1?.name || formData.signatures.parent1 || ""
-        const date = formData.signatures.parent1?.date || formData.signatures.parent1Date || ""
-        const signature = formData.signatures.parent1?.signature || formData.signatures.parent1Signature || ""
-        content += `Foster Parent 1: ${name}`
-        if (date) content += ` (Date: ${date})`
-        if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+      // Fallback to old format (flat structure)
+      const parent1Name = formData.signatures.parent1 || ""
+      const parent1Sig = formData.signatures.parent1Signature || ""
+      const parent1Date = formData.signatures.parent1Date || ""
+      if (parent1Name || parent1Sig) {
+        content += `Foster Parent 1: ${parent1Name}`
+        if (parent1Date) content += ` (Date: ${parent1Date})`
+        if (parent1Sig) content += ` [Signature: ${parent1Sig.length > 100 ? 'Image data present' : parent1Sig}]`
         content += `\n`
       }
-      if (formData.signatures.parent2?.name || formData.signatures.parent2) {
-        const name = formData.signatures.parent2?.name || formData.signatures.parent2 || ""
-        const date = formData.signatures.parent2?.date || formData.signatures.parent2Date || ""
-        const signature = formData.signatures.parent2?.signature || formData.signatures.parent2Signature || ""
-        content += `Foster Parent 2: ${name}`
-        if (date) content += ` (Date: ${date})`
-        if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+      
+      const parent2Name = formData.signatures.parent2 || ""
+      const parent2Sig = formData.signatures.parent2Signature || ""
+      const parent2Date = formData.signatures.parent2Date || ""
+      if (parent2Name || parent2Sig) {
+        content += `Foster Parent 2: ${parent2Name}`
+        if (parent2Date) content += ` (Date: ${parent2Date})`
+        if (parent2Sig) content += ` [Signature: ${parent2Sig.length > 100 ? 'Image data present' : parent2Sig}]`
         content += `\n`
       }
     }
     
-    // Staff signature
-    if (formData.signatures.staff) {
-      const name = formData.signatures.staff.name || formData.visitInfo?.conductedBy || "Staff"
-      const date = formData.signatures.staff.date || ""
-      const signature = formData.signatures.staff.signature || ""
-      content += `${name}:`
-      if (date) content += ` (Date: ${date})`
-      if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+    // Staff signature (flat structure: staff, staffSignature, staffDate)
+    const staffName = formData.signatures.staff || formData.visitInfo?.conductedBy || ""
+    const staffSig = formData.signatures.staffSignature || ""
+    const staffDate = formData.signatures.staffDate || ""
+    if (staffName || staffSig) {
+      content += `${staffName}:`
+      if (staffDate) content += ` (Date: ${staffDate})`
+      if (staffSig) content += ` [Signature: ${staffSig.length > 100 ? 'Image data present' : staffSig}]`
       content += `\n`
     }
     
-    // Supervisor signature
-    if (formData.signatures.supervisor) {
-      const name = formData.signatures.supervisor.name || formData.signatures.supervisor || "Supervisor"
-      const date = formData.signatures.supervisor.date || formData.signatures.supervisorDate || ""
-      const signature = formData.signatures.supervisor.signature || formData.signatures.supervisorSignature || ""
-      content += `${name}:`
-      if (date) content += ` (Date: ${date})`
-      if (signature) content += ` [Signature: ${signature.length > 100 ? 'Image data present' : signature}]`
+    // Supervisor signature (flat structure: supervisor, supervisorSignature, supervisorDate)
+    const supervisorName = formData.signatures.supervisor || ""
+    const supervisorSig = formData.signatures.supervisorSignature || ""
+    const supervisorDate = formData.signatures.supervisorDate || ""
+    if (supervisorName || supervisorSig) {
+      content += `${supervisorName || "Supervisor"}:`
+      if (supervisorDate) content += ` (Date: ${supervisorDate})`
+      if (supervisorSig) content += ` [Signature: ${supervisorSig.length > 100 ? 'Image data present' : supervisorSig}]`
       content += `\n`
     }
     
