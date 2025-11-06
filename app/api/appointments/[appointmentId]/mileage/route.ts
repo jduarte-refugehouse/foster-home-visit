@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 
@@ -15,14 +16,33 @@ export const runtime = "nodejs"
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    // Authentication - get from headers (set by client-side Clerk)
-    try {
-      requireClerkAuth(request)
-    } catch (authError) {
+    // Authentication - try headers first, fall back to Clerk session
+    let clerkUserId: string | null = null
+    let email: string | null = null
+    
+    // Try to get from headers (desktop/tablet)
+    const headerAuth = getClerkUserIdFromRequest(request)
+    if (headerAuth.clerkUserId || headerAuth.email) {
+      clerkUserId = headerAuth.clerkUserId
+      email = headerAuth.email
+    } else {
+      // Fall back to Clerk session (mobile - cookies are sent automatically)
+      try {
+        const user = await currentUser()
+        if (user) {
+          clerkUserId = user.id
+          email = user.emailAddresses[0]?.emailAddress || null
+        }
+      } catch (clerkError) {
+        console.error("Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!clerkUserId && !email) {
       return NextResponse.json(
         {
           error: "Unauthorized",
-          details: authError instanceof Error ? authError.message : "Missing authentication headers",
+          details: "Authentication required",
         },
         { status: 401 },
       )

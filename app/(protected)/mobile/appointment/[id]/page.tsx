@@ -139,13 +139,22 @@ export default function MobileAppointmentDetailPage() {
       }
       
       // Add auth headers - user should be available since page is protected
-      // If user isn't loaded yet, try without headers (API will reject but we'll get better error)
-      if (user?.id) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Wait a moment for user to be available if not yet loaded
+      let currentUser = user
+      if (!currentUser && isLoaded) {
+        // User should exist but hook might not have it yet - wait briefly
+        await new Promise(resolve => setTimeout(resolve, 100))
+        // Re-check - but we can't re-call the hook, so just try with what we have
+      }
+      
+      if (currentUser?.id) {
+        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = currentUser.id
+        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
       } else {
-        console.warn("User not available from useUser() hook - attempting request anyway")
+        // If still no user, the API should still work if cookies are set
+        // Clerk cookies should be sent automatically with the request
+        console.warn("User object not available, relying on Clerk session cookies")
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
@@ -188,12 +197,19 @@ export default function MobileAppointmentDetailPage() {
       }
       
       // Add auth headers - user should be available since page is protected
-      if (user?.id) {
-        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = user.id
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      let currentUser = user
+      if (!currentUser && isLoaded) {
+        // User should exist but hook might not have it yet - wait briefly
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      if (currentUser?.id) {
+        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = currentUser.id
+        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
       } else {
-        console.warn("User not available from useUser() hook - attempting request anyway")
+        // If still no user, the API should still work if cookies are set
+        console.warn("User object not available, relying on Clerk session cookies")
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
