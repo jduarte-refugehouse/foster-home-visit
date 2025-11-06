@@ -1,6 +1,7 @@
 // Additional Section Components for Enhanced Home Visit Form
 // This file contains the remaining section components that were too large to fit in one file
 
+import React, { useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -1275,8 +1276,48 @@ export const VisitSummarySection = ({ formData, onChange }) => {
   )
 }
 
-export const SignaturesSection = ({ formData, onChange }) => {
-  const signatures = formData.signatures
+export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
+  const signatures = formData.signatures || {}
+  
+  // Get foster parents from household data
+  const providers = formData.household?.providers || []
+  
+  // Get staff conducting the visit
+  const staffName = appointmentData?.appointment?.assigned_to_name || ""
+  const staffRole = appointmentData?.appointment?.assigned_to_role || "Staff"
+  
+  // Helper to get signature value safely
+  const getSignatureValue = (key) => {
+    return signatures[key] || ""
+  }
+
+  // Helper to handle signature changes
+  const handleSignatureChange = (key, value) => {
+    onChange(`signatures.${key}`, value)
+  }
+
+  // Auto-populate names if not already set
+  useEffect(() => {
+    // Pre-fill foster parent names
+    providers.forEach((provider, index) => {
+      if (provider.name) {
+        const sigKey = `parent${index + 1}`
+        const currentValue = signatures[sigKey]
+        if (!currentValue || currentValue === "") {
+          handleSignatureChange(sigKey, provider.name)
+        }
+      }
+    })
+
+    // Pre-fill staff name
+    if (staffName) {
+      const currentStaffValue = signatures.staff
+      if (!currentStaffValue || currentStaffValue === "") {
+        handleSignatureChange("staff", staffName)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers.length, staffName]) // Only run when providers count or staffName changes
 
   return (
     <div className="space-y-3">
@@ -1287,6 +1328,127 @@ export const SignaturesSection = ({ formData, onChange }) => {
       </Alert>
 
       <div className="grid grid-cols-1 gap-3">
+        {/* Foster Parent Signatures - Show first */}
+        {providers.length > 0 ? (
+          providers.map((provider, index) => {
+            const sigKey = `parent${index + 1}`
+            const displayName = provider.name || `Foster Parent ${index + 1}`
+            const isRequired = index === 0 // First parent is required
+            const nameValue = getSignatureValue(sigKey) || provider.name || ""
+            
+            return (
+              <Card key={`parent-${index}`}>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm">
+                    {displayName} Signature {isRequired && "*"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm">Name {isRequired && "*"}</Label>
+                    <Input
+                      value={nameValue}
+                      onChange={(e) => handleSignatureChange(sigKey, e.target.value)}
+                      placeholder={provider.name || "Type full name"}
+                      className="text-sm"
+                    />
+                  </div>
+
+                <SignaturePad
+                  label={`Signature ${isRequired ? "*" : ""}`}
+                  value={getSignatureValue(`${sigKey}Signature`)}
+                  onChange={(sig) => handleSignatureChange(`${sigKey}Signature`, sig)}
+                />
+
+                <div>
+                  <Label className="text-sm">Date {isRequired && "*"}</Label>
+                  <Input
+                    type="date"
+                    value={getSignatureValue(`${sigKey}Date`) || new Date().toISOString().split("T")[0]}
+                    onChange={(e) => handleSignatureChange(`${sigKey}Date`, e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            )
+          })
+        ) : (
+          // Fallback: Show at least one foster parent signature if no providers found
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Foster Parent Signature *</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-sm">Name *</Label>
+                <Input
+                  value={getSignatureValue("parent1")}
+                  onChange={(e) => handleSignatureChange("parent1", e.target.value)}
+                  placeholder="Type full name"
+                  className="text-sm"
+                />
+              </div>
+
+              <SignaturePad
+                label="Signature *"
+                value={getSignatureValue("parent1Signature")}
+                onChange={(sig) => handleSignatureChange("parent1Signature", sig)}
+              />
+
+              <div>
+                <Label className="text-sm">Date *</Label>
+                <Input
+                  type="date"
+                  value={getSignatureValue("parent1Date") || new Date().toISOString().split("T")[0]}
+                  onChange={(e) => handleSignatureChange("parent1Date", e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Staff Signature - Show after foster parents */}
+        {staffName && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">{staffName} Signature *</CardTitle>
+              {staffRole && (
+                <p className="text-xs text-gray-500 mt-1">{staffRole}</p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-sm">Name *</Label>
+                <Input
+                  value={getSignatureValue("staff") || staffName}
+                  onChange={(e) => handleSignatureChange("staff", e.target.value)}
+                  placeholder={staffName}
+                  className="text-sm"
+                />
+              </div>
+
+              <SignaturePad
+                label="Signature *"
+                value={getSignatureValue("staffSignature")}
+                onChange={(sig) => handleSignatureChange("staffSignature", sig)}
+              />
+
+              <div>
+                <Label className="text-sm">Date *</Label>
+                <Input
+                  type="date"
+                  value={getSignatureValue("staffDate") || new Date().toISOString().split("T")[0]}
+                  onChange={(e) => handleSignatureChange("staffDate", e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Visitor Signature - Keep for backward compatibility */}
         <Card>
           <CardHeader className="py-3">
             <CardTitle className="text-sm">Visitor Signature *</CardTitle>
@@ -1295,8 +1457,8 @@ export const SignaturesSection = ({ formData, onChange }) => {
             <div>
               <Label className="text-sm">Name *</Label>
               <Input
-                value={signatures.visitor}
-                onChange={(e) => onChange("signatures.visitor", e.target.value)}
+                value={getSignatureValue("visitor")}
+                onChange={(e) => handleSignatureChange("visitor", e.target.value)}
                 placeholder="Type your full name"
                 className="text-sm"
               />
@@ -1304,115 +1466,16 @@ export const SignaturesSection = ({ formData, onChange }) => {
 
             <SignaturePad
               label="Signature *"
-              value={signatures.visitorSignature}
-              onChange={(sig) => onChange("signatures.visitorSignature", sig)}
+              value={getSignatureValue("visitorSignature")}
+              onChange={(sig) => handleSignatureChange("visitorSignature", sig)}
             />
 
             <div>
               <Label className="text-sm">Date *</Label>
               <Input
                 type="date"
-                value={signatures.visitorDate}
-                onChange={(e) => onChange("signatures.visitorDate", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Foster Parent 1 Signature *</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label className="text-sm">Name *</Label>
-              <Input
-                value={signatures.parent1}
-                onChange={(e) => onChange("signatures.parent1", e.target.value)}
-                placeholder="Type full name"
-                className="text-sm"
-              />
-            </div>
-
-            <SignaturePad
-              label="Signature *"
-              value={signatures.parent1Signature}
-              onChange={(sig) => onChange("signatures.parent1Signature", sig)}
-            />
-
-            <div>
-              <Label className="text-sm">Date *</Label>
-              <Input
-                type="date"
-                value={signatures.parent1Date}
-                onChange={(e) => onChange("signatures.parent1Date", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Foster Parent 2 Signature (if applicable)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label className="text-sm">Name</Label>
-              <Input
-                value={signatures.parent2}
-                onChange={(e) => onChange("signatures.parent2", e.target.value)}
-                placeholder="Type full name (optional)"
-                className="text-sm"
-              />
-            </div>
-
-            <SignaturePad
-              label="Signature"
-              value={signatures.parent2Signature}
-              onChange={(sig) => onChange("signatures.parent2Signature", sig)}
-            />
-
-            <div>
-              <Label className="text-sm">Date</Label>
-              <Input
-                type="date"
-                value={signatures.parent2Date}
-                onChange={(e) => onChange("signatures.parent2Date", e.target.value)}
-                className="text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Supervisor Signature *</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label className="text-sm">Name *</Label>
-              <Input
-                value={signatures.supervisor}
-                onChange={(e) => onChange("signatures.supervisor", e.target.value)}
-                placeholder="Type full name"
-                className="text-sm"
-              />
-            </div>
-
-            <SignaturePad
-              label="Signature *"
-              value={signatures.supervisorSignature}
-              onChange={(sig) => onChange("signatures.supervisorSignature", sig)}
-            />
-
-            <div>
-              <Label className="text-sm">Date *</Label>
-              <Input
-                type="date"
-                value={signatures.supervisorDate}
-                onChange={(e) => onChange("signatures.supervisorDate", e.target.value)}
+                value={getSignatureValue("visitorDate") || new Date().toISOString().split("T")[0]}
+                onChange={(e) => handleSignatureChange("visitorDate", e.target.value)}
                 className="text-sm"
               />
             </div>

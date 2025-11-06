@@ -1064,7 +1064,7 @@ const EnhancedHomeVisitForm = ({
       case "visit-summary":
         return <VisitSummarySection formData={formData} onChange={handleChange} />
       case "signatures":
-        return <SignaturesSection formData={formData} onChange={handleChange} />
+        return <SignaturesSection formData={formData} onChange={handleChange} appointmentData={appointmentData} />
       default:
         return <div>Section not implemented</div>
     }
