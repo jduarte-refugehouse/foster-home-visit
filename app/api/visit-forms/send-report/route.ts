@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { appointmentId, formData } = await request.json()
+    const { appointmentId, formData, recipientType } = await request.json()
 
     if (!appointmentId || !formData) {
       return NextResponse.json(
@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
+
+    // recipientType: "me" | "case-manager" | undefined (defaults to "case-manager")
+    const sendTo = recipientType || "case-manager"
 
     // Debug: Log the formData structure to see what we're receiving
     console.log("📋 [API] FormData keys:", Object.keys(formData))
@@ -89,7 +92,8 @@ export async function POST(request: NextRequest) {
     const caseManagerEmail = appointment.CaseManagerEmail
     const familyName = appointment.sync_home_name || formData.familyInfo?.fosterHome?.familyName || "Foster Family"
 
-    if (!caseManagerEmail) {
+    // Only require case manager email if sending to case manager
+    if (sendTo === "case-manager" && !caseManagerEmail) {
       return NextResponse.json(
         {
           success: false,
@@ -127,10 +131,28 @@ export async function POST(request: NextRequest) {
     const htmlContent = generateCompleteReportHTML(formData, appointmentId, visitDate, visitTime, familyName)
     const textContent = generateCompleteReportText(formData, appointmentId, visitDate, visitTime, familyName)
 
+    // Determine recipient based on recipientType
+    let toEmail: string
+    let ccEmailList: string | null = null
+    let recipientDescription: string
+
+    if (sendTo === "me") {
+      // Send to current user only, CC case manager (if available)
+      toEmail = ccEmail
+      if (caseManagerEmail) {
+        ccEmailList = caseManagerEmail
+      }
+      recipientDescription = "you"
+    } else {
+      // Send to case manager, CC current user (default behavior)
+      toEmail = caseManagerEmail
+      ccEmailList = ccEmail
+      recipientDescription = "case manager"
+    }
+
     // Prepare email with CC
-    const msg = {
-      to: caseManagerEmail,
-      cc: ccEmail,
+    const msg: any = {
+      to: toEmail,
       from: {
         email: fromEmail,
         name: "Foster Home Visit System",
@@ -140,15 +162,20 @@ export async function POST(request: NextRequest) {
       html: htmlContent,
     }
 
+    // Add CC if specified
+    if (ccEmailList) {
+      msg.cc = ccEmailList
+    }
+
     // Send the email
     const response = await sgMail.send(msg)
 
     return NextResponse.json({
       success: true,
       messageId: response[0].headers["x-message-id"],
-      message: "Report sent successfully to case manager",
-      recipient: caseManagerEmail,
-      cc: ccEmail,
+      message: `Report sent successfully to ${recipientDescription}`,
+      recipient: toEmail,
+      cc: ccEmailList,
     })
   } catch (error: any) {
     console.error("❌ [API] Error sending report:", error)

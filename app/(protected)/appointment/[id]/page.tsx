@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
   ArrowLeft, 
   Clock, 
@@ -81,6 +82,8 @@ export default function AppointmentDetailPage() {
   const [existingFormData, setExistingFormData] = useState(null)
   const [formDataLoading, setFormDataLoading] = useState(false)
   const [capturingLocation, setCapturingLocation] = useState(false)
+  const [showRecipientDialog, setShowRecipientDialog] = useState(false)
+  const [pendingFormData, setPendingFormData] = useState<any>(null)
 
   useEffect(() => {
     if (appointmentId) {
@@ -635,8 +638,24 @@ export default function AppointmentDetailPage() {
         hasSignatures: !!reportData.signatures,
       })
 
-      // 3. Send the complete report to case manager and CC to current user
-      console.log("📧 [APPT] Sending report...")
+      // Store the report data and show recipient selection dialog
+      setPendingFormData(reportData)
+      setShowRecipientDialog(true)
+    } catch (error) {
+      console.error("❌ [APPT] Error during form submission:", error)
+      toast({
+        title: "Submission Error",
+        description: error instanceof Error ? error.message : "Failed to submit form",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const sendReportToRecipient = async (recipientType: "me" | "case-manager") => {
+    if (!pendingFormData) return
+
+    try {
+      console.log("📧 [APPT] Sending report to:", recipientType)
       
       // Create headers with user identity for authentication
       const headers: HeadersInit = {
@@ -652,16 +671,28 @@ export default function AppointmentDetailPage() {
       const reportResponse = await fetch("/api/visit-forms/send-report", {
         method: "POST",
         headers,
-        body: JSON.stringify({ appointmentId, formData: reportData }),
+        body: JSON.stringify({ 
+          appointmentId, 
+          formData: pendingFormData,
+          recipientType // "me" or "case-manager"
+        }),
       })
 
       const reportResult = await reportResponse.json()
 
       if (reportResponse.ok) {
+        const recipientText = recipientType === "me" ? "you" : "case manager"
         toast({
           title: "Report Sent",
-          description: `Report sent to case manager${reportResult.cc ? ` and CC'd to you` : ""}`,
+          description: `Report sent to ${recipientText}${reportResult.cc ? ` and CC'd to ${recipientType === "me" ? "case manager" : "you"}` : ""}`,
         })
+        
+        // Update visit form status to completed
+        await handleVisitFormCompleted()
+        
+        // Close dialog and clear pending data
+        setShowRecipientDialog(false)
+        setPendingFormData(null)
       } else {
         toast({
           title: "Error Sending Report",
@@ -669,14 +700,11 @@ export default function AppointmentDetailPage() {
           variant: "destructive",
         })
       }
-
-      // 3. Update visit form status to completed
-      await handleVisitFormCompleted()
     } catch (error) {
-      console.error("❌ [APPT] Error during form submission:", error)
+      console.error("❌ [APPT] Error sending report:", error)
       toast({
-        title: "Submission Error",
-        description: error instanceof Error ? error.message : "Failed to submit form",
+        title: "Error Sending Report",
+        description: error instanceof Error ? error.message : "Failed to send the report",
         variant: "destructive",
       })
     }
@@ -1253,6 +1281,52 @@ export default function AppointmentDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Recipient Selection Dialog */}
+      <Dialog open={showRecipientDialog} onOpenChange={setShowRecipientDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Report Recipient</DialogTitle>
+            <DialogDescription>
+              Select who should receive the visit report email. This helps prevent spamming the case manager during testing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-auto py-4 px-4"
+              onClick={() => sendReportToRecipient("me")}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-semibold">Send to me only</span>
+                <span className="text-sm text-muted-foreground mt-1">
+                  Send the report to your email address only
+                </span>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-auto py-4 px-4"
+              onClick={() => sendReportToRecipient("case-manager")}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-semibold">Send to case manager</span>
+                <span className="text-sm text-muted-foreground mt-1">
+                  Send to the assigned case manager (you will be CC'd)
+                </span>
+              </div>
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => {
+              setShowRecipientDialog(false)
+              setPendingFormData(null)
+            }}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
