@@ -26,7 +26,8 @@ import {
   Paperclip,
   Navigation,
   MapPin as MapPinIcon,
-  Trash2
+  Trash2,
+  Send
 } from "lucide-react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -87,6 +88,9 @@ export default function AppointmentDetailPage() {
   const [pendingFormData, setPendingFormData] = useState<any>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [sendingLink, setSendingLink] = useState(false)
+  const [showPhoneMissingDialog, setShowPhoneMissingDialog] = useState(false)
+  const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
 
   useEffect(() => {
     if (appointmentId) {
@@ -315,6 +319,58 @@ export default function AppointmentDetailPage() {
 
   const handlePopOut = () => {
     window.open(`/appointment/${appointmentId}`, '_blank')
+  }
+
+  const handleSendAppointmentLink = async () => {
+    if (!appointmentId) return
+
+    try {
+      setSendingLink(true)
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}/send-link`, {
+        method: "POST",
+        headers,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Link Sent",
+          description: data.message || `Appointment link sent to ${appointment?.assigned_to_name || "staff member"}`,
+        })
+      } else {
+        // Check if it's a missing phone number error
+        if (data.error === "Phone number not found" || response.status === 400) {
+          setPhoneMissingMessage(data.message || data.error || "Phone number not found for this staff member.")
+          setShowPhoneMissingDialog(true)
+        } else {
+          toast({
+            title: "Error",
+            description: data.error || "Failed to send appointment link",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error sending appointment link:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send appointment link",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingLink(false)
+    }
   }
 
   const handleDeleteAppointment = async () => {
@@ -955,6 +1011,18 @@ export default function AppointmentDetailPage() {
             <ExternalLink className="h-4 w-4 mr-1.5" />
             Pop Out
           </Button>
+          {appointment?.assigned_to_user_id && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleSendAppointmentLink}
+              disabled={sendingLink}
+              className="h-8 px-3 text-sm font-medium"
+            >
+              <Send className="h-4 w-4 mr-1.5" />
+              {sendingLink ? "Sending..." : "Text Appointment Link"}
+            </Button>
+          )}
           {isAuthorizedToDelete && (
             <Button 
               variant="destructive" 
@@ -1398,6 +1466,23 @@ export default function AppointmentDetailPage() {
               setPendingFormData(null)
             }}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Phone Missing Dialog */}
+      <Dialog open={showPhoneMissingDialog} onOpenChange={setShowPhoneMissingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Phone Number Not Found</DialogTitle>
+            <DialogDescription>
+              {phoneMissingMessage || "No phone number on file for this staff member."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPhoneMissingDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
