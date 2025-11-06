@@ -576,10 +576,12 @@ export function CreateAppointmentDialog({
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2"></div>
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time</Label>
                 <Input id="endTime" type="time" value={formData.endTime} readOnly className="bg-muted" />
               </div>
+              <div></div>
             </div>
           </div>
 
