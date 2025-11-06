@@ -922,7 +922,7 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-50 p-1">
+    <div className="min-h-screen bg-gray-100 p-1">
       {/* Optimized for iPad 11-inch (834x1194px) - Compact Layout */}
       <div className="max-w-full mx-auto">
         {/* Dark Gradient Header - FORM STYLE */}
@@ -1057,7 +1057,7 @@ const EnhancedHomeVisitForm = ({
         </Card>
 
         {/* Form Content - Reduced padding */}
-        <Card className="mb-2">
+        <Card className="mb-2 bg-gray-50">
           <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
       </div>
@@ -1582,7 +1582,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange }
       </div>
 
       {/* Compact Table Format */}
-      <div className="border rounded-lg overflow-hidden bg-white">
+      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold">
           <div className="col-span-2 text-gray-700">Number</div>
@@ -1997,165 +1997,168 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
         </AlertDescription>
       </Alert>
 
-      {/* Fire Inspection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Flame className="h-5 w-5 text-red-600" />
-            Fire Inspection
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="fireCurrentDate">Current Inspection Date *</Label>
-              <Input
-                id="fireCurrentDate"
-                type="date"
-                value={inspections.fire.currentInspectionDate}
-                onChange={(e) => onChange("inspections.fire.currentInspectionDate", e.target.value)}
-              />
-            </div>
+      {/* Fire and Health Inspections - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Fire Inspection */}
+        <Card className="bg-gray-50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Flame className="h-5 w-5 text-red-600" />
+              Fire Inspection
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <Label htmlFor="fireCurrentDate">Current Inspection Date *</Label>
+                <Input
+                  id="fireCurrentDate"
+                  type="date"
+                  value={inspections.fire.currentInspectionDate}
+                  onChange={(e) => onChange("inspections.fire.currentInspectionDate", e.target.value)}
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="fireExpirationDate">Expiration Date *</Label>
-              <Input
-                id="fireExpirationDate"
-                type="date"
-                value={inspections.fire.expirationDate}
-                onChange={(e) => onChange("inspections.fire.expirationDate", e.target.value)}
-              />
-            </div>
+              <div>
+                <Label htmlFor="fireExpirationDate">Expiration Date *</Label>
+                <Input
+                  id="fireExpirationDate"
+                  type="date"
+                  value={inspections.fire.expirationDate}
+                  onChange={(e) => onChange("inspections.fire.expirationDate", e.target.value)}
+                />
+              </div>
 
-            <div>
-              <Label>Days Until Expiration</Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input value={inspections.fire.daysUntilExpiration} disabled className="bg-gray-100" />
-                {getExpirationBadge(inspections.fire.daysUntilExpiration)}
+              <div>
+                <Label>Days Until Expiration</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input value={inspections.fire.daysUntilExpiration} disabled className="bg-gray-100" />
+                  {getExpirationBadge(inspections.fire.daysUntilExpiration)}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="fireInspectorAgency">Inspector/Agency</Label>
+                <Input
+                  id="fireInspectorAgency"
+                  value={inspections.fire.inspectorAgency}
+                  onChange={(e) => onChange("inspections.fire.inspectorAgency", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="fireCertificateNumber">Certificate Number</Label>
+                <Input
+                  id="fireCertificateNumber"
+                  value={inspections.fire.certificateNumber}
+                  onChange={(e) => onChange("inspections.fire.certificateNumber", e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="fireCopyOnFile"
+                  checked={inspections.fire.copyOnFile}
+                  onCheckedChange={(checked) => onChange("inspections.fire.copyOnFile", checked)}
+                />
+                <Label htmlFor="fireCopyOnFile" className="cursor-pointer">
+                  Copy on File
+                </Label>
+              </div>
+
+              <div>
+                <Label htmlFor="fireNotes">Notes</Label>
+                <Textarea
+                  id="fireNotes"
+                  value={inspections.fire.notes}
+                  onChange={(e) => onChange("inspections.fire.notes", e.target.value)}
+                  rows={2}
+                />
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div>
-              <Label htmlFor="fireInspectorAgency">Inspector/Agency</Label>
-              <Input
-                id="fireInspectorAgency"
-                value={inspections.fire.inspectorAgency}
-                onChange={(e) => onChange("inspections.fire.inspectorAgency", e.target.value)}
-              />
-            </div>
+        {/* Health Inspection */}
+        <Card className="bg-gray-50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Stethoscope className="h-5 w-5 text-green-600" />
+              Health Inspection
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <Label htmlFor="healthCurrentDate">Current Inspection Date *</Label>
+                <Input
+                  id="healthCurrentDate"
+                  type="date"
+                  value={inspections.health.currentInspectionDate}
+                  onChange={(e) => onChange("inspections.health.currentInspectionDate", e.target.value)}
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="fireCertificateNumber">Certificate Number</Label>
-              <Input
-                id="fireCertificateNumber"
-                value={inspections.fire.certificateNumber}
-                onChange={(e) => onChange("inspections.fire.certificateNumber", e.target.value)}
-              />
-            </div>
+              <div>
+                <Label htmlFor="healthExpirationDate">Expiration Date *</Label>
+                <Input
+                  id="healthExpirationDate"
+                  type="date"
+                  value={inspections.health.expirationDate}
+                  onChange={(e) => onChange("inspections.health.expirationDate", e.target.value)}
+                />
+              </div>
 
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="fireCopyOnFile"
-                checked={inspections.fire.copyOnFile}
-                onCheckedChange={(checked) => onChange("inspections.fire.copyOnFile", checked)}
-              />
-              <Label htmlFor="fireCopyOnFile" className="cursor-pointer">
-                Copy on File
-              </Label>
-            </div>
+              <div>
+                <Label>Days Until Expiration</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input value={inspections.health.daysUntilExpiration} disabled className="bg-gray-100" />
+                  {getExpirationBadge(inspections.health.daysUntilExpiration)}
+                </div>
+              </div>
 
-            <div className="md:col-span-3">
-              <Label htmlFor="fireNotes">Notes</Label>
-              <Textarea
-                id="fireNotes"
-                value={inspections.fire.notes}
-                onChange={(e) => onChange("inspections.fire.notes", e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <div>
+                <Label htmlFor="healthInspectorAgency">Inspector/Agency</Label>
+                <Input
+                  id="healthInspectorAgency"
+                  value={inspections.health.inspectorAgency}
+                  onChange={(e) => onChange("inspections.health.inspectorAgency", e.target.value)}
+                />
+              </div>
 
-      {/* Health Inspection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Stethoscope className="h-5 w-5 text-green-600" />
-            Health Inspection
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="healthCurrentDate">Current Inspection Date *</Label>
-              <Input
-                id="healthCurrentDate"
-                type="date"
-                value={inspections.health.currentInspectionDate}
-                onChange={(e) => onChange("inspections.health.currentInspectionDate", e.target.value)}
-              />
-            </div>
+              <div>
+                <Label htmlFor="healthCertificateNumber">Certificate Number</Label>
+                <Input
+                  id="healthCertificateNumber"
+                  value={inspections.health.certificateNumber}
+                  onChange={(e) => onChange("inspections.health.certificateNumber", e.target.value)}
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="healthExpirationDate">Expiration Date *</Label>
-              <Input
-                id="healthExpirationDate"
-                type="date"
-                value={inspections.health.expirationDate}
-                onChange={(e) => onChange("inspections.health.expirationDate", e.target.value)}
-              />
-            </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="healthCopyOnFile"
+                  checked={inspections.health.copyOnFile}
+                  onCheckedChange={(checked) => onChange("inspections.health.copyOnFile", checked)}
+                />
+                <Label htmlFor="healthCopyOnFile" className="cursor-pointer">
+                  Copy on File
+                </Label>
+              </div>
 
-            <div>
-              <Label>Days Until Expiration</Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input value={inspections.health.daysUntilExpiration} disabled className="bg-gray-100" />
-                {getExpirationBadge(inspections.health.daysUntilExpiration)}
+              <div>
+                <Label htmlFor="healthNotes">Notes</Label>
+                <Textarea
+                  id="healthNotes"
+                  value={inspections.health.notes}
+                  onChange={(e) => onChange("inspections.health.notes", e.target.value)}
+                  rows={2}
+                />
               </div>
             </div>
-
-            <div>
-              <Label htmlFor="healthInspectorAgency">Inspector/Agency</Label>
-              <Input
-                id="healthInspectorAgency"
-                value={inspections.health.inspectorAgency}
-                onChange={(e) => onChange("inspections.health.inspectorAgency", e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="healthCertificateNumber">Certificate Number</Label>
-              <Input
-                id="healthCertificateNumber"
-                value={inspections.health.certificateNumber}
-                onChange={(e) => onChange("inspections.health.certificateNumber", e.target.value)}
-              />
-            </div>
-
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox
-                id="healthCopyOnFile"
-                checked={inspections.health.copyOnFile}
-                onCheckedChange={(checked) => onChange("inspections.health.copyOnFile", checked)}
-              />
-              <Label htmlFor="healthCopyOnFile" className="cursor-pointer">
-                Copy on File
-              </Label>
-            </div>
-
-            <div className="md:col-span-3">
-              <Label htmlFor="healthNotes">Notes</Label>
-              <Textarea
-                id="healthNotes"
-                value={inspections.health.notes}
-                onChange={(e) => onChange("inspections.health.notes", e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Fire Extinguishers */}
       <Card>

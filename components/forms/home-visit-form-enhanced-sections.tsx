@@ -30,97 +30,83 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
         </AlertDescription>
       </Alert>
 
-      {/* Training Requirements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Training Requirements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {traumaCare.items.map((item, index) => (
-              <Card key={index}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <Badge variant="outline" className="text-xs mb-2">
-                        {item.code}
-                      </Badge>
-                      <p className="text-sm font-medium">{item.requirement}</p>
-                    </div>
-                    {/* Compact Status Buttons and Notes - Side by Side */}
-                    <div className="flex gap-2 w-full">
-                      {/* Buttons - 1/2 width total (1/6 each) */}
-                      <div className="flex gap-1 w-1/2">
-                        <Button
-                          size="sm"
-                          variant={item.status === "compliant" ? "default" : "outline"}
-                          className={`h-6 flex-1 ${
-                            item.status === "compliant"
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "hover:bg-green-50"
-                          }`}
-                          onClick={() =>
-                            onChange("traumaInformedCare", index, "status", item.status === "compliant" ? "" : "compliant")
-                          }
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          <span className="text-xs font-semibold">Compliant</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={item.status === "non-compliant" ? "default" : "outline"}
-                          className={`h-6 flex-1 ${
-                            item.status === "non-compliant"
-                              ? "bg-red-600 hover:bg-red-700 text-white"
-                              : "hover:bg-red-50"
-                          }`}
-                          onClick={() =>
-                            onChange(
-                              "traumaInformedCare",
-                              index,
-                              "status",
-                              item.status === "non-compliant" ? "" : "non-compliant"
-                            )
-                          }
-                        >
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          <span className="text-xs font-semibold">Non-Compliant</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={item.status === "na" ? "default" : "outline"}
-                          className={`h-6 flex-1 ${
-                            item.status === "na"
-                              ? "bg-slate-600 hover:bg-slate-700 text-white"
-                              : "hover:bg-slate-50"
-                          }`}
-                          onClick={() => onChange("traumaInformedCare", index, "status", item.status === "na" ? "" : "na")}
-                        >
-                          <span className="text-xs font-semibold">N/A</span>
-                        </Button>
-                      </div>
+      {/* Training Requirements - Using Compact Table Format */}
+      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold">
+          <div className="col-span-3 text-gray-700">Number</div>
+          <div className="col-span-7 text-gray-700">Training Requirement</div>
+          <div className="col-span-2 text-center text-gray-700">Status</div>
+        </div>
 
-                      {/* Notes Field - 1/2 width, required only for non-compliant */}
-                      <div className={`w-1/2 transition-opacity duration-200 ${item.status ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-                        <Textarea
-                          placeholder={item.status === "non-compliant" ? "Notes required..." : item.status ? "Add notes if needed..." : ""}
-                          value={item.notes || ""}
-                          onChange={(e) => onChange("traumaInformedCare", index, "notes", e.target.value)}
-                          className={`text-sm min-h-[24px] h-6 resize-none ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
-                          rows={1}
-                          disabled={!item.status}
-                          required={item.status === "non-compliant"}
-                          aria-required={item.status === "non-compliant"}
-                        />
-                      </div>
-                    </div>
+        {/* Table Rows */}
+        <div className="divide-y divide-gray-200">
+          {traumaCare.items.map((item, index) => (
+            <div key={index} className="bg-white">
+              <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-gray-50">
+                {/* Number Column */}
+                <div className="col-span-3 flex items-center gap-1.5">
+                  <span className="font-mono text-xs text-gray-600">{item.code || ""}</span>
+                </div>
+
+                {/* Requirement Column */}
+                <div className="col-span-7 text-gray-900 leading-tight text-sm">
+                  {item.requirement}
+                </div>
+
+                {/* Status Column - Compliant/N/A Buttons */}
+                <div className="col-span-2 flex flex-col gap-0.5 justify-center items-center">
+                  <Button
+                    size="sm"
+                    variant={item.status === "compliant" ? "default" : "outline"}
+                    className={`h-8 w-full text-xs px-2 font-medium ${
+                      item.status === "compliant"
+                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        : "hover:bg-green-50"
+                    }`}
+                    onClick={() => {
+                      onChange("traumaInformedCare", index, "status", item.status === "compliant" ? "" : "compliant")
+                    }}
+                  >
+                    {item.status === "compliant" ? "✓" : "Compliant"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={item.status === "na" ? "default" : "outline"}
+                    className={`h-6 w-full text-xs px-1 ${
+                      item.status === "na"
+                        ? "bg-slate-600 hover:bg-slate-700 text-white"
+                        : "hover:bg-slate-50"
+                    }`}
+                    onClick={() => {
+                      onChange("traumaInformedCare", index, "status", item.status === "na" ? "" : "na")
+                    }}
+                  >
+                    N/A
+                  </Button>
+                </div>
+              </div>
+
+              {/* Expanded Notes Row - Show if status is set or has notes */}
+              {(item.status || item.notes) && (
+                <div className="bg-gray-50 border-t px-2 py-2">
+                  <div>
+                    <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
+                    <Textarea
+                      value={item.notes || ""}
+                      onChange={(e) => onChange("traumaInformedCare", index, "notes", e.target.value)}
+                      placeholder={item.status === "non-compliant" ? "Notes required..." : "Optional..."}
+                      className={`text-sm h-10 resize-none p-2 ${item.status === "non-compliant" && !item.notes ? "border-red-300" : ""}`}
+                      rows={2}
+                      required={item.status === "non-compliant"}
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* TBRI Strategies */}
       <Card className="border-blue-200 bg-blue-50/30">
