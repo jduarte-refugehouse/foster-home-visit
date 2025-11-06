@@ -157,31 +157,72 @@ export default function GuidePage() {
             </AlertBox>
 
             <AlertBox type="danger">
-              <strong>Division of Responsibilities:</strong>
+              <strong>CRITICAL: Role Boundaries - Home Liaison vs. Direct Care Staff</strong>
               <br />
-              As the Home Visit Liaison, you are responsible for household safety, well-being, and compliance oversight.
-              The child's case manager separately handles service planning and child-specific goal progress. Do NOT
-              document progress on service plans or therapeutic/educational goals - this is the case manager's
-              responsibility.
+              <br />
+              <strong>If you are ONLY a Home Visit Liaison (not a case manager or direct care staff):</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
+                <li>You conduct <strong>general observation only</strong> - observing children's general well-being, safety, and environment</li>
+                <li>You do <strong>NOT</strong> conduct individual child interviews or ASQ suicide risk screenings</li>
+                <li>You do <strong>NOT</strong> engage in case-specific interactions or therapeutic discussions</li>
+                <li>You focus on <strong>household compliance, safety, and environmental requirements</strong></li>
+                <li>You document general observations about child well-being without conducting formal assessments</li>
+              </ul>
+              <br />
+              <strong>If you are Direct Care Staff or Case Manager conducting a home visit:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
+                <li>You may conduct child interviews and ASQ screenings as part of your role</li>
+                <li>You handle case-specific interactions and service planning</li>
+                <li>You may combine home monitoring with your direct care responsibilities</li>
+              </ul>
+              <br />
+              <strong>This guide includes sections for both roles.</strong> Home Liaisons should skip the "Child Interview" section entirely.
             </AlertBox>
 
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  What's Different in This Version
+                  Role-Specific Guidance
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-3">Critical Updates in Version 25.1:</h3>
+                  <h3 className="font-semibold mb-3">Sections for Home Liaisons ONLY:</h3>
                   <ul className="space-y-2">
-                    <ChecklistItem>Enhanced child interview sections for up to 5 children</ChecklistItem>
+                    <ChecklistItem>Pre-Visit Preparation</ChecklistItem>
+                    <ChecklistItem>Medication Requirements</ChecklistItem>
+                    <ChecklistItem>Health & Safety Inspections</ChecklistItem>
+                    <ChecklistItem>Rights Posters & Documentation</ChecklistItem>
+                    <ChecklistItem>Bedroom & Living Space Requirements</ChecklistItem>
+                    <ChecklistItem>Indoor & Outdoor Space Safety</ChecklistItem>
+                    <ChecklistItem>Vehicle Safety (if applicable)</ChecklistItem>
+                    <ChecklistItem>Swimming Area Safety (if applicable)</ChecklistItem>
+                    <ChecklistItem>Infants/Toddlers Safety (if applicable)</ChecklistItem>
+                    <ChecklistItem>Foster Parent Interview (general household observations)</ChecklistItem>
+                    <ChecklistItem>Package-Specific Requirements (if home is credentialed)</ChecklistItem>
+                    <ChecklistItem>Documentation & Visit Summary</ChecklistItem>
+                  </ul>
+                </div>
+
+                <AlertBox type="warning">
+                  <strong>⚠️ NOT for Home Liaisons:</strong>
+                  <br />
+                  <strong>Child Interview Section:</strong> Individual child interviews, ASQ suicide risk screenings, and case-specific child assessments are the responsibility of direct care staff/case managers, NOT home liaisons.
+                  <br />
+                  <br />
+                  Home Liaisons should observe children's general well-being and safety during the visit but should NOT conduct formal interviews or screenings.
+                </AlertBox>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Sections for Direct Care Staff/Case Managers:</h3>
+                  <ul className="space-y-2">
+                    <ChecklistItem>Individual Child Interviews (up to 5 children)</ChecklistItem>
+                    <ChecklistItem>ASQ Suicide Risk Screening (ages 10+ every 90 days)</ChecklistItem>
                     <ChecklistItem>Service level and service package tracking per child</ChecklistItem>
                     <ChecklistItem>Legal status verification (TMC/PMC/JMC/Voluntary)</ChecklistItem>
-                    <ChecklistItem>ASQ suicide screening requirement for ages 10+</ChecklistItem>
                     <ChecklistItem>Placement authorization verification</ChecklistItem>
-                    <ChecklistItem>Visit summary and compliance status tracking</ChecklistItem>
+                    <ChecklistItem>Case-specific service planning discussions</ChecklistItem>
                   </ul>
                 </div>
 
@@ -280,7 +321,11 @@ export default function GuidePage() {
 
                 <TipBox>
                   <strong>Pro Tip:</strong> Call ahead to confirm the visit and ensure all household members who need to
-                  be present are available. This is especially important for conducting private child interviews.
+                  be present are available. 
+                  <br />
+                  <br />
+                  <strong>Note:</strong> If you are a home liaison, you do not need children present for private interviews. 
+                  If direct care staff will be conducting child interviews, coordinate with them to ensure children are available.
                 </TipBox>
               </CardContent>
             </Card>
@@ -293,11 +338,12 @@ export default function GuidePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ConversationStarter title="Suggested Opening Script:">
-                  "Hello! I'm here for our monthly home visit. I'm using an enhanced version of our monitoring form
-                  today. The core requirements haven't changed, but we've added some discussion items to help prepare
-                  for upcoming changes in the foster care system. Let's start with a walk-through, and then we'll sit
-                  down to go over everything together."
+                <ConversationStarter title="Suggested Opening Script (Home Liaison):">
+                  "Hello! I'm here for our monthly home visit to check on household safety and compliance. I'll be conducting a walk-through of the home and reviewing requirements with you. This visit focuses on the home environment and compliance with standards."
+                </ConversationStarter>
+
+                <ConversationStarter title="If Direct Care Staff Will Also Visit:">
+                  "Hello! I'm here for our monthly home visit. The case manager/direct care staff may also be visiting separately to conduct child interviews and case-specific assessments. Today I'm focusing on household safety and compliance requirements."
                 </ConversationStarter>
 
                 <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg border-l-4 border-yellow-500">
@@ -1196,7 +1242,22 @@ export default function GuidePage() {
         return (
           <div className="space-y-6">
             <AlertBox type="danger">
-              <strong>CRITICAL REQUIREMENT:</strong> You must conduct and document individual interviews for EACH child
+              <strong>⚠️ NOT FOR HOME LIAISONS:</strong> This section is for <strong>Direct Care Staff and Case Managers only</strong>.
+              <br />
+              <br />
+              <strong>If you are ONLY a Home Visit Liaison:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
+                <li>You should <strong>SKIP this entire section</strong></li>
+                <li>You do <strong>NOT</strong> conduct individual child interviews</li>
+                <li>You do <strong>NOT</strong> conduct ASQ suicide risk screenings</li>
+                <li>You may make general observations about children's well-being during your visit, but formal interviews are outside your scope</li>
+              </ul>
+              <br />
+              <strong>If you are Direct Care Staff or Case Manager:</strong> Continue with this section to conduct required child interviews and screenings.
+            </AlertBox>
+
+            <AlertBox type="info">
+              <strong>For Direct Care Staff/Case Managers:</strong> You must conduct and document individual interviews for EACH child
               in placement (up to 5 children). Each child requires their own interview section with complete
               identification and assessment.
             </AlertBox>
@@ -1284,11 +1345,19 @@ export default function GuidePage() {
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   ASQ Suicide Risk Screening (CRITICAL)
+                  <Badge variant="destructive">Direct Care Staff Only</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <AlertBox type="warning">
+                  <strong>⚠️ HOME LIAISONS: DO NOT CONDUCT THIS SCREENING</strong>
+                  <br />
+                  ASQ suicide risk screenings are the responsibility of direct care staff/case managers, NOT home liaisons.
+                  If you are a home liaison, skip this section entirely.
+                </AlertBox>
+
                 <AlertBox type="danger">
-                  <strong>MANDATORY REQUIREMENT:</strong>
+                  <strong>For Direct Care Staff/Case Managers - MANDATORY REQUIREMENT:</strong>
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>Required for ALL children age 10+ every 90 days</li>
                     <li>Due quarterly: March, June, September, December</li>
@@ -1495,6 +1564,19 @@ export default function GuidePage() {
       case "interview-parent":
         return (
           <div className="space-y-6">
+            <AlertBox type="info">
+              <strong>Home Liaison Focus:</strong> As a home liaison, your conversation with foster parents should focus on:
+              <ul className="list-disc list-inside mt-2 space-y-1 ml-4">
+                <li>Household compliance and safety observations</li>
+                <li>General observations about children's well-being (not case-specific assessments)</li>
+                <li>Environmental safety and maintenance</li>
+                <li>Medication administration and storage</li>
+                <li>Compliance with TAC requirements</li>
+              </ul>
+              <br />
+              <strong>Direct Care Staff:</strong> May also discuss case-specific progress, therapeutic goals, and service planning.
+            </AlertBox>
+
             <AlertBox type="success">
               <strong>Approach:</strong> Collaborative, not interrogative. Recognize their expertise about the child.
               Balance information gathering with support.
