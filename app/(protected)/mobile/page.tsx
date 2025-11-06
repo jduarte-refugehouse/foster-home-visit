@@ -112,26 +112,26 @@ export default function MobileDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       <div className="max-w-md mx-auto space-y-4">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Today's Visits</h1>
-          <p className="text-sm text-gray-600 mt-1">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Today's Visits</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
 
         {/* Appointments List */}
         {loading ? (
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">Loading appointments...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading appointments...</p>
             </CardContent>
           </Card>
         ) : appointments.length === 0 ? (
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-6 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No appointments scheduled for today</p>
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400 dark:text-gray-500 opacity-50" />
+              <p className="text-gray-600 dark:text-gray-400">No appointments scheduled for today</p>
             </CardContent>
           </Card>
         ) : (
@@ -140,13 +140,22 @@ export default function MobileDashboardPage() {
             const endTime = parseLocalDatetime(appointment.end_datetime)
 
             return (
-              <Card key={appointment.appointment_id} className="overflow-hidden">
+              <Card key={appointment.appointment_id} className="overflow-hidden bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-1">{appointment.home_name}</CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      {/* Appointment Title - Most Important */}
+                      <CardTitle className="text-lg font-bold mb-1 text-gray-900 dark:text-gray-100">
+                        {appointment.title || appointment.home_name}
+                      </CardTitle>
+                      {/* Home Name if different from title */}
+                      {appointment.title && appointment.title !== appointment.home_name && (
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {appointment.home_name}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <Clock className="h-4 w-4 flex-shrink-0" />
                         <span>
                           {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
                         </span>
@@ -156,22 +165,19 @@ export default function MobileDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="text-sm text-gray-700">
-                    <p className="font-medium mb-1">{appointment.title}</p>
-                    {appointment.location_address && (
-                      <div className="flex items-start gap-2 text-gray-600">
-                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span className="flex-1">{appointment.location_address}</span>
-                      </div>
-                    )}
-                  </div>
+                  {appointment.location_address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span className="flex-1">{appointment.location_address}</span>
+                    </div>
+                  )}
 
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full"
+                      className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                       asChild
                     >
                       <a
@@ -186,7 +192,7 @@ export default function MobileDashboardPage() {
                     <Button
                       variant="default"
                       size="sm"
-                      className="w-full"
+                      className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
                       asChild
                     >
                       <Link href={`/mobile/appointment/${appointment.appointment_id}`}>
@@ -201,7 +207,7 @@ export default function MobileDashboardPage() {
         )}
 
         {/* Footer Info */}
-        <div className="text-center text-xs text-gray-500 pt-4">
+        <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-4">
           <p>Mobile-optimized view for field staff</p>
         </div>
       </div>

@@ -223,9 +223,9 @@ export default function MobileAppointmentDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <p className="text-muted-foreground">Loading appointment...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading appointment...</p>
         </div>
       </div>
     )
@@ -233,11 +233,15 @@ export default function MobileAppointmentDetailPage() {
 
   if (!appointment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Appointment not found</p>
-          <Button onClick={() => router.push("/mobile")} className="mt-4" variant="outline">
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+          <p className="text-gray-600 dark:text-gray-400">Appointment not found</p>
+          <Button 
+            onClick={() => router.push("/mobile")} 
+            className="mt-4 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" 
+            variant="outline"
+          >
             Back to Dashboard
           </Button>
         </div>
@@ -251,30 +255,40 @@ export default function MobileAppointmentDetailPage() {
   const hasArrived = !!appointment.arrived_timestamp
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Compact Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-md mx-auto px-3 py-2 flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
+            className="h-8 w-8"
             onClick={() => router.push("/mobile")}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-lg font-semibold flex-1">Appointment Details</h1>
+          <h1 className="text-base font-semibold flex-1 text-gray-900 dark:text-gray-100 truncate">Appointment</h1>
         </div>
       </div>
 
       <div className="max-w-md mx-auto p-4 space-y-4">
         {/* Appointment Card */}
-        <Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="text-xl mb-2">{appointment.home_name}</CardTitle>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="h-4 w-4" />
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                {/* Appointment Title - Most Important */}
+                <CardTitle className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+                  {appointment.title || appointment.home_name}
+                </CardTitle>
+                {/* Home Name if different from title */}
+                {appointment.title && appointment.title !== appointment.home_name && (
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {appointment.home_name}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <Clock className="h-4 w-4 flex-shrink-0" />
                   <span>
                     {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
                   </span>
@@ -290,10 +304,10 @@ export default function MobileAppointmentDetailPage() {
                 }
                 className={
                   appointment.status === "completed"
-                    ? "bg-green-500"
+                    ? "bg-green-500 dark:bg-green-600"
                     : appointment.status === "in-progress"
-                      ? "bg-blue-500"
-                      : ""
+                      ? "bg-blue-500 dark:bg-blue-600"
+                      : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                 }
               >
                 {appointment.status}
@@ -303,20 +317,20 @@ export default function MobileAppointmentDetailPage() {
           <CardContent className="space-y-4">
             {appointment.description && (
               <div>
-                <p className="text-sm text-gray-700">{appointment.description}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">{appointment.description}</p>
               </div>
             )}
 
             {appointment.location_address && (
               <div className="space-y-2">
                 <div className="flex items-start gap-2 text-sm">
-                  <MapPin className="h-4 w-4 mt-0.5 text-gray-500" />
-                  <span className="text-gray-700">{appointment.location_address}</span>
+                  <MapPin className="h-4 w-4 mt-0.5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-700 dark:text-gray-300">{appointment.location_address}</span>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   asChild
                 >
                   <a
@@ -333,9 +347,9 @@ export default function MobileAppointmentDetailPage() {
 
             {/* Mileage Tracking */}
             {appointment.calculated_mileage && (
-              <div className="pt-2 border-t">
-                <p className="text-sm text-gray-600">
-                  Calculated Mileage: <span className="font-semibold">{appointment.calculated_mileage.toFixed(1)} miles</span>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Calculated Mileage: <span className="font-semibold text-gray-900 dark:text-gray-100">{appointment.calculated_mileage.toFixed(1)} miles</span>
                 </p>
               </div>
             )}
@@ -348,7 +362,7 @@ export default function MobileAppointmentDetailPage() {
             <Button
               onClick={handleStartDrive}
               disabled={capturingLocation}
-              className="w-full"
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
             >
               <Play className="h-5 w-5 mr-2" />
@@ -360,9 +374,8 @@ export default function MobileAppointmentDetailPage() {
             <Button
               onClick={handleArrived}
               disabled={capturingLocation}
-              className="w-full"
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
-              variant="default"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
               {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
@@ -382,9 +395,8 @@ export default function MobileAppointmentDetailPage() {
                   fetchAppointmentDetails()
                 }
               }}
-              className="w-full"
+              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
               size="lg"
-              variant="default"
             >
               Start Visit
             </Button>
@@ -393,7 +405,7 @@ export default function MobileAppointmentDetailPage() {
           {/* Link to full form (for iPad/desktop) */}
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             asChild
           >
             <a href={`/appointment/${appointmentId}`} target="_blank">
