@@ -399,7 +399,9 @@ export default function GuidePage() {
   // Wrap in TooltipProvider for tooltips to work
   return (
     <TooltipProvider delayDuration={200}>
-      <GuideContent activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p>Loading guide...</p></div>}>
+        <GuideContent activeTab={activeTab} setActiveTab={setActiveTab} />
+      </Suspense>
     </TooltipProvider>
   )
 }
