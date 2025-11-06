@@ -132,6 +132,13 @@ export default function MobileAppointmentDetailPage() {
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
+      
+      // Add authentication headers if user is available
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
         method: "POST",
@@ -170,6 +177,13 @@ export default function MobileAppointmentDetailPage() {
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+      }
+      
+      // Add authentication headers if user is available
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
       const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
