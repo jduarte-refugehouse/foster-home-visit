@@ -33,7 +33,7 @@ interface EnhancedHomeVisitFormProps {
   appointmentData?: any
   prepopulationData?: any
   existingFormData?: any
-  onSave?: (formData: any) => Promise<void>
+  onSave?: (formData: any, options?: { silent?: boolean }) => Promise<void>
   onSubmit?: (formData: any) => Promise<void>
 }
 
@@ -753,7 +753,8 @@ const EnhancedHomeVisitForm = ({
           setIsSaving(true)
           setSaveStatus("saving")
           // Use the latest formData by accessing it from state
-          await onSave(formData)
+          // Pass silent: true to suppress toast notifications
+          await onSave(formData, { silent: true })
           setSaveStatus("saved")
           
           // Clear the "saved" status after 2 seconds

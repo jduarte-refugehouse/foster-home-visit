@@ -430,9 +430,10 @@ export default function AppointmentDetailPage() {
     }
   }
 
-  const handleSaveForm = async (formData: any) => {
+  const handleSaveForm = async (formData: any, options?: { silent?: boolean }) => {
+    const isSilent = options?.silent === true
     try {
-      console.log("💾 [APPT] Saving form from appointment detail page:", formData)
+      console.log("💾 [APPT] Saving form from appointment detail page:", formData, isSilent ? "(auto-save)" : "(manual save)")
 
       if (!appointmentId) {
         toast({
@@ -568,17 +569,25 @@ export default function AppointmentDetailPage() {
         setVisitFormStatus("draft")
       }
       
-      toast({
-        title: "Draft Saved",
-        description: "Your form has been saved as a draft",
-      })
+      // Only show toast for manual saves
+      if (!isSilent) {
+        toast({
+          title: "Draft Saved",
+          description: "Your form has been saved as a draft",
+        })
+      }
     } catch (error) {
       console.error("❌ [APPT] Error saving form:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save form draft",
-        variant: "destructive",
-      })
+      // Only show error toast for manual saves (auto-save errors are shown in badge)
+      if (!isSilent) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to save form draft",
+          variant: "destructive",
+        })
+      }
+      // Re-throw error so auto-save can handle it
+      throw error
     }
   }
 
