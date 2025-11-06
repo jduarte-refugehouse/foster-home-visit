@@ -95,22 +95,25 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
     const childrenInPlacement = await query(childrenQuery, [homeGuid])
 
     // 4. Get previous visit data for carry-forward (most recent completed visit)
-    // TODO: This will query visit_forms table once we start saving visits
+    // Join with appointments to find visits for this home
     const previousVisitQuery = `
       SELECT TOP 1
-        visit_form_id,
-        visit_date,
-        form_type,
-        visit_info,
-        family_info,
-        home_environment,
-        observations,
-        recommendations,
-        next_steps
-      FROM visit_forms
-      WHERE home_guid = @param0
-        AND status = 'completed'
-      ORDER BY visit_date DESC
+        vf.visit_form_id,
+        vf.visit_date,
+        vf.form_type,
+        vf.visit_info,
+        vf.family_info,
+        vf.home_environment,
+        vf.observations,
+        vf.recommendations,
+        vf.compliance_review
+      FROM visit_forms vf
+      INNER JOIN appointments a ON vf.appointment_id = a.appointment_id
+      INNER JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+      WHERE h.Guid = @param0
+        AND vf.status = 'completed'
+        AND vf.is_deleted = 0
+      ORDER BY vf.visit_date DESC
     `
 
     let previousVisit = null
@@ -209,7 +212,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         homeEnvironment: previousVisit.home_environment,
         observations: previousVisit.observations,
         recommendations: previousVisit.recommendations,
-        nextSteps: previousVisit.next_steps,
+        complianceReview: previousVisit.compliance_review,
       } : null,
     }
 
