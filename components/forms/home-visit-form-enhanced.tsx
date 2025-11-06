@@ -912,36 +912,70 @@ const EnhancedHomeVisitForm = ({
   // Handle compliance item status change - updated for monthly tracking
   const handleComplianceChange = (section, index, month, field, value) => {
     setFormData((prev) => {
-      const sectionData = prev[section]
+      // Handle nested paths like "packageCompliance.substanceUse"
+      const sectionParts = section.split(".")
+      let sectionData
+      if (sectionParts.length > 1) {
+        // Nested path - navigate through the object
+        sectionData = prev[sectionParts[0]]
+        for (let i = 1; i < sectionParts.length; i++) {
+          sectionData = sectionData?.[sectionParts[i]]
+        }
+      } else {
+        // Simple path
+        sectionData = prev[section]
+      }
+      
       if (!sectionData || !sectionData.items) return prev
       
-      return {
-        ...prev,
-        [section]: {
+      // Update the nested structure
+      const updatedItems = sectionData.items.map((item, idx) => {
+        if (idx === index) {
+          const monthData = item[month] || { compliant: false, na: false, notes: "" }
+          
+          // If setting compliant to true, clear na. If setting na to true, clear compliant.
+          if (field === "compliant" && value === true) {
+            monthData.na = false
+            monthData.compliant = true
+          } else if (field === "na" && value === true) {
+            monthData.compliant = false
+            monthData.na = true
+          } else {
+            monthData[field] = value
+          }
+          
+          return {
+            ...item,
+            [month]: monthData,
+          }
+        }
+        return item
+      })
+      
+      // Build the update object for nested paths
+      if (sectionParts.length > 1) {
+        const update = {}
+        let current = update
+        for (let i = 0; i < sectionParts.length - 1; i++) {
+          current[sectionParts[i]] = { ...prev[sectionParts[i]] }
+          current = current[sectionParts[i]]
+        }
+        current[sectionParts[sectionParts.length - 1]] = {
           ...sectionData,
-          items: sectionData.items.map((item, idx) => {
-            if (idx === index) {
-              const monthData = item[month] || { compliant: false, na: false, notes: "" }
-              
-              // If setting compliant to true, clear na. If setting na to true, clear compliant.
-              if (field === "compliant" && value === true) {
-                monthData.na = false
-                monthData.compliant = true
-              } else if (field === "na" && value === true) {
-                monthData.compliant = false
-                monthData.na = true
-              } else {
-                monthData[field] = value
-              }
-              
-              return {
-                ...item,
-                [month]: monthData,
-              }
-            }
-            return item
-          }),
-        },
+          items: updatedItems,
+        }
+        return {
+          ...prev,
+          ...update,
+        }
+      } else {
+        return {
+          ...prev,
+          [section]: {
+            ...sectionData,
+            items: updatedItems,
+          },
+        }
       }
     })
   }
