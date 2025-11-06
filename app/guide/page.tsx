@@ -420,8 +420,10 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
     const handleHashNavigation = () => {
       if (window.location.hash) {
         const hash = window.location.hash.substring(1) // Remove the #
+        console.log('🔍 [GUIDE] Looking for element with ID:', hash)
         const element = document.getElementById(hash)
         if (element) {
+          console.log('✅ [GUIDE] Found element, scrolling to it')
           // Small delay to ensure tab content is rendered
           setTimeout(() => {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -431,6 +433,11 @@ function GuideContent({ activeTab, setActiveTab }: { activeTab: string; setActiv
               element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2')
             }, 2000)
           }, 300)
+        } else {
+          console.warn('⚠️ [GUIDE] Element not found with ID:', hash)
+          // List all IDs on the page for debugging
+          const allIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id)
+          console.log('📋 [GUIDE] Available IDs on page:', allIds.slice(0, 20)) // First 20 for debugging
         }
       }
     }
