@@ -1276,476 +1276,582 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   const otherMembers = formData.household?.otherMembers || []
   const placements = formData.placements?.children || []
   
-  return (
-    <div className="space-y-3">
-      {/* Home Composition Display */}
-      {(providers.length > 0 || placements.length > 0) && (
-        <Alert className="bg-blue-50 border-blue-200 py-2">
-          <AlertDescription className="text-xs">
-            <strong>Home Composition:</strong> {providers.length} provider{providers.length !== 1 ? 's' : ''}, {biologicalChildren.length} biological child{biologicalChildren.length !== 1 ? 'ren' : ''}, {otherMembers.length} other member{otherMembers.length !== 1 ? 's' : ''}, {placements.length} foster placement{placements.length !== 1 ? 's' : ''}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Providers */}
-      {providers.length > 0 && (
-        <Card className="bg-green-50/50">
-          <CardHeader className="py-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 text-green-700" />
-              Providers ({providers.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <div className="space-y-1">
-              {providers.map((provider, idx) => (
-                <div key={idx} className="text-xs flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">{provider.relationship || 'Provider'}</Badge>
-                  <span className="font-medium">{provider.name}</span>
-                  {provider.age && <span className="text-gray-500">Age {provider.age}</span>}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Foster Placements */}
-      {placements.length > 0 && (
-        <Card className="bg-purple-50/50">
-          <CardHeader className="py-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Heart className="h-4 w-4 text-purple-700" />
-              Foster Placements ({placements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <div className="space-y-2">
-              {placements.map((child, idx) => (
-                <div key={idx} className="text-xs border-l-2 border-purple-300 pl-2">
-                  <div className="font-medium">{child.firstName} {child.lastName}</div>
-                  <div className="flex gap-2 text-gray-600">
-                    {child.age && <span>Age {child.age}</span>}
-                    {child.placementDate && <span>• Placed: {new Date(child.placementDate).toLocaleDateString()}</span>}
-                  </div>
-                  {child.servicePackage && (
-                    <Badge variant="secondary" className="text-xs mt-1">{child.servicePackage}</Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Biological Children */}
-      {biologicalChildren.length > 0 && (
-        <Card className="bg-blue-50/50">
-          <CardHeader className="py-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-700" />
-              Biological Children ({biologicalChildren.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <div className="space-y-1">
-              {biologicalChildren.map((child, idx) => (
-                <div key={idx} className="text-xs">
-                  <span className="font-medium">{child.name}</span>
-                  {child.age && <span className="text-gray-500"> (Age {child.age})</span>}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Other Household Members */}
-      {otherMembers.length > 0 && (
-        <Card className="bg-gray-50/50">
-          <CardHeader className="py-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 text-gray-700" />
-              Other Household Members ({otherMembers.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <div className="space-y-1">
-              {otherMembers.map((member, idx) => (
-                <div key={idx} className="text-xs flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">{member.relationship || 'Resident'}</Badge>
-                  <span className="font-medium">{member.name}</span>
-                  {member.age && <span className="text-gray-500">Age {member.age}</span>}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div className="md:col-span-2">
-        <Label htmlFor="familyName">Foster Family Name *</Label>
-        <Input
-          id="familyName"
-          value={formData.fosterHome.familyName}
-          onChange={(e) => onChange("fosterHome.familyName", e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="homeId">Home ID *</Label>
-        <Input
-          id="homeId"
-          value={formData.fosterHome.homeId}
-          onChange={(e) => onChange("fosterHome.homeId", e.target.value)}
-        />
-      </div>
-
-      <div className="md:col-span-3">
-        <Label htmlFor="address">Address *</Label>
-        <Input
-          id="address"
-          value={formData.fosterHome.address}
-          onChange={(e) => onChange("fosterHome.address", e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="city">City *</Label>
-        <Input
-          id="city"
-          value={formData.fosterHome.city}
-          onChange={(e) => onChange("fosterHome.city", e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="state">State *</Label>
-        <Input
-          id="state"
-          value={formData.fosterHome.state}
-          onChange={(e) => onChange("fosterHome.state", e.target.value)}
-          placeholder="TX"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="zip">ZIP *</Label>
-        <Input
-          id="zip"
-          value={formData.fosterHome.zip}
-          onChange={(e) => onChange("fosterHome.zip", e.target.value)}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="phone">Phone *</Label>
-        <Input
-          id="phone"
-          type="tel"
-          value={formData.fosterHome.phone}
-          onChange={(e) => onChange("fosterHome.phone", e.target.value)}
-        />
-      </div>
-
-      <div className="md:col-span-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.fosterHome.email}
-          onChange={(e) => onChange("fosterHome.email", e.target.value)}
-        />
-      </div>
-    </div>
-
-    <div className="border-t pt-3">
-      <h3 className="font-semibold text-sm mb-2">License Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <Label htmlFor="licenseType">License Type *</Label>
-          <Select
-            value={formData.fosterHome.licenseType}
-            onValueChange={(value) => onChange("fosterHome.licenseType", value)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Full">Full</SelectItem>
-              <SelectItem value="Provisional">Provisional</SelectItem>
-              <SelectItem value="Kinship">Kinship</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="licenseNumber">License # *</Label>
-          <Input
-            id="licenseNumber"
-            value={formData.fosterHome.licenseNumber}
-            onChange={(e) => onChange("fosterHome.licenseNumber", e.target.value)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="licenseExpiration">License Expiration *</Label>
-          <Input
-            id="licenseExpiration"
-            type="date"
-            value={formData.fosterHome.licenseExpiration}
-            onChange={(e) => onChange("fosterHome.licenseExpiration", e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center space-x-2 pt-6">
-          <Checkbox
-            id="respiteOnly"
-            checked={formData.fosterHome.respiteOnly}
-            onCheckedChange={(checked) => onChange("fosterHome.respiteOnly", checked)}
-          />
-          <Label htmlFor="respiteOnly" className="cursor-pointer">
-            Respite Only
-          </Label>
-        </div>
-      </div>
-    </div>
-
-    <div className="border-t pt-3">
-      <h3 className="font-semibold text-sm mb-2">Capacity Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <Label htmlFor="totalCapacity">Total Capacity *</Label>
-          <Input
-            id="totalCapacity"
-            type="number"
-            value={formData.fosterHome.totalCapacity}
-            onChange={(e) => onChange("fosterHome.totalCapacity", parseInt(e.target.value) || 0)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="fosterCareCapacity">Foster Care Capacity *</Label>
-          <Input
-            id="fosterCareCapacity"
-            type="number"
-            value={formData.fosterHome.fosterCareCapacity}
-            onChange={(e) => onChange("fosterHome.fosterCareCapacity", parseInt(e.target.value) || 0)}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="currentCensus">Current Census *</Label>
-          <Input
-            id="currentCensus"
-            type="number"
-            value={formData.fosterHome.currentCensus}
-            onChange={(e) => onChange("fosterHome.currentCensus", parseInt(e.target.value) || 0)}
-          />
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <Label className="text-sm">Service Levels Approved</Label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-          {["basic", "moderate", "specialized", "intense"].map((level) => (
-            <div key={level} className="flex items-center space-x-2">
-              <Checkbox
-                id={level}
-                checked={formData.fosterHome.serviceLevels.includes(level)}
-                onCheckedChange={(checked) => {
-                  const current = formData.fosterHome.serviceLevels
-                  onChange(
-                    "fosterHome.serviceLevels",
-                    checked ? [...current, level] : current.filter((l) => l !== level)
-                  )
-                }}
-              />
-              <Label htmlFor={level} className="capitalize cursor-pointer">
-                {level}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-
-    {/* Attendance Section */}
-    <div className="border-t pt-3 mt-3">
-      <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-        <Users className="h-4 w-4" />
-        Attendance at Visit
-      </h3>
+  // Auto-check staff member on mount if they're not already checked
+  useEffect(() => {
+    if (appointmentData?.appointment?.assigned_to_name) {
+      const staffName = appointmentData.appointment.assigned_to_name
+      const staffRole = appointmentData.appointment.assigned_to_role || "Staff"
+      const current = formData.attendance?.staff || []
+      const existing = current.find(s => s.name === staffName)
       
-      {/* Foster Parents Attendance */}
-      {providers.length > 0 && (
-        <div className="mb-3">
-          <Label className="text-xs font-medium text-gray-700 mb-2 block">Foster Parents</Label>
-          <div className="space-y-2">
-            {providers.map((provider, idx) => {
-              const attendanceKey = `fosterParent_${idx}`
-              const isPresent = formData.attendance?.fosterParents?.find(p => p.name === provider.name)?.present || false
+      if (!existing || !existing.present) {
+        const updated = existing 
+          ? current.map(s => s.name === staffName ? { ...s, present: true } : s)
+          : [...current, { name: staffName, role: staffRole, present: true }]
+        onChange("attendance.staff", updated)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointmentData?.appointment?.assigned_to_name]) // Only run when staff name changes
+  
+  return (
+    <div className="space-y-6">
+      {/* SECTION 1: Home Composition with Attendance */}
+      <Card className="bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-refuge-purple" />
+            Home Composition & Attendance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Left Column: Home Residents */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm text-gray-700 mb-2">Home Residents</h4>
               
-              return (
-                <div key={idx} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={attendanceKey}
-                    checked={isPresent}
-                    onCheckedChange={(checked) => {
-                      const current = formData.attendance?.fosterParents || []
-                      const existing = current.findIndex(p => p.name === provider.name)
+              {/* Providers */}
+              {providers.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Foster Parents</Label>
+                  <div className="space-y-2 pl-2">
+                    {providers.map((provider, idx) => {
+                      const attendanceKey = `fosterParent_${idx}`
+                      const isPresent = formData.attendance?.fosterParents?.find(p => p.name === provider.name)?.present || false
                       
-                      if (existing >= 0) {
-                        const updated = [...current]
-                        updated[existing].present = checked
-                        onChange("attendance.fosterParents", updated)
-                      } else {
-                        onChange("attendance.fosterParents", [...current, { name: provider.name, present: checked }])
+                      return (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={attendanceKey}
+                            checked={isPresent}
+                            onCheckedChange={(checked) => {
+                              const current = formData.attendance?.fosterParents || []
+                              const existing = current.findIndex(p => p.name === provider.name)
+                              
+                              if (existing >= 0) {
+                                const updated = [...current]
+                                updated[existing].present = checked
+                                onChange("attendance.fosterParents", updated)
+                              } else {
+                                onChange("attendance.fosterParents", [...current, { name: provider.name, present: checked }])
+                              }
+                            }}
+                          />
+                          <Label htmlFor={attendanceKey} className="cursor-pointer text-sm flex-1">
+                            <span className="font-medium">{provider.name}</span>
+                            {provider.relationship && <span className="text-gray-500 ml-1">({provider.relationship})</span>}
+                            {provider.age && <span className="text-gray-500 ml-1">• Age {provider.age}</span>}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Biological Children */}
+              {biologicalChildren.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Biological Children</Label>
+                  <div className="space-y-1 pl-2">
+                    {biologicalChildren.map((child, idx) => {
+                      const attendanceKey = `bioChild_${idx}`
+                      const isPresent = formData.attendance?.others?.find(o => o.name === child.name && o.role === "Biological Child")?.present || false
+                      
+                      return (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={attendanceKey}
+                            checked={isPresent}
+                            onCheckedChange={(checked) => {
+                              const current = formData.attendance?.others || []
+                              const existing = current.findIndex(o => o.name === child.name && o.role === "Biological Child")
+                              
+                              if (existing >= 0) {
+                                const updated = [...current]
+                                updated[existing].present = checked
+                                onChange("attendance.others", updated)
+                              } else {
+                                onChange("attendance.others", [...current, { name: child.name, role: "Biological Child", present: checked }])
+                              }
+                            }}
+                          />
+                          <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
+                            <span className="font-medium">{child.name}</span>
+                            {child.age && <span className="text-gray-500 ml-1">• Age {child.age}</span>}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Other Household Members */}
+              {otherMembers.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Other Household Members</Label>
+                  <div className="space-y-1 pl-2">
+                    {otherMembers.map((member, idx) => {
+                      const attendanceKey = `otherMember_${idx}`
+                      const isPresent = formData.attendance?.others?.find(o => o.name === member.name && o.role === (member.relationship || "Resident"))?.present || false
+                      
+                      return (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={attendanceKey}
+                            checked={isPresent}
+                            onCheckedChange={(checked) => {
+                              const current = formData.attendance?.others || []
+                              const existing = current.findIndex(o => o.name === member.name && o.role === (member.relationship || "Resident"))
+                              
+                              if (existing >= 0) {
+                                const updated = [...current]
+                                updated[existing].present = checked
+                                onChange("attendance.others", updated)
+                              } else {
+                                onChange("attendance.others", [...current, { name: member.name, role: member.relationship || "Resident", present: checked }])
+                              }
+                            }}
+                          />
+                          <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
+                            <span className="font-medium">{member.name}</span>
+                            {member.relationship && <span className="text-gray-500 ml-1">({member.relationship})</span>}
+                            {member.age && <span className="text-gray-500 ml-1">• Age {member.age}</span>}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Foster Children */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm text-gray-700 mb-2">Foster Children in Placement</h4>
+              
+              {placements.length > 0 ? (
+                <div className="space-y-2">
+                  {placements.map((child, idx) => {
+                    const attendanceKey = `placement_${idx}`
+                    const isPresent = formData.attendance?.others?.find(o => o.name === `${child.firstName} ${child.lastName}` && o.role === "Foster Child")?.present || false
+                    
+                    return (
+                      <div key={idx} className="border-l-2 border-purple-300 pl-3 py-2 bg-purple-50/30 rounded-r">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Checkbox
+                            id={attendanceKey}
+                            checked={isPresent}
+                            onCheckedChange={(checked) => {
+                              const current = formData.attendance?.others || []
+                              const childName = `${child.firstName} ${child.lastName}`
+                              const existing = current.findIndex(o => o.name === childName && o.role === "Foster Child")
+                              
+                              if (existing >= 0) {
+                                const updated = [...current]
+                                updated[existing].present = checked
+                                onChange("attendance.others", updated)
+                              } else {
+                                onChange("attendance.others", [...current, { name: childName, role: "Foster Child", present: checked }])
+                              }
+                            }}
+                          />
+                          <Label htmlFor={attendanceKey} className="cursor-pointer text-sm flex-1">
+                            <span className="font-medium">{child.firstName} {child.lastName}</span>
+                            {child.age && <span className="text-gray-500 ml-1">• Age {child.age}</span>}
+                          </Label>
+                        </div>
+                        <div className="text-xs text-gray-600 pl-6">
+                          {child.placementDate && <span>Placed: {new Date(child.placementDate).toLocaleDateString()}</span>}
+                          {child.servicePackage && (
+                            <Badge variant="secondary" className="text-xs ml-2">{child.servicePackage}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No foster children currently in placement</p>
+              )}
+            </div>
+          </div>
+
+          {/* Staff and Other Attendees */}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            {/* Staff Conducting Visit - Auto-checked */}
+            {appointmentData?.appointment?.assigned_to_name && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="staff_conducting"
+                  checked={formData.attendance?.staff?.find(s => s.name === appointmentData.appointment.assigned_to_name)?.present || true}
+                  onCheckedChange={(checked) => {
+                    const staffName = appointmentData.appointment.assigned_to_name
+                    const staffRole = appointmentData.appointment.assigned_to_role || "Staff"
+                    const current = formData.attendance?.staff || []
+                    const existing = current.findIndex(s => s.name === staffName)
+                    
+                    if (existing >= 0) {
+                      const updated = [...current]
+                      updated[existing].present = checked
+                      onChange("attendance.staff", updated)
+                    } else {
+                      onChange("attendance.staff", [...current, { name: staffName, role: staffRole, present: checked }])
+                    }
+                  }}
+                />
+                <Label htmlFor="staff_conducting" className="cursor-pointer text-sm">
+                  <span className="font-medium">{appointmentData.appointment.assigned_to_name}</span>
+                  {appointmentData.appointment.assigned_to_role && (
+                    <span className="text-gray-500 ml-1">({appointmentData.appointment.assigned_to_role})</span>
+                  )}
+                  <span className="text-gray-500 ml-1">• Staff Conducting Visit</span>
+                </Label>
+              </div>
+            )}
+
+            {/* Add Other Attendee */}
+            <div>
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">Add Other Attendee</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Name"
+                  value={formData.attendance?.newOtherName || ""}
+                  onChange={(e) => onChange("attendance.newOtherName", e.target.value)}
+                  className="flex-1 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && formData.attendance?.newOtherName) {
+                      const current = formData.attendance?.others || []
+                      onChange("attendance.others", [...current, { 
+                        name: formData.attendance.newOtherName, 
+                        role: formData.attendance.newOtherRole || "Other",
+                        present: true 
+                      }])
+                      onChange("attendance.newOtherName", "")
+                      onChange("attendance.newOtherRole", "")
+                    }
+                  }}
+                />
+                <Input
+                  placeholder="Role (optional)"
+                  value={formData.attendance?.newOtherRole || ""}
+                  onChange={(e) => onChange("attendance.newOtherRole", e.target.value)}
+                  className="w-40 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && formData.attendance?.newOtherName) {
+                      const current = formData.attendance?.others || []
+                      onChange("attendance.others", [...current, { 
+                        name: formData.attendance.newOtherName, 
+                        role: formData.attendance.newOtherRole || "Other",
+                        present: true 
+                      }])
+                      onChange("attendance.newOtherName", "")
+                      onChange("attendance.newOtherRole", "")
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (formData.attendance?.newOtherName) {
+                      const current = formData.attendance?.others || []
+                      onChange("attendance.others", [...current, { 
+                        name: formData.attendance.newOtherName, 
+                        role: formData.attendance.newOtherRole || "Other",
+                        present: true 
+                      }])
+                      onChange("attendance.newOtherName", "")
+                      onChange("attendance.newOtherRole", "")
+                    }
+                  }}
+                  disabled={!formData.attendance?.newOtherName}
+                >
+                  Add
+                </Button>
+              </div>
+              
+              {/* Show added "other" attendees that aren't household members */}
+              {(formData.attendance?.others || []).filter(other => 
+                !providers.some(p => p.name === other.name) &&
+                !biologicalChildren.some(c => c.name === other.name) &&
+                !otherMembers.some(m => m.name === other.name) &&
+                !placements.some(p => `${p.firstName} ${p.lastName}` === other.name)
+              ).map((other, idx) => (
+                <div key={idx} className="flex items-center gap-2 mt-2">
+                  <Checkbox
+                    id={`other_${idx}`}
+                    checked={other.present}
+                    onCheckedChange={(checked) => {
+                      const current = formData.attendance?.others || []
+                      const updated = [...current]
+                      const otherIdx = current.findIndex(o => o.name === other.name && o.role === other.role)
+                      if (otherIdx >= 0) {
+                        updated[otherIdx].present = checked
+                        onChange("attendance.others", updated)
                       }
                     }}
                   />
-                  <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
-                    {provider.name}
-                    {provider.relationship && <span className="text-gray-500 ml-1">({provider.relationship})</span>}
+                  <Label htmlFor={`other_${idx}`} className="cursor-pointer text-sm flex-1">
+                    {other.name}
+                    {other.role && <span className="text-gray-500 ml-1">({other.role})</span>}
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                    onClick={() => {
+                      const current = formData.attendance?.others || []
+                      onChange("attendance.others", current.filter((o, i) => 
+                        !(o.name === other.name && o.role === other.role)
+                      ))
+                    }}
+                  >
+                    ×
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SECTION 2: Home Logistics */}
+      <Card className="bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Home className="h-5 w-5 text-refuge-purple" />
+            Home Logistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Label htmlFor="familyName" className="text-sm">Foster Family Name *</Label>
+              <Input
+                id="familyName"
+                value={formData.fosterHome.familyName}
+                onChange={(e) => onChange("fosterHome.familyName", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="homeId" className="text-sm">Home ID *</Label>
+              <Input
+                id="homeId"
+                value={formData.fosterHome.homeId}
+                onChange={(e) => onChange("fosterHome.homeId", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="address" className="text-sm">Address *</Label>
+              <Input
+                id="address"
+                value={formData.fosterHome.address}
+                onChange={(e) => onChange("fosterHome.address", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="city" className="text-sm">City *</Label>
+              <Input
+                id="city"
+                value={formData.fosterHome.city}
+                onChange={(e) => onChange("fosterHome.city", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="state" className="text-sm">State *</Label>
+              <Input
+                id="state"
+                value={formData.fosterHome.state}
+                onChange={(e) => onChange("fosterHome.state", e.target.value)}
+                placeholder="TX"
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="zip" className="text-sm">ZIP *</Label>
+              <Input
+                id="zip"
+                value={formData.fosterHome.zip}
+                onChange={(e) => onChange("fosterHome.zip", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="phone" className="text-sm">Phone *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.fosterHome.phone}
+                onChange={(e) => onChange("fosterHome.phone", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email" className="text-sm">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.fosterHome.email}
+                onChange={(e) => onChange("fosterHome.email", e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SECTION 3: License & Regulatory Information */}
+      <Card className="bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-refuge-purple" />
+            License & Regulatory Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* License Information */}
+          <div>
+            <h4 className="font-medium text-sm text-gray-700 mb-3">License Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="licenseType" className="text-sm">License Type *</Label>
+                <Select
+                  value={formData.fosterHome.licenseType}
+                  onValueChange={(value) => onChange("fosterHome.licenseType", value)}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Full">Full</SelectItem>
+                    <SelectItem value="Provisional">Provisional</SelectItem>
+                    <SelectItem value="Kinship">Kinship</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="licenseNumber" className="text-sm">License # *</Label>
+                <Input
+                  id="licenseNumber"
+                  value={formData.fosterHome.licenseNumber}
+                  onChange={(e) => onChange("fosterHome.licenseNumber", e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="licenseExpiration" className="text-sm">License Expiration *</Label>
+                <Input
+                  id="licenseExpiration"
+                  type="date"
+                  value={formData.fosterHome.licenseExpiration}
+                  onChange={(e) => onChange("fosterHome.licenseExpiration", e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-6">
+                <Checkbox
+                  id="respiteOnly"
+                  checked={formData.fosterHome.respiteOnly}
+                  onCheckedChange={(checked) => onChange("fosterHome.respiteOnly", checked)}
+                />
+                <Label htmlFor="respiteOnly" className="cursor-pointer text-sm">
+                  Respite Only
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Capacity Information */}
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-sm text-gray-700 mb-3">Capacity Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="totalCapacity" className="text-sm">Total Capacity *</Label>
+                <Input
+                  id="totalCapacity"
+                  type="number"
+                  value={formData.fosterHome.totalCapacity}
+                  onChange={(e) => onChange("fosterHome.totalCapacity", parseInt(e.target.value) || 0)}
+                  className="text-sm"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="fosterCareCapacity" className="text-sm">Foster Care Capacity *</Label>
+                <Input
+                  id="fosterCareCapacity"
+                  type="number"
+                  value={formData.fosterHome.fosterCareCapacity}
+                  onChange={(e) => onChange("fosterHome.fosterCareCapacity", parseInt(e.target.value) || 0)}
+                  className="text-sm"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="currentCensus" className="text-sm">Current Census *</Label>
+                <Input
+                  id="currentCensus"
+                  type="number"
+                  value={formData.fosterHome.currentCensus}
+                  onChange={(e) => onChange("fosterHome.currentCensus", parseInt(e.target.value) || 0)}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Service Levels Approved */}
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-sm text-gray-700 mb-3">Service Levels Approved</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {["basic", "moderate", "specialized", "intense"].map((level) => (
+                <div key={level} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={level}
+                    checked={formData.fosterHome.serviceLevels.includes(level)}
+                    onCheckedChange={(checked) => {
+                      const current = formData.fosterHome.serviceLevels
+                      onChange(
+                        "fosterHome.serviceLevels",
+                        checked ? [...current, level] : current.filter((l) => l !== level)
+                      )
+                    }}
+                  />
+                  <Label htmlFor={level} className="capitalize cursor-pointer text-sm">
+                    {level}
                   </Label>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Staff Attendance */}
-      <div className="mb-3">
-        <Label className="text-xs font-medium text-gray-700 mb-2 block">Staff Conducting Visit</Label>
-        {appointmentData?.appointment?.assigned_to_name ? (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="staff_conducting"
-              checked={formData.attendance?.staff?.find(s => s.name === appointmentData.appointment.assigned_to_name)?.present || false}
-              onCheckedChange={(checked) => {
-                const staffName = appointmentData.appointment.assigned_to_name
-                const staffRole = appointmentData.appointment.assigned_to_role || "Staff"
-                const current = formData.attendance?.staff || []
-                const existing = current.findIndex(s => s.name === staffName)
-                
-                if (existing >= 0) {
-                  const updated = [...current]
-                  updated[existing].present = checked
-                  onChange("attendance.staff", updated)
-                } else {
-                  onChange("attendance.staff", [...current, { name: staffName, role: staffRole, present: checked }])
-                }
-              }}
-            />
-            <Label htmlFor="staff_conducting" className="cursor-pointer text-sm">
-              {appointmentData.appointment.assigned_to_name}
-              {appointmentData.appointment.assigned_to_role && (
-                <span className="text-gray-500 ml-1">({appointmentData.appointment.assigned_to_role})</span>
-              )}
-            </Label>
-          </div>
-        ) : (
-          <p className="text-xs text-gray-500">No staff assigned to this appointment</p>
-        )}
-      </div>
-
-      {/* Other Attendees */}
-      <div>
-        <Label className="text-xs font-medium text-gray-700 mb-2 block">Other Attendees (Optional)</Label>
-        <div className="space-y-2">
-          {(formData.attendance?.others || []).map((other, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <Checkbox
-                id={`other_${idx}`}
-                checked={other.present}
-                onCheckedChange={(checked) => {
-                  const current = formData.attendance?.others || []
-                  const updated = [...current]
-                  updated[idx].present = checked
-                  onChange("attendance.others", updated)
-                }}
-              />
-              <Label htmlFor={`other_${idx}`} className="cursor-pointer text-sm flex-1">
-                {other.name}
-                {other.role && <span className="text-gray-500 ml-1">({other.role})</span>}
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                onClick={() => {
-                  const current = formData.attendance?.others || []
-                  onChange("attendance.others", current.filter((_, i) => i !== idx))
-                }}
-              >
-                ×
-              </Button>
+              ))}
             </div>
-          ))}
-          
-          {/* Add Other Attendee */}
-          <div className="flex gap-2 mt-2">
-            <Input
-              placeholder="Name"
-              value={formData.attendance?.newOtherName || ""}
-              onChange={(e) => onChange("attendance.newOtherName", e.target.value)}
-              className="flex-1 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && formData.attendance?.newOtherName) {
-                  const current = formData.attendance?.others || []
-                  onChange("attendance.others", [...current, { 
-                    name: formData.attendance.newOtherName, 
-                    role: formData.attendance.newOtherRole || "",
-                    present: true 
-                  }])
-                  onChange("attendance.newOtherName", "")
-                  onChange("attendance.newOtherRole", "")
-                }
-              }}
-            />
-            <Input
-              placeholder="Role (optional)"
-              value={formData.attendance?.newOtherRole || ""}
-              onChange={(e) => onChange("attendance.newOtherRole", e.target.value)}
-              className="w-32 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && formData.attendance?.newOtherName) {
-                  const current = formData.attendance?.others || []
-                  onChange("attendance.others", [...current, { 
-                    name: formData.attendance.newOtherName, 
-                    role: formData.attendance.newOtherRole || "",
-                    present: true 
-                  }])
-                  onChange("attendance.newOtherName", "")
-                  onChange("attendance.newOtherRole", "")
-                }
-              }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (formData.attendance?.newOtherName) {
-                  const current = formData.attendance?.others || []
-                  onChange("attendance.others", [...current, { 
-                    name: formData.attendance.newOtherName, 
-                    role: formData.attendance.newOtherRole || "",
-                    present: true 
-                  }])
-                  onChange("attendance.newOtherName", "")
-                  onChange("attendance.newOtherRole", "")
-                }
-              }}
-              disabled={!formData.attendance?.newOtherName}
-            >
-              Add
-            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+
+          {/* Credentialed Packages - Stub */}
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-sm text-gray-700 mb-3">Credentialed Packages</h4>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-600 italic">
+                Package credentialing information will be displayed here once the data structure is finalized.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
   </div>
   )
 }
