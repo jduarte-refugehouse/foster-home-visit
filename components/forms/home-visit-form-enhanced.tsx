@@ -1846,8 +1846,9 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
 
       {/* Show content only if applicable (or if no applicable field) */}
       {(!hasApplicable || sectionData.applicable) && (
-      {/* Compact Table Format */}
-      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+        <>
+          {/* Compact Table Format */}
+          <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
         {/* Table Header */}
         <div className={`grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold`}>
           <div className="col-span-2 text-gray-700">Number</div>
@@ -2154,6 +2155,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
           })}
         </div>
       </div>
+        </>
       )}
 
       {/* Section Notes - Only show if applicable (or if no applicable field) */}
