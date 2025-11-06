@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { auth } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 
@@ -15,14 +15,14 @@ export const runtime = "nodejs"
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
-    // Authentication
-    try {
-      requireClerkAuth(request)
-    } catch (authError) {
+    // Authentication - use Clerk's server-side auth (works for protected routes)
+    const { userId } = await auth()
+    
+    if (!userId) {
       return NextResponse.json(
         {
           error: "Unauthorized",
-          details: authError instanceof Error ? authError.message : "Missing authentication headers",
+          details: "Authentication required",
         },
         { status: 401 },
       )
