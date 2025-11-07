@@ -30,6 +30,7 @@ export interface AnthropicMessage {
 export interface AnthropicResponse {
   content: string
   error?: string
+  wasError?: boolean // Flag to indicate if an error occurred (vs. successful but unchanged)
 }
 
 /**
@@ -93,6 +94,7 @@ export async function callAnthropicAPI(
       return {
         content: "",
         error: "Anthropic API key not configured",
+        wasError: true,
       }
     }
 
@@ -135,6 +137,7 @@ export async function callAnthropicAPI(
       return {
         content: "",
         error: `Anthropic API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
+        wasError: true,
       }
     }
 
@@ -160,6 +163,7 @@ export async function callAnthropicAPI(
     return {
       content: "",
       error: error instanceof Error ? error.message : "Unknown error",
+      wasError: true,
     }
   }
 }
@@ -269,14 +273,15 @@ Do not add information that wasn't implied or stated in the original.`
 
   const response = await callAnthropicAPI(messages, systemPrompt, model)
   
-  if (response.error) {
-    console.error("❌ [AI-ENHANCE] Error from Anthropic:", response.error)
-    return originalText // Return original if enhancement fails
+  if (response.error || response.wasError) {
+    console.error("❌ [AI-ENHANCE] Error from Anthropic:", response.error || "Unknown error")
+    // Throw error so API route can handle it properly
+    throw new Error(response.error || "Failed to enhance text - AI service error")
   }
 
   if (!response.content || response.content.trim().length === 0) {
     console.error("❌ [AI-ENHANCE] Empty response from Anthropic")
-    return originalText
+    throw new Error("Empty response from AI service")
   }
 
   const enhanced = response.content.trim()

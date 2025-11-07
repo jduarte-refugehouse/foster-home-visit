@@ -38,8 +38,25 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🤖 [AI-ENHANCE] Enhancing response for:", fieldType, "using model:", model || "default")
+    console.log("🤖 [AI-ENHANCE] Original text length:", originalText.length)
+
+    // Check if API key is configured before attempting enhancement
+    const apiKey = process.env.home_visit_general_key
+    if (!apiKey) {
+      console.error("❌ [AI-ENHANCE] API key not configured")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "AI enhancement is not configured. Please contact your administrator.",
+          details: "Anthropic API key (home_visit_general_key) is not set.",
+        },
+        { status: 503 }
+      )
+    }
 
     const enhanced = await enhanceResponse(originalText, fieldType, context, model)
+
+    console.log("✅ [AI-ENHANCE] Enhancement successful. Enhanced text length:", enhanced.length)
 
     return NextResponse.json({
       success: true,

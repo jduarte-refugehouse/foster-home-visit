@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, ChevronLeft, CheckCircle2, Edit2, Info, Sparkles } from "lucide-react"
+import { ChevronRight, ChevronLeft, CheckCircle2, Edit2, Info, Sparkles, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 import {
   Tooltip,
   TooltipContent,
@@ -319,6 +320,8 @@ export function GuidedQuestionField({
   const [editMode, setEditMode] = useState(false)
   const [enhancing, setEnhancing] = useState<string | null>(null) // Track which field is being enhanced
   const [enhancingSummary, setEnhancingSummary] = useState(false) // Track if summary is being enhanced
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   
   const flow = questionFlows[fieldType]
   
@@ -507,9 +510,18 @@ export function GuidedQuestionField({
         </div>
         <Textarea
           value={data.finalText || ""}
-          onChange={(e) => handleEditSummary(e.target.value)}
+          onChange={(e) => {
+            handleEditSummary(e.target.value)
+            setError(null) // Clear error when user types
+          }}
           rows={3}
         />
+        {error && enhancingSummary && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">{error}</AlertDescription>
+          </Alert>
+        )}
         {data.finalText && data.finalText.trim().length > 0 && (
           <Button
             type="button"
@@ -520,6 +532,7 @@ export function GuidedQuestionField({
               if (!currentText.trim()) return
 
               setEnhancingSummary(true)
+              setError(null)
               try {
                 const response = await fetch("/api/visit-forms/ai-enhance", {
                   method: "POST",
@@ -533,12 +546,30 @@ export function GuidedQuestionField({
                   }),
                 })
 
+                if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
+                  throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`)
+                }
+
                 const data = await response.json()
                 if (data.success && data.enhancedText) {
                   handleEditSummary(data.enhancedText)
+                  toast({
+                    title: "Text enhanced",
+                    description: "Your text has been enhanced with AI.",
+                  })
+                } else {
+                  throw new Error(data.error || "Enhancement failed - no enhanced text returned")
                 }
               } catch (error) {
                 console.error("Error enhancing text:", error)
+                const errorMessage = error instanceof Error ? error.message : "Failed to enhance text. Please try again."
+                setError(errorMessage)
+                toast({
+                  title: "Enhancement failed",
+                  description: errorMessage,
+                  variant: "destructive",
+                })
               } finally {
                 setEnhancingSummary(false)
               }
@@ -695,10 +726,17 @@ export function GuidedQuestionField({
                 onChange={(e) => {
                   const newAnswers = { ...answers, [currentQuestion.id]: e.target.value }
                   setAnswers(newAnswers)
+                  setError(null) // Clear error when user types
                 }}
                 placeholder={currentQuestion.placeholder}
                 rows={3}
               />
+              {error && enhancing === currentQuestion.id && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">{error}</AlertDescription>
+                </Alert>
+              )}
               {answers[currentQuestion.id] && answers[currentQuestion.id].trim().length > 0 && (
                 <Button
                   type="button"
@@ -709,6 +747,7 @@ export function GuidedQuestionField({
                     if (!currentText.trim()) return
 
                     setEnhancing(currentQuestion.id)
+                    setError(null)
                     try {
                       const response = await fetch("/api/visit-forms/ai-enhance", {
                         method: "POST",
@@ -722,13 +761,31 @@ export function GuidedQuestionField({
                         }),
                       })
 
+                      if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
+                        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`)
+                      }
+
                       const data = await response.json()
                       if (data.success && data.enhancedText) {
                         const newAnswers = { ...answers, [currentQuestion.id]: data.enhancedText }
                         setAnswers(newAnswers)
+                        toast({
+                          title: "Text enhanced",
+                          description: "Your text has been enhanced with AI.",
+                        })
+                      } else {
+                        throw new Error(data.error || "Enhancement failed - no enhanced text returned")
                       }
                     } catch (error) {
                       console.error("Error enhancing text:", error)
+                      const errorMessage = error instanceof Error ? error.message : "Failed to enhance text. Please try again."
+                      setError(errorMessage)
+                      toast({
+                        title: "Enhancement failed",
+                        description: errorMessage,
+                        variant: "destructive",
+                      })
                     } finally {
                       setEnhancing(null)
                     }
