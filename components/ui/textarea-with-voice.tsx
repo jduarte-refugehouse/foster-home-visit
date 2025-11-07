@@ -70,7 +70,7 @@ const TextareaWithVoice = React.forwardRef<
             onError={handleVoiceError}
             size="sm"
             variant="outline"
-            className="h-9 w-9 p-0 bg-background border-border shadow-sm hover:bg-muted"
+            className="bg-background border-border shadow-sm hover:bg-muted"
           />
         </div>
       )}

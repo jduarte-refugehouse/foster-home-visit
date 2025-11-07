@@ -179,7 +179,8 @@ export function VoiceInputButton({
         }
       }}
       className={cn(
-        'flex-shrink-0 select-none', // select-none prevents text selection
+        'flex-shrink-0 select-none flex items-center justify-center gap-1', // select-none prevents text selection
+        isIOS && 'min-w-[60px]', // Make button wider on iOS to fit text
         isListening && 'bg-red-500 hover:bg-red-600 text-white',
         className
       )}
@@ -191,13 +192,13 @@ export function VoiceInputButton({
     >
       {isListening ? (
         <>
-          <MicOff className="h-4 w-4" />
-          {isIOS && <span className="ml-1 text-xs">Release</span>}
+          <MicOff className="h-4 w-4 flex-shrink-0" />
+          {isIOS && <span className="text-xs whitespace-nowrap">Release</span>}
         </>
       ) : (
         <>
-          <Mic className="h-4 w-4" />
-          {isIOS && <span className="ml-1 text-xs">Hold</span>}
+          <Mic className="h-4 w-4 flex-shrink-0" />
+          {isIOS && <span className="text-xs whitespace-nowrap">Hold</span>}
         </>
       )}
     </Button>
