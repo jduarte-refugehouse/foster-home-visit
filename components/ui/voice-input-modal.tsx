@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Mic, MicOff, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
 
 interface VoiceInputModalProps {
   open: boolean
@@ -30,9 +31,7 @@ export function VoiceInputModal({
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const audioStreamRef = useRef<ReadableStreamDefaultController<Uint8Array> | null>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
-  const detectedMimeTypeRef = useRef<string>('')
+  const deepgramConnectionRef = useRef<any>(null)
   const finalTranscriptRef = useRef<string>('')
 
   // Cleanup when modal closes
@@ -63,20 +62,14 @@ export function VoiceInputModal({
       streamRef.current = null
     }
 
-    // Close audio stream
-    if (audioStreamRef.current) {
+    // Close Deepgram connection
+    if (deepgramConnectionRef.current) {
       try {
-        audioStreamRef.current.close()
+        deepgramConnectionRef.current.finish()
       } catch (e) {
-        console.log('Audio stream already closed')
+        console.log('Deepgram connection already closed')
       }
-      audioStreamRef.current = null
-    }
-
-    // Close event source
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
+      deepgramConnectionRef.current = null
     }
 
     setIsRecording(false)
@@ -85,6 +78,7 @@ export function VoiceInputModal({
   const handleStart = async (isContinuation: boolean = false) => {
     try {
       setError(null)
+      setIsProcessing(true)
       
       // Only clear transcript if starting fresh
       if (!isContinuation) {
@@ -92,191 +86,117 @@ export function VoiceInputModal({
         finalTranscriptRef.current = ''
       }
 
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 48000,
-        } 
-      })
-      streamRef.current = stream
-
-      // Detect supported audio format (Safari/iPad compatibility)
-      let mimeType = ''
-      const supportedTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/mpeg',
-        'audio/ogg;codecs=opus',
-      ]
+      console.log('🎙️ [DEEPGRAM] Getting API key...')
       
-      for (const type of supportedTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          mimeType = type
-          console.log('🎤 [STREAMING] Using audio format:', mimeType)
-          break
-        }
+      // Get Deepgram API key from server
+      const keyResponse = await fetch('/api/speech/deepgram-token')
+      if (!keyResponse.ok) {
+        throw new Error('Failed to get Deepgram API key')
       }
+      const { key } = await keyResponse.json()
+
+      console.log('🎙️ [DEEPGRAM] Creating Deepgram client...')
       
-      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {}
-      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
-      detectedMimeTypeRef.current = mimeType || mediaRecorder.mimeType || 'audio/webm;codecs=opus'
-      console.log('🎤 [STREAMING] MediaRecorder mimeType:', mediaRecorder.mimeType || 'default')
+      // Create Deepgram client
+      const deepgram = createClient(key)
 
-      mediaRecorderRef.current = mediaRecorder
+      // Connect to Deepgram live transcription
+      const connection = deepgram.listen.live({
+        model: 'nova-2',
+        language: 'en-US',
+        punctuate: true,
+        interim_results: true,
+        endpointing: 300,
+        smart_format: true,
+      })
 
-      // Determine encoding for Google API
-      const encoding = detectedMimeTypeRef.current.includes('mp4') || detectedMimeTypeRef.current.includes('mpeg')
-        ? 'MP3'
-        : detectedMimeTypeRef.current.includes('ogg')
-        ? 'OGG_OPUS'
-        : 'WEBM_OPUS'
+      deepgramConnectionRef.current = connection
 
-      // Create a readable stream for sending audio to the server
-      const audioStream = new ReadableStream({
-        start(controller) {
-          audioStreamRef.current = controller
+      // Handle transcription results
+      connection.on(LiveTranscriptionEvents.Open, () => {
+        console.log('✅ [DEEPGRAM] Connection opened')
 
+        // Request microphone access
+        navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          } 
+        }).then((stream) => {
+          streamRef.current = stream
+
+          // Create MediaRecorder
+          const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm',
+          })
+          mediaRecorderRef.current = mediaRecorder
+
+          // Send audio data to Deepgram
           mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              console.log('📦 [STREAMING] Audio chunk:', event.data.size, 'bytes')
-              
-              // Convert Blob to Uint8Array and send to server
-              // Check if controller is still writable
-              event.data.arrayBuffer().then(buffer => {
-                try {
-                  if (controller.desiredSize !== null) {
-                    controller.enqueue(new Uint8Array(buffer))
-                  } else {
-                    console.log('⚠️ [STREAMING] Stream already closed, skipping chunk')
-                  }
-                } catch (e) {
-                  console.log('⚠️ [STREAMING] Failed to enqueue chunk:', e)
-                }
-              })
+            if (event.data.size > 0 && connection.getReadyState() === 1) {
+              connection.send(event.data)
+              console.log('📦 [DEEPGRAM] Sent audio:', event.data.size, 'bytes')
             }
           }
 
           mediaRecorder.onstop = () => {
-            console.log('🛑 [STREAMING] MediaRecorder stopped')
-            try {
-              if (controller.desiredSize !== null) {
-                controller.close()
-              }
-            } catch (e) {
-              console.log('⚠️ [STREAMING] Stream already closed')
-            }
+            console.log('🛑 [DEEPGRAM] Recording stopped')
             setIsRecording(false)
             setHasStopped(true)
+            setIsProcessing(false)
           }
 
-          mediaRecorder.onerror = (event) => {
-            console.error('❌ [STREAMING] MediaRecorder error:', event)
-            try {
-              controller.error(new Error('Recording error'))
-            } catch (e) {
-              console.log('⚠️ [STREAMING] Failed to send error to stream')
-            }
-            setError('Recording error occurred. Please try again.')
-            setIsRecording(false)
-          }
-        },
+          // Start recording (send audio every 250ms)
+          mediaRecorder.start(250)
+          setIsRecording(true)
+          setIsProcessing(false)
+          console.log('🎤 [DEEPGRAM] Recording started', isContinuation ? '(continuing)' : '(new)')
+        }).catch((err) => {
+          console.error('❌ [DEEPGRAM] Microphone error:', err)
+          setError(
+            err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+              ? 'Microphone permission denied. Please allow microphone access and try again.'
+              : 'Failed to access microphone. Please check your device settings.'
+          )
+          setIsProcessing(false)
+        })
       })
 
-      // Start the streaming transcription
-      setIsProcessing(true)
-      console.log('🎙️ [STREAMING] Starting streaming transcription...')
-
-      // Send audio stream to server and receive SSE responses
-      fetch(`/api/speech/stream?encoding=${encoding}&sampleRate=48000&model=default`, {
-        method: 'POST',
-        body: audioStream,
-        // @ts-ignore - duplex is needed for streaming but not in TypeScript types yet
-        duplex: 'half',
-      }).then(async (response) => {
-        console.log('📡 [STREAMING] Server response status:', response.status, response.statusText)
+      // Handle interim transcripts
+      connection.on(LiveTranscriptionEvents.Transcript, (data) => {
+        const words = data.channel?.alternatives?.[0]?.words
+        const transcript = data.channel?.alternatives?.[0]?.transcript
         
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Unable to read error')
-          console.error('❌ [STREAMING] Server error response:', errorText)
-          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
-        }
-
-        const reader = response.body?.getReader()
-        const decoder = new TextDecoder()
-
-        if (!reader) {
-          throw new Error('No response body')
-        }
-
-        // Read SSE events
-        let buffer = ''
-        while (true) {
-          const { done, value } = await reader.read()
+        if (transcript && transcript.length > 0) {
+          const isFinal = data.is_final
           
-          if (done) {
-            console.log('✅ [STREAMING] Stream completed')
-            setIsProcessing(false)
-            break
-          }
-
-          // Decode and process SSE messages
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n\n')
-          buffer = lines.pop() || ''
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6))
-                
-                if (data.type === 'connected') {
-                  console.log('🔌 [STREAMING] Connected to server')
-                } else if (data.type === 'interim') {
-                  // Update transcript with interim result (progressive refinement)
-                  const interimText = data.transcript
-                  setTranscript(finalTranscriptRef.current + interimText)
-                  console.log('🔄 [STREAMING] Interim:', interimText.substring(0, 50))
-                } else if (data.type === 'final') {
-                  // Append final result to accumulated transcript
-                  const finalText = data.transcript
-                  finalTranscriptRef.current += (finalTranscriptRef.current ? ' ' : '') + finalText
-                  setTranscript(finalTranscriptRef.current)
-                  console.log('✅ [STREAMING] Final:', finalText)
-                } else if (data.type === 'error') {
-                  console.error('❌ [STREAMING] Server error:', data.error)
-                  setError(data.error || 'Transcription error occurred')
-                  setIsProcessing(false)
-                } else if (data.type === 'complete') {
-                  console.log('🏁 [STREAMING] Transcription complete')
-                  setIsProcessing(false)
-                }
-              } catch (e) {
-                console.error('❌ [STREAMING] Failed to parse SSE message:', e)
-              }
-            }
+          if (isFinal) {
+            // Final transcript - add to accumulated text
+            finalTranscriptRef.current += (finalTranscriptRef.current ? ' ' : '') + transcript
+            setTranscript(finalTranscriptRef.current)
+            console.log('✅ [DEEPGRAM] Final:', transcript)
+          } else {
+            // Interim transcript - show with accumulated text
+            setTranscript(finalTranscriptRef.current + (finalTranscriptRef.current ? ' ' : '') + transcript)
+            console.log('🔄 [DEEPGRAM] Interim:', transcript.substring(0, 50))
           }
         }
-      }).catch((error) => {
-        console.error('❌ [STREAMING] Fetch error:', error)
-        setError(error.message || 'Failed to connect to transcription service')
+      })
+
+      connection.on(LiveTranscriptionEvents.Error, (error) => {
+        console.error('❌ [DEEPGRAM] Error:', error)
+        setError('Transcription error occurred')
         setIsProcessing(false)
       })
 
-      // Start recording (250ms chunks for smooth streaming)
-      mediaRecorder.start(250)
-      setIsRecording(true)
-      console.log('🎤 [STREAMING] Recording started', isContinuation ? '(continuing)' : '(new)')
+      connection.on(LiveTranscriptionEvents.Close, () => {
+        console.log('🔌 [DEEPGRAM] Connection closed')
+        setIsProcessing(false)
+      })
 
     } catch (err: any) {
-      console.error('❌ [STREAMING] Error starting recording:', err)
-      setError(
-        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-          ? 'Microphone permission denied. Please allow microphone access and try again.'
-          : err.message || 'Failed to access microphone. Please check your device settings.'
-      )
+      console.error('❌ [DEEPGRAM] Error starting:', err)
+      setError(err.message || 'Failed to start transcription')
       setIsRecording(false)
       setIsProcessing(false)
     }
