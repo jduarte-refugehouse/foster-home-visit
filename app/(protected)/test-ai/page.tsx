@@ -17,6 +17,16 @@ export default function TestAIPage() {
   const [questionsResult, setQuestionsResult] = useState<string>("")
   const [enhanceResult, setEnhanceResult] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  
+  // Form state for question generation
+  const [questionFieldType, setQuestionFieldType] = useState("behaviors")
+  const [childName, setChildName] = useState("Test Child")
+  const [childAge, setChildAge] = useState("10")
+  const [placementDuration, setPlacementDuration] = useState("6")
+  
+  // Form state for response enhancement
+  const [originalText, setOriginalText] = useState("Child seems fine, school is okay")
+  const [enhanceFieldType, setEnhanceFieldType] = useState("behaviors")
 
   // Get user headers for API calls
   const getUserHeaders = () => {
@@ -41,13 +51,13 @@ export default function TestAIPage() {
       return
     }
 
+    if (!questionFieldType) {
+      setQuestionsResult("❌ Error: Please select a field type")
+      return
+    }
+
     setLoading(true)
     setQuestionsResult("Generating questions...")
-
-    const fieldType = (document.getElementById("fieldType") as HTMLSelectElement)?.value
-    const childName = (document.getElementById("childName") as HTMLInputElement)?.value
-    const childAge = (document.getElementById("childAge") as HTMLInputElement)?.value
-    const placementDuration = (document.getElementById("placementDuration") as HTMLInputElement)?.value
 
     const context: any = {}
     if (childName) context.childName = childName
@@ -58,7 +68,7 @@ export default function TestAIPage() {
       const response = await fetch("/api/visit-forms/ai-questions", {
         method: "POST",
         headers: getUserHeaders(),
-        body: JSON.stringify({ fieldType, context }),
+        body: JSON.stringify({ fieldType: questionFieldType, context }),
       })
 
       const data = await response.json()
@@ -84,17 +94,19 @@ export default function TestAIPage() {
       return
     }
 
+    if (!originalText || !enhanceFieldType) {
+      setEnhanceResult("❌ Error: Please provide original text and select a field type")
+      return
+    }
+
     setLoading(true)
     setEnhanceResult("Enhancing response...")
-
-    const originalText = (document.getElementById("originalText") as HTMLTextAreaElement)?.value
-    const fieldType = (document.getElementById("enhanceFieldType") as HTMLSelectElement)?.value
 
     try {
       const response = await fetch("/api/visit-forms/ai-enhance", {
         method: "POST",
         headers: getUserHeaders(),
-        body: JSON.stringify({ originalText, fieldType }),
+        body: JSON.stringify({ originalText, fieldType: enhanceFieldType }),
       })
 
       const data = await response.json()
@@ -158,7 +170,7 @@ export default function TestAIPage() {
 
             <div>
               <Label>Field Type:</Label>
-              <Select id="fieldType" defaultValue="behaviors">
+              <Select value={questionFieldType} onValueChange={setQuestionFieldType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -172,17 +184,17 @@ export default function TestAIPage() {
 
             <div>
               <Label>Child Name (optional):</Label>
-              <Input id="childName" placeholder="Test Child" />
+              <Input value={childName} onChange={(e) => setChildName(e.target.value)} placeholder="Test Child" />
             </div>
 
             <div>
               <Label>Child Age (optional):</Label>
-              <Input id="childAge" type="number" placeholder="10" />
+              <Input value={childAge} onChange={(e) => setChildAge(e.target.value)} type="number" placeholder="10" />
             </div>
 
             <div>
               <Label>Placement Duration in Months (optional):</Label>
-              <Input id="placementDuration" type="number" placeholder="6" />
+              <Input value={placementDuration} onChange={(e) => setPlacementDuration(e.target.value)} type="number" placeholder="6" />
             </div>
 
             <Button onClick={testQuestions} disabled={loading}>
@@ -207,15 +219,15 @@ export default function TestAIPage() {
             <div>
               <Label>Original Text:</Label>
               <Textarea
-                id="originalText"
-                defaultValue="Child seems fine, school is okay"
+                value={originalText}
+                onChange={(e) => setOriginalText(e.target.value)}
                 rows={3}
               />
             </div>
 
             <div>
               <Label>Field Type:</Label>
-              <Select id="enhanceFieldType" defaultValue="behaviors">
+              <Select value={enhanceFieldType} onValueChange={setEnhanceFieldType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
