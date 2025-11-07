@@ -27,56 +27,42 @@ interface RegulatorySource {
 }
 
 // Question flow configurations with regulatory citations
-// Only includes questions required by TAC Chapter 749, RCC, or T3C Blueprint for monthly/quarterly home visit reviews
+// Only includes questions required by TAC Chapter 749, RCC, or T3C Blueprint for monthly/quarterly HOME VISIT reviews
+// NOTE: Service planning and child-specific case management tasks are handled by case managers, not home visit liaisons
 const questionFlows = {
   behaviors: {
     regulatoryBasis: {
-      code: "RCC 3600",
-      description: "Behavioral monitoring required for service planning",
-      required: true,
-      note: "Service planning requires documentation of behavioral concerns and interventions",
+      code: "Agency Practice",
+      description: "Basic behavioral observations during home visit",
+      required: false,
+      note: "Detailed behavioral monitoring and service planning is handled by case managers",
     } as RegulatorySource,
     questions: [
       {
-        id: "hasBehaviors",
-        type: "yesno",
-        text: "Has the child exhibited any challenging behaviors this month?",
-        required: true,
-        regulatorySource: {
-          code: "RCC 3600",
-          description: "Behavioral monitoring for service planning",
-          required: true,
-        } as RegulatorySource,
-      },
-      {
-        id: "parentResponse",
+        id: "behaviorsObserved",
         type: "textarea",
-        text: "How did the foster parent respond to the behavior?",
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        placeholder: "Describe the response strategy used...",
-        required: true,
+        text: "Any behavioral observations or concerns noted during the visit?",
+        placeholder: "Brief observations only - detailed behavioral monitoring is handled by case managers...",
         regulatorySource: {
-          code: "RCC 3600",
-          description: "Document foster parent capacity and intervention effectiveness",
-          required: true,
+          code: "Agency Practice",
+          description: "Basic observations during home visit",
+          required: false,
         } as RegulatorySource,
       },
     ],
     generateSummary: (answers: Record<string, any>) => {
-      if (!answers.hasBehaviors) {
-        return "No challenging behaviors reported this month."
+      if (answers.behaviorsObserved) {
+        return `Behavioral observations: ${answers.behaviorsObserved}`
       }
-      let summary = "Challenging behaviors reported. "
-      if (answers.parentResponse) summary += `Foster parent responded by: ${answers.parentResponse}. `
-      return summary.trim()
+      return "No behavioral concerns observed during visit."
     },
   },
   school: {
     regulatoryBasis: {
-      code: "§749.1893 / RCC 6100",
-      description: "Education Portfolio maintenance and school enrollment verification",
+      code: "§749.1893",
+      description: "School enrollment and attendance monitoring during home visit",
       required: true,
-      note: "Monthly monitoring of school attendance and performance required",
+      note: "Basic attendance verification - academic performance and service planning handled by case managers",
     } as RegulatorySource,
     questions: [
       {
@@ -91,58 +77,19 @@ const questionFlows = {
           required: true,
         } as RegulatorySource,
       },
-      {
-        id: "performance",
-        type: "select",
-        text: "How is the child performing academically?",
-        options: ["Meeting/exceeding grade level", "Slightly below grade level", "Significantly below grade level", "Not assessed/unknown"],
-        required: true,
-        regulatorySource: {
-          code: "RCC 6100",
-          description: "Education Portfolio includes academic performance",
-          required: true,
-        } as RegulatorySource,
-      },
-      {
-        id: "supportServices",
-        type: "multiselect",
-        text: "What support services is the child receiving?",
-        options: ["Special Education (IEP)", "504 Plan", "Counseling", "Tutoring", "None", "Unknown"],
-        regulatorySource: {
-          code: "§749.1893",
-          description: "Document educational supports and accommodations",
-          required: true,
-        } as RegulatorySource,
-      },
     ],
     generateSummary: (answers: Record<string, any>) => {
-      let summary = `School: ${answers.attendance || "Not reported"}. `
-      summary += `Academic performance: ${answers.performance || "Not reported"}. `
-      if (answers.supportServices && answers.supportServices.length > 0) {
-        summary += `Support services: ${Array.isArray(answers.supportServices) ? answers.supportServices.join(", ") : answers.supportServices}. `
-      }
-      return summary.trim()
+      return `School attendance: ${answers.attendance || "Not reported"}`
     },
   },
   medical: {
     regulatoryBasis: {
-      code: "RCC 1420 / §749.1521",
-      description: "Service planning requires documentation of medical and therapy services",
+      code: "§749.1521",
+      description: "Medication documentation during home visit",
       required: true,
-      note: "Medical appointments and medication changes must be tracked for service plan compliance",
+      note: "Medication changes must be documented - medical appointment tracking is handled by case managers",
     } as RegulatorySource,
     questions: [
-      {
-        id: "appointments",
-        type: "yesno",
-        text: "Were there any medical, dental, or therapy appointments this month?",
-        required: true,
-        regulatorySource: {
-          code: "RCC 1420",
-          description: "Service plan includes medical and dental checkups",
-          required: true,
-        } as RegulatorySource,
-      },
       {
         id: "medicationChanges",
         type: "yesno",
@@ -169,18 +116,10 @@ const questionFlows = {
       },
     ],
     generateSummary: (answers: Record<string, any>) => {
-      let summary = ""
-      if (answers.appointments) {
-        summary += "Appointments occurred this month. "
-      } else {
-        summary += "No appointments reported. "
-      }
       if (answers.medicationChanges) {
-        summary += `Medication changes: ${answers.medicationDetails || "Yes, see details"}. `
-      } else {
-        summary += "No medication changes. "
+        return `Medication changes: ${answers.medicationDetails || "Yes, see details"}`
       }
-      return summary.trim() || "No medical/therapy updates this month."
+      return "No medication changes reported."
     },
   },
 }
