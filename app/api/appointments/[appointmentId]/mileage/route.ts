@@ -9,9 +9,9 @@ export const runtime = "nodejs"
  * POST - Capture location and calculate mileage
  * 
  * Body: {
- *   action: "start_drive" | "arrived"
- *   latitude: number
- *   longitude: number
+ *   action: "start_drive" | "arrived" | "calculate"
+ *   latitude?: number (required for start_drive and arrived)
+ *   longitude?: number (required for start_drive and arrived)
  * }
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
@@ -62,16 +62,24 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     const body = await request.json()
     const { action, latitude, longitude } = body
 
-    if (!action || !latitude || !longitude) {
+    if (!action) {
       return NextResponse.json(
-        { error: "Missing required fields: action, latitude, longitude" },
+        { error: "Missing required field: action" },
         { status: 400 },
       )
     }
 
-    if (action !== "start_drive" && action !== "arrived") {
+    if (action !== "start_drive" && action !== "arrived" && action !== "calculate") {
       return NextResponse.json(
-        { error: "Invalid action. Must be 'start_drive' or 'arrived'" },
+        { error: "Invalid action. Must be 'start_drive', 'arrived', or 'calculate'" },
+        { status: 400 },
+      )
+    }
+
+    // For start_drive and arrived, latitude and longitude are required
+    if ((action === "start_drive" || action === "arrived") && (!latitude || !longitude)) {
+      return NextResponse.json(
+        { error: "Missing required fields: latitude and longitude are required for this action" },
         { status: 400 },
       )
     }
@@ -195,6 +203,78 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         message: "Arrived location captured",
         mileage: finalMileage,
         timestamp: now.toISOString(),
+      })
+    }
+
+    if (action === "calculate") {
+      // Get existing appointment with both start and arrived locations
+      const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, arrived_latitude, arrived_longitude 
+                                FROM appointments 
+                                WHERE appointment_id = @param0 AND is_deleted = 0`
+      
+      const existingAppointment = await query(appointmentQuery, [appointmentId])
+
+      if (existingAppointment.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
+
+      const appointment = existingAppointment[0]
+
+      // Check if both locations exist
+      if (!appointment.start_drive_latitude || !appointment.start_drive_longitude) {
+        return NextResponse.json(
+          { error: "Start drive location not captured. Please click 'Start Drive' first." },
+          { status: 400 },
+        )
+      }
+
+      if (!appointment.arrived_latitude || !appointment.arrived_longitude) {
+        return NextResponse.json(
+          { error: "Arrived location not captured. Please click 'Mark as Arrived' first." },
+          { status: 400 },
+        )
+      }
+
+      // Calculate driving distance using Google Directions API
+      let mileage = await calculateDrivingDistance(
+        appointment.start_drive_latitude,
+        appointment.start_drive_longitude,
+        appointment.arrived_latitude,
+        appointment.arrived_longitude,
+      )
+
+      // If calculation failed or returned null, check if coordinates are the same (0 distance)
+      if (mileage === null) {
+        const latDiff = Math.abs(appointment.start_drive_latitude - appointment.arrived_latitude)
+        const lngDiff = Math.abs(appointment.start_drive_longitude - appointment.arrived_longitude)
+        // If coordinates are very close (within ~10 meters), treat as 0 miles
+        if (latDiff < 0.0001 && lngDiff < 0.0001) {
+          mileage = 0.00
+          console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
+        } else {
+          // If calculation failed and locations are different, return error
+          return NextResponse.json(
+            { error: "Failed to calculate driving distance. Please check Google Maps API configuration." },
+            { status: 500 },
+          )
+        }
+      }
+
+      // Update appointment with calculated mileage
+      const finalMileage = mileage !== null ? mileage : 0.00
+      await query(
+        `UPDATE appointments 
+         SET calculated_mileage = @param1,
+             updated_at = GETUTCDATE()
+         WHERE appointment_id = @param0`,
+        [appointmentId, finalMileage],
+      )
+
+      return NextResponse.json({
+        success: true,
+        message: "Mileage calculated successfully",
+        mileage: finalMileage,
+        timestamp: new Date().toISOString(),
       })
     }
 

@@ -318,6 +318,50 @@ export default function AppointmentDetailPage() {
     }
   }
 
+  const handleCalculateMileage = async () => {
+    try {
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user) {
+        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = user.id
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "calculate",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Mileage Calculated",
+          description: `Driving distance: ${data.mileage.toFixed(2)} miles`,
+        })
+        fetchAppointmentDetails()
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to calculate mileage",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error calculating mileage:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to calculate mileage",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handlePopOut = () => {
     window.open(`/appointment/${appointmentId}`, '_blank')
   }
@@ -1309,6 +1353,19 @@ export default function AppointmentDetailPage() {
                         {appointment.arrived_latitude.toFixed(6)}, {appointment.arrived_longitude.toFixed(6)}
                       </p>
                     )}
+                  </div>
+                )}
+                {/* Temporary Calculate Button for Testing */}
+                {appointment.start_drive_timestamp && appointment.arrived_timestamp && (
+                  <div className="pt-3 border-t">
+                    <Button
+                      onClick={handleCalculateMileage}
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                    >
+                      Calculate Mileage (Test)
+                    </Button>
                   </div>
                 )}
               </CardContent>
