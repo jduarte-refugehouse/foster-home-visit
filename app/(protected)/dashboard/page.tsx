@@ -59,15 +59,39 @@ export default function DashboardPage() {
   useEffect(() => {
     // TEMPORARY: Always load liaison dashboard for all users
     // TODO: Revert to role-based check: if (showLiaisonDashboard) { ... } else { ... }
-    fetchLiaisonDashboardData()
-  }, []) // Removed dependencies - always load liaison dashboard
+    if (user) {
+      fetchLiaisonDashboardData()
+    }
+  }, [user]) // Wait for user to be loaded before fetching
+
+  // Get user headers for API calls
+  const getUserHeaders = () => {
+    if (!user) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
 
   const fetchLiaisonDashboardData = async () => {
+    if (!user) {
+      setLiaisonLoading(false)
+      return
+    }
+
     try {
-      const response = await fetch("/api/dashboard/home-liaison")
+      const response = await fetch("/api/dashboard/home-liaison", {
+        method: "GET",
+        headers: getUserHeaders(),
+      })
+      
       const data = await response.json()
       if (data.success) {
         setLiaisonData(data.data)
+      } else {
+        console.error("Dashboard API error:", data.error, data.details)
       }
       setLiaisonLoading(false)
     } catch (error) {
