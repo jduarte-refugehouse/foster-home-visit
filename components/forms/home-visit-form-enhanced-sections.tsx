@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SignaturePad } from "@/components/ui/signature-pad"
+import { GuidedQuestionField } from "@/components/forms/guided-question-field"
 
 export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange }) => {
   const traumaCare = formData.traumaInformedCare
@@ -247,45 +248,61 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                       <Label htmlFor={`behaviors-${index}`}>Behaviors Noted</Label>
-                      <Textarea
-                        id={`behaviors-${index}`}
-                        value={child.behaviorsNoted}
-                        onChange={(e) => {
+                      <GuidedQuestionField
+                        fieldId={`behaviors-${index}`}
+                        fieldType="behaviors"
+                        value={child.behaviorsNoted || ""}
+                        onChange={(value) => {
                           const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].behaviorsNoted = e.target.value
+                          newChildren[index].behaviorsNoted = value
                           onChange("fosterParentInterview.childrenDiscussed", newChildren)
                         }}
-                        rows={2}
+                        label="Behaviors Noted"
+                        context={{
+                          childName: child.childName || "",
+                          childAge: undefined, // Could be added if available
+                          placementDuration: undefined, // Could be added if available
+                        }}
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                       <Label htmlFor={`school-${index}`}>School Performance</Label>
-                      <Textarea
-                        id={`school-${index}`}
-                        value={child.schoolPerformance}
-                        onChange={(e) => {
+                      <GuidedQuestionField
+                        fieldId={`school-${index}`}
+                        fieldType="school"
+                        value={child.schoolPerformance || ""}
+                        onChange={(value) => {
                           const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].schoolPerformance = e.target.value
+                          newChildren[index].schoolPerformance = value
                           onChange("fosterParentInterview.childrenDiscussed", newChildren)
                         }}
-                        rows={2}
+                        label="School Performance"
+                        context={{
+                          childName: child.childName || "",
+                          childAge: undefined, // Could be added if available
+                        }}
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                       <Label htmlFor={`medical-${index}`}>Medical/Therapy</Label>
-                      <Textarea
-                        id={`medical-${index}`}
-                        value={child.medicalTherapy}
-                        onChange={(e) => {
+                      <GuidedQuestionField
+                        fieldId={`medical-${index}`}
+                        fieldType="medical"
+                        value={child.medicalTherapy || ""}
+                        onChange={(value) => {
                           const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].medicalTherapy = e.target.value
+                          newChildren[index].medicalTherapy = value
                           onChange("fosterParentInterview.childrenDiscussed", newChildren)
                         }}
-                        rows={2}
+                        label="Medical/Therapy"
+                        context={{
+                          childName: child.childName || "",
+                          childAge: undefined, // Could be added if available
+                        }}
                       />
                     </div>
 
