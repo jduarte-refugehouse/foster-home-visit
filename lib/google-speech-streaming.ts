@@ -34,10 +34,28 @@ export function createStreamingRecognitionClient(
   onResult: (result: TranscriptionResult) => void,
   onError: (error: Error) => void
 ) {
-  // Initialize the Speech client with API key authentication
-  const client = new speech.SpeechClient({
-    apiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-  })
+  // Initialize the Speech client
+  // For streaming API, we can try API key first, but it may require service account
+  let client: speech.SpeechClient
+  
+  try {
+    // Try using API key (may not work for streaming)
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    
+    if (apiKey) {
+      console.log('🔑 [STREAMING] Attempting to use API key authentication')
+      client = new speech.SpeechClient({
+        apiKey,
+      })
+    } else {
+      // Fall back to Application Default Credentials (service account)
+      console.log('🔑 [STREAMING] Using Application Default Credentials (service account)')
+      client = new speech.SpeechClient()
+    }
+  } catch (error) {
+    console.error('❌ [STREAMING] Failed to create Speech client:', error)
+    throw new Error('Failed to initialize Google Speech client. Check authentication configuration.')
+  }
 
   // Configure the streaming request
   const streamingConfig: google.cloud.speech.v1.IStreamingRecognitionConfig = {
@@ -62,20 +80,36 @@ export function createStreamingRecognitionClient(
   })
 
   // Create the streaming recognize request
+  console.log('🎤 [STREAMING] Initiating streamingRecognize call to Google...')
+  
   const recognizeStream = client
     .streamingRecognize({ config: streamingConfig } as StreamingRecognizeRequest)
     .on('error', (error: Error) => {
       console.error('❌ [STREAMING] Recognition error:', error)
+      console.error('❌ [STREAMING] Error details:', JSON.stringify(error, null, 2))
       onError(error)
     })
     .on('data', (data: google.cloud.speech.v1.IStreamingRecognizeResponse) => {
+      console.log('📨 [STREAMING] Received data from Google:', JSON.stringify(data, null, 2))
+      
       if (!data.results || data.results.length === 0) {
-        console.log('⚠️ [STREAMING] Empty result received')
+        console.log('⚠️ [STREAMING] Empty result received - no results array')
+        
+        // Check if there's an error in the response
+        if (data.error) {
+          console.error('❌ [STREAMING] Error in response:', data.error)
+          onError(new Error(`Google API error: ${data.error.message}`))
+        }
         return
       }
 
       // Get the first result (most recent)
       const result = data.results[0]
+      console.log('📝 [STREAMING] Processing result:', {
+        isFinal: result.isFinal,
+        stability: result.stability,
+        alternativesCount: result.alternatives?.length || 0,
+      })
       
       if (!result.alternatives || result.alternatives.length === 0) {
         console.log('⚠️ [STREAMING] No alternatives in result')
@@ -101,7 +135,15 @@ export function createStreamingRecognitionClient(
         })
 
         onResult(transcriptionResult)
+      } else {
+        console.log('⚠️ [STREAMING] Empty transcript in alternative')
       }
+    })
+    .on('end', () => {
+      console.log('🏁 [STREAMING] Recognition stream ended by Google')
+    })
+    .on('close', () => {
+      console.log('🔒 [STREAMING] Recognition stream closed')
     })
 
   return {
