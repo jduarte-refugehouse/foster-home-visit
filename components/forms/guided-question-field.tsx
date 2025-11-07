@@ -104,18 +104,6 @@ const questionFlows = {
         } as RegulatorySource,
       },
       {
-        id: "behaviorAtSchool",
-        type: "select",
-        text: "How is the child's behavior at school?",
-        options: ["No concerns reported", "Minor concerns", "Ongoing concerns", "Not reported"],
-        required: true,
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Behavioral monitoring across settings",
-          required: false,
-        } as RegulatorySource,
-      },
-      {
         id: "supportServices",
         type: "multiselect",
         text: "What support services is the child receiving?",
@@ -126,32 +114,19 @@ const questionFlows = {
           required: true,
         } as RegulatorySource,
       },
-      {
-        id: "concerns",
-        type: "textarea",
-        text: "Any specific concerns or positive updates about school?",
-        placeholder: "Describe any concerns, improvements, or notable events...",
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Additional context for service planning",
-          required: false,
-        } as RegulatorySource,
-      },
     ],
     generateSummary: (answers: Record<string, any>) => {
       let summary = `School: ${answers.attendance || "Not reported"}. `
       summary += `Academic performance: ${answers.performance || "Not reported"}. `
-      summary += `Behavior at school: ${answers.behaviorAtSchool || "Not reported"}. `
       if (answers.supportServices && answers.supportServices.length > 0) {
         summary += `Support services: ${Array.isArray(answers.supportServices) ? answers.supportServices.join(", ") : answers.supportServices}. `
       }
-      if (answers.concerns) summary += `Additional notes: ${answers.concerns}.`
       return summary.trim()
     },
   },
   medical: {
     regulatoryBasis: {
-      code: "RCC 1420-6700",
+      code: "RCC 1420 / §749.1521",
       description: "Service planning requires documentation of medical and therapy services",
       required: true,
       note: "Medical appointments and medication changes must be tracked for service plan compliance",
@@ -165,18 +140,6 @@ const questionFlows = {
         regulatorySource: {
           code: "RCC 1420",
           description: "Service plan includes medical and dental checkups",
-          required: true,
-        } as RegulatorySource,
-      },
-      {
-        id: "appointmentTypes",
-        type: "multiselect",
-        text: "What type(s) of appointments?",
-        options: ["Medical/Physical", "Dental", "Mental Health Therapy", "Occupational Therapy", "Speech Therapy", "Other"],
-        conditional: { dependsOn: "appointments", value: true },
-        regulatorySource: {
-          code: "RCC 1420",
-          description: "Document types of services received",
           required: true,
         } as RegulatorySource,
       },
@@ -204,23 +167,11 @@ const questionFlows = {
           required: true,
         } as RegulatorySource,
       },
-      {
-        id: "concerns",
-        type: "textarea",
-        text: "Any medical or therapy concerns to note?",
-        placeholder: "Describe any concerns, improvements, or updates...",
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Additional context for service planning",
-          required: false,
-        } as RegulatorySource,
-      },
     ],
     generateSummary: (answers: Record<string, any>) => {
       let summary = ""
       if (answers.appointments) {
-        const types = Array.isArray(answers.appointmentTypes) ? answers.appointmentTypes.join(", ") : answers.appointmentTypes
-        summary += `Appointments: ${types || "Yes"}. `
+        summary += "Appointments occurred this month. "
       } else {
         summary += "No appointments reported. "
       }
@@ -229,7 +180,6 @@ const questionFlows = {
       } else {
         summary += "No medication changes. "
       }
-      if (answers.concerns) summary += `Concerns: ${answers.concerns}.`
       return summary.trim() || "No medical/therapy updates this month."
     },
   },
