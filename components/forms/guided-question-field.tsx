@@ -122,6 +122,177 @@ const questionFlows = {
       return "No medication changes reported."
     },
   },
+  qualityEnhancement: {
+    regulatoryBasis: {
+      code: "T3C Blueprint / TBRI Principles",
+      description: "Trauma-Informed Care Quality Enhancement - TBRI (Trust-Based Relational Intervention) Practices",
+      required: false,
+      note: "This section helps prepare homes for T3C certification by observing TBRI principles: Connecting, Empowering, and Correcting",
+    } as RegulatorySource,
+    questions: [
+      {
+        id: "tbriPrinciple",
+        type: "select",
+        text: "Which TBRI principle are you observing?",
+        options: [
+          "Connecting (Building trust and attachment)",
+          "Empowering (Meeting sensory and physical needs)",
+          "Correcting (Teaching social skills and behaviors)",
+        ],
+        required: true,
+        regulatorySource: {
+          code: "TBRI Principles",
+          description: "Trust-Based Relational Intervention core principles",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "connectingObserved",
+        type: "yesno",
+        text: "Did you observe connecting behaviors (eye contact, touch, presence, playfulness)?",
+        conditional: { dependsOn: "tbriPrinciple", value: "Connecting (Building trust and attachment)" },
+        required: true,
+        regulatorySource: {
+          code: "TBRI Connecting",
+          description: "Building trust through attunement, engagement, and playfulness",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "connectingExamples",
+        type: "textarea",
+        text: "Describe specific examples of connecting behaviors you observed:",
+        conditional: { dependsOn: "connectingObserved", value: true },
+        placeholder: "Examples: Eye contact during conversation, appropriate touch (high-fives, hugs), being fully present, playful interactions...",
+        regulatorySource: {
+          code: "TBRI Connecting",
+          description: "Document specific connecting behaviors observed",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "empoweringObserved",
+        type: "yesno",
+        text: "Did you observe empowering strategies (sensory tools, choices, routines, hydration/nutrition)?",
+        conditional: { dependsOn: "tbriPrinciple", value: "Empowering (Meeting sensory and physical needs)" },
+        required: true,
+        regulatorySource: {
+          code: "TBRI Empowering",
+          description: "Meeting sensory and physical needs to reduce stress and build self-regulation",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "empoweringExamples",
+        type: "textarea",
+        text: "Describe specific examples of empowering strategies you observed:",
+        conditional: { dependsOn: "empoweringObserved", value: true },
+        placeholder: "Examples: Sensory tools available (fidget items, weighted blankets), children given choices, consistent routines, hydration/nutrition support...",
+        regulatorySource: {
+          code: "TBRI Empowering",
+          description: "Document specific empowering strategies observed",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "correctingObserved",
+        type: "yesno",
+        text: "Did you observe correcting strategies (proactive teaching, re-dos, life value terms)?",
+        conditional: { dependsOn: "tbriPrinciple", value: "Correcting (Teaching social skills and behaviors)" },
+        required: true,
+        regulatorySource: {
+          code: "TBRI Correcting",
+          description: "Teaching appropriate behaviors through proactive strategies and social skills",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "correctingExamples",
+        type: "textarea",
+        text: "Describe specific examples of correcting strategies you observed:",
+        conditional: { dependsOn: "correctingObserved", value: true },
+        placeholder: "Examples: Proactive teaching before situations, re-dos for mistakes, using life value terms (respectful, kind, safe), teaching social skills...",
+        regulatorySource: {
+          code: "TBRI Correcting",
+          description: "Document specific correcting strategies observed",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "overallAssessment",
+        type: "select",
+        text: "Overall assessment of trauma-informed practices:",
+        options: [
+          "Consistently observed across all interactions",
+          "Frequently observed with some areas for growth",
+          "Occasionally observed, needs more support",
+          "Rarely observed, significant training needed",
+          "Not applicable for this visit",
+        ],
+        required: true,
+        regulatorySource: {
+          code: "T3C Blueprint",
+          description: "Overall assessment of trauma-informed care practices",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "strengths",
+        type: "textarea",
+        text: "What strengths did you observe in trauma-informed care?",
+        placeholder: "Describe specific strengths and positive examples...",
+        regulatorySource: {
+          code: "T3C Blueprint",
+          description: "Document strengths to build upon",
+          required: false,
+        } as RegulatorySource,
+      },
+      {
+        id: "growthOpportunities",
+        type: "textarea",
+        text: "What opportunities for growth did you identify?",
+        placeholder: "Describe areas where additional support or training might be helpful...",
+        regulatorySource: {
+          code: "T3C Blueprint",
+          description: "Identify growth opportunities for T3C preparation",
+          required: false,
+        } as RegulatorySource,
+      },
+    ],
+    generateSummary: (answers: Record<string, any>) => {
+      let summary = ""
+      
+      if (answers.tbriPrinciple) {
+        summary += `TBRI Principle Observed: ${answers.tbriPrinciple}. `
+      }
+      
+      if (answers.connectingObserved) {
+        summary += `Connecting behaviors observed: ${answers.connectingExamples || "Yes"}. `
+      }
+      
+      if (answers.empoweringObserved) {
+        summary += `Empowering strategies observed: ${answers.empoweringExamples || "Yes"}. `
+      }
+      
+      if (answers.correctingObserved) {
+        summary += `Correcting strategies observed: ${answers.correctingExamples || "Yes"}. `
+      }
+      
+      if (answers.overallAssessment) {
+        summary += `Overall assessment: ${answers.overallAssessment}. `
+      }
+      
+      if (answers.strengths) {
+        summary += `Strengths: ${answers.strengths}. `
+      }
+      
+      if (answers.growthOpportunities) {
+        summary += `Growth opportunities: ${answers.growthOpportunities}.`
+      }
+      
+      return summary.trim() || "Quality enhancement observations documented."
+    },
+  },
 }
 
 interface GuidedQuestionFieldProps {

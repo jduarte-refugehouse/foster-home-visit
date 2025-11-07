@@ -491,14 +491,19 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
       </Card>
 
       <div className="border-t pt-6">
-        <Label htmlFor="quality-enhancement-combined-notes">Strengths and Growth Opportunities</Label>
-        <Textarea
-          id="quality-enhancement-combined-notes"
-          value={quality.combinedNotes}
-          onChange={(e) => onChange("qualityEnhancement.combinedNotes", e.target.value)}
-          placeholder="Document strengths observed and opportunities for growth in trauma-informed practices..."
-          rows={4}
-          className="mt-2"
+        <Label htmlFor="quality-enhancement-combined-notes">TBRI Quality Enhancement Observations</Label>
+        <p className="text-sm text-gray-600 mb-2">
+          Use guided questions to document observations of TBRI (Trust-Based Relational Intervention) principles: 
+          <strong> Connecting</strong> (building trust), <strong>Empowering</strong> (meeting sensory needs), and 
+          <strong> Correcting</strong> (teaching social skills).
+        </p>
+        <GuidedQuestionField
+          fieldId="quality-enhancement-observations"
+          fieldType="qualityEnhancement"
+          value={quality.combinedNotes || ""}
+          onChange={(value) => onChange("qualityEnhancement.combinedNotes", value)}
+          label="Quality Enhancement Observations"
+          context={{}}
         />
       </div>
     </div>
