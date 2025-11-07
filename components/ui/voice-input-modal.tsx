@@ -20,7 +20,7 @@ export function VoiceInputModal({
   onOpenChange,
   onTranscript,
   title = 'Voice Input',
-  description = 'Click "Listen" to start recording. Speak your text, then click "Stop" to process.',
+  description = 'Click "Listen" to start recording. Text will appear as you speak.',
 }: VoiceInputModalProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -28,8 +28,9 @@ export function VoiceInputModal({
   const [transcript, setTranscript] = useState('')
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const accumulatedTranscriptRef = useRef<string>('')
 
   // Cleanup when modal closes
   useEffect(() => {
@@ -43,55 +44,144 @@ export function VoiceInputModal({
         streamRef.current.getTracks().forEach(track => track.stop())
         streamRef.current = null
       }
+      // Clear interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
       // Reset state
       setTranscript('')
       setError(null)
       setIsProcessing(false)
-      audioChunksRef.current = []
+      accumulatedTranscriptRef.current = ''
     }
-  }, [open])
+  }, [open, isRecording])
+
+  const sendAudioChunk = async (audioBlob: Blob, isLastChunk: boolean = false) => {
+    try {
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1]
+        
+        try {
+          // Send to API for transcription
+          const response = await fetch('/api/speech/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              audioData: base64Audio,
+              encoding: 'WEBM_OPUS',
+              sampleRateHertz: 48000,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `API error: ${response.status}`)
+          }
+
+          const data = await response.json()
+          
+          if (data.success && data.transcript) {
+            // Update transcript in real-time
+            const newText = data.transcript.trim()
+            if (newText && newText !== accumulatedTranscriptRef.current) {
+              // If new text contains the previous text, it's an update
+              if (newText.includes(accumulatedTranscriptRef.current)) {
+                setTranscript(newText)
+                accumulatedTranscriptRef.current = newText
+              } else {
+                // Otherwise, append new text
+                const combined = accumulatedTranscriptRef.current 
+                  ? `${accumulatedTranscriptRef.current} ${newText}`.trim()
+                  : newText
+                setTranscript(combined)
+                accumulatedTranscriptRef.current = combined
+              }
+            }
+          }
+        } catch (apiError: any) {
+          console.error('❌ [GOOGLE SPEECH] API error:', apiError)
+          // Don't show error for interim chunks, only for final
+          if (isLastChunk) {
+            setError(apiError.message || 'Failed to transcribe audio. Please try again.')
+          }
+        }
+      }
+
+      reader.onerror = () => {
+        console.error('❌ [GOOGLE SPEECH] Error reading audio file')
+        if (isLastChunk) {
+          setError('Failed to process audio. Please try again.')
+        }
+      }
+
+      reader.readAsDataURL(audioBlob)
+    } catch (error: any) {
+      console.error('❌ [GOOGLE SPEECH] Error processing audio chunk:', error)
+      if (isLastChunk) {
+        setError(error.message || 'Failed to process audio. Please try again.')
+      }
+    }
+  }
 
   const handleStart = async () => {
     try {
       setError(null)
       setTranscript('')
-      audioChunksRef.current = []
+      accumulatedTranscriptRef.current = ''
 
       // Request microphone access
-      // Note: MediaRecorder with WebM Opus typically records at 48kHz
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          // Don't specify sampleRate - let browser use default (usually 48kHz for WebM Opus)
         } 
       })
       
       streamRef.current = stream
 
-      // Create MediaRecorder with WebM format (works well for Google Cloud)
+      // Create MediaRecorder with WebM format
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus', // WebM Opus is well-supported
+        mimeType: 'audio/webm;codecs=opus',
       })
 
       mediaRecorderRef.current = mediaRecorder
 
+      let audioChunks: Blob[] = []
+
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
+          audioChunks.push(event.data)
+          
+          // Send chunk for real-time transcription every 1-2 seconds
+          if (audioChunks.length >= 2) {
+            const chunkToSend = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
+            sendAudioChunk(chunkToSend, false)
+            // Keep last chunk for continuity
+            audioChunks = audioChunks.slice(-1)
+          }
         }
       }
 
       // Handle recording stop
       mediaRecorder.onstop = async () => {
-        await processAudio()
+        // Send final chunk
+        if (audioChunks.length > 0) {
+          const finalChunk = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
+          await sendAudioChunk(finalChunk, true)
+        }
+        setIsProcessing(false)
       }
 
-      // Start recording
-      mediaRecorder.start(1000) // Collect data every second
+      // Start recording with 1 second intervals for real-time updates
+      mediaRecorder.start(1000)
       setIsRecording(true)
-      console.log('🎤 [GOOGLE SPEECH] Recording started')
+      console.log('🎤 [GOOGLE SPEECH] Recording started with real-time transcription')
     } catch (err: any) {
       console.error('❌ [GOOGLE SPEECH] Error starting recording:', err)
       setError(
@@ -115,72 +205,7 @@ export function VoiceInputModal({
         streamRef.current = null
       }
       
-      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing...')
-    }
-  }
-
-  const processAudio = async () => {
-    try {
-      if (audioChunksRef.current.length === 0) {
-        console.log('⚠️ [GOOGLE SPEECH] No audio data recorded')
-        setIsProcessing(false)
-        return
-      }
-
-      // Combine audio chunks into a single blob
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
-      
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1] // Remove data:audio/webm;base64, prefix
-        
-        try {
-          // Send to API for transcription
-          const response = await fetch('/api/speech/transcribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              audioData: base64Audio,
-              encoding: 'WEBM_OPUS',
-              sampleRateHertz: 48000, // WebM Opus typically uses 48kHz
-            }),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            throw new Error(errorData.error || `API error: ${response.status}`)
-          }
-
-          const data = await response.json()
-          
-          if (data.success && data.transcript) {
-            setTranscript(data.transcript)
-            console.log('✅ [GOOGLE SPEECH] Transcription successful:', data.transcript.substring(0, 100))
-          } else {
-            throw new Error(data.error || 'No transcript received')
-          }
-        } catch (apiError: any) {
-          console.error('❌ [GOOGLE SPEECH] API error:', apiError)
-          setError(apiError.message || 'Failed to transcribe audio. Please try again.')
-        } finally {
-          setIsProcessing(false)
-        }
-      }
-
-      reader.onerror = () => {
-        console.error('❌ [GOOGLE SPEECH] Error reading audio file')
-        setError('Failed to process audio. Please try again.')
-        setIsProcessing(false)
-      }
-
-      reader.readAsDataURL(audioBlob)
-    } catch (error: any) {
-      console.error('❌ [GOOGLE SPEECH] Error processing audio:', error)
-      setError(error.message || 'Failed to process audio. Please try again.')
-      setIsProcessing(false)
+      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing final chunk...')
     }
   }
 
@@ -220,9 +245,9 @@ export function VoiceInputModal({
             ) : (
               <p className="text-sm text-muted-foreground italic">
                 {isRecording 
-                  ? 'Recording... Speak now.' 
+                  ? 'Listening... Speak now. Text will appear as you talk.' 
                   : isProcessing 
-                    ? 'Processing audio...' 
+                    ? 'Processing final audio...' 
                     : 'Click "Listen" to start recording.'}
               </p>
             )}
