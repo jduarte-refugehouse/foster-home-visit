@@ -216,7 +216,7 @@ ${context.quarter ? `Quarter: ${context.quarter}` : ""}
     },
   ]
 
-  const response = await callAnthropicAPI(messages, systemPrompt)
+  const response = await callAnthropicAPI(messages, systemPrompt, model)
   
   if (response.error) {
     console.error("❌ [AI-QUESTIONS] Error from Anthropic:", response.error)
