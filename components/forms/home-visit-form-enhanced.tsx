@@ -879,13 +879,13 @@ const EnhancedHomeVisitForm = ({
     { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home },
     { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList },
     { id: "trauma-care", title: "Section 8: Trauma Care", icon: Brain },
-    { id: "foster-parent-interview", title: "Section 9: Foster Parent Interview", icon: Users, required: true },
     { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true },
     { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
     { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
     { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
     { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true },
     { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
+    { id: "foster-parent-interview", title: "Section 9: Foster Parent Interview", icon: Users, required: true },
     { id: "observations", title: "Observations", icon: FileText, required: true },
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
     { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true },
@@ -907,7 +907,7 @@ const EnhancedHomeVisitForm = ({
     })
   }
 
-  // Handle compliance item status change - updated for monthly tracking
+  // Handle compliance item status change - updated for monthly tracking and old status format
   const handleComplianceChange = (section, index, month, field, value) => {
     setFormData((prev) => {
       // Handle nested paths like "packageCompliance.substanceUse"
@@ -929,6 +929,15 @@ const EnhancedHomeVisitForm = ({
       // Update the nested structure
       const updatedItems = sectionData.items.map((item, idx) => {
         if (idx === index) {
+          // Handle old format: when month === "status", update the status field directly
+          if (month === "status") {
+            return {
+              ...item,
+              status: value,
+            }
+          }
+          
+          // New format: update month data (month1, month2, month3)
           const monthData = item[month] || { compliant: false, na: false, notes: "" }
           
           // If setting compliant to true, clear na. If setting na to true, clear compliant.
