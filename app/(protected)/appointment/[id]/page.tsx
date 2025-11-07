@@ -1454,15 +1454,18 @@ export default function AppointmentDetailPage() {
                         <p className="text-2xl font-bold text-green-600">
                           ${(
                             (appointment.calculated_mileage * mileageRate) + 
-                            (appointment.toll_confirmed && appointment.actual_toll_cost ? appointment.actual_toll_cost : 
-                             (appointment.estimated_toll_cost || 0))
+                            (appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined 
+                              ? appointment.actual_toll_cost 
+                              : (appointment.estimated_toll_cost || 0))
                           ).toFixed(2)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {mileageRate.toFixed(2)} per mile × {appointment.calculated_mileage.toFixed(2)} miles
-                          {((appointment.toll_confirmed && appointment.actual_toll_cost) || appointment.estimated_toll_cost) && (
+                          {((appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined) || appointment.estimated_toll_cost) && (
                             <span className="ml-2">
-                              + ${((appointment.toll_confirmed && appointment.actual_toll_cost) || appointment.estimated_toll_cost || 0).toFixed(2)} tolls
+                              + ${((appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined) 
+                                ? appointment.actual_toll_cost 
+                                : (appointment.estimated_toll_cost || 0)).toFixed(2)} tolls
                             </span>
                           )}
                         </p>
