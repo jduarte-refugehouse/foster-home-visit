@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
  * {
  *   audioData: string (base64 encoded audio)
  *   encoding?: string (audio encoding, default: 'WEBM_OPUS')
- *   sampleRateHertz?: number (default: 48000)
+ *   sampleRateHertz?: number (default: 16000 for WebM Opus)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Google Cloud Speech-to-Text API key not configured',
+          error: 'Google Cloud Speech-to-Text API key not configured. Please set GOOGLE_MAPS_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY',
           fallback: 'web-speech-api',
         },
         { status: 503 }
@@ -41,13 +41,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('🎤 [API] Transcribing audio:', {
+      encoding: encoding || 'WEBM_OPUS',
+      sampleRate: sampleRateHertz || 16000,
+      dataLength: audioData.length,
+    })
+
     // Transcribe using Google Cloud Speech-to-Text
     const result = await transcribeWithGoogleSpeech(audioData, {
-      encoding: encoding || 'WEBM_OPUS',
-      sampleRateHertz: sampleRateHertz || 48000,
+      encoding: (encoding as any) || 'WEBM_OPUS',
+      sampleRateHertz: sampleRateHertz || 16000, // WebM Opus typically uses 16kHz
       enableAutomaticPunctuation: true,
       enableSpokenPunctuation: true,
       model: 'latest_long', // Better for longer transcripts
+    })
+
+    console.log('✅ [API] Transcription successful:', {
+      transcriptLength: result.transcript.length,
+      confidence: result.confidence,
     })
 
     return NextResponse.json({

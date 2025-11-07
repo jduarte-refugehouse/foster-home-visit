@@ -38,9 +38,11 @@ export async function transcribeWithGoogleSpeech(
   const audioContent = typeof audioData === 'string' ? audioData : audioData.toString('base64')
 
   // Default configuration with automatic punctuation enabled
+  // Note: For WEBM_OPUS, sampleRateHertz should match the actual audio sample rate
+  // WebM Opus typically uses 16kHz, 24kHz, or 48kHz
   const recognitionConfig: any = {
     encoding: config.encoding || 'WEBM_OPUS',
-    sampleRateHertz: config.sampleRateHertz || 48000,
+    sampleRateHertz: config.sampleRateHertz || 16000, // Default to 16kHz for WebM Opus
     languageCode: config.languageCode || 'en-US',
     enableAutomaticPunctuation: config.enableAutomaticPunctuation !== false, // Default to true
     enableSpokenPunctuation: config.enableSpokenPunctuation !== false, // Default to true

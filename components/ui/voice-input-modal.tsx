@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Mic, MicOff, X, Check } from 'lucide-react'
-import { useVoiceInput } from '@/hooks/use-voice-input'
 import { cn } from '@/lib/utils'
-import { addPunctuation } from '@/lib/speech-utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface VoiceInputModalProps {
@@ -22,129 +20,181 @@ export function VoiceInputModal({
   onOpenChange,
   onTranscript,
   title = 'Voice Input',
-  description = 'Speak your text. Click the microphone to start, then click again to stop and process.',
+  description = 'Click "Listen" to start recording. Speak your text, then click "Stop" to process.',
 }: VoiceInputModalProps) {
-  const [transcript, setTranscript] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const finalTranscriptRef = useRef<string>('')
+  const [transcript, setTranscript] = useState('')
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
 
-  const { isListening, isSupported, startListening, stopListening } = useVoiceInput({
-    onResult: (text) => {
-      if (text && text.trim().length > 0) {
-        setTranscript(text.trim())
-        finalTranscriptRef.current = text.trim()
-      }
-    },
-    onError: (errorMsg) => {
-      // Filter out common Safari/iPad errors that are expected
-      if (!errorMsg.includes('aborted') && !errorMsg.includes('no-speech')) {
-        setError(errorMsg)
-      }
-    },
-    continuous: true,
-    interimResults: true,
-  })
-
-  // Reset when modal opens/closes
+  // Cleanup when modal closes
   useEffect(() => {
-    if (open) {
-      setTranscript('')
-      setError(null)
-      setIsProcessing(false)
-      finalTranscriptRef.current = ''
-    } else {
-      // Stop listening when modal closes
-      if (isListening) {
-        stopListening()
+    if (!open) {
+      // Stop recording if still active
+      if (isRecording) {
+        handleStop()
       }
+      // Clean up media stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+      // Reset state
+      setTranscript('')
+      setError(null)
+      setIsProcessing(false)
+      audioChunksRef.current = []
     }
-  }, [open, isListening, stopListening])
+  }, [open])
 
-  const handleStartStop = () => {
-    if (isListening) {
-      stopListening()
-      // Process the transcript after a brief delay
-      setIsProcessing(true)
-      setTimeout(() => {
-        processTranscript()
-      }, 500) // Wait for final results
-    } else {
+  const handleStart = async () => {
+    try {
       setError(null)
       setTranscript('')
-      finalTranscriptRef.current = ''
-      startListening()
-    }
-  }
+      audioChunksRef.current = []
 
-  const processTranscript = async () => {
-    const finalText = finalTranscriptRef.current || transcript
-    
-    if (!finalText || finalText.trim().length === 0) {
-      setIsProcessing(false)
-      return
-    }
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000, // Google Cloud Speech-to-Text works well with 16kHz
+        } 
+      })
+      
+      streamRef.current = stream
 
-    const trimmedFinal = finalText.trim()
-
-    // Try to enhance with Google Cloud Speech-to-Text if available
-    try {
-      const response = await fetch('/api/speech/enhance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transcript: trimmedFinal,
-        }),
+      // Create MediaRecorder with WebM format (works well for Google Cloud)
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus', // WebM Opus is well-supported
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.enhancedTranscript) {
-          onTranscript(data.enhancedTranscript)
-          onOpenChange(false)
-          setIsProcessing(false)
-          return
+      mediaRecorderRef.current = mediaRecorder
+
+      // Collect audio chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
         }
       }
-    } catch (error) {
-      console.log('⚠️ Google Speech enhancement failed, using local punctuation:', error)
-    }
 
-    // Fallback: Use local punctuation
-    const withPunctuation = addPunctuation(trimmedFinal)
-    onTranscript(withPunctuation)
-    onOpenChange(false)
-    setIsProcessing(false)
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        await processAudio()
+      }
+
+      // Start recording
+      mediaRecorder.start(1000) // Collect data every second
+      setIsRecording(true)
+      console.log('🎤 [GOOGLE SPEECH] Recording started')
+    } catch (err: any) {
+      console.error('❌ [GOOGLE SPEECH] Error starting recording:', err)
+      setError(
+        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+          ? 'Microphone permission denied. Please allow microphone access and try again.'
+          : err.message || 'Failed to access microphone. Please check your device settings.'
+      )
+      setIsRecording(false)
+    }
   }
 
-  const handleCancel = () => {
-    if (isListening) {
-      stopListening()
+  const handleStop = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      setIsProcessing(true)
+      
+      // Stop all tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+      
+      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing...')
     }
-    onOpenChange(false)
+  }
+
+  const processAudio = async () => {
+    try {
+      if (audioChunksRef.current.length === 0) {
+        console.log('⚠️ [GOOGLE SPEECH] No audio data recorded')
+        setIsProcessing(false)
+        return
+      }
+
+      // Combine audio chunks into a single blob
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
+      
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1] // Remove data:audio/webm;base64, prefix
+        
+        try {
+          // Send to API for transcription
+          const response = await fetch('/api/speech/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              audioData: base64Audio,
+              encoding: 'WEBM_OPUS',
+              sampleRateHertz: 16000,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `API error: ${response.status}`)
+          }
+
+          const data = await response.json()
+          
+          if (data.success && data.transcript) {
+            setTranscript(data.transcript)
+            console.log('✅ [GOOGLE SPEECH] Transcription successful:', data.transcript.substring(0, 100))
+          } else {
+            throw new Error(data.error || 'No transcript received')
+          }
+        } catch (apiError: any) {
+          console.error('❌ [GOOGLE SPEECH] API error:', apiError)
+          setError(apiError.message || 'Failed to transcribe audio. Please try again.')
+        } finally {
+          setIsProcessing(false)
+        }
+      }
+
+      reader.onerror = () => {
+        console.error('❌ [GOOGLE SPEECH] Error reading audio file')
+        setError('Failed to process audio. Please try again.')
+        setIsProcessing(false)
+      }
+
+      reader.readAsDataURL(audioBlob)
+    } catch (error: any) {
+      console.error('❌ [GOOGLE SPEECH] Error processing audio:', error)
+      setError(error.message || 'Failed to process audio. Please try again.')
+      setIsProcessing(false)
+    }
   }
 
   const handleInsert = () => {
     if (transcript.trim()) {
-      processTranscript()
+      onTranscript(transcript.trim())
+      onOpenChange(false)
     }
   }
 
-  if (!isSupported) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              Speech recognition is not supported in this browser.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    )
+  const handleCancel = () => {
+    if (isRecording) {
+      handleStop()
+    }
+    onOpenChange(false)
   }
 
   return (
@@ -168,7 +218,11 @@ export function VoiceInputModal({
               <p className="text-sm whitespace-pre-wrap">{transcript}</p>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                {isListening ? 'Listening... Speak now.' : 'Click the microphone to start recording.'}
+                {isRecording 
+                  ? 'Recording... Speak now.' 
+                  : isProcessing 
+                    ? 'Processing audio...' 
+                    : 'Click "Listen" to start recording.'}
               </p>
             )}
           </div>
@@ -178,11 +232,11 @@ export function VoiceInputModal({
             <div
               className={cn(
                 'h-3 w-3 rounded-full transition-colors',
-                isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-300'
+                isRecording ? 'bg-red-500 animate-pulse' : isProcessing ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
               )}
             />
             <span className="text-sm text-muted-foreground">
-              {isListening ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready'}
+              {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready'}
             </span>
           </div>
 
@@ -193,27 +247,27 @@ export function VoiceInputModal({
               Cancel
             </Button>
             <Button
-              onClick={handleStartStop}
+              onClick={isRecording ? handleStop : handleStart}
               disabled={isProcessing}
               className={cn(
-                'min-w-[140px]',
-                isListening && 'bg-red-500 hover:bg-red-600 text-white'
+                'min-w-[120px]',
+                isRecording && 'bg-red-500 hover:bg-red-600 text-white'
               )}
             >
-              {isListening ? (
+              {isRecording ? (
                 <>
                   <MicOff className="h-4 w-4 mr-2" />
-                  Stop Recording
+                  Stop
                 </>
               ) : (
                 <>
                   <Mic className="h-4 w-4 mr-2" />
-                  Start Recording
+                  Listen
                 </>
               )}
             </Button>
-            {transcript && !isListening && (
-              <Button onClick={handleInsert} disabled={isProcessing}>
+            {transcript && !isRecording && !isProcessing && (
+              <Button onClick={handleInsert}>
                 <Check className="h-4 w-4 mr-2" />
                 Insert Text
               </Button>
@@ -224,4 +278,3 @@ export function VoiceInputModal({
     </Dialog>
   )
 }
-
