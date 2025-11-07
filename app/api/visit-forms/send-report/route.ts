@@ -759,15 +759,15 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
         ${formData.complianceReview.medication ? formatComplianceSection(formData.complianceReview.medication, "1. Medication", true, true) : ""}
-        ${formData.complianceReview.inspections ? formatInspectionsSection(formData.complianceReview.inspections) : ""}
         ${formData.complianceReview.healthSafety ? formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety", true, true) : ""}
+        ${formData.complianceReview.inspections ? formatInspectionsSection(formData.complianceReview.inspections) : ""}
         ${formData.complianceReview.childrensRights ? formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being", true, true) : ""}
         ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true) : ""}
         ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills", true, true) : ""}
         ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space", true, true) : ""}
         ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation", true, true) : ""}
-        ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
         ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false, false) : ""}
+        ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
         ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false, false) : ""}
         ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false, false) : ""}
         ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false, false) : ""}
@@ -779,15 +779,15 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
         ${formData.medication ? formatComplianceSection(formData.medication, "1. Medication") : ""}
-        ${formData.inspections ? formatInspectionsSection(formData.inspections) : ""}
         ${formData.healthSafety ? formatComplianceSection(formData.healthSafety, "2. Health & Safety") : ""}
+        ${formData.inspections ? formatInspectionsSection(formData.inspections) : ""}
         ${formData.childrensRights ? formatComplianceSection(formData.childrensRights, "3. Children's Rights & Well-Being") : ""}
         ${formData.bedrooms ? formatComplianceSection(formData.bedrooms, "4. Bedrooms and Belongings") : ""}
         ${formData.education ? formatComplianceSection(formData.education, "5. Education & Life Skills") : ""}
         ${formData.indoorSpace ? formatComplianceSection(formData.indoorSpace, "6. Indoor Space") : ""}
         ${formData.documentation ? formatComplianceSection(formData.documentation, "7. Documentation") : ""}
-        ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""}
         ${formData.outdoorSpaceCompliance || formData.outdoorSpace ? formatComplianceSection(formData.outdoorSpaceCompliance || formData.outdoorSpace, "8. Outdoor Space", false) : ""}
+        ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""}
         ${formData.vehicles ? formatComplianceSection(formData.vehicles, "9. Vehicles", false) : ""}
         ${formData.swimming ? formatComplianceSection(formData.swimming, "10. Swimming Areas", false) : ""}
         ${formData.infants ? formatComplianceSection(formData.infants, "11. Infants", false) : ""}

@@ -878,7 +878,7 @@ const EnhancedHomeVisitForm = ({
     { id: "education", title: "Section 5: Education", icon: GraduationCap },
     { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home },
     { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList },
-    { id: "trauma-care", title: "Section 8: Trauma Care", icon: Brain },
+    { id: "trauma-care", title: "Trauma-Informed Care & Training", icon: Brain },
     { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true },
     { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
     { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
@@ -2040,7 +2040,8 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                                 : "hover:bg-green-50"
                             }`}
                             onClick={() => {
-                              onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")
+                              const newStatus = item.status === "compliant" ? null : "compliant"
+                              onChange(section, index, "status", newStatus)
                             }}
                           >
                             {item.status === "compliant" ? "✓" : "Compliant"}

@@ -1357,7 +1357,13 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
                 <SignaturePad
                   label={`Signature ${isRequired ? "*" : ""}`}
                   value={getSignatureValue(`${sigKey}Signature`)}
-                  onChange={(sig) => handleSignatureChange(`${sigKey}Signature`, sig)}
+                  onChange={(sig) => {
+                    handleSignatureChange(`${sigKey}Signature`, sig)
+                    // Auto-set date if signature is captured and date is not set
+                    if (sig && !getSignatureValue(`${sigKey}Date`)) {
+                      handleSignatureChange(`${sigKey}Date`, new Date().toISOString().split("T")[0])
+                    }
+                  }}
                 />
 
                 <div>
@@ -1393,7 +1399,13 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
               <SignaturePad
                 label="Signature *"
                 value={getSignatureValue("parent1Signature")}
-                onChange={(sig) => handleSignatureChange("parent1Signature", sig)}
+                onChange={(sig) => {
+                  handleSignatureChange("parent1Signature", sig)
+                  // Auto-set date if signature is captured and date is not set
+                  if (sig && !getSignatureValue("parent1Date")) {
+                    handleSignatureChange("parent1Date", new Date().toISOString().split("T")[0])
+                  }
+                }}
               />
 
               <div>
@@ -1432,7 +1444,13 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
               <SignaturePad
                 label="Signature *"
                 value={getSignatureValue("staffSignature")}
-                onChange={(sig) => handleSignatureChange("staffSignature", sig)}
+                onChange={(sig) => {
+                  handleSignatureChange("staffSignature", sig)
+                  // Auto-set date if signature is captured and date is not set
+                  if (sig && !getSignatureValue("staffDate")) {
+                    handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+                  }
+                }}
               />
 
               <div>
