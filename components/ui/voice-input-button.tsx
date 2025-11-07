@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVoiceInput } from '@/hooks/use-voice-input'
@@ -20,19 +21,37 @@ export function VoiceInputButton({
   size = 'default',
   variant = 'outline',
 }: VoiceInputButtonProps) {
-  const { isListening, isSupported, startListening, stopListening } = useVoiceInput({
+  const [accumulatedText, setAccumulatedText] = useState('')
+  
+  const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
-      onTranscript(text)
-      stopListening()
-    },
-    onError: (error) => {
-      if (onError) {
-        onError(error)
+      // In continuous mode, accumulate text as we get final results
+      // Don't call onTranscript yet - wait until user stops
+      if (text && text.trim().length > 0) {
+        setAccumulatedText(prev => {
+          const newText = prev ? `${prev} ${text.trim()}` : text.trim()
+          return newText
+        })
       }
     },
-    continuous: false,
-    interimResults: false,
+    onError: (error) => {
+      // Filter out "aborted" errors - they're usually harmless
+      if (error && !error.includes('aborted')) {
+        if (onError) {
+          onError(error)
+        }
+      }
+    },
+    continuous: true, // Use continuous mode for better iPad support
+    interimResults: true, // Show interim results for better UX
   })
+
+  // Reset accumulated text when starting to listen
+  useEffect(() => {
+    if (isListening) {
+      setAccumulatedText('')
+    }
+  }, [isListening])
 
   if (!isSupported) {
     return null // Don't show button if not supported
@@ -40,8 +59,16 @@ export function VoiceInputButton({
 
   const handleClick = () => {
     if (isListening) {
+      // Stop listening and process accumulated text
       stopListening()
+      // Use accumulated text if available, otherwise use current transcript
+      const finalText = accumulatedText || transcript
+      if (finalText && finalText.trim().length > 0) {
+        onTranscript(finalText.trim())
+        setAccumulatedText('') // Reset after sending
+      }
     } else {
+      setAccumulatedText('') // Reset when starting
       startListening()
     }
   }

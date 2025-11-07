@@ -50,13 +50,30 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         const fullTranscript = finalTranscript || interimTranscript
         setTranscript(fullTranscript)
         
-        if (finalTranscript && onResult) {
-          onResult(finalTranscript.trim())
+        // For continuous mode, only call onResult when we have final results
+        // For non-continuous mode, call onResult when we have any results
+        if (continuous) {
+          if (finalTranscript && onResult) {
+            onResult(finalTranscript.trim())
+          }
+        } else {
+          // Non-continuous: call onResult with final transcript when available
+          // or with interim if that's all we have (will be finalized on end)
+          if (finalTranscript && onResult) {
+            onResult(finalTranscript.trim())
+          }
         }
       }
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         setIsListening(false)
+        
+        // Don't show error for "aborted" - it's usually intentional or a timing issue
+        if (event.error === 'aborted') {
+          // Silently handle abort - user may have stopped it manually
+          return
+        }
+        
         const errorMessage = 
           event.error === 'no-speech' 
             ? 'No speech detected. Please try again.'
@@ -64,6 +81,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             ? 'Microphone not found. Please check your device settings.'
             : event.error === 'not-allowed'
             ? 'Microphone permission denied. Please enable microphone access.'
+            : event.error === 'network'
+            ? 'Network error. Please check your connection.'
             : `Speech recognition error: ${event.error}`
         
         if (onError) {
@@ -72,7 +91,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
 
       recognition.onend = () => {
+        const finalTranscript = transcript.trim()
         setIsListening(false)
+        // If we have a transcript when ending and no result was called yet, process it
+        // This handles cases where recognition ends naturally (non-continuous mode)
+        if (!continuous && finalTranscript.length > 0 && onResult) {
+          // Small delay to ensure transcript is finalized
+          setTimeout(() => {
+            onResult(finalTranscript)
+          }, 100)
+        }
       }
 
       recognitionRef.current = recognition
@@ -97,22 +125,47 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
       try {
+        // Reset transcript when starting
+        setTranscript('')
         recognitionRef.current.start()
-      } catch (error) {
-        // Already started or other error
-        if (onError) {
-          onError('Could not start voice input. Please try again.')
+      } catch (error: any) {
+        // Handle "already started" error gracefully
+        if (error?.message?.includes('already') || error?.name === 'InvalidStateError') {
+          // Try to stop and restart
+          try {
+            recognitionRef.current.stop()
+            setTimeout(() => {
+              try {
+                recognitionRef.current?.start()
+              } catch (retryError) {
+                if (onError) {
+                  onError('Could not start voice input. Please try again.')
+                }
+              }
+            }, 100)
+          } catch (stopError) {
+            if (onError) {
+              onError('Could not start voice input. Please try again.')
+            }
+          }
+        } else {
+          if (onError) {
+            onError('Could not start voice input. Please try again.')
+          }
         }
       }
     }
   }
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current) {
       try {
-        recognitionRef.current.stop()
+        // Only stop if we're actually listening
+        if (isListening) {
+          recognitionRef.current.stop()
+        }
       } catch (error) {
-        // Ignore errors when stopping
+        // Ignore errors when stopping - recognition may have already ended
       }
     }
   }
