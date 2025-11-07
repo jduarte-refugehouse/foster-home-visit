@@ -243,6 +243,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const stopListening = () => {
     if (recognitionRef.current) {
       try {
+        // Clear auto-restart flag
+        if (recognitionRef.current) {
+          (recognitionRef.current as any)._shouldAutoRestart = false
+        }
         // Only stop if we're actually listening
         if (isListening) {
           recognitionRef.current.stop()
