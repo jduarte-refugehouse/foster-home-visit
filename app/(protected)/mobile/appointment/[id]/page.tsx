@@ -742,11 +742,15 @@ export default function MobileAppointmentDetailPage() {
                     handleDriveToNext()
                   }}
                   disabled={capturingLocation}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 whitespace-normal text-left h-auto py-3 px-4"
                   size="lg"
                 >
-                  <Navigation className="h-5 w-5 mr-2" />
-                  {capturingLocation ? "Capturing Location..." : `Drive to Next Visit${nextAppointment.title ? `: ${nextAppointment.title}` : ""}`}
+                  <div className="flex items-center gap-2 w-full">
+                    <Navigation className="h-5 w-5 flex-shrink-0" />
+                    <span className="flex-1 break-words">
+                      {capturingLocation ? "Capturing Location..." : `Drive to Next Visit${nextAppointment.title ? `: ${nextAppointment.title}` : ""}`}
+                    </span>
+                  </div>
                 </Button>
               )}
               <Button
