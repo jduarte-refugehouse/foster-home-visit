@@ -223,7 +223,24 @@ function generateCompleteReportHTML(
     if (!name && !signature) return ""
     
     const nameDisplay = name || "Not provided"
-    const dateDisplay = date || "Not provided"
+    // Format date if it exists, otherwise show "Not provided"
+    let dateDisplay = "Not provided"
+    if (date && date.trim()) {
+      try {
+        // Try to format the date if it's in ISO format
+        const dateObj = new Date(date)
+        if (!isNaN(dateObj.getTime())) {
+          dateDisplay = format(dateObj, "MMMM d, yyyy")
+        } else {
+          // If it's already formatted, use as-is
+          dateDisplay = date
+        }
+      } catch (e) {
+        // If formatting fails, use the date as-is
+        dateDisplay = date
+      }
+    }
+    
     const signatureImg = signature && typeof signature === 'string' && (signature.startsWith('data:image') || signature.startsWith('data:image/png') || signature.length > 100)
       ? `<div style="margin-top: 8px;"><img src="${signature}" alt="${label} signature" style="max-width: 300px; border: 1px solid #d1d5db; border-radius: 4px;" /></div>`
       : signature && typeof signature === 'string' && signature.trim().length > 0
@@ -234,7 +251,7 @@ function generateCompleteReportHTML(
       <div style="margin-bottom: 15px;">
         <p style="margin: 3px 0;"><strong>${label}:</strong> ${nameDisplay}</p>
         ${signatureImg}
-        <p style="margin: 3px 0; font-size: 12px; color: #6b7280;">Date: ${dateDisplay}</p>
+        <p style="margin: 3px 0; font-size: 12px; color: #6b7280;"><strong>Date:</strong> ${dateDisplay}</p>
       </div>
     `
   }
@@ -282,8 +299,8 @@ function generateCompleteReportHTML(
     return '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
   }
 
-  // Helper to format compliance sections - show ALL items with monthly tracking
-  const formatComplianceSection = (sectionData: any, sectionName: string, showMonthly = true) => {
+  // Helper to format compliance sections - show ALL items in tabular format
+  const formatComplianceSection = (sectionData: any, sectionName: string, showMonthly = true, isQuarterly = true) => {
     if (!sectionData) return ""
     
     // Handle case where sectionData might be an object with items, or just items array
@@ -295,7 +312,7 @@ function generateCompleteReportHTML(
       if (sectionData.combinedNotes) {
         return `
           <div style="margin-bottom: 20px;">
-            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}</h3>
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
             <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
           </div>
         `
@@ -306,57 +323,88 @@ function generateCompleteReportHTML(
     // Check if this section uses monthly tracking (has month1, month2, month3)
     const hasMonthlyTracking = items.some((item: any) => item.month1 || item.month2 || item.month3)
     
-    // Show ALL items - answered and unanswered
-    const itemsList = items
+    // Build table rows
+    const tableRows = items
       .map((item: any) => {
-        let statusText = ""
+        const code = item.code || ""
+        const requirement = item.requirement || ""
+        
+        let m1Cell = ""
+        let m2Cell = ""
+        let m3Cell = ""
+        let notesCell = ""
         
         if (hasMonthlyTracking && showMonthly) {
           // Monthly tracking format
-          const m1 = formatMonthlyStatus(item.month1)
-          const m2 = formatMonthlyStatus(item.month2)
-          const m3 = formatMonthlyStatus(item.month3)
-          statusText = ` - Month 1: ${m1}, Month 2: ${m2}, Month 3: ${m3}`
+          m1Cell = formatMonthlyStatus(item.month1)
+          m2Cell = formatMonthlyStatus(item.month2)
+          m3Cell = formatMonthlyStatus(item.month3)
+          
+          // Collect notes from all months
+          const allNotes = [
+            item.month1?.notes ? `Month 1: ${item.month1.notes}` : "",
+            item.month2?.notes ? `Month 2: ${item.month2.notes}` : "",
+            item.month3?.notes ? `Month 3: ${item.month3.notes}` : "",
+          ].filter(n => n && n.trim())
+          if (allNotes.length > 0) {
+            notesCell = `<em>${allNotes.join("; ")}</em>`
+          }
         } else if (item.status) {
-          // Old single status format
+          // Old single status format - show in Month 1 column
           const statusBadge = {
             compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
             "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
             na: '<span style="color: #6b7280;">N/A</span>',
           }[item.status] || `<span style="color: #6b7280;">${item.status}</span>`
-          statusText = ` - ${statusBadge}`
+          m1Cell = statusBadge
+          m2Cell = '<span style="color: #9ca3af;">—</span>'
+          m3Cell = '<span style="color: #9ca3af;">—</span>'
+          notesCell = item.notes ? `<em>${item.notes}</em>` : ""
         } else if (item.month1) {
           // Single status mode (singleStatus sections)
-          statusText = ` - ${formatMonthlyStatus(item.month1)}`
+          m1Cell = formatMonthlyStatus(item.month1)
+          m2Cell = '<span style="color: #9ca3af;">—</span>'
+          m3Cell = '<span style="color: #9ca3af;">—</span>'
+          notesCell = item.month1?.notes ? `<em>${item.month1.notes}</em>` : ""
         } else {
-          statusText = ' - <span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+          m1Cell = '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+          m2Cell = '<span style="color: #9ca3af;">—</span>'
+          m3Cell = '<span style="color: #9ca3af;">—</span>'
         }
         
-        // Collect notes from all months if monthly tracking
-        let notes = ""
-        if (hasMonthlyTracking && showMonthly) {
-          const allNotes = [
-            item.month1?.notes,
-            item.month2?.notes,
-            item.month3?.notes,
-          ].filter(n => n && n.trim())
-          if (allNotes.length > 0) {
-            notes = ` - <em>Notes: ${allNotes.join("; ")}</em>`
-          }
-        } else {
-          notes = item.notes ? ` - <em>${item.notes}</em>` : ""
-        }
-        
-        const requirement = item.requirement || ""
-        const code = item.code || ""
-        return `<li>${code}${requirement && code ? ": " : ""}${requirement}${statusText}${notes}</li>`
+        return `
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; font-family: monospace; font-size: 12px; color: #6b7280;">${code}</td>
+            <td style="padding: 8px;">${requirement}</td>
+            <td style="padding: 8px; text-align: center;">${m1Cell}</td>
+            <td style="padding: 8px; text-align: center;">${m2Cell}</td>
+            <td style="padding: 8px; text-align: center;">${m3Cell}</td>
+            <td style="padding: 8px; font-size: 12px; color: #6b7280;">${notesCell || '<span style="color: #9ca3af;">—</span>'}</td>
+          </tr>
+        `
       })
       .join("")
 
     return `
       <div style="margin-bottom: 20px;">
-        <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}</h3>
-        ${itemsList ? `<ul style="margin: 0; padding-left: 20px;">${itemsList}</ul>` : ""}
+        <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; background-color: white;">
+            <thead>
+              <tr style="background-color: #f9fafb; border-bottom: 2px solid #d1d5db;">
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 15%;">Code</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 30%;">Requirement</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600; font-size: 12px; color: #374151; width: 12%;">Month 1</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600; font-size: 12px; color: #374151; width: 12%;">Month 2</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600; font-size: 12px; color: #374151; width: 12%;">Month 3</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 19%;">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
         ${sectionData.combinedNotes ? `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>` : ""}
       </div>
     `
@@ -425,13 +473,13 @@ function generateCompleteReportHTML(
     return content ? `<div style="margin-bottom: 20px;"><h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Inspection Documentation</h3>${content}</div>` : ""
   }
 
-  // Helper to format trauma-informed care section - show ALL items
+  // Helper to format trauma-informed care section - show ALL items in table format
   const formatTraumaInformedCare = (traumaCare: any) => {
     if (!traumaCare || !traumaCare.items || traumaCare.items.length === 0) {
       if (traumaCare && traumaCare.combinedNotes) {
         return `
           <div style="margin-bottom: 20px;">
-            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training</h3>
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span></h3>
             <p style="font-style: italic; white-space: pre-wrap;">${traumaCare.combinedNotes}</p>
           </div>
         `
@@ -439,35 +487,58 @@ function generateCompleteReportHTML(
       return ""
     }
     
-    // Show ALL items, handle both status (string) and month1 (object) formats
-    const items = traumaCare.items
+    // Build table rows
+    const tableRows = traumaCare.items
       .map((item: any) => {
-        let statusBadge = '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
+        const code = item.code || ""
+        const requirement = item.requirement || ""
+        
+        let statusCell = '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
         
         // Check if using month1 format (single status mode)
         if (item.month1) {
-          statusBadge = formatMonthlyStatus(item.month1)
+          statusCell = formatMonthlyStatus(item.month1)
         } else if (item.status) {
           // Handle string status
           const statusStr = typeof item.status === 'string' ? item.status : String(item.status)
-          statusBadge = {
+          statusCell = {
             compliant: '<span style="color: #16a34a; font-weight: bold;">✓ Compliant</span>',
             "non-compliant": '<span style="color: #dc2626; font-weight: bold;">✗ Non-Compliant</span>',
             na: '<span style="color: #6b7280;">N/A</span>',
           }[statusStr] || (statusStr && statusStr.trim() ? `<span style="color: #6b7280;">${statusStr}</span>` : '<span style="color: #9ca3af; font-style: italic;">Not answered</span>')
         }
         
-        const notes = item.notes ? ` - <em>${item.notes}</em>` : ""
-        return `<li>${item.code || ""}${item.code && item.requirement ? ": " : ""}${item.requirement || ""} - ${statusBadge}${notes}</li>`
+        const notes = item.notes ? `<em>${item.notes}</em>` : ""
+        
+        return `
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; font-family: monospace; font-size: 12px; color: #6b7280;">${code}</td>
+            <td style="padding: 8px;">${requirement}</td>
+            <td style="padding: 8px; text-align: center;">${statusCell}</td>
+            <td style="padding: 8px; font-size: 12px; color: #6b7280;">${notes || '<span style="color: #9ca3af;">—</span>'}</td>
+          </tr>
+        `
       })
       .join("")
     
     return `
       <div style="margin-bottom: 20px;">
-        <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training</h3>
-        <ul style="margin: 0; padding-left: 20px;">
-          ${items}
-        </ul>
+        <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Trauma-Informed Care & Training <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span></h3>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; background-color: white;">
+            <thead>
+              <tr style="background-color: #f9fafb; border-bottom: 2px solid #d1d5db;">
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 20%;">Code</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 50%;">Requirement</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600; font-size: 12px; color: #374151; width: 15%;">Status</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151; width: 15%;">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
         ${traumaCare.combinedNotes ? `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${traumaCare.combinedNotes}</p>` : ""}
       </div>
     `
@@ -593,10 +664,13 @@ function generateCompleteReportHTML(
               <div style="margin-bottom: 15px;">
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Foster Parents/Providers:</h4>
                 ${formData.familyInfo.household.providers.map((p: any) => {
-                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object' 
-                    ? (formData.attendees.attendance[p.name] === true || formData.attendees.attendance[`fosterParent_${p.name}`] === true)
+                  // Check both attendees.attendance and direct attendance
+                  const attendance = formData.attendees?.attendance || formData.attendance || {}
+                  const isPresent = typeof attendance === 'object' 
+                    ? (attendance[p.name] === true || attendance[`fosterParent_${p.name}`] === true || 
+                       (Array.isArray(attendance.fosterParents) && attendance.fosterParents.some((fp: any) => fp.name === p.name && fp.present === true)))
                     : false
-                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}</p>`
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${p.name}${p.age ? ` (Age: ${p.age})` : ""}${p.relationship ? ` - ${p.relationship}` : ""}</p>`
                 }).join("")}
               </div>
             ` : ""}
@@ -604,10 +678,11 @@ function generateCompleteReportHTML(
               <div style="margin-bottom: 15px;">
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Biological Children:</h4>
                 ${formData.familyInfo.household.biologicalChildren.map((c: any) => {
-                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
-                    ? formData.attendees.attendance[c.name] === true
+                  const attendance = formData.attendees?.attendance || formData.attendance || {}
+                  const isPresent = typeof attendance === 'object'
+                    ? attendance[c.name] === true
                     : false
-                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${c.name}${c.age ? ` (Age: ${c.age})` : ""}</p>`
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${c.name}${c.age ? ` (Age: ${c.age})` : ""}</p>`
                 }).join("")}
               </div>
             ` : ""}
@@ -615,10 +690,11 @@ function generateCompleteReportHTML(
               <div style="margin-bottom: 15px;">
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Other Household Members:</h4>
                 ${formData.familyInfo.household.otherMembers.map((m: any) => {
-                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
-                    ? formData.attendees.attendance[m.name] === true
+                  const attendance = formData.attendees?.attendance || formData.attendance || {}
+                  const isPresent = typeof attendance === 'object'
+                    ? attendance[m.name] === true
                     : false
-                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}</p>`
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}</p>`
                 }).join("")}
               </div>
             ` : ""}
@@ -630,35 +706,39 @@ function generateCompleteReportHTML(
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Foster Children:</h4>
                 ${formData.placements.children.map((child: any) => {
                   const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim() || "Unknown"
-                  const isPresent = formData.attendees?.attendance && typeof formData.attendees.attendance === 'object'
-                    ? formData.attendees.attendance[childName] === true
+                  const attendance = formData.attendees?.attendance || formData.attendance || {}
+                  const isPresent = typeof attendance === 'object'
+                    ? attendance[childName] === true
                     : false
-                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓</span> ' : ''}${childName}${child.age ? ` (Age: ${child.age})` : ""}</p>`
+                  return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${childName}${child.age ? ` (Age: ${child.age})` : ""}</p>`
                 }).join("")}
               </div>
             ` : ""}
-            ${formData.attendees?.attendance && typeof formData.attendees.attendance === 'object' ? (() => {
-              // Show any additional attendees not in household or placements
-              const allKnownNames = new Set([
-                ...(formData.familyInfo?.household?.providers || []).map((p: any) => p.name),
-                ...(formData.familyInfo?.household?.biologicalChildren || []).map((c: any) => c.name),
-                ...(formData.familyInfo?.household?.otherMembers || []).map((m: any) => m.name),
-                ...(formData.placements?.children || []).map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim()),
-              ])
-              const additionalAttendees = Object.entries(formData.attendees.attendance)
-                .filter(([name, present]: [string, any]) => present === true && !allKnownNames.has(name))
-                .map(([name, _]: [string, any]) => name)
-              
-              if (additionalAttendees.length > 0) {
-                return `
-                  <div style="margin-bottom: 15px;">
-                    <h4 style="font-size: 14px; margin-bottom: 8px;">Additional Attendees:</h4>
-                    ${additionalAttendees.map((name: string) => `<p style="margin: 3px 0;"><span style="color: #16a34a; font-weight: bold;">✓</span> ${name}</p>`).join("")}
-                  </div>
-                `
+            ${(() => {
+              const attendance = formData.attendees?.attendance || formData.attendance || {}
+              if (typeof attendance === 'object') {
+                // Show any additional attendees not in household or placements
+                const allKnownNames = new Set([
+                  ...(formData.familyInfo?.household?.providers || []).map((p: any) => p.name),
+                  ...(formData.familyInfo?.household?.biologicalChildren || []).map((c: any) => c.name),
+                  ...(formData.familyInfo?.household?.otherMembers || []).map((m: any) => m.name),
+                  ...(formData.placements?.children || []).map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim()),
+                ])
+                const additionalAttendees = Object.entries(attendance)
+                  .filter(([name, present]: [string, any]) => present === true && !allKnownNames.has(name))
+                  .map(([name, _]: [string, any]) => name)
+                
+                if (additionalAttendees.length > 0) {
+                  return `
+                    <div style="margin-bottom: 15px;">
+                      <h4 style="font-size: 14px; margin-bottom: 8px;">Additional Attendees:</h4>
+                      ${additionalAttendees.map((name: string) => `<p style="margin: 3px 0;"><span style="color: #16a34a; font-weight: bold;">✓ Present</span> ${name}</p>`).join("")}
+                    </div>
+                  `
+                }
               }
               return ""
-            })() : ""}
+            })()}
           </div>
         </div>
       </div>
@@ -678,19 +758,19 @@ function generateCompleteReportHTML(
       ${formData.complianceReview && Object.keys(formData.complianceReview).length > 0 ? `
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
-        ${formData.complianceReview.medication ? formatComplianceSection(formData.complianceReview.medication, "1. Medication") : ""}
+        ${formData.complianceReview.medication ? formatComplianceSection(formData.complianceReview.medication, "1. Medication", true, true) : ""}
         ${formData.complianceReview.inspections ? formatInspectionsSection(formData.complianceReview.inspections) : ""}
-        ${formData.complianceReview.healthSafety ? formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety") : ""}
-        ${formData.complianceReview.childrensRights ? formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being") : ""}
-        ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings") : ""}
-        ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills") : ""}
-        ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space") : ""}
-        ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation") : ""}
+        ${formData.complianceReview.healthSafety ? formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety", true, true) : ""}
+        ${formData.complianceReview.childrensRights ? formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being", true, true) : ""}
+        ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true) : ""}
+        ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills", true, true) : ""}
+        ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space", true, true) : ""}
+        ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation", true, true) : ""}
         ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
-        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false) : ""}
-        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false) : ""}
-        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false) : ""}
-        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false) : ""}
+        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false, false) : ""}
+        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false, false) : ""}
+        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false, false) : ""}
+        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false, false) : ""}
         ${formData.complianceReview.packageCompliance ? formatPackageComplianceSection(formData.complianceReview.packageCompliance) : ""}
         ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""}
       </div>
@@ -732,16 +812,6 @@ function generateCompleteReportHTML(
       </div>
       ` : ""}
 
-      <!-- Parent Interviews -->
-      ${formData.parentInterviews?.fosterParentInterview ? `
-      <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview</h2>
-        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${typeof formData.parentInterviews.fosterParentInterview === 'string' ? formData.parentInterviews.fosterParentInterview : JSON.stringify(formData.parentInterviews.fosterParentInterview, null, 2)}</p>
-        </div>
-      </div>
-      ` : ""}
-
       <!-- Follow-up Items -->
       ${formData.observations?.followUpItems && formData.observations.followUpItems.length > 0 ? `
       <div style="margin-bottom: 30px;">
@@ -777,6 +847,16 @@ function generateCompleteReportHTML(
               ? `<div>${formatVisitSummaryObject(formData.recommendations.visitSummary)}</div>`
               : `<p>${String(formData.recommendations.visitSummary)}</p>`
           }
+        </div>
+      </div>
+      ` : ""}
+
+      <!-- Parent Interviews (moved after compliance) -->
+      ${formData.parentInterviews?.fosterParentInterview ? `
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview</h2>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+          <p style="white-space: pre-wrap;">${typeof formData.parentInterviews.fosterParentInterview === 'string' ? formData.parentInterviews.fosterParentInterview : JSON.stringify(formData.parentInterviews.fosterParentInterview, null, 2)}</p>
         </div>
       </div>
       ` : ""}
