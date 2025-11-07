@@ -20,7 +20,7 @@ export interface AnthropicResponse {
 export async function callAnthropicAPI(
   messages: AnthropicMessage[],
   systemPrompt?: string,
-  model: string = "claude-3-haiku"
+  model: string = "claude-opus-4-20250514"
 ): Promise<AnthropicResponse> {
   try {
     const apiKey = process.env.home_visit_general_key
