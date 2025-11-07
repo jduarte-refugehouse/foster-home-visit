@@ -57,6 +57,8 @@ export async function callAnthropicAPI(
       body: JSON.stringify(requestBody),
     })
 
+    console.log("🤖 [ANTHROPIC] Response status:", response.status)
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       console.error("❌ [ANTHROPIC] API error:", response.status, errorData)
@@ -67,6 +69,7 @@ export async function callAnthropicAPI(
     }
 
     const data = await response.json()
+    console.log("🤖 [ANTHROPIC] Response data structure:", JSON.stringify(data, null, 2).substring(0, 500))
     
     // Extract text content from response
     const content = data.content
@@ -74,7 +77,10 @@ export async function callAnthropicAPI(
       ?.map((block: any) => block.text)
       ?.join("\n") || ""
 
-    console.log("✅ [ANTHROPIC] API call successful")
+    console.log("✅ [ANTHROPIC] Extracted content length:", content.length)
+    if (content.length === 0) {
+      console.warn("⚠️ [ANTHROPIC] No content extracted from response")
+    }
     
     return {
       content,
@@ -134,8 +140,16 @@ ${context.quarter ? `Quarter: ${context.quarter}` : ""}
   const response = await callAnthropicAPI(messages, systemPrompt)
   
   if (response.error) {
+    console.error("❌ [AI-QUESTIONS] Error from Anthropic:", response.error)
     return []
   }
+
+  if (!response.content || response.content.trim().length === 0) {
+    console.error("❌ [AI-QUESTIONS] Empty response from Anthropic")
+    return []
+  }
+
+  console.log("📝 [AI-QUESTIONS] Raw response:", response.content.substring(0, 200))
 
   // Parse questions from response (one per line)
   const questions = response.content
@@ -143,6 +157,8 @@ ${context.quarter ? `Quarter: ${context.quarter}` : ""}
     .map((q) => q.trim())
     .filter((q) => q.length > 0 && !q.match(/^\d+[\.\)]/)) // Remove numbering if present
     .slice(0, 5) // Limit to 5 questions
+
+  console.log("📝 [AI-QUESTIONS] Parsed questions:", questions.length)
 
   return questions
 }
@@ -182,9 +198,19 @@ Do not add information that wasn't implied or stated in the original.`
   const response = await callAnthropicAPI(messages, systemPrompt)
   
   if (response.error) {
+    console.error("❌ [AI-ENHANCE] Error from Anthropic:", response.error)
     return originalText // Return original if enhancement fails
   }
 
-  return response.content.trim() || originalText
+  if (!response.content || response.content.trim().length === 0) {
+    console.error("❌ [AI-ENHANCE] Empty response from Anthropic")
+    return originalText
+  }
+
+  const enhanced = response.content.trim()
+  console.log("📝 [AI-ENHANCE] Enhanced text length:", enhanced.length)
+  console.log("📝 [AI-ENHANCE] Enhanced preview:", enhanced.substring(0, 200))
+
+  return enhanced
 }
 

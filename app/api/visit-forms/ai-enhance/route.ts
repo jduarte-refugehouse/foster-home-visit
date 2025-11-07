@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { enhanceResponse } from "@/lib/anthropic-helper"
-import { currentUser } from "@clerk/nextjs/server"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 
 export const runtime = "nodejs"
@@ -21,20 +20,10 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user - try headers first, then session cookies
+    // Authenticate user - use headers only (no Clerk middleware)
     const headerAuth = getClerkUserIdFromRequest(request)
-    let clerkUserId = headerAuth.clerkUserId
-    let user = null
     
-    if (!clerkUserId) {
-      // Fall back to Clerk session (browser cookies)
-      user = await currentUser()
-      if (user) {
-        clerkUserId = user.id
-      }
-    }
-    
-    if (!clerkUserId && !user) {
+    if (!headerAuth.clerkUserId && !headerAuth.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
