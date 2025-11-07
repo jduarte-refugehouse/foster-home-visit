@@ -5,6 +5,7 @@ import React, { useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -20,7 +21,7 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <Brain className="h-6 w-6 text-refuge-purple" />
         Trauma-Informed Care & Training
       </h2>
@@ -207,7 +208,7 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <Users className="h-6 w-6 text-refuge-purple" />
         Foster Parent Interview Summary
       </h2>
@@ -402,7 +403,7 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <TrendingUp className="h-6 w-6 text-refuge-purple" />
         Quality Enhancement Discussion
       </h2>
@@ -567,7 +568,7 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
 
   return (
     <div className="space-y-3">
-      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+      <h2 className="text-xl font-semibold mb-2 flex items-center gap-2 text-foreground">
         <Heart className="h-5 w-5 text-refuge-purple" />
         Children Present
       </h2>
@@ -746,7 +747,7 @@ export const ObservationsSection = ({ formData, onChange }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <FileText className="h-6 w-6 text-refuge-purple" />
         Additional Observations & Comments
       </h2>
@@ -843,7 +844,7 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <CheckCircle className="h-6 w-6 text-refuge-purple" />
         Follow-Up Items from Previous Visit
       </h2>
@@ -941,7 +942,7 @@ export const CorrectiveActionsSection = ({ formData, onChange, onAdd }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <AlertTriangle className="h-6 w-6 text-refuge-purple" />
         Corrective Actions Required
       </h2>
@@ -1049,7 +1050,7 @@ export const VisitSummarySection = ({ formData, onChange }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <Briefcase className="h-6 w-6 text-refuge-purple" />
         Visit Summary
       </h2>

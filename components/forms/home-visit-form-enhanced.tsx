@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -1865,7 +1866,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
             <CheckCircle className="h-4 w-4 text-refuge-purple" />
             {title}
           </h2>
@@ -1935,7 +1936,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
           <CheckCircle className="h-4 w-4 text-refuge-purple" />
           {title}
         </h2>
@@ -2250,56 +2251,61 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                       /* Single notes field for single-status sections */
                       <div>
                         <Label className="text-xs text-foreground mb-1 block font-medium">Notes</Label>
-                        <Textarea
+                        <TextareaWithVoice
                           value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
                           placeholder="Optional..."
                           className="text-sm h-10 resize-none p-2"
                           rows={2}
+                          showVoiceButton={true}
                         />
                       </div>
                     ) : hasNewFormat ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <Label className="text-xs text-foreground mb-1 block font-medium">Month 1 Notes</Label>
-                          <Textarea
+                          <TextareaWithVoice
                             value={item.month1?.notes || ""}
                             onChange={(e) => onChange(section, index, "month1", "notes", e.target.value)}
                             placeholder="Optional..."
                             className="text-sm h-10 resize-none p-2"
                             rows={2}
+                            showVoiceButton={true}
                           />
                         </div>
                         <div>
                           <Label className="text-xs text-foreground mb-1 block font-medium">Month 2 Notes</Label>
-                          <Textarea
+                          <TextareaWithVoice
                             value={item.month2?.notes || ""}
                             onChange={(e) => onChange(section, index, "month2", "notes", e.target.value)}
                             placeholder="Optional..."
                             className="text-sm h-10 resize-none p-2"
                             rows={2}
+                            showVoiceButton={true}
                           />
                         </div>
                         <div>
                           <Label className="text-xs text-foreground mb-1 block font-medium">Month 3 Notes</Label>
-                          <Textarea
+                          <TextareaWithVoice
                             value={item.month3?.notes || ""}
                             onChange={(e) => onChange(section, index, "month3", "notes", e.target.value)}
                             placeholder="Optional..."
                             className="text-sm h-10 resize-none p-2"
                             rows={2}
+                            showVoiceButton={true}
                           />
                         </div>
                       </div>
                     ) : (
                       <div>
                         <Label className="text-xs text-foreground mb-1 block font-medium">Notes</Label>
-                        <Textarea
+                        <TextareaWithVoice
                           value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
                           placeholder="Optional..."
                           className="text-sm h-10 resize-none p-2"
                           rows={2}
+                          showVoiceButton={true}
                         />
                       </div>
                     )}
@@ -2360,7 +2366,7 @@ const PackageComplianceSection = ({ formData, onChange, onComplianceChange, onNo
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
           <CheckCircle className="h-4 w-4 text-refuge-purple" />
           Package-Specific Compliance Requirements
         </h2>
@@ -2460,7 +2466,7 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <CheckCircle className="h-6 w-6 text-refuge-purple" />
         {title}
       </h2>
@@ -2602,7 +2608,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
         <Flame className="h-6 w-6 text-refuge-purple" />
         Inspection Documentation
       </h2>

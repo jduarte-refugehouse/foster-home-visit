@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
@@ -521,13 +522,14 @@ export function GuidedQuestionField({
             <RegulatoryBadge source={flow.regulatoryBasis} />
           )}
         </div>
-        <Textarea
+        <TextareaWithVoice
           value={data.finalText || ""}
           onChange={(e) => {
             handleEditSummary(e.target.value)
             setError(null) // Clear error when user types
           }}
           rows={3}
+          showVoiceButton={true}
         />
         {error && enhancingSummary && (
           <Alert variant="destructive">
@@ -732,13 +734,14 @@ export function GuidedQuestionField({
 
           {currentQuestion.type === "textarea" && (
             <div className="space-y-2">
-              <Textarea
+              <TextareaWithVoice
                 value={answers[currentQuestion.id] || ""}
                 onChange={(e) => {
                   const newAnswers = { ...answers, [currentQuestion.id]: e.target.value }
                   setAnswers(newAnswers)
                   setError(null) // Clear error when user types
                 }}
+                showVoiceButton={true}
                 placeholder={currentQuestion.placeholder}
                 rows={3}
               />
