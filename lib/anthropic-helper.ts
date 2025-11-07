@@ -6,28 +6,20 @@
 /**
  * Available Anthropic Claude Model Identifiers
  * 
- * Main Supported Model IDs (as of November 2025):
- * - claude-opus-4-1
- * - claude-opus-4
- * - claude-opus-4-20250514 (currently used - matches VB.NET implementation)
- * - claude-sonnet-4
- * - claude-3-7-sonnet-latest
- * - claude-3-5-sonnet-latest
- * - claude-3-5-haiku-latest
- * - claude-3-haiku
+ * Validated Models (tested and confirmed working):
+ * - claude-opus-4-20250514 (Claude Opus 4) - Currently used - matches VB.NET implementation
+ * - claude-opus-4-1-20250805 (Claude Opus 4.1) - Newer version
+ * - claude-3-7-sonnet-20250219 (Claude Sonnet 3.7)
+ * - claude-3-5-haiku-20241022 (Claude Haiku 3.5)
  * 
  * Note: Model availability may vary based on API key tier and account access.
  * The current default (claude-opus-4-20250514) matches the working VB.NET implementation.
  */
 export const ANTHROPIC_MODELS = {
-  OPUS_4_1: "claude-opus-4-1",
-  OPUS_4: "claude-opus-4",
-  OPUS_4_20250514: "claude-opus-4-20250514", // Currently used - matches VB.NET
-  SONNET_4: "claude-sonnet-4",
-  SONNET_3_7_LATEST: "claude-3-7-sonnet-latest",
-  SONNET_3_5_LATEST: "claude-3-5-sonnet-latest",
-  HAIKU_3_5_LATEST: "claude-3-5-haiku-latest",
-  HAIKU_3: "claude-3-haiku",
+  OPUS_4_1_20250805: "claude-opus-4-1-20250805", // Claude Opus 4.1 (newest, validated)
+  OPUS_4_20250514: "claude-opus-4-20250514", // Claude Opus 4 (currently used - matches VB.NET)
+  SONNET_3_7_20250219: "claude-3-7-sonnet-20250219", // Claude Sonnet 3.7 (validated)
+  HAIKU_3_5_20241022: "claude-3-5-haiku-20241022", // Claude Haiku 3.5 (validated)
 } as const
 
 export interface AnthropicMessage {
