@@ -161,28 +161,39 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       )
 
       // Calculate driving distance using Google Directions API
-      const mileage = await calculateDrivingDistance(
+      let mileage = await calculateDrivingDistance(
         appointment.start_drive_latitude,
         appointment.start_drive_longitude,
         latitude,
         longitude,
       )
 
-      // Update appointment with calculated mileage
-      if (mileage !== null) {
-        await query(
-          `UPDATE appointments 
-           SET calculated_mileage = @param1,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, mileage],
-        )
+      // If calculation failed or returned null, check if coordinates are the same (0 distance)
+      if (mileage === null) {
+        const latDiff = Math.abs(appointment.start_drive_latitude - latitude)
+        const lngDiff = Math.abs(appointment.start_drive_longitude - longitude)
+        // If coordinates are very close (within ~10 meters), treat as 0 miles
+        if (latDiff < 0.0001 && lngDiff < 0.0001) {
+          mileage = 0.00
+          console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
+        }
       }
+
+      // Always update appointment with calculated mileage (even if 0.00)
+      // Use 0.00 as default if calculation failed and locations aren't the same
+      const finalMileage = mileage !== null ? mileage : 0.00
+      await query(
+        `UPDATE appointments 
+         SET calculated_mileage = @param1,
+             updated_at = GETUTCDATE()
+         WHERE appointment_id = @param0`,
+        [appointmentId, finalMileage],
+      )
 
       return NextResponse.json({
         success: true,
         message: "Arrived location captured",
-        mileage: mileage,
+        mileage: finalMileage,
         timestamp: now.toISOString(),
       })
     }

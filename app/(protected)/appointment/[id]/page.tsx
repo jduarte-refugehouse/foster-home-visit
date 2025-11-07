@@ -1267,13 +1267,22 @@ export default function AppointmentDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined && (
+                {(appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined) && (
                   <div className="pb-3 border-b">
                     <p className="text-sm text-muted-foreground mb-1">Driving Distance</p>
                     <p className="text-3xl font-bold text-refuge-purple">
-                      {appointment.calculated_mileage.toFixed(2)} miles
+                      {typeof appointment.calculated_mileage === 'number' ? appointment.calculated_mileage.toFixed(2) : '0.00'} miles
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Calculated using actual road travel</p>
+                  </div>
+                )}
+                {appointment.arrived_timestamp && (appointment.calculated_mileage === null || appointment.calculated_mileage === undefined) && (
+                  <div className="pb-3 border-b">
+                    <p className="text-sm text-muted-foreground mb-1">Driving Distance</p>
+                    <p className="text-3xl font-bold text-refuge-purple">
+                      0.00 miles
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Same start and end location</p>
                   </div>
                 )}
                 {appointment.start_drive_timestamp && (
