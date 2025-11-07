@@ -216,7 +216,7 @@ export function VoiceInputModal({
 
       let audioChunks: Blob[] = []
       let lastInterimSendTime = 0
-      const INTERIM_INTERVAL_MS = 1500 // Send interim chunks every 1.5 seconds
+      const INTERIM_INTERVAL_MS = 2000 // Send interim chunks every 2 seconds (need more audio for Google)
 
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
@@ -226,15 +226,16 @@ export function VoiceInputModal({
           
           const now = Date.now()
           
-          // Send chunk for real-time transcription every 1.5 seconds
-          // Google recommends 100ms-1s for streaming, but we use 1.5s to balance
-          // API calls with real-time feedback
-          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS) {
-            const chunkToSend = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
+          // Send chunk for real-time transcription every 2 seconds
+          // Need to accumulate enough audio (2-3 seconds) for Google to process
+          // Google needs sufficient audio to return meaningful transcripts
+          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS && audioChunks.length >= 2) {
+            // Send accumulated chunks (2+ seconds of audio)
+            const chunkToSend = new Blob(audioChunks, { type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' })
             sendAudioChunk(chunkToSend, false, true)
-            // Keep last 1 second of audio for continuity, but reset the rest
-            // This ensures we don't send duplicate audio
-            audioChunks = audioChunks.slice(-1) // Keep only the most recent chunk
+            // Keep last chunk for continuity (don't reset completely)
+            // This ensures smooth transitions between interim chunks
+            audioChunks = audioChunks.slice(-1)
             lastInterimSendTime = now
           }
         }
@@ -243,11 +244,25 @@ export function VoiceInputModal({
       // Handle recording stop
       mediaRecorder.onstop = async () => {
         // Process ALL accumulated audio for final, complete transcript
-        if (allAudioChunksRef.current.length > 0) {
-          const finalAudio = new Blob(allAudioChunksRef.current, { type: 'audio/webm;codecs=opus' })
-          await sendAudioChunk(finalAudio, true, false)
+        // Include any remaining chunks that weren't sent as interim
+        if (audioChunks.length > 0) {
+          allAudioChunksRef.current.push(...audioChunks)
         }
-        setIsProcessing(false)
+        
+        if (allAudioChunksRef.current.length > 0) {
+          const finalAudio = new Blob(allAudioChunksRef.current, { 
+            type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' 
+          })
+          console.log('🎤 [GOOGLE SPEECH] Final audio blob:', {
+            size: finalAudio.size,
+            type: finalAudio.type,
+            chunkCount: allAudioChunksRef.current.length
+          })
+          await sendAudioChunk(finalAudio, true, false)
+        } else {
+          console.warn('⚠️ [GOOGLE SPEECH] No audio chunks to process')
+          setIsProcessing(false)
+        }
         setHasStopped(true)
       }
 
