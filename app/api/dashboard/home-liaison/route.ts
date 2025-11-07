@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
         a.assigned_to_name,
         a.created_by_user_id,
         vf.status as form_status,
-        vf.visit_form_id
+        vf.visit_form_id,
+        au_assigned.email AS assigned_to_email,
+        au_created.email AS created_by_email
       FROM appointments a
       LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
       LEFT JOIN app_users au_assigned ON 
