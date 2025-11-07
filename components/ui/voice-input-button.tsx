@@ -77,7 +77,7 @@ export function VoiceInputButton({
   }, [isListening])
   
   // Process final text when recognition fully stops
-  const processFinalText = () => {
+  const processFinalText = async () => {
     if (isProcessingRef.current) {
       console.log('🚫 Already processing, skipping')
       return
@@ -87,17 +87,52 @@ export function VoiceInputButton({
     pendingStopRef.current = false
     
     // Use a small delay to ensure all final results are in
-    setTimeout(() => {
+    setTimeout(async () => {
       const finalText = accumulatedText || transcript
       if (finalText && finalText.trim().length > 0) {
         const trimmedFinal = finalText.trim()
         
         // Check if we've already processed this exact text
         if (trimmedFinal !== lastProcessedTextRef.current) {
-          // Add punctuation before sending
-          const withPunctuation = addPunctuation(trimmedFinal)
-          console.log('✅ Processing final text:', { original: trimmedFinal.substring(0, 100), withPunctuation: withPunctuation.substring(0, 100) })
           lastProcessedTextRef.current = trimmedFinal
+          
+          // Try to enhance with Google Cloud Speech-to-Text if available
+          // This provides better punctuation and accuracy
+          try {
+            const response = await fetch('/api/speech/enhance', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                transcript: trimmedFinal,
+              }),
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              if (data.success && data.enhancedTranscript) {
+                console.log('✅ Enhanced with Google Cloud Speech:', {
+                  original: trimmedFinal.substring(0, 100),
+                  enhanced: data.enhancedTranscript.substring(0, 100),
+                })
+                onTranscript(data.enhancedTranscript)
+                setAccumulatedText('')
+                isProcessingRef.current = false
+                return
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ Google Speech enhancement failed, using local punctuation:', error)
+            // Fall through to local punctuation
+          }
+          
+          // Fallback: Use local punctuation if Google isn't available
+          const withPunctuation = addPunctuation(trimmedFinal)
+          console.log('✅ Processing final text (local):', {
+            original: trimmedFinal.substring(0, 100),
+            withPunctuation: withPunctuation.substring(0, 100),
+          })
           onTranscript(withPunctuation)
           setAccumulatedText('') // Reset after sending
         } else {
