@@ -91,7 +91,7 @@ export async function getModelInfo(modelId: string): Promise<{
 export async function callAnthropicAPI(
   messages: AnthropicMessage[],
   systemPrompt?: string,
-  model: string = ANTHROPIC_MODELS.OPUS_4_20250514
+  model?: string
 ): Promise<AnthropicResponse> {
   try {
     const apiKey = process.env.home_visit_general_key
@@ -106,8 +106,11 @@ export async function callAnthropicAPI(
 
     const url = "https://api.anthropic.com/v1/messages"
     
+    // Use provided model or default to OPUS_4_20250514
+    const modelToUse = model || ANTHROPIC_MODELS.OPUS_4_20250514
+    
     const requestBody: any = {
-      model,
+      model: modelToUse,
       max_tokens: 4096,
       messages,
     }
@@ -116,7 +119,7 @@ export async function callAnthropicAPI(
       requestBody.system = systemPrompt
     }
 
-    console.log("🤖 [ANTHROPIC] Calling API with model:", model)
+    console.log("🤖 [ANTHROPIC] Calling API with model:", modelToUse)
     console.log("🤖 [ANTHROPIC] API Key present:", !!apiKey, "Length:", apiKey?.length || 0)
     console.log("🤖 [ANTHROPIC] Request URL:", url)
     console.log("🤖 [ANTHROPIC] Request body (first 500 chars):", JSON.stringify(requestBody).substring(0, 500))
