@@ -9,9 +9,11 @@ export async function GET(request: NextRequest) {
   try {
     // SAFE: Get Clerk user ID from headers (no middleware required)
     let clerkUserId: string
+    let userEmail: string | null = null
     try {
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
+      userEmail = auth.email
     } catch (authError) {
       return NextResponse.json({ 
         error: "Unauthorized", 
@@ -20,7 +22,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Get email from auth headers (primary identifier)
-    const userEmail = auth.email
     if (!userEmail) {
       return NextResponse.json({ 
         error: "Unauthorized", 
