@@ -170,8 +170,8 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         [appointmentId, latitude, longitude, now],
       )
 
-      // Calculate driving distance using Google Directions API
-      let mileage = await calculateDrivingDistance(
+      // Calculate driving distance and tolls using Google Routes API
+      const routeData = await calculateDrivingDistance(
         appointment.start_drive_latitude,
         appointment.start_drive_longitude,
         latitude,
@@ -179,31 +179,37 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       )
 
       // If calculation failed or returned null, check if coordinates are the same (0 distance)
-      if (mileage === null) {
+      let finalMileage = 0.00
+      let estimatedToll: number | null = null
+      
+      if (routeData === null) {
         const latDiff = Math.abs(appointment.start_drive_latitude - latitude)
         const lngDiff = Math.abs(appointment.start_drive_longitude - longitude)
         // If coordinates are very close (within ~10 meters), treat as 0 miles
         if (latDiff < 0.0001 && lngDiff < 0.0001) {
-          mileage = 0.00
+          finalMileage = 0.00
           console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
         }
+      } else {
+        finalMileage = routeData.distance
+        estimatedToll = routeData.estimatedTollCost
       }
 
-      // Always update appointment with calculated mileage (even if 0.00)
-      // Use 0.00 as default if calculation failed and locations aren't the same
-      const finalMileage = mileage !== null ? mileage : 0.00
+      // Always update appointment with calculated mileage and estimated toll (even if 0.00)
       await query(
         `UPDATE appointments 
          SET calculated_mileage = @param1,
+             estimated_toll_cost = @param2,
              updated_at = GETUTCDATE()
          WHERE appointment_id = @param0`,
-        [appointmentId, finalMileage],
+        [appointmentId, finalMileage, estimatedToll],
       )
 
       return NextResponse.json({
         success: true,
         message: "Arrived location captured",
         mileage: finalMileage,
+        estimatedTollCost: estimatedToll,
         timestamp: now.toISOString(),
       })
     }
@@ -269,8 +275,8 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           startLat, startLng, endLat, endLng
         })
 
-        // Calculate driving distance using Google Directions API
-        let mileage = await calculateDrivingDistance(
+        // Calculate driving distance and tolls using Google Routes API
+        const routeData = await calculateDrivingDistance(
           startLat,
           startLng,
           endLat,
@@ -278,49 +284,75 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         )
 
         // If calculation failed or returned null, check if coordinates are the same (0 distance)
-        if (mileage === null) {
+        if (routeData === null) {
           const latDiff = Math.abs(startLat - endLat)
           const lngDiff = Math.abs(startLng - endLng)
           // If coordinates are very close (within ~10 meters), treat as 0 miles
           if (latDiff < 0.0001 && lngDiff < 0.0001) {
-            mileage = 0.00
+            const finalMileage = 0.00
             console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
+            
+            await query(
+              `UPDATE appointments 
+               SET calculated_mileage = @param1,
+                   estimated_toll_cost = NULL,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, finalMileage],
+            )
+
+            return NextResponse.json({
+              success: true,
+              message: "Mileage calculated successfully",
+              mileage: finalMileage,
+              estimatedTollCost: null,
+              timestamp: new Date().toISOString(),
+            })
           } else {
             // If calculation failed and locations are different, return error with details
-            console.error("❌ [MILEAGE] Google Directions API returned null, but locations are different:", {
+            console.error("❌ [MILEAGE] Google Routes API returned null, but locations are different:", {
               latDiff, lngDiff,
               startLat, startLng,
               endLat, endLng
             })
             return NextResponse.json(
               { 
-                error: "Failed to calculate driving distance. The Directions API returned an error.",
-                details: "Please check: 1) API key restrictions allow server-side calls, 2) Directions API billing is enabled, 3) API key has Directions API permissions. Check server logs for the specific error message.",
-                suggestion: "In Google Cloud Console, check API key restrictions and ensure Directions API is enabled for this key."
+                error: "Failed to calculate driving distance. The Routes API returned an error.",
+                details: "Please check: 1) API key restrictions allow server-side calls, 2) Routes API billing is enabled, 3) API key has Routes API permissions. Check server logs for the specific error message.",
+                suggestion: "In Google Cloud Console, check API key restrictions and ensure Routes API is enabled for this key."
               },
               { status: 500 },
             )
           }
         }
 
-        // Update appointment with calculated mileage
-        const finalMileage = mileage !== null ? mileage : 0.00
-        console.log("✅ [MILEAGE] Updating appointment with mileage:", finalMileage)
+        // Update appointment with calculated mileage and estimated toll cost
+        const finalMileage = routeData.distance
+        const estimatedToll = routeData.estimatedTollCost
+        console.log("✅ [MILEAGE] Updating appointment with mileage and tolls:", {
+          mileage: finalMileage,
+          estimatedToll: estimatedToll,
+        })
         
         await query(
           `UPDATE appointments 
            SET calculated_mileage = @param1,
+               estimated_toll_cost = @param2,
                updated_at = GETUTCDATE()
            WHERE appointment_id = @param0`,
-          [appointmentId, finalMileage],
+          [appointmentId, finalMileage, estimatedToll],
         )
 
-        console.log("✅ [MILEAGE] Mileage calculation completed successfully:", finalMileage)
+        console.log("✅ [MILEAGE] Mileage calculation completed successfully:", {
+          mileage: finalMileage,
+          estimatedToll: estimatedToll,
+        })
 
         return NextResponse.json({
           success: true,
           message: "Mileage calculated successfully",
           mileage: finalMileage,
+          estimatedTollCost: estimatedToll,
           timestamp: new Date().toISOString(),
         })
       } catch (calculateError) {
@@ -350,15 +382,15 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 }
 
 /**
- * Calculate driving distance between two GPS coordinates using Google Directions API
- * Returns distance in miles, or null if calculation fails
+ * Calculate driving distance and toll information using Google Routes API
+ * Returns object with distance (miles) and estimated toll cost (USD), or null if calculation fails
  */
 async function calculateDrivingDistance(
   startLat: number,
   startLng: number,
   endLat: number,
   endLng: number,
-): Promise<number | null> {
+): Promise<{ distance: number; estimatedTollCost: number | null } | null> {
   try {
     const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
@@ -367,58 +399,98 @@ async function calculateDrivingDistance(
       return null
     }
 
-    // Call Google Directions API
-    const origin = `${startLat},${startLng}`
-    const destination = `${endLat},${endLng}`
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${apiKey}`
+    // Call Google Routes API (replaces Directions API)
+    const url = `https://routes.googleapis.com/directions/v2:computeRoutes`
 
-    console.log("🚗 [MILEAGE] Calculating driving distance:", { origin, destination })
+    const requestBody = {
+      origin: {
+        location: {
+          latLng: {
+            latitude: startLat,
+            longitude: startLng,
+          },
+        },
+      },
+      destination: {
+        location: {
+          latLng: {
+            latitude: endLat,
+            longitude: endLng,
+          },
+        },
+      },
+      travelMode: "DRIVE",
+      routingPreference: "TRAFFIC_AWARE",
+      extraComputations: ["TOLLS"],
+      routeModifiers: {
+        vehicleInfo: {
+          emissionType: "GASOLINE",
+        },
+        tollPasses: ["US_TX_TXTAG", "US_TX_EZTAG"], // Texas toll passes
+      },
+      units: "IMPERIAL",
+    }
 
-    const response = await fetch(url)
-    
+    console.log("🚗 [MILEAGE] Calculating driving distance with tolls:", {
+      origin: `${startLat},${startLng}`,
+      destination: `${endLat},${endLng}`,
+    })
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.travelAdvisory.tollInfo",
+      },
+      body: JSON.stringify(requestBody),
+    })
+
     if (!response.ok) {
-      console.error("❌ [MILEAGE] Google Directions API HTTP error:", response.status, response.statusText)
+      console.error("❌ [MILEAGE] Google Routes API HTTP error:", response.status, response.statusText)
       const errorText = await response.text()
       console.error("❌ [MILEAGE] Error response body:", errorText)
       return null
     }
-    
+
     const data = await response.json()
 
-    if (data.status !== "OK" || !data.routes || data.routes.length === 0) {
-      const errorDetails = {
-        status: data.status,
-        error_message: data.error_message,
-        available_errors: data.available_errors,
-        fullResponse: JSON.stringify(data, null, 2)
-      }
-      console.error("❌ [MILEAGE] Google Directions API error:", errorDetails)
-      
-      // Log specific error messages for common issues
-      if (data.status === "REQUEST_DENIED") {
-        console.error("❌ [MILEAGE] API key may be restricted or invalid. Check API key restrictions in Google Cloud Console.")
-      } else if (data.status === "OVER_QUERY_LIMIT") {
-        console.error("❌ [MILEAGE] API quota exceeded. Check billing and quotas in Google Cloud Console.")
-      } else if (data.status === "INVALID_REQUEST") {
-        console.error("❌ [MILEAGE] Invalid request parameters. Check coordinates:", { startLat, startLng, endLat, endLng })
-      }
-      
+    if (!data.routes || data.routes.length === 0) {
+      console.error("❌ [MILEAGE] Google Routes API returned no routes:", JSON.stringify(data, null, 2))
       return null
     }
 
-    // Extract distance from first route
+    // Extract distance and toll information from first route
     const route = data.routes[0]
-    const leg = route.legs[0]
-    const distanceInMeters = leg.distance.value
+    const distanceInMeters = route.distanceMeters
     const distanceInMiles = distanceInMeters * 0.000621371 // Convert meters to miles
 
-    console.log("✅ [MILEAGE] Calculated distance:", {
+    // Extract toll information
+    let estimatedTollCost: number | null = null
+    if (route.travelAdvisory?.tollInfo) {
+      const tollInfo = route.travelAdvisory.tollInfo
+      // tollInfo.estimatedPrice contains array of price objects with currencyCode and units
+      if (tollInfo.estimatedPrice && tollInfo.estimatedPrice.length > 0) {
+        const price = tollInfo.estimatedPrice[0]
+        // Convert from micros (price.units) to dollars
+        estimatedTollCost = price.units ? price.units / 1000000 : null
+        if (price.nanos) {
+          estimatedTollCost = (estimatedTollCost || 0) + price.nanos / 1000000000
+        }
+      }
+    }
+
+    console.log("✅ [MILEAGE] Calculated distance and tolls:", {
       meters: distanceInMeters,
       miles: distanceInMiles.toFixed(2),
-      duration: leg.duration.text,
+      estimatedTollCost: estimatedTollCost ? `$${estimatedTollCost.toFixed(2)}` : "No tolls",
+      duration: route.duration,
     })
 
-    return Math.round(distanceInMiles * 100) / 100 // Round to 2 decimal places
+    return {
+      distance: Math.round(distanceInMiles * 100) / 100, // Round to 2 decimal places
+      estimatedTollCost: estimatedTollCost ? Math.round(estimatedTollCost * 100) / 100 : null, // Round to 2 decimal places
+    }
   } catch (error) {
     console.error("❌ [MILEAGE] Error calculating driving distance:", error)
     return null

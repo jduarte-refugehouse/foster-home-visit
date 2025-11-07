@@ -7,6 +7,8 @@ import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { 
@@ -65,6 +67,10 @@ interface Appointment {
   arrived_longitude?: number
   arrived_timestamp?: string
   calculated_mileage?: number
+  // Toll tracking fields
+  estimated_toll_cost?: number | null
+  toll_confirmed?: boolean
+  actual_toll_cost?: number | null
 }
 
 export default function AppointmentDetailPage() {
@@ -93,6 +99,8 @@ export default function AppointmentDetailPage() {
   const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
   const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
   const [mileageRate, setMileageRate] = useState<number>(0.67) // Default rate
+  const [showTollDialog, setShowTollDialog] = useState(false)
+  const [tollAmount, setTollAmount] = useState<string>("")
 
   useEffect(() => {
     if (appointmentId) {
@@ -362,7 +370,7 @@ export default function AppointmentDetailPage() {
       if (response.ok) {
         toast({
           title: "Mileage Calculated",
-          description: `Driving distance: ${data.mileage.toFixed(2)} miles`,
+          description: `Driving distance: ${data.mileage.toFixed(2)} miles${data.estimatedTollCost ? `, Estimated tolls: $${data.estimatedTollCost.toFixed(2)}` : ""}`,
         })
         fetchAppointmentDetails()
       } else {
@@ -377,6 +385,55 @@ export default function AppointmentDetailPage() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to calculate mileage",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleConfirmToll = async () => {
+    try {
+      const tollValue = parseFloat(tollAmount)
+      if (isNaN(tollValue) || tollValue < 0) {
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a valid toll amount (0 or greater)",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tollConfirmed: true,
+          actualTollCost: tollValue,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Toll Confirmed",
+          description: `Toll cost set to $${tollValue.toFixed(2)}`,
+        })
+        setShowTollDialog(false)
+        setTollAmount("")
+        fetchAppointmentDetails()
+      } else {
+        const data = await response.json()
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update toll information",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error confirming toll:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to confirm toll",
         variant: "destructive",
       })
     }
@@ -1339,15 +1396,75 @@ export default function AppointmentDetailPage() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Calculated using actual road travel</p>
                     
+                    {/* Toll Information */}
+                    {(appointment.estimated_toll_cost !== null && appointment.estimated_toll_cost !== undefined && appointment.estimated_toll_cost > 0) && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm text-muted-foreground">Estimated Toll Cost</p>
+                          {!appointment.toll_confirmed && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setTollAmount(appointment.estimated_toll_cost?.toFixed(2) || "")
+                                setShowTollDialog(true)
+                              }}
+                            >
+                              Confirm/Edit
+                            </Button>
+                          )}
+                        </div>
+                        {appointment.toll_confirmed && appointment.actual_toll_cost !== null ? (
+                          <>
+                            <p className="text-xl font-bold text-blue-600">
+                              ${appointment.actual_toll_cost.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Confirmed toll cost
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 text-xs"
+                              onClick={() => {
+                                setTollAmount(appointment.actual_toll_cost?.toFixed(2) || "")
+                                setShowTollDialog(true)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-semibold text-orange-600">
+                              ${appointment.estimated_toll_cost.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Estimated (not confirmed)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
                     {/* Reimbursement Calculator */}
                     {typeof appointment.calculated_mileage === 'number' && appointment.calculated_mileage > 0 && (
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm text-muted-foreground mb-1">Reimbursement</p>
                         <p className="text-2xl font-bold text-green-600">
-                          ${(appointment.calculated_mileage * mileageRate).toFixed(2)}
+                          ${(
+                            (appointment.calculated_mileage * mileageRate) + 
+                            (appointment.toll_confirmed && appointment.actual_toll_cost ? appointment.actual_toll_cost : 
+                             (appointment.estimated_toll_cost || 0))
+                          ).toFixed(2)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {mileageRate.toFixed(2)} per mile × {appointment.calculated_mileage.toFixed(2)} miles
+                          {((appointment.toll_confirmed && appointment.actual_toll_cost) || appointment.estimated_toll_cost) && (
+                            <span className="ml-2">
+                              + ${((appointment.toll_confirmed && appointment.actual_toll_cost) || appointment.estimated_toll_cost || 0).toFixed(2)} tolls
+                            </span>
+                          )}
                         </p>
                       </div>
                     )}
@@ -1714,6 +1831,56 @@ export default function AppointmentDetailPage() {
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete Appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toll Confirmation Dialog */}
+      <Dialog open={showTollDialog} onOpenChange={setShowTollDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Toll Cost</DialogTitle>
+            <DialogDescription>
+              {appointment?.estimated_toll_cost ? (
+                <>
+                  The estimated toll cost for this route is <strong>${appointment.estimated_toll_cost.toFixed(2)}</strong>.
+                  <p className="mt-2">Please confirm the actual toll amount you paid, or enter 0 if you did not use toll roads.</p>
+                </>
+              ) : (
+                "Enter the toll cost for this appointment, or 0 if no tolls were used."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="toll-amount">Toll Cost ($)</Label>
+              <Input
+                id="toll-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={tollAmount}
+                onChange={(e) => setTollAmount(e.target.value)}
+                placeholder="0.00"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowTollDialog(false)
+                setTollAmount("")
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmToll}
+            >
+              Confirm Toll Cost
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -104,6 +104,8 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       preparationNotes,
       completionNotes,
       outcome,
+      tollConfirmed,
+      actualTollCost,
     } = body
 
     const updateFields: string[] = []
@@ -223,6 +225,18 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     if (outcome !== undefined) {
       updateFields.push(`outcome = @param${paramIndex}`)
       queryParams.push(outcome)
+      paramIndex++
+    }
+
+    if (tollConfirmed !== undefined) {
+      updateFields.push(`toll_confirmed = @param${paramIndex}`)
+      queryParams.push(tollConfirmed ? 1 : 0)
+      paramIndex++
+    }
+
+    if (actualTollCost !== undefined) {
+      updateFields.push(`actual_toll_cost = @param${paramIndex}`)
+      queryParams.push(actualTollCost !== null ? actualTollCost : null)
       paramIndex++
     }
 
