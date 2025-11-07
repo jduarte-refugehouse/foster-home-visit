@@ -125,11 +125,28 @@ export function VoiceInputModal({
         }).then((stream) => {
           streamRef.current = stream
 
-          // Create MediaRecorder
-          const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'audio/webm',
-          })
+          // Create MediaRecorder with Safari/iPad compatibility
+          let mediaRecorderOptions: MediaRecorderOptions = {}
+          
+          // Detect supported format for Safari/iPad
+          if (MediaRecorder.isTypeSupported('audio/webm')) {
+            mediaRecorderOptions.mimeType = 'audio/webm'
+            console.log('🎤 [DEEPGRAM] Using audio/webm')
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            mediaRecorderOptions.mimeType = 'audio/mp4'
+            console.log('🎤 [DEEPGRAM] Using audio/mp4 (Safari)')
+          } else if (MediaRecorder.isTypeSupported('audio/mpeg')) {
+            mediaRecorderOptions.mimeType = 'audio/mpeg'
+            console.log('🎤 [DEEPGRAM] Using audio/mpeg (Safari)')
+          } else {
+            // Let browser choose default format
+            console.log('🎤 [DEEPGRAM] Using default format (Safari fallback)')
+          }
+          
+          const mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions)
           mediaRecorderRef.current = mediaRecorder
+          
+          console.log('🎤 [DEEPGRAM] MediaRecorder created with:', mediaRecorder.mimeType)
 
           // Send audio data to Deepgram
           mediaRecorder.ondataavailable = (event) => {
