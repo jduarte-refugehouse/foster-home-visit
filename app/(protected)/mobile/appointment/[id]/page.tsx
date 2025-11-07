@@ -530,6 +530,9 @@ export default function MobileAppointmentDetailPage() {
   const hasStartedDrive = !!appointment.start_drive_timestamp
   const hasArrived = !!appointment.arrived_timestamp
   const hasReturned = !!appointment.return_timestamp
+  const visitInProgress = appointment.status === "in-progress"
+  const visitCompleted = appointment.status === "completed"
+  const showVisitContent = visitInProgress || visitCompleted
   
   // Validate dates before rendering
   if (!startTime || !endTime) {
@@ -636,8 +639,8 @@ export default function MobileAppointmentDetailPage() {
               </div>
             )}
 
-            {/* Mileage Tracking */}
-            {appointment.calculated_mileage && (
+            {/* Mileage Tracking - Only show if visit has started or completed */}
+            {showVisitContent && appointment.calculated_mileage && (
               <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Calculated Mileage: <span className="font-semibold text-gray-900 dark:text-gray-100">{appointment.calculated_mileage.toFixed(1)} miles</span>
@@ -649,35 +652,93 @@ export default function MobileAppointmentDetailPage() {
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          {!hasStartedDrive && (
+          {/* Pre-Visit Phase: Travel to appointment */}
+          {!showVisitContent && (
+            <>
+              {!hasStartedDrive && (
+                <Button
+                  onClick={handleStartDrive}
+                  disabled={capturingLocation}
+                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
+                  size="lg"
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  {capturingLocation ? "Capturing Location..." : "Start Drive"}
+                </Button>
+              )}
+
+              {hasStartedDrive && !hasArrived && (
+                <Button
+                  onClick={handleArrived}
+                  disabled={capturingLocation}
+                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
+                  size="lg"
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
+                </Button>
+              )}
+
+              {hasArrived && appointment.status === "scheduled" && (
+                <Button
+                  onClick={async () => {
+                    const response = await fetch(`/api/appointments/${appointmentId}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "in-progress" }),
+                    })
+                    if (response.ok) {
+                      toast({ title: "Visit Started", description: "Visit status updated" })
+                      fetchAppointmentDetails()
+                    }
+                  }}
+                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
+                  size="lg"
+                >
+                  Start Visit
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Visit Phase: During the visit */}
+          {visitInProgress && (
             <Button
-              onClick={handleStartDrive}
-              disabled={capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
+              onClick={async () => {
+                const response = await fetch(`/api/appointments/${appointmentId}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ status: "completed" }),
+                })
+                if (response.ok) {
+                  toast({ title: "Visit Ended", description: "Visit marked as completed" })
+                  fetchAppointmentDetails()
+                }
+              }}
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
               size="lg"
             >
-              <Play className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Start Drive"}
+              End Visit
             </Button>
           )}
 
-          {hasStartedDrive && !hasArrived && (
-            <Button
-              onClick={handleArrived}
-              disabled={capturingLocation}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
-              size="lg"
-            >
-              <CheckCircle2 className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Mark as Arrived"}
-            </Button>
-          )}
-
-          {hasArrived && !hasReturned && (appointment.status === "scheduled" || appointment.status === "in-progress") && (
+          {/* Post-Visit Phase: Leaving */}
+          {(visitCompleted || (hasArrived && !hasReturned && (appointment.status === "scheduled" || visitInProgress))) && (
             <>
               {hasNextAppointment && nextAppointment && (
                 <Button
-                  onClick={handleDriveToNext}
+                  onClick={async () => {
+                    // If visit is still in-progress, mark it as completed first
+                    if (visitInProgress) {
+                      await fetch(`/api/appointments/${appointmentId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "completed" }),
+                      })
+                      fetchAppointmentDetails()
+                    }
+                    handleDriveToNext()
+                  }}
                   disabled={capturingLocation}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                   size="lg"
@@ -687,7 +748,18 @@ export default function MobileAppointmentDetailPage() {
                 </Button>
               )}
               <Button
-                onClick={handleLeaving}
+                onClick={async () => {
+                  // If visit is still in-progress, mark it as completed first
+                  if (visitInProgress) {
+                    await fetch(`/api/appointments/${appointmentId}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "completed" }),
+                    })
+                    fetchAppointmentDetails()
+                  }
+                  handleLeaving()
+                }}
                 disabled={capturingLocation}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50"
                 size="lg"
@@ -696,26 +768,6 @@ export default function MobileAppointmentDetailPage() {
                 {capturingLocation ? "Capturing Location..." : "Return to Office/Home"}
               </Button>
             </>
-          )}
-
-          {hasArrived && appointment.status === "scheduled" && !hasReturned && (
-            <Button
-              onClick={async () => {
-                const response = await fetch(`/api/appointments/${appointmentId}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ status: "in-progress" }),
-                })
-                if (response.ok) {
-                  toast({ title: "Visit Started", description: "Visit status updated" })
-                  fetchAppointmentDetails()
-                }
-              }}
-              className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
-              size="lg"
-            >
-              Start Visit
-            </Button>
           )}
 
           {/* Link to full form (for iPad/desktop) */}
