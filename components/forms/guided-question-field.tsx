@@ -318,6 +318,7 @@ export function GuidedQuestionField({
   const [showSummary, setShowSummary] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [enhancing, setEnhancing] = useState<string | null>(null) // Track which field is being enhanced
+  const [enhancingSummary, setEnhancingSummary] = useState(false) // Track if summary is being enhanced
   
   const flow = questionFlows[fieldType]
   
@@ -495,7 +496,6 @@ export function GuidedQuestionField({
 
   if (editMode) {
     const data = JSON.parse(value || '{"finalText":""}')
-    const [enhancingSummary, setEnhancingSummary] = useState(false)
     
     return (
       <div className="space-y-2">
