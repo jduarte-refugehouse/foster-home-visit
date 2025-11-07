@@ -317,11 +317,24 @@ export function GuidedQuestionField({
   label,
   context = {},
 }: GuidedQuestionFieldProps) {
-  const flow = questionFlows[fieldType]
+  // Hooks must be called before any conditional returns
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [showSummary, setShowSummary] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  
+  const flow = questionFlows[fieldType]
+  
+  // Guard clause: if flow doesn't exist, show error
+  if (!flow) {
+    return (
+      <div className="p-4 border border-red-300 rounded bg-red-50">
+        <p className="text-sm text-red-600">
+          Error: Invalid field type "{fieldType}". Valid types: {Object.keys(questionFlows).join(", ")}
+        </p>
+      </div>
+    )
+  }
 
   // Load existing structured data if value exists
   useEffect(() => {
@@ -345,7 +358,28 @@ export function GuidedQuestionField({
     return dependsOnAnswer === q.conditional.value
   })
 
+  // Guard clause: if no questions, show error
+  if (visibleQuestions.length === 0) {
+    return (
+      <div className="p-4 border border-yellow-300 rounded bg-yellow-50">
+        <p className="text-sm text-yellow-600">
+          No questions available for this field type.
+        </p>
+      </div>
+    )
+  }
+
   const currentQuestion = visibleQuestions[currentStep]
+  
+  // Guard clause: if current question is undefined, reset to first question
+  if (!currentQuestion && visibleQuestions.length > 0) {
+    // This shouldn't happen, but if it does, reset to first question
+    if (currentStep >= visibleQuestions.length) {
+      setCurrentStep(0)
+    }
+    return null // Will re-render with correct step
+  }
+  
   const progress = ((currentStep + 1) / visibleQuestions.length) * 100
 
   const handleAnswer = (answer: any) => {
