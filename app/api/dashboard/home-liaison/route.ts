@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       SELECT DISTINCT
         a.appointment_id,
         a.title,
-        a.home_name,
+        h.HomeName as home_name,
         a.start_datetime,
         a.end_datetime,
         a.status,
@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
       LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
       LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+      LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
       WHERE (au_assigned.email = @param0 OR au_created.email = @param0)
         AND a.start_datetime >= @param1
         AND a.start_datetime <= @param2

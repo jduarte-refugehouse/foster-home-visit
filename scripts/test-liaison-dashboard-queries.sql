@@ -33,7 +33,7 @@ PRINT '============================================'
 SELECT 
     a.appointment_id,
     a.title,
-    a.home_name,
+    h.HomeName as home_name,
     a.start_datetime,
     a.end_datetime,
     a.status,
@@ -46,6 +46,7 @@ SELECT
 FROM appointments a
 LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
 LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.is_deleted = 0
 ORDER BY a.start_datetime DESC
@@ -57,7 +58,7 @@ PRINT '============================================'
 SELECT DISTINCT
     a.appointment_id,
     a.title,
-    a.home_name,
+    h.HomeName as home_name,
     a.start_datetime,
     a.end_datetime,
     a.status,
@@ -74,6 +75,7 @@ FROM appointments a
 LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
 LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
 LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.start_datetime >= @Today
     AND a.start_datetime <= @EndDate
