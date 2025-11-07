@@ -70,9 +70,6 @@ export function VoiceInputButton({
 
   // Track if we're manually controlling the listening state
   const [manuallyStopped, setManuallyStopped] = useState(false)
-  // Track if button is currently being held (for iPad press-and-hold)
-  const [isHolding, setIsHolding] = useState(false)
-  const holdingRef = useRef(false)
 
   // Reset accumulated text when starting to listen
   useEffect(() => {
