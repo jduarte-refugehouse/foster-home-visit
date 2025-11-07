@@ -92,13 +92,33 @@ export default function AppointmentDetailPage() {
   const [showPhoneMissingDialog, setShowPhoneMissingDialog] = useState(false)
   const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
   const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
+  const [mileageRate, setMileageRate] = useState<number>(0.67) // Default rate
 
   useEffect(() => {
     if (appointmentId) {
       fetchAppointmentDetails()
       fetchVisitFormStatus()
+      fetchMileageRate()
     }
   }, [appointmentId])
+
+  const fetchMileageRate = async () => {
+    try {
+      const response = await fetch("/api/settings?key=mileage_rate")
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.setting?.ConfigValue) {
+          const rate = parseFloat(data.setting.ConfigValue)
+          if (!isNaN(rate)) {
+            setMileageRate(rate)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching mileage rate:", error)
+      // Use default rate if fetch fails
+    }
+  }
 
   const fetchAppointmentDetails = async () => {
     try {
@@ -1318,6 +1338,19 @@ export default function AppointmentDetailPage() {
                       {typeof appointment.calculated_mileage === 'number' ? appointment.calculated_mileage.toFixed(2) : '0.00'} miles
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Calculated using actual road travel</p>
+                    
+                    {/* Reimbursement Calculator */}
+                    {typeof appointment.calculated_mileage === 'number' && appointment.calculated_mileage > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm text-muted-foreground mb-1">Reimbursement</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          ${(appointment.calculated_mileage * mileageRate).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {mileageRate.toFixed(2)} per mile × {appointment.calculated_mileage.toFixed(2)} miles
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 {appointment.arrived_timestamp && (appointment.calculated_mileage === null || appointment.calculated_mileage === undefined) && (
