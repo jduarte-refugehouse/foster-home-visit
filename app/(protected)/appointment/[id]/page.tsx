@@ -1414,7 +1414,7 @@ export default function AppointmentDetailPage() {
                             </Button>
                           )}
                         </div>
-                        {appointment.toll_confirmed && appointment.actual_toll_cost !== null ? (
+                        {appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined ? (
                           <>
                             <p className="text-xl font-bold text-blue-600">
                               ${appointment.actual_toll_cost.toFixed(2)}
