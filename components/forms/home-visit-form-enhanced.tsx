@@ -1081,7 +1081,7 @@ const EnhancedHomeVisitForm = ({
   const CurrentSectionIcon = sections[currentSection].icon
 
   return (
-    <div className="min-h-screen bg-gray-100 p-1 sm:p-2 md:p-3">
+    <div className="min-h-screen bg-background p-1 sm:p-2 md:p-3">
       {/* Responsive Layout - Adapts to viewport */}
       <div className="w-full max-w-full mx-auto">
         {/* Dark Gradient Header - FORM STYLE */}
@@ -1125,7 +1125,7 @@ const EnhancedHomeVisitForm = ({
                 <CurrentSectionIcon className="w-5 h-5 text-refuge-purple" />
                 <div>
                   <p className="font-semibold text-sm">{sections[currentSection].title}</p>
-                  <p className="text-xs text-gray-500">Section {currentSection + 1} of {sections.length}</p>
+                  <p className="text-xs text-muted-foreground">Section {currentSection + 1} of {sections.length}</p>
                 </div>
               </div>
               <div className="flex gap-1">
@@ -1136,7 +1136,7 @@ const EnhancedHomeVisitForm = ({
             </div>
             
             {/* Progress Bar */}
-            <div className="bg-gray-200 rounded-full h-1.5">
+            <div className="bg-secondary rounded-full h-1.5">
               <div
                 className="bg-refuge-purple h-1.5 rounded-full transition-all"
                 style={{ width: `${((currentSection + 1) / sections.length) * 100}%` }}
@@ -1225,7 +1225,7 @@ const EnhancedHomeVisitForm = ({
         </Card>
 
         {/* Form Content - Reduced padding */}
-        <Card className="mb-2 bg-gray-50">
+        <Card className="mb-2 bg-card">
           <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
       </div>
@@ -1308,7 +1308,7 @@ const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationDa
 
         <div>
           <Label htmlFor="quarter">Quarter (Auto-calculated)</Label>
-          <Input id="quarter" value={formData.visitInfo.quarter} disabled className="bg-gray-100" />
+          <Input id="quarter" value={formData.visitInfo.quarter} disabled className="bg-muted" />
         </div>
 
         <div>
@@ -1367,7 +1367,7 @@ const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationDa
 
           <div>
             <Label htmlFor="agency">Agency</Label>
-            <Input id="agency" value={formData.visitInfo.agency || "Refuge House"} disabled className="bg-gray-100 text-sm" />
+            <Input id="agency" value={formData.visitInfo.agency || "Refuge House"} disabled className="bg-muted text-sm" />
           </div>
         </div>
       </div>
@@ -1402,7 +1402,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   return (
     <div className="space-y-6">
       {/* SECTION 1: Home Composition with Attendance */}
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-refuge-purple" />
@@ -1410,20 +1410,20 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Alert className="mb-4 bg-blue-50 border-blue-200">
-            <AlertDescription className="text-sm text-gray-700">
+          <Alert className="mb-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+            <AlertDescription className="text-sm text-foreground">
               <strong>Instructions:</strong> Check the box beside each person who is present during the home visit. Add any other persons present in the home during the visit.
             </AlertDescription>
           </Alert>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Column: Home Residents */}
             <div className="space-y-3">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">Home Residents</h4>
+              <h4 className="font-medium text-sm text-foreground mb-2">Home Residents</h4>
               
               {/* Providers */}
               {providers.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Foster Parents</Label>
+                  <Label className="text-sm font-medium text-foreground">Foster Parents</Label>
                   <div className="space-y-2 pl-2">
                     {providers.map((provider, idx) => {
                       const attendanceKey = `fosterParent_${idx}`
@@ -1449,8 +1449,8 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                           />
                           <Label htmlFor={attendanceKey} className="cursor-pointer text-sm flex-1">
                             <span className="font-medium">{provider.name}</span>
-                            {provider.relationship && <span className="text-gray-500 ml-1">({provider.relationship})</span>}
-                            {provider.age && <span className="text-gray-500 ml-1">• Age {provider.age}</span>}
+                            {provider.relationship && <span className="text-muted-foreground ml-1">({provider.relationship})</span>}
+                            {provider.age && <span className="text-muted-foreground ml-1">• Age {provider.age}</span>}
                           </Label>
                         </div>
                       )
@@ -1462,7 +1462,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               {/* Biological Children */}
               {biologicalChildren.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Biological Children</Label>
+                  <Label className="text-sm font-medium text-foreground">Biological Children</Label>
                   <div className="space-y-1 pl-2">
                     {biologicalChildren.map((child, idx) => {
                       const attendanceKey = `bioChild_${idx}`
@@ -1488,7 +1488,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                           />
                           <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
                             <span className="font-medium">{child.name}</span>
-                            {child.age && <span className="text-gray-500 ml-1">• Age {child.age}</span>}
+                            {child.age && <span className="text-muted-foreground ml-1">• Age {child.age}</span>}
                           </Label>
                         </div>
                       )
@@ -1500,7 +1500,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               {/* Other Household Members */}
               {otherMembers.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Other Household Members</Label>
+                  <Label className="text-sm font-medium text-foreground">Other Household Members</Label>
                   <div className="space-y-1 pl-2">
                     {otherMembers.map((member, idx) => {
                       const attendanceKey = `otherMember_${idx}`
@@ -1526,8 +1526,8 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                           />
                           <Label htmlFor={attendanceKey} className="cursor-pointer text-sm">
                             <span className="font-medium">{member.name}</span>
-                            {member.relationship && <span className="text-gray-500 ml-1">({member.relationship})</span>}
-                            {member.age && <span className="text-gray-500 ml-1">• Age {member.age}</span>}
+                            {member.relationship && <span className="text-muted-foreground ml-1">({member.relationship})</span>}
+                            {member.age && <span className="text-muted-foreground ml-1">• Age {member.age}</span>}
                           </Label>
                         </div>
                       )
@@ -1539,7 +1539,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
 
             {/* Right Column: Foster Children */}
             <div className="space-y-3">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">Foster Children in Placement</h4>
+              <h4 className="font-medium text-sm text-foreground mb-2">Foster Children in Placement</h4>
               
               {placements.length > 0 ? (
                 <div className="space-y-2">
@@ -1569,10 +1569,10 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                           />
                           <Label htmlFor={attendanceKey} className="cursor-pointer text-sm flex-1">
                             <span className="font-medium">{child.firstName} {child.lastName}</span>
-                            {child.age && <span className="text-gray-500 ml-1">• Age {child.age}</span>}
+                            {child.age && <span className="text-muted-foreground ml-1">• Age {child.age}</span>}
                           </Label>
                         </div>
-                        <div className="text-xs text-gray-600 pl-6">
+                        <div className="text-xs text-muted-foreground pl-6">
                           {child.placementDate && <span>Placed: {new Date(child.placementDate).toLocaleDateString()}</span>}
                           {child.servicePackage && (
                             <Badge variant="secondary" className="text-xs ml-2">{child.servicePackage}</Badge>
@@ -1583,7 +1583,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 italic">No foster children currently in placement</p>
+                <p className="text-sm text-muted-foreground italic">No foster children currently in placement</p>
               )}
             </div>
           </div>
@@ -1614,16 +1614,16 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                 <Label htmlFor="staff_conducting" className="cursor-pointer text-sm">
                   <span className="font-medium">{appointmentData.appointment.assigned_to_name}</span>
                   {appointmentData.appointment.assigned_to_role && (
-                    <span className="text-gray-500 ml-1">({appointmentData.appointment.assigned_to_role})</span>
+                    <span className="text-muted-foreground ml-1">({appointmentData.appointment.assigned_to_role})</span>
                   )}
-                  <span className="text-gray-500 ml-1">• Staff Conducting Visit</span>
+                  <span className="text-muted-foreground ml-1">• Staff Conducting Visit</span>
                 </Label>
               </div>
             )}
 
             {/* Add Other Attendee */}
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">Add Other Attendee</Label>
+              <Label className="text-sm font-medium text-foreground mb-2 block">Add Other Attendee</Label>
               <div className="flex gap-2">
                 <Input
                   placeholder="Name"
@@ -1705,7 +1705,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                   />
                   <Label htmlFor={`other_${idx}`} className="cursor-pointer text-sm flex-1">
                     {other.name}
-                    {other.role && <span className="text-gray-500 ml-1">({other.role})</span>}
+                    {other.role && <span className="text-muted-foreground ml-1">({other.role})</span>}
                   </Label>
                   <Button
                     variant="ghost"
@@ -1728,7 +1728,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
       </Card>
 
       {/* SECTION 2: Home Logistics - Display Only */}
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-card shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Home className="h-5 w-5 text-refuge-purple" />
@@ -1738,7 +1738,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         <CardContent className="pt-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-gray-600 font-medium">Family Name:</span>
+              <span className="text-foreground font-medium">Family Name:</span>
               <span className="ml-2">{formData.fosterHome.familyName || "—"}</span>
             </div>
             <div>
@@ -1772,7 +1772,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
       </Card>
 
       {/* SECTION 3: License & Regulatory Information - Display Only */}
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-card shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5 text-refuge-purple" />
@@ -1782,10 +1782,10 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         <CardContent className="pt-2 space-y-3">
           {/* License Information */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-2">License Information</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">License Information</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-gray-600 font-medium">License Type:</span>
+                <span className="text-foreground font-medium">License Type:</span>
                 <span className="ml-2">{formData.fosterHome.licenseType || "—"}</span>
               </div>
               <div>
@@ -1805,7 +1805,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
 
           {/* Capacity Information */}
           <div className="border-t pt-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Capacity Information</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">Capacity Information</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div>
                 <span className="text-gray-600 font-medium">Total Capacity:</span>
@@ -1824,7 +1824,7 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
 
           {/* Service Levels Approved */}
           <div className="border-t pt-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Service Levels Approved</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">Service Levels Approved</h4>
             <div className="flex flex-wrap gap-2">
               {formData.fosterHome.serviceLevels && formData.fosterHome.serviceLevels.length > 0 ? (
                 formData.fosterHome.serviceLevels.map((level) => (
@@ -1833,16 +1833,16 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                   </Badge>
                 ))
               ) : (
-                <span className="text-sm text-gray-500 italic">None specified</span>
+                <span className="text-sm text-muted-foreground italic">None specified</span>
               )}
             </div>
           </div>
 
           {/* Credentialed Packages - Stub */}
           <div className="border-t pt-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Credentialed Packages</h4>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <p className="text-sm text-gray-600 italic">
+            <h4 className="font-medium text-sm text-foreground mb-2">Credentialed Packages</h4>
+            <div className="bg-muted border border-border rounded-lg p-3">
+              <p className="text-sm text-muted-foreground italic">
                 Package credentialing information will be displayed here once the data structure is finalized.
               </p>
             </div>
@@ -1943,7 +1943,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
 
       {/* Applicable Checkbox for Optional Sections */}
       {hasApplicable && (
-        <div className="flex items-center space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+        <div className="flex items-center space-x-2 p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-4">
           <Checkbox
             id={`${section}-applicable`}
             checked={sectionData.applicable}
@@ -1957,8 +1957,8 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
 
       {/* Show N/A message if section is not applicable */}
       {hasApplicable && sectionData.applicable === false && (
-        <Alert className="bg-gray-50 border-gray-200">
-          <AlertDescription className="text-sm text-gray-600">
+        <Alert className="bg-muted border-border">
+          <AlertDescription className="text-sm text-foreground">
             <strong>Not Applicable:</strong> This section does not apply to this home.
           </AlertDescription>
         </Alert>
@@ -1968,28 +1968,28 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
       {(!hasApplicable || sectionData.applicable) && (
         <>
           {/* Compact Table Format */}
-          <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+          <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
         {/* Table Header */}
-        <div className={`grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold`}>
-          <div className="col-span-2 text-gray-700">Number</div>
-          <div className={singleStatus ? "col-span-7 text-gray-700" : "col-span-5 text-gray-700"}>Minimum Standard</div>
+        <div className={`grid grid-cols-12 gap-1 bg-muted border-b p-2 text-sm font-semibold`}>
+          <div className="col-span-2 text-foreground">Number</div>
+          <div className={singleStatus ? "col-span-7 text-foreground" : "col-span-5 text-foreground"}>Minimum Standard</div>
           {singleStatus ? (
             <>
-              <div className="col-span-1 text-center text-gray-700">Status</div>
-              <div className="col-span-2 text-center text-gray-700">Notes</div>
+              <div className="col-span-1 text-center text-foreground">Status</div>
+              <div className="col-span-2 text-center text-foreground">Notes</div>
             </>
           ) : (
             <>
-              <div className="col-span-1 text-center text-gray-700">Month 1</div>
-              <div className="col-span-1 text-center text-gray-700">Month 2</div>
-              <div className="col-span-1 text-center text-gray-700">Month 3</div>
-              <div className="col-span-2 text-center text-gray-700">Notes</div>
+              <div className="col-span-1 text-center text-foreground">Month 1</div>
+              <div className="col-span-1 text-center text-foreground">Month 2</div>
+              <div className="col-span-1 text-center text-foreground">Month 3</div>
+              <div className="col-span-2 text-center text-foreground">Notes</div>
             </>
           )}
         </div>
 
         {/* Table Rows */}
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-border">
           {sectionData.items.map((item, index) => {
             const isExpanded = expandedRows.has(index)
             // Support both new format (month1/month2/month3) and old format (status/notes) for backward compatibility
@@ -2002,17 +2002,17 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
             const showExpandButton = hasNotes || item.requirement.length > 60
 
             return (
-              <div key={index} className="bg-white">
+              <div key={index} className="bg-card">
                 {/* Main Row */}
-                <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-gray-50">
+                <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-muted/50">
                   {/* Number Column */}
                   <div className="col-span-2 flex items-center gap-1.5">
-                    <span className="font-mono text-xs text-gray-600">{item.code?.replace(/§/g, "") || ""}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{item.code?.replace(/§/g, "") || ""}</span>
                     <a
                       href={getGuideLink(item.code || "", item.requirement || "")}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                       title="View detailed help in guide (opens in new tab)"
                     >
@@ -2021,7 +2021,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                   </div>
 
                   {/* Minimum Standard Column */}
-                  <div className={singleStatus ? "col-span-7 text-gray-900 leading-tight text-sm" : "col-span-5 text-gray-900 leading-tight text-sm"}>
+                  <div className={singleStatus ? "col-span-7 text-foreground leading-tight text-sm" : "col-span-5 text-foreground leading-tight text-sm"}>
                     {item.requirement}
                   </div>
 
@@ -2037,7 +2037,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             className={`h-8 w-full text-xs px-2 font-medium ${
                               item.status === "compliant"
                                 ? "bg-green-600 hover:bg-green-700 text-white"
-                                : "hover:bg-green-50"
+                                : "hover:bg-green-50 dark:hover:bg-green-950/20"
                             }`}
                             onClick={() => {
                               const newStatus = item.status === "compliant" ? null : "compliant"
@@ -2072,7 +2072,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             className={`h-8 w-full text-xs px-2 font-medium ${
                               item.month1?.compliant
                                 ? "bg-green-600 hover:bg-green-700 text-white"
-                                : "hover:bg-green-50"
+                                : "hover:bg-green-50 dark:hover:bg-green-950/20"
                             }`}
                             onClick={() => {
                               onChange(section, index, "month1", "compliant", !item.month1?.compliant)
@@ -2098,7 +2098,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                           )}
                         </>
                       ) : (
-                        <span className="text-gray-400 text-xs">-</span>
+                        <span className="text-muted-foreground text-xs">-</span>
                       )}
                     </div>
                   ) : (
@@ -2113,7 +2113,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                               className={`h-8 w-full text-xs px-2 font-medium ${
                                 item.month1?.compliant
                                   ? "bg-green-600 hover:bg-green-700 text-white"
-                                  : "hover:bg-green-50"
+                                  : "hover:bg-green-50 dark:hover:bg-green-950/20"
                               }`}
                               onClick={() => {
                                 onChange(section, index, "month1", "compliant", !item.month1?.compliant)
@@ -2139,7 +2139,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-400 text-xs">-</span>
+                          <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </div>
 
@@ -2153,7 +2153,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                               className={`h-8 w-full text-xs px-2 font-medium ${
                                 item.month2?.compliant
                                   ? "bg-green-600 hover:bg-green-700 text-white"
-                                  : "hover:bg-green-50"
+                                  : "hover:bg-green-50 dark:hover:bg-green-950/20"
                               }`}
                               onClick={() => {
                                 onChange(section, index, "month2", "compliant", !item.month2?.compliant)
@@ -2179,7 +2179,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-400 text-xs">-</span>
+                          <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </div>
 
@@ -2193,7 +2193,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                               className={`h-8 w-full text-xs px-2 font-medium ${
                                 item.month3?.compliant
                                   ? "bg-green-600 hover:bg-green-700 text-white"
-                                  : "hover:bg-green-50"
+                                  : "hover:bg-green-50 dark:hover:bg-green-950/20"
                               }`}
                               onClick={() => {
                                 onChange(section, index, "month3", "compliant", !item.month3?.compliant)
@@ -2219,7 +2219,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-400 text-xs">-</span>
+                          <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </div>
                     </>
@@ -2230,7 +2230,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`h-7 w-7 p-0 ${hasNotes ? "text-blue-600" : "text-gray-400"}`}
+                      className={`h-7 w-7 p-0 ${hasNotes ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}
                       onClick={() => toggleRowExpansion(index)}
                       title={isExpanded ? "Hide notes" : "Add/edit notes"}
                     >
@@ -2245,11 +2245,11 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
 
                 {/* Expanded Notes Row */}
                 {isExpanded && (
-                  <div className="bg-gray-50 border-t px-2 py-2 space-y-2">
+                  <div className="bg-muted border-t px-2 py-2 space-y-2">
                     {singleStatus ? (
                       /* Single notes field for single-status sections */
                       <div>
-                        <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
+                        <Label className="text-xs text-foreground mb-1 block font-medium">Notes</Label>
                         <Textarea
                           value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
@@ -2261,7 +2261,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                     ) : hasNewFormat ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 1 Notes</Label>
+                          <Label className="text-xs text-foreground mb-1 block font-medium">Month 1 Notes</Label>
                           <Textarea
                             value={item.month1?.notes || ""}
                             onChange={(e) => onChange(section, index, "month1", "notes", e.target.value)}
@@ -2271,7 +2271,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 2 Notes</Label>
+                          <Label className="text-xs text-foreground mb-1 block font-medium">Month 2 Notes</Label>
                           <Textarea
                             value={item.month2?.notes || ""}
                             onChange={(e) => onChange(section, index, "month2", "notes", e.target.value)}
@@ -2281,7 +2281,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-gray-600 mb-1 block font-medium">Month 3 Notes</Label>
+                          <Label className="text-xs text-foreground mb-1 block font-medium">Month 3 Notes</Label>
                           <Textarea
                             value={item.month3?.notes || ""}
                             onChange={(e) => onChange(section, index, "month3", "notes", e.target.value)}
@@ -2293,7 +2293,7 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
                       </div>
                     ) : (
                       <div>
-                        <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
+                        <Label className="text-xs text-foreground mb-1 block font-medium">Notes</Label>
                         <Textarea
                           value={item.notes || ""}
                           onChange={(e) => onChange(section, index, "notes", e.target.value)}
@@ -2366,14 +2366,14 @@ const PackageComplianceSection = ({ formData, onChange, onComplianceChange, onNo
         </h2>
       </div>
 
-      <Alert className="bg-blue-50 border-blue-200">
+      <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
         <AlertDescription className="text-sm">
           <strong>Instructions:</strong> Select the packages this home is credentialed for. Only compliance items for selected packages will be displayed below.
         </AlertDescription>
       </Alert>
 
       {/* Package Selection Checkboxes */}
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Credentialed Packages</CardTitle>
         </CardHeader>
@@ -2465,7 +2465,7 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
         {title}
       </h2>
 
-      <div className="flex items-center space-x-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-center space-x-2 p-4 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
         <Checkbox
           id={`${section}-applicable`}
           checked={sectionData.applicable}
@@ -2509,7 +2509,7 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
                           className={`h-6 flex-1 ${
                             item.status === "compliant"
                               ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "hover:bg-green-50"
+                              : "hover:bg-green-50 dark:hover:bg-green-950/20"
                           }`}
                           onClick={() =>
                             onChange(section, index, "status", item.status === "compliant" ? "" : "compliant")
@@ -2524,7 +2524,7 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
                           className={`h-6 flex-1 ${
                             item.status === "non-compliant"
                               ? "bg-red-600 hover:bg-red-700 text-white"
-                              : "hover:bg-red-50"
+                              : "hover:bg-red-50 dark:hover:bg-red-950/20"
                           }`}
                           onClick={() =>
                             onChange(section, index, "status", item.status === "non-compliant" ? "" : "non-compliant")
@@ -2594,9 +2594,9 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
   const inspections = formData.inspections
 
   const getExpirationBadge = (days) => {
-    if (days > 60) return <Badge className="bg-green-100 text-green-800">Current</Badge>
-    if (days > 30) return <Badge className="bg-yellow-100 text-yellow-800">Renewal Soon</Badge>
-    if (days > 0) return <Badge className="bg-orange-100 text-orange-800">Expiring Soon</Badge>
+    if (days > 60) return <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Current</Badge>
+    if (days > 30) return <Badge className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">Renewal Soon</Badge>
+    if (days > 0) return <Badge className="bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">Expiring Soon</Badge>
     return <Badge variant="destructive">EXPIRED</Badge>
   }
 
@@ -2617,7 +2617,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
       {/* Fire and Health Inspections - Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Fire Inspection */}
-        <Card className="bg-gray-50">
+        <Card className="bg-muted">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Flame className="h-5 w-5 text-red-600" />
@@ -2649,7 +2649,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
               <div>
                 <Label>Days Until Expiration</Label>
                 <div className="flex items-center gap-2 mt-2">
-                  <Input value={inspections.fire.daysUntilExpiration} disabled className="bg-gray-100" />
+                  <Input value={inspections.fire.daysUntilExpiration} disabled className="bg-muted" />
                   {getExpirationBadge(inspections.fire.daysUntilExpiration)}
                 </div>
               </div>
@@ -2697,7 +2697,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
         </Card>
 
         {/* Health Inspection */}
-        <Card className="bg-gray-50">
+        <Card className="bg-muted">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Stethoscope className="h-5 w-5 text-green-600" />
@@ -2729,7 +2729,7 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
               <div>
                 <Label>Days Until Expiration</Label>
                 <div className="flex items-center gap-2 mt-2">
-                  <Input value={inspections.health.daysUntilExpiration} disabled className="bg-gray-100" />
+                  <Input value={inspections.health.daysUntilExpiration} disabled className="bg-muted" />
                   {getExpirationBadge(inspections.health.daysUntilExpiration)}
                 </div>
               </div>

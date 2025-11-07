@@ -33,26 +33,26 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
       </Alert>
 
       {/* Training Requirements - Using Compact Table Format */}
-      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-1 bg-gray-100 border-b p-2 text-sm font-semibold">
-          <div className="col-span-3 text-gray-700">Number</div>
-          <div className="col-span-7 text-gray-700">Training Requirement</div>
-          <div className="col-span-2 text-center text-gray-700">Status</div>
+        <div className="grid grid-cols-12 gap-1 bg-muted border-b p-2 text-sm font-semibold">
+          <div className="col-span-3 text-foreground">Number</div>
+          <div className="col-span-7 text-foreground">Training Requirement</div>
+          <div className="col-span-2 text-center text-foreground">Status</div>
         </div>
 
         {/* Table Rows */}
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-border">
           {traumaCare.items.map((item, index) => (
-            <div key={index} className="bg-white">
-              <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-gray-50">
+            <div key={index} className="bg-card">
+              <div className="grid grid-cols-12 gap-1 p-2 items-center text-sm hover:bg-muted/50">
                 {/* Number Column */}
                 <div className="col-span-3 flex items-center gap-1.5">
-                  <span className="font-mono text-xs text-gray-600">{item.code || ""}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{item.code || ""}</span>
                 </div>
 
                 {/* Requirement Column */}
-                <div className="col-span-7 text-gray-900 leading-tight text-sm">
+                <div className="col-span-7 text-foreground leading-tight text-sm">
                   {item.requirement}
                 </div>
 
@@ -64,7 +64,7 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
                     className={`h-8 w-full text-xs px-2 font-medium ${
                       item.status === "compliant"
                         ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "hover:bg-green-50"
+                        : "hover:bg-green-50 dark:hover:bg-green-950/20"
                     }`}
                     onClick={() => {
                       onChange("traumaInformedCare", index, "status", item.status === "compliant" ? "" : "compliant")
@@ -91,9 +91,9 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
 
               {/* Expanded Notes Row - Show if status is set or has notes */}
               {(item.status || item.notes) && (
-                <div className="bg-gray-50 border-t px-2 py-2">
+                <div className="bg-muted border-t px-2 py-2">
                   <div>
-                    <Label className="text-xs text-gray-600 mb-1 block font-medium">Notes</Label>
+                    <Label className="text-xs text-foreground mb-1 block font-medium">Notes</Label>
                     <Textarea
                       value={item.notes || ""}
                       onChange={(e) => onChange("traumaInformedCare", index, "notes", e.target.value)}
@@ -111,7 +111,7 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
       </div>
 
       {/* TBRI Strategies */}
-      <Card className="border-blue-200 bg-blue-50/30">
+      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             Trust-Based Relational Intervention (TBRI) Practices Observed
@@ -407,7 +407,7 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
         Quality Enhancement Discussion
       </h2>
 
-      <Alert className="border-blue-200 bg-blue-50">
+      <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
         <AlertDescription>
           <strong>TBRI Quality Enhancement - T3C Preparation:</strong> This section helps prepare for future T3C
           certification by observing TBRI (Trust-Based Relational Intervention) principles. TBRI focuses on three core areas:
@@ -417,7 +417,7 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
         </AlertDescription>
       </Alert>
 
-      <Card className="border-blue-200 bg-blue-50/30">
+      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             Trauma-Informed Practices Observed
@@ -495,7 +495,7 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
 
       <div className="border-t pt-6">
         <Label htmlFor="quality-enhancement-combined-notes">TBRI Quality Enhancement Observations</Label>
-        <p className="text-sm text-gray-600 mb-2">
+        <p className="text-sm text-muted-foreground mb-2">
           Use guided questions to document observations of TBRI (Trust-Based Relational Intervention) principles: 
           <strong> Connecting</strong> (building trust), <strong>Empowering</strong> (meeting sensory needs), and 
           <strong> Correcting</strong> (teaching social skills).
@@ -578,9 +578,9 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
         </AlertDescription>
       </Alert>
 
-      <Alert className="border-yellow-200 bg-yellow-50 py-2">
-        <AlertTriangle className="h-4 w-4 text-yellow-800" />
-        <AlertDescription className="text-yellow-800 text-xs">
+      <Alert className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30 py-2">
+        <AlertTriangle className="h-4 w-4 text-yellow-800 dark:text-yellow-200" />
+        <AlertDescription className="text-yellow-800 dark:text-yellow-200 text-xs">
           <strong>ASQ Screening:</strong> Required for age 10+ every 90 days (quarterly).
         </AlertDescription>
       </Alert>
@@ -642,7 +642,7 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
                       const newChildren = children.filter((_, idx) => idx !== index)
                       onChange("childrenPresent", newChildren)
                     }}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20"
                   >
                     Remove
                   </Button>
@@ -701,7 +701,7 @@ export const ChildrenPresentSection = ({ formData, onChange, onAddChild, prepopu
 
                 {/* ASQ Screening for Age 10+ */}
                 {parseInt(child.age) >= 10 && (
-                  <div className="flex gap-4 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex gap-4 p-2 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id={`asq-due-${index}`}
@@ -961,7 +961,7 @@ export const CorrectiveActionsSection = ({ formData, onChange, onAdd }) => {
 
       <div className="space-y-4">
         {correctiveActions.map((action, index) => (
-          <Card key={index} className="border-2 border-red-200">
+          <Card key={index} className="border-2 border-red-200 dark:border-red-800">
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
@@ -1069,21 +1069,21 @@ export const VisitSummarySection = ({ formData, onChange }) => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { value: "fully-compliant", label: "Fully Compliant", color: "bg-green-100 border-green-300" },
+              { value: "fully-compliant", label: "Fully Compliant", color: "bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700" },
               {
                 value: "substantially-compliant",
                 label: "Substantially Compliant with Minor Issues",
-                color: "bg-yellow-100 border-yellow-300",
+                color: "bg-yellow-100 dark:bg-yellow-900 border-yellow-300 dark:border-yellow-700",
               },
               {
                 value: "corrective-action",
                 label: "Corrective Action Required",
-                color: "bg-orange-100 border-orange-300",
+                color: "bg-orange-100 dark:bg-orange-900 border-orange-300 dark:border-orange-700",
               },
               {
                 value: "immediate-intervention",
                 label: "Immediate Intervention Needed",
-                color: "bg-red-100 border-red-300",
+                color: "bg-red-100 dark:bg-red-900 border-red-300 dark:border-red-700",
               },
             ].map((status) => (
               <Card
@@ -1498,7 +1498,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
             <CardHeader className="py-3">
               <CardTitle className="text-sm">{staffName} Signature *</CardTitle>
               {staffRole && (
-                <p className="text-xs text-gray-500 mt-1">{staffRole}</p>
+                <p className="text-xs text-muted-foreground mt-1">{staffRole}</p>
               )}
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1547,9 +1547,9 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
 
       </div>
 
-      <Alert className="border-green-200 bg-green-50 py-2">
-        <CheckCircle className="h-4 w-4 text-green-800" />
-        <AlertDescription className="text-green-800 text-xs">
+      <Alert className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 py-2">
+        <CheckCircle className="h-4 w-4 text-green-800 dark:text-green-200" />
+        <AlertDescription className="text-green-800 dark:text-green-200 text-xs">
           <strong>Ready to Submit:</strong> Review all sections before final submission. Ensure all required fields and signatures are complete.
         </AlertDescription>
       </Alert>

@@ -341,8 +341,8 @@ export function GuidedQuestionField({
   // Guard clause: if flow doesn't exist, show error
   if (!flow) {
     return (
-      <div className="p-4 border border-red-300 rounded bg-red-50">
-        <p className="text-sm text-red-600">
+      <div className="p-4 border border-red-300 dark:border-red-800 rounded bg-red-50 dark:bg-red-950/30">
+        <p className="text-sm text-red-600 dark:text-red-400">
           Error: Invalid field type "{fieldType}". Valid types: {Object.keys(questionFlows).join(", ")}
         </p>
       </div>
@@ -374,8 +374,8 @@ export function GuidedQuestionField({
   // Guard clause: if no questions, show error
   if (visibleQuestions.length === 0) {
     return (
-      <div className="p-4 border border-yellow-300 rounded bg-yellow-50">
-        <p className="text-sm text-yellow-600">
+      <div className="p-4 border border-yellow-300 dark:border-yellow-800 rounded bg-yellow-50 dark:bg-yellow-950/30">
+        <p className="text-sm text-yellow-600 dark:text-yellow-400">
           No questions available for this field type.
         </p>
       </div>
@@ -459,7 +459,7 @@ export function GuidedQuestionField({
                 {source.required ? (
                   <span className="text-red-400">Regulatory Requirement</span>
                 ) : (
-                  <span className="text-gray-400">Agency Practice</span>
+                  <span className="text-muted-foreground">Agency Practice</span>
                 )}
               </p>
             </div>
@@ -495,7 +495,7 @@ export function GuidedQuestionField({
           <p className="text-sm whitespace-pre-wrap">{data.finalText || "No response provided."}</p>
           {data.regulatorySources && data.regulatorySources.length > 0 && (
             <div className="mt-3 pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-2">Regulatory Sources:</p>
+              <p className="text-xs text-muted-foreground mb-2">Regulatory Sources:</p>
               <div className="flex flex-wrap gap-1">
                 {data.regulatorySources.map((rs: any, idx: number) => (
                   rs.source && (
@@ -630,7 +630,7 @@ export function GuidedQuestionField({
               <RegulatoryBadge source={flow.regulatoryBasis} />
             )}
           </div>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             {currentStep + 1} of {visibleQuestions.length}
           </span>
         </div>
