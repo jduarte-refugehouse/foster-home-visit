@@ -116,15 +116,19 @@ export function VoiceInputModal({
           if (data.success && data.transcript) {
             const newText = data.transcript.trim()
             
-            if (isLastChunk) {
-              // For final chunk, use the full transcript
-              setTranscript(newText)
-              accumulatedTranscriptRef.current = newText
-            } else if (isInterim && newText) {
-              // For interim chunks, always update to show real-time progress
-              // Google returns progressively more complete transcripts
-              setTranscript(newText)
-              accumulatedTranscriptRef.current = newText
+            if (newText) {
+              if (isLastChunk) {
+                // For final chunk, use the full transcript
+                setTranscript(newText)
+                accumulatedTranscriptRef.current = newText
+                console.log('✅ [GOOGLE SPEECH] Final transcript:', newText.substring(0, 100))
+              } else if (isInterim) {
+                // For interim chunks, always update to show real-time progress
+                // Google returns progressively more complete transcripts
+                setTranscript(newText)
+                accumulatedTranscriptRef.current = newText
+                console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText.substring(0, 100))
+              }
             }
           }
         } catch (apiError: any) {
@@ -358,35 +362,32 @@ export function VoiceInputModal({
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            {transcript && !isRecording && !isProcessing && (
+            
+            {/* Stop button - always show when recording */}
+            {isRecording && (
+              <Button
+                onClick={handleStop}
+                disabled={isProcessing}
+                className="min-w-[120px] flex-shrink-0 bg-red-500 hover:bg-red-600 text-white"
+              >
+                <MicOff className="h-4 w-4 mr-2" />
+                Stop
+              </Button>
+            )}
+            
+            {/* Buttons when stopped and has transcript */}
+            {!isRecording && transcript && !isProcessing && (
               <>
                 <Button variant="outline" onClick={handleStartOver} className="flex-shrink-0">
                   Start Over
                 </Button>
                 <Button
-                  onClick={isRecording ? handleStop : (hasStopped ? handleKeepGoing : () => handleStart(false))}
+                  onClick={hasStopped ? handleKeepGoing : () => handleStart(false)}
                   disabled={isProcessing}
-                  className={cn(
-                    'min-w-[120px] flex-shrink-0',
-                    isRecording && 'bg-red-500 hover:bg-red-600 text-white'
-                  )}
+                  className="min-w-[120px] flex-shrink-0"
                 >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="h-4 w-4 mr-2" />
-                      Stop
-                    </>
-                  ) : hasStopped ? (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Keep Going
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Listen
-                    </>
-                  )}
+                  <Mic className="h-4 w-4 mr-2" />
+                  {hasStopped ? 'Keep Going' : 'Listen'}
                 </Button>
                 <Button onClick={handleDone} className="flex-shrink-0">
                   <Check className="h-4 w-4 mr-2" />
@@ -394,31 +395,16 @@ export function VoiceInputModal({
                 </Button>
               </>
             )}
-            {!transcript && (
+            
+            {/* Listen button when no transcript and not recording */}
+            {!isRecording && !transcript && !isProcessing && (
               <Button
-                onClick={isRecording ? handleStop : (hasStopped ? handleKeepGoing : () => handleStart(false))}
+                onClick={() => handleStart(false)}
                 disabled={isProcessing}
-                className={cn(
-                  'min-w-[120px] flex-shrink-0',
-                  isRecording && 'bg-red-500 hover:bg-red-600 text-white'
-                )}
+                className="min-w-[120px] flex-shrink-0"
               >
-                {isRecording ? (
-                  <>
-                    <MicOff className="h-4 w-4 mr-2" />
-                    Stop
-                  </>
-                ) : hasStopped ? (
-                  <>
-                    <Mic className="h-4 w-4 mr-2" />
-                    Keep Going
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4 mr-2" />
-                    Listen
-                  </>
-                )}
+                <Mic className="h-4 w-4 mr-2" />
+                Listen
               </Button>
             )}
           </div>
