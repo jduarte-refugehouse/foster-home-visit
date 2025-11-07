@@ -37,26 +37,16 @@ export function VoiceInputButton({
     isIOS: isIOS
   })
   
-  const { isListening, isSupported, startListening, startListeningWithAutoRestart, stopListening, transcript } = useVoiceInput({
+  const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
-      // For iOS/iPad (press-and-hold), accumulate text while holding
-      // For continuous mode, accumulate text
+      // Accumulate text for both iOS and desktop
+      // Text will be added when user stops recording
       if (text && text.trim().length > 0) {
-        if (isIOS) {
-          // On iOS, accumulate while holding button down
-          // Text will be added when button is released
-          setAccumulatedText(prev => {
-            const newText = prev ? `${prev} ${text.trim()}` : text.trim()
-            console.log('📝 Accumulating text on iOS:', newText)
-            return newText
-          })
-        } else {
-          // On desktop, accumulate for continuous mode
-          setAccumulatedText(prev => {
-            const newText = prev ? `${prev} ${text.trim()}` : text.trim()
-            return newText
-          })
-        }
+        setAccumulatedText(prev => {
+          const newText = prev ? `${prev} ${text.trim()}` : text.trim()
+          console.log('📝 Accumulating text:', newText)
+          return newText
+        })
       }
     },
     onError: (error) => {
@@ -74,8 +64,8 @@ export function VoiceInputButton({
         }
       }
     },
-    continuous: !isIOS, // Use non-continuous on iOS/iPad, continuous on desktop
-    interimResults: !isIOS, // Don't use interim results on iOS (not well supported)
+    continuous: true, // Use continuous mode for both iOS and desktop (works better)
+    interimResults: true, // Use interim results for better responsiveness
   })
 
   // Track if we're manually controlling the listening state
@@ -95,68 +85,30 @@ export function VoiceInputButton({
     return null // Don't show button if not supported
   }
 
-  // For iPad: Use press-and-hold to keep recognition active
-  // Use touch events for better iOS support and to prevent context menu
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isIOS) {
-      e.preventDefault() // Prevent context menu and scrolling
-      e.stopPropagation()
-      setIsHolding(true)
-      holdingRef.current = true
-      setManuallyStopped(false)
-      setAccumulatedText('')
-      console.log('🎤 Starting voice input (press-and-hold)...')
-      // Use auto-restart so if Safari aborts, it will restart while button is held
-      startListeningWithAutoRestart()
-    }
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isIOS) {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsHolding(false)
-      holdingRef.current = false
-      setManuallyStopped(true)
-      stopListening()
-      // Process any accumulated text
-      const finalText = accumulatedText || transcript
-      if (finalText && finalText.trim().length > 0) {
-        console.log('✅ Processing final text on release:', finalText)
-        onTranscript(finalText.trim())
-        setAccumulatedText('')
-      } else {
-        console.log('ℹ️ No text accumulated on release')
-      }
-    }
-  }
-
-  const handleTouchCancel = (e: React.TouchEvent) => {
-    // Handle if touch is cancelled (e.g., user drags finger away)
-    handleTouchEnd(e)
-  }
+  // For iPad: Use simple toggle (press-and-hold doesn't work well with Safari's quick abort)
+  // Toggle on/off is simpler and more reliable
 
   const handleClick = () => {
-    // Desktop mode: toggle on/off
-    if (!isIOS) {
-      if (isListening) {
-        // Stop listening
-        setManuallyStopped(true)
-        stopListening()
-        // Process accumulated text
-        const finalText = accumulatedText || transcript
-        if (finalText && finalText.trim().length > 0) {
-          onTranscript(finalText.trim())
-          setAccumulatedText('') // Reset after sending
-        }
+    // Both desktop and iPad: use toggle mode
+    if (isListening) {
+      // Stop listening
+      setManuallyStopped(true)
+      stopListening()
+      // Process accumulated text
+      const finalText = accumulatedText || transcript
+      if (finalText && finalText.trim().length > 0) {
+        console.log('✅ Processing final text on stop:', finalText)
+        onTranscript(finalText.trim())
+        setAccumulatedText('') // Reset after sending
       } else {
-        setManuallyStopped(false)
-        setAccumulatedText('') // Reset when starting
-        console.log('🎤 Starting voice input (toggle mode)...')
-        startListening()
+        console.log('ℹ️ No text accumulated on stop')
       }
+    } else {
+      setManuallyStopped(false)
+      setAccumulatedText('') // Reset when starting
+      console.log('🎤 Starting voice input (toggle mode)...', isIOS ? '(iPad)' : '(Desktop)')
+      startListening()
     }
-    // On iOS, click is handled by pointer events
   }
 
   // On iPad, recognition may end quickly - this is normal Safari behavior
@@ -169,37 +121,23 @@ export function VoiceInputButton({
       variant={variant}
       size={size}
       onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
       onContextMenu={(e) => {
-        // Prevent context menu on long press for iPad
-        if (isIOS) {
-          e.preventDefault()
-        }
+        // Prevent context menu on long press
+        e.preventDefault()
       }}
       className={cn(
         'flex-shrink-0 select-none flex items-center justify-center gap-1', // select-none prevents text selection
-        isIOS && 'min-w-[60px]', // Make button wider on iOS to fit text
         isListening && 'bg-red-500 hover:bg-red-600 text-white',
         className
       )}
       title={
-        isIOS 
-          ? (isListening ? 'Release to stop recording' : 'Press and hold to record')
-          : (isListening ? 'Stop recording' : 'Start voice input')
+        isListening ? 'Click to stop recording' : 'Click to start voice input'
       }
     >
       {isListening ? (
-        <>
-          <MicOff className="h-4 w-4 flex-shrink-0" />
-          {isIOS && <span className="text-xs whitespace-nowrap">Release</span>}
-        </>
+        <MicOff className="h-4 w-4 flex-shrink-0" />
       ) : (
-        <>
-          <Mic className="h-4 w-4 flex-shrink-0" />
-          {isIOS && <span className="text-xs whitespace-nowrap">Hold</span>}
-        </>
+        <Mic className="h-4 w-4 flex-shrink-0" />
       )}
     </Button>
   )

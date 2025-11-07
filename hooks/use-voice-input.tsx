@@ -75,11 +75,11 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             onResult(finalTranscript.trim())
           }
         } else {
-          // Non-continuous: call onResult with final transcript when available
-          // or with interim if that's all we have (will be finalized on end)
-          if (finalTranscript && onResult) {
-            console.log('✅ Calling onResult with final transcript (non-continuous mode)')
-            onResult(finalTranscript.trim())
+          // Non-continuous: only call onResult with final transcript
+          // Don't call here - wait for onend to process final transcript
+          // This prevents duplicate calls
+          if (finalTranscript) {
+            console.log('📝 Final transcript in non-continuous mode (will process on end):', finalTranscript.trim())
           }
         }
       }
@@ -143,14 +143,12 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           // The button will handle restarting if needed
           console.log('ℹ️ Continuous mode ended - user can restart if needed')
         } else {
-          // Non-continuous mode: process final transcript
+          // Non-continuous mode: process final transcript ONCE
           const finalTranscript = currentTranscript.trim()
           if (finalTranscript.length > 0 && onResult) {
-            console.log('✅ Processing final transcript in non-continuous mode')
-            // Small delay to ensure transcript is finalized
-            setTimeout(() => {
-              onResult(finalTranscript)
-            }, 100)
+            console.log('✅ Processing final transcript in non-continuous mode (single call)')
+            // Process immediately - transcript is already final
+            onResult(finalTranscript)
           } else {
             console.log('ℹ️ No transcript to process (empty or no onResult callback)')
           }
