@@ -3,6 +3,33 @@
  * Provides functions for AI-powered features in the home visit form
  */
 
+/**
+ * Available Anthropic Claude Model Identifiers
+ * 
+ * Main Supported Model IDs (as of November 2025):
+ * - claude-opus-4-1
+ * - claude-opus-4
+ * - claude-opus-4-20250514 (currently used - matches VB.NET implementation)
+ * - claude-sonnet-4
+ * - claude-3-7-sonnet-latest
+ * - claude-3-5-sonnet-latest
+ * - claude-3-5-haiku-latest
+ * - claude-3-haiku
+ * 
+ * Note: Model availability may vary based on API key tier and account access.
+ * The current default (claude-opus-4-20250514) matches the working VB.NET implementation.
+ */
+export const ANTHROPIC_MODELS = {
+  OPUS_4_1: "claude-opus-4-1",
+  OPUS_4: "claude-opus-4",
+  OPUS_4_20250514: "claude-opus-4-20250514", // Currently used - matches VB.NET
+  SONNET_4: "claude-sonnet-4",
+  SONNET_3_7_LATEST: "claude-3-7-sonnet-latest",
+  SONNET_3_5_LATEST: "claude-3-5-sonnet-latest",
+  HAIKU_3_5_LATEST: "claude-3-5-haiku-latest",
+  HAIKU_3: "claude-3-haiku",
+} as const
+
 export interface AnthropicMessage {
   role: "user" | "assistant"
   content: string
@@ -20,7 +47,7 @@ export interface AnthropicResponse {
 export async function callAnthropicAPI(
   messages: AnthropicMessage[],
   systemPrompt?: string,
-  model: string = "claude-opus-4-20250514"
+  model: string = ANTHROPIC_MODELS.OPUS_4_20250514
 ): Promise<AnthropicResponse> {
   try {
     const apiKey = process.env.home_visit_general_key
