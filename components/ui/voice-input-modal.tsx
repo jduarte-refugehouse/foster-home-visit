@@ -124,17 +124,11 @@ export function VoiceInputModal({
                 console.log('✅ [GOOGLE SPEECH] Final transcript:', newText?.substring?.(0, 100) || newText)
                 setIsProcessing(false)
               } else if (isInterim) {
-                // For interim chunks, always update to show real-time progress
-                // Google returns progressively more complete transcripts
-                // Only update if the new text is longer or different (avoids flicker)
-                if (newText.length > accumulatedTranscriptRef.current.length || 
-                    !accumulatedTranscriptRef.current.includes(newText)) {
-                  setTranscript(newText)
-                  accumulatedTranscriptRef.current = newText
-                  console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText?.substring?.(0, 100) || newText)
-                } else {
-                  console.log('⏭️ [GOOGLE SPEECH] Skipping duplicate interim update')
-                }
+                // For interim updates, always update the transcript
+                // We're sending ALL audio so far, so Google returns the complete transcript
+                setTranscript(newText)
+                accumulatedTranscriptRef.current = newText
+                console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText?.substring?.(0, 100) || newText)
               }
             } else if (isInterim) {
               console.log('⚠️ [GOOGLE SPEECH] Empty transcript received for interim chunk')
@@ -225,9 +219,8 @@ export function VoiceInputModal({
 
       mediaRecorderRef.current = mediaRecorder
 
-      let audioChunks: Blob[] = []
       let lastInterimSendTime = 0
-      const INTERIM_INTERVAL_MS = 2000 // Send interim chunks every 2 seconds
+      const INTERIM_INTERVAL_MS = 3000 // Send interim updates every 3 seconds
       const MIN_CHUNK_SIZE = 50000 // Minimum 50KB (~1-2 seconds of audio)
 
       // Monitor MediaRecorder state
@@ -248,17 +241,16 @@ export function VoiceInputModal({
         console.log('📦 [GOOGLE SPEECH] Data available:', {
           size: event.data.size,
           state: mediaRecorder.state,
-          chunksSoFar: audioChunks.length + 1
+          totalChunksSoFar: allAudioChunksRef.current.length + 1
         })
         
         if (event.data.size > 0) {
-          audioChunks.push(event.data)
-          allAudioChunksRef.current.push(event.data) // Store for final processing
+          allAudioChunksRef.current.push(event.data) // Store ALL audio
           
           const now = Date.now()
           
-          // Calculate total size of accumulated chunks
-          const totalSize = audioChunks.reduce((sum, chunk) => sum + chunk.size, 0)
+          // Calculate total size of ALL accumulated audio
+          const totalSize = allAudioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0)
           
           // Check MediaRecorder state before sending
           if (mediaRecorder.state !== 'recording') {
@@ -266,20 +258,20 @@ export function VoiceInputModal({
             return
           }
           
-          // Send chunk for real-time transcription every 2 seconds AND when we have enough audio
+          // Send ALL audio recorded so far for interim updates
+          // This gives Google the full context and returns the complete transcript
           if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS && totalSize >= MIN_CHUNK_SIZE) {
-            // Send accumulated chunks
-            const chunkToSend = new Blob(audioChunks, { type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' })
-            console.log('📤 [GOOGLE SPEECH] Sending interim chunk:', {
+            // Send ALL audio accumulated so far (not just recent chunks)
+            const chunkToSend = new Blob(allAudioChunksRef.current, { 
+              type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' 
+            })
+            console.log('📤 [GOOGLE SPEECH] Sending ALL audio so far for interim update:', {
               size: chunkToSend.size,
-              chunkCount: audioChunks.length,
+              chunkCount: allAudioChunksRef.current.length,
               timeSinceLast: now - lastInterimSendTime,
               recorderState: mediaRecorder.state
             })
             sendAudioChunk(chunkToSend, false, true)
-            // Keep last chunk for continuity (don't reset completely)
-            // This ensures smooth transitions between interim chunks
-            audioChunks = audioChunks.slice(-1)
             lastInterimSendTime = now
           }
         } else {
@@ -290,11 +282,6 @@ export function VoiceInputModal({
       // Handle recording stop
       mediaRecorder.onstop = async () => {
         console.log('🛑 [GOOGLE SPEECH] MediaRecorder stopped, processing final audio...')
-        // Process ALL accumulated audio for final, complete transcript
-        // Include any remaining chunks that weren't sent as interim
-        if (audioChunks.length > 0) {
-          allAudioChunksRef.current.push(...audioChunks)
-        }
         
         if (allAudioChunksRef.current.length > 0) {
           const finalAudio = new Blob(allAudioChunksRef.current, { 
