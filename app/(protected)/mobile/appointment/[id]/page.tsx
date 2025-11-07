@@ -565,16 +565,18 @@ export default function MobileAppointmentDetailPage() {
           <CardHeader>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                {/* Appointment Title - Most Important */}
-                <CardTitle className="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
-                  {appointment.title || appointment.home_name}
-                </CardTitle>
-                {/* Home Name if different from title */}
-                {appointment.title && appointment.title !== appointment.home_name && (
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {appointment.home_name}
-                  </p>
-                )}
+                {/* Appointment Title and Home Name - Stacked on 2 rows if both exist */}
+                <div className="mb-2">
+                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    {appointment.title || appointment.home_name}
+                  </CardTitle>
+                  {/* Home Name if different from title - on second row */}
+                  {appointment.title && appointment.title !== appointment.home_name && appointment.home_name && (
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
+                      {appointment.home_name}
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <Clock className="h-4 w-4 flex-shrink-0" />
                   <span>
