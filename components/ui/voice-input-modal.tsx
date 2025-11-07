@@ -26,179 +26,70 @@ export function VoiceInputModal({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [transcript, setTranscript] = useState('')
-  const [hasStopped, setHasStopped] = useState(false) // Track if we've stopped at least once
+  const [hasStopped, setHasStopped] = useState(false)
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const accumulatedTranscriptRef = useRef<string>('')
-  const allAudioChunksRef = useRef<Blob[]>([]) // Store all audio for final processing
-  const detectedMimeTypeRef = useRef<string>('') // Store detected MIME type
+  const audioStreamRef = useRef<ReadableStreamDefaultController<Uint8Array> | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const detectedMimeTypeRef = useRef<string>('')
+  const finalTranscriptRef = useRef<string>('')
 
   // Cleanup when modal closes
   useEffect(() => {
     if (!open) {
-      // Stop recording if still active
-      if (isRecording) {
-        handleStop()
-      }
-      // Clean up media stream
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
-      }
-      // Clear interval
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-      // Reset state
+      handleCleanup()
       setTranscript('')
       setError(null)
       setIsProcessing(false)
       setHasStopped(false)
-      accumulatedTranscriptRef.current = ''
-      allAudioChunksRef.current = []
+      finalTranscriptRef.current = ''
     }
-  }, [open, isRecording])
+  }, [open])
 
-  const sendAudioChunk = async (audioBlob: Blob, isLastChunk: boolean = false, isInterim: boolean = false) => {
-    try {
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1]
-        
-        // Determine encoding based on detected MIME type
-        const mimeType = detectedMimeTypeRef.current || audioBlob.type
-        let encoding = 'WEBM_OPUS'
-        let sampleRate = 48000
-        
-        if (mimeType.includes('mp4') || mimeType.includes('mpeg')) {
-          encoding = 'MP3' // Google Cloud supports MP3
-          sampleRate = 44100 // MP3 typically uses 44.1kHz
-        } else if (mimeType.includes('ogg')) {
-          encoding = 'OGG_OPUS'
-          sampleRate = 48000
-        } else if (mimeType.includes('webm')) {
-          encoding = 'WEBM_OPUS'
-          sampleRate = 48000
-        }
-        
-        console.log('🎤 [GOOGLE SPEECH] Sending chunk:', {
-          mimeType,
-          encoding,
-          sampleRate,
-          blobSize: audioBlob.size,
-        })
-        
-        try {
-          // Send to API for transcription
-          const response = await fetch('/api/speech/transcribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              audioData: base64Audio,
-              encoding,
-              sampleRateHertz: sampleRate,
-            }),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            throw new Error(errorData.error || `API error: ${response.status}`)
-          }
-
-          const data = await response.json()
-          
-          if (data.success && data.transcript) {
-            const newText = data.transcript.trim()
-            
-            if (newText) {
-              if (isLastChunk) {
-                // For final chunk, use the full transcript
-                setTranscript(newText)
-                accumulatedTranscriptRef.current = newText
-                console.log('✅ [GOOGLE SPEECH] Final transcript:', newText?.substring?.(0, 100) || newText)
-                setIsProcessing(false)
-              } else if (isInterim) {
-                // For interim updates, APPEND new transcribed text
-                // We're sending only NEW audio chunks, not concatenated WebM
-                // Concatenating WebM breaks the container - Google can only read first chunk
-                
-                let processedText = newText
-                
-                // Clean up punctuation for better flow between chunks
-                // Remove trailing period if we're still recording (more chunks coming)
-                if (mediaRecorderRef.current?.state === 'recording') {
-                  processedText = newText.replace(/\.\s*$/, '')
-                }
-                
-                // Append to accumulated transcript
-                const currentText = accumulatedTranscriptRef.current
-                let updatedText: string
-                
-                if (currentText) {
-                  // If current text ends with sentence-ending punctuation, start new sentence
-                  if (currentText.match(/[.!?]\s*$/)) {
-                    updatedText = `${currentText} ${processedText}`
-                  } else {
-                    // Otherwise, continue the sentence (Google might split mid-sentence)
-                    updatedText = `${currentText} ${processedText}`
-                  }
-                } else {
-                  updatedText = processedText
-                }
-                
-                setTranscript(updatedText)
-                accumulatedTranscriptRef.current = updatedText
-                console.log('🔄 [GOOGLE SPEECH] Appending interim text:', {
-                  newText: processedText?.substring?.(0, 50) || processedText,
-                  fullText: updatedText?.substring?.(0, 100) || updatedText
-                })
-              }
-            } else if (isInterim) {
-              console.log('⚠️ [GOOGLE SPEECH] Empty transcript received for interim chunk')
-            }
-          } else if (isInterim) {
-            console.log('⚠️ [GOOGLE SPEECH] No transcript in response for interim chunk')
-          }
-        } catch (apiError: any) {
-          console.error('❌ [GOOGLE SPEECH] API error:', apiError)
-          // Don't show error for interim chunks, only for final
-          if (isLastChunk) {
-            setError(apiError.message || 'Failed to transcribe audio. Please try again.')
-          }
-        }
-      }
-
-      reader.onerror = () => {
-        console.error('❌ [GOOGLE SPEECH] Error reading audio file')
-        if (isLastChunk) {
-          setError('Failed to process audio. Please try again.')
-        }
-      }
-
-      reader.readAsDataURL(audioBlob)
-    } catch (error: any) {
-      console.error('❌ [GOOGLE SPEECH] Error processing audio chunk:', error)
-      if (isLastChunk) {
-        setError(error.message || 'Failed to process audio. Please try again.')
+  const handleCleanup = () => {
+    // Stop recording
+    if (mediaRecorderRef.current && isRecording) {
+      try {
+        mediaRecorderRef.current.stop()
+      } catch (e) {
+        console.log('MediaRecorder already stopped')
       }
     }
+
+    // Clean up media stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+
+    // Close audio stream
+    if (audioStreamRef.current) {
+      try {
+        audioStreamRef.current.close()
+      } catch (e) {
+        console.log('Audio stream already closed')
+      }
+      audioStreamRef.current = null
+    }
+
+    // Close event source
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
+
+    setIsRecording(false)
   }
 
   const handleStart = async (isContinuation: boolean = false) => {
     try {
       setError(null)
       
-      // Only clear transcript if starting fresh, not continuing
+      // Only clear transcript if starting fresh
       if (!isContinuation) {
         setTranscript('')
-        accumulatedTranscriptRef.current = ''
-        allAudioChunksRef.current = []
+        finalTranscriptRef.current = ''
       }
 
       // Request microphone access
@@ -206,200 +97,194 @@ export function VoiceInputModal({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+          sampleRate: 48000,
         } 
       })
-      
       streamRef.current = stream
 
-      // Detect supported audio format (Safari/iPad doesn't support WebM Opus)
+      // Detect supported audio format (Safari/iPad compatibility)
       let mimeType = ''
       const supportedTypes = [
-        'audio/webm;codecs=opus', // Preferred for Chrome/Desktop
-        'audio/webm',              // Fallback WebM
-        'audio/mp4',               // Safari/iPad often supports this
-        'audio/mpeg',              // Alternative for Safari
-        'audio/ogg;codecs=opus',  // Ogg Opus
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/ogg;codecs=opus',
       ]
       
-      // Find the first supported type
       for (const type of supportedTypes) {
         if (MediaRecorder.isTypeSupported(type)) {
           mimeType = type
-          console.log('🎤 [GOOGLE SPEECH] Using audio format:', mimeType)
+          console.log('🎤 [STREAMING] Using audio format:', mimeType)
           break
         }
       }
       
-      // If no supported type found, let MediaRecorder use default (Safari fallback)
-      if (!mimeType) {
-        console.log('⚠️ [GOOGLE SPEECH] No explicit format supported, using MediaRecorder default')
-      }
-      
-      const recorderOptions: MediaRecorderOptions = mimeType 
-        ? { mimeType }
-        : {}
-
-      // Create MediaRecorder with detected format
+      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {}
       const mediaRecorder = new MediaRecorder(stream, recorderOptions)
-      
-      // Store the actual MIME type used (or detect from MediaRecorder)
       detectedMimeTypeRef.current = mimeType || mediaRecorder.mimeType || 'audio/webm;codecs=opus'
-      console.log('🎤 [GOOGLE SPEECH] MediaRecorder mimeType:', mediaRecorder.mimeType || 'default')
+      console.log('🎤 [STREAMING] MediaRecorder mimeType:', mediaRecorder.mimeType || 'default')
 
       mediaRecorderRef.current = mediaRecorder
 
-      let audioChunksForInterim: Blob[] = [] // Accumulate chunks between interim sends
-      let lastInterimSendTime = 0
-      const INTERIM_INTERVAL_MS = 5000 // Send interim updates every 5 seconds (more context for punctuation)
-      const MIN_CHUNK_SIZE = 80000 // Minimum 80KB (~5 seconds of audio at 48kHz)
+      // Determine encoding for Google API
+      const encoding = detectedMimeTypeRef.current.includes('mp4') || detectedMimeTypeRef.current.includes('mpeg')
+        ? 'MP3'
+        : detectedMimeTypeRef.current.includes('ogg')
+        ? 'OGG_OPUS'
+        : 'WEBM_OPUS'
 
-      // Monitor MediaRecorder state
-      mediaRecorder.onstart = () => {
-        console.log('✅ [GOOGLE SPEECH] MediaRecorder started, state:', mediaRecorder.state)
-      }
+      // Create a readable stream for sending audio to the server
+      const audioStream = new ReadableStream({
+        start(controller) {
+          audioStreamRef.current = controller
 
-      mediaRecorder.onpause = () => {
-        console.warn('⚠️ [GOOGLE SPEECH] MediaRecorder PAUSED - this should not happen!')
-      }
-
-      mediaRecorder.onresume = () => {
-        console.log('▶️ [GOOGLE SPEECH] MediaRecorder RESUMED')
-      }
-
-      // Collect audio chunks
-      mediaRecorder.ondataavailable = (event) => {
-        console.log('📦 [GOOGLE SPEECH] Data available:', {
-          size: event.data.size,
-          state: mediaRecorder.state,
-          totalChunksSoFar: allAudioChunksRef.current.length + 1
-        })
-        
-        if (event.data.size > 0) {
-          allAudioChunksRef.current.push(event.data) // Store for final processing
-          audioChunksForInterim.push(event.data) // Accumulate for next interim send
-          
-          const now = Date.now()
-          
-          // Calculate size of chunks since last interim send
-          const totalSize = audioChunksForInterim.reduce((sum, chunk) => sum + chunk.size, 0)
-          
-          // Check MediaRecorder state before sending
-          if (mediaRecorder.state !== 'recording') {
-            console.error('❌ [GOOGLE SPEECH] MediaRecorder not recording! State:', mediaRecorder.state)
-            return
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              console.log('📦 [STREAMING] Audio chunk:', event.data.size, 'bytes')
+              
+              // Convert Blob to Uint8Array and send to server
+              event.data.arrayBuffer().then(buffer => {
+                controller.enqueue(new Uint8Array(buffer))
+              })
+            }
           }
-          
-          // Send NEW audio chunks for transcription
-          // Don't concatenate WebM - it breaks the container format
-          // Instead, send new chunks and APPEND the transcribed text client-side
-          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS && totalSize >= MIN_CHUNK_SIZE) {
-            // Send only NEW chunks since last interim send
-            const chunkToSend = new Blob(audioChunksForInterim, { 
-              type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' 
-            })
-            console.log('📤 [GOOGLE SPEECH] Sending NEW audio chunk for interim update:', {
-              size: chunkToSend.size,
-              chunkCount: audioChunksForInterim.length,
-              timeSinceLast: now - lastInterimSendTime,
-              recorderState: mediaRecorder.state,
-              accumulatedTranscriptLength: accumulatedTranscriptRef.current.length
-            })
-            sendAudioChunk(chunkToSend, false, true)
-            // Clear interim chunks after sending
-            audioChunksForInterim = []
-            lastInterimSendTime = now
+
+          mediaRecorder.onstop = () => {
+            console.log('🛑 [STREAMING] MediaRecorder stopped')
+            controller.close()
+            setIsRecording(false)
+            setHasStopped(true)
           }
-        } else {
-          console.warn('⚠️ [GOOGLE SPEECH] Empty data chunk received')
+
+          mediaRecorder.onerror = (event) => {
+            console.error('❌ [STREAMING] MediaRecorder error:', event)
+            controller.error(new Error('Recording error'))
+            setError('Recording error occurred. Please try again.')
+            setIsRecording(false)
+          }
+        },
+      })
+
+      // Start the streaming transcription
+      setIsProcessing(true)
+      console.log('🎙️ [STREAMING] Starting streaming transcription...')
+
+      // Send audio stream to server and receive SSE responses
+      fetch(`/api/speech/stream?encoding=${encoding}&sampleRate=48000&model=default`, {
+        method: 'POST',
+        body: audioStream,
+        // @ts-ignore - duplex is needed for streaming but not in TypeScript types yet
+        duplex: 'half',
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
-      }
 
-      // Handle recording stop
-      mediaRecorder.onstop = async () => {
-        console.log('🛑 [GOOGLE SPEECH] MediaRecorder stopped, processing final audio...')
-        
-        if (allAudioChunksRef.current.length > 0) {
-          const finalAudio = new Blob(allAudioChunksRef.current, { 
-            type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' 
-          })
-          console.log('🎤 [GOOGLE SPEECH] Final audio blob:', {
-            size: finalAudio.size,
-            type: finalAudio.type,
-            chunkCount: allAudioChunksRef.current.length
-          })
-          await sendAudioChunk(finalAudio, true, false)
-        } else {
-          console.warn('⚠️ [GOOGLE SPEECH] No audio chunks to process')
-          setIsProcessing(false)
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (!reader) {
+          throw new Error('No response body')
         }
-        setHasStopped(true)
-      }
 
-      mediaRecorder.onerror = (event) => {
-        console.error('❌ [GOOGLE SPEECH] MediaRecorder error:', event)
-        setError('Recording error occurred. Please try again.')
-        setIsRecording(false)
-      }
+        // Read SSE events
+        let buffer = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          
+          if (done) {
+            console.log('✅ [STREAMING] Stream completed')
+            setIsProcessing(false)
+            break
+          }
 
-      // Start recording with 1 second intervals
-      mediaRecorder.start(1000)
+          // Decode and process SSE messages
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                
+                if (data.type === 'connected') {
+                  console.log('🔌 [STREAMING] Connected to server')
+                } else if (data.type === 'interim') {
+                  // Update transcript with interim result (progressive refinement)
+                  const interimText = data.transcript
+                  setTranscript(finalTranscriptRef.current + interimText)
+                  console.log('🔄 [STREAMING] Interim:', interimText.substring(0, 50))
+                } else if (data.type === 'final') {
+                  // Append final result to accumulated transcript
+                  const finalText = data.transcript
+                  finalTranscriptRef.current += (finalTranscriptRef.current ? ' ' : '') + finalText
+                  setTranscript(finalTranscriptRef.current)
+                  console.log('✅ [STREAMING] Final:', finalText)
+                } else if (data.type === 'error') {
+                  console.error('❌ [STREAMING] Server error:', data.error)
+                  setError(data.error || 'Transcription error occurred')
+                  setIsProcessing(false)
+                } else if (data.type === 'complete') {
+                  console.log('🏁 [STREAMING] Transcription complete')
+                  setIsProcessing(false)
+                }
+              } catch (e) {
+                console.error('❌ [STREAMING] Failed to parse SSE message:', e)
+              }
+            }
+          }
+        }
+      }).catch((error) => {
+        console.error('❌ [STREAMING] Fetch error:', error)
+        setError(error.message || 'Failed to connect to transcription service')
+        setIsProcessing(false)
+      })
+
+      // Start recording (250ms chunks for smooth streaming)
+      mediaRecorder.start(250)
       setIsRecording(true)
-      console.log('🎤 [GOOGLE SPEECH] Recording started', isContinuation ? '(continuing)' : '(new)')
+      console.log('🎤 [STREAMING] Recording started', isContinuation ? '(continuing)' : '(new)')
+
     } catch (err: any) {
-      console.error('❌ [GOOGLE SPEECH] Error starting recording:', err)
+      console.error('❌ [STREAMING] Error starting recording:', err)
       setError(
         err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
           ? 'Microphone permission denied. Please allow microphone access and try again.'
           : err.message || 'Failed to access microphone. Please check your device settings.'
       )
       setIsRecording(false)
+      setIsProcessing(false)
     }
   }
 
   const handleStop = () => {
+    console.log('🛑 [STREAMING] Stopping recording...')
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
-      setIsRecording(false)
-      setIsProcessing(true)
-      
-      // Stop all tracks
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-        streamRef.current = null
-      }
-      
-      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing final audio...')
     }
   }
 
   const handleKeepGoing = () => {
-    // Continue recording - don't clear transcript
     handleStart(true)
   }
 
   const handleStartOver = () => {
+    handleCleanup()
     setTranscript('')
-    accumulatedTranscriptRef.current = ''
-    allAudioChunksRef.current = []
+    finalTranscriptRef.current = ''
     setHasStopped(false)
-    setError(null)
-    // If recording, stop first
-    if (isRecording) {
-      handleStop()
-    }
+    handleStart(false)
   }
 
   const handleDone = () => {
-    if (transcript.trim()) {
-      onTranscript(transcript.trim())
-      onOpenChange(false)
-    }
+    onTranscript(transcript)
+    onOpenChange(false)
   }
 
   const handleCancel = () => {
-    if (isRecording) {
-      handleStop()
-    }
+    handleCleanup()
     onOpenChange(false)
   }
 
@@ -411,7 +296,24 @@ export function VoiceInputModal({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
+          {/* Recording Indicator */}
+          {isRecording && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm text-red-500 font-medium">Recording...</span>
+            </div>
+          )}
+
+          {/* Processing Indicator */}
+          {isProcessing && !isRecording && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <div className="h-3 w-3 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-sm text-blue-500 font-medium">Processing...</span>
+            </div>
+          )}
+
+          {/* Error Display */}
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -419,31 +321,14 @@ export function VoiceInputModal({
           )}
 
           {/* Transcript Display */}
-          <div className="min-h-[120px] p-4 border rounded-lg bg-muted/50">
+          <div className="min-h-[120px] max-h-[300px] overflow-y-auto rounded-md border border-input bg-background p-4">
             {transcript ? (
               <p className="text-sm whitespace-pre-wrap">{transcript}</p>
             ) : (
               <p className="text-sm text-muted-foreground italic">
-                {isRecording 
-                  ? 'Listening... Speak now. Text will appear as you talk.' 
-                  : isProcessing 
-                    ? 'Processing final audio...' 
-                    : 'Click "Listen" to start recording.'}
+                {isRecording ? 'Speak now...' : 'Your transcribed text will appear here'}
               </p>
             )}
-          </div>
-
-          {/* Status Indicator */}
-          <div className="flex items-center justify-center gap-2">
-            <div
-              className={cn(
-                'h-3 w-3 rounded-full transition-colors',
-                isRecording ? 'bg-red-500 animate-pulse' : isProcessing ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
-              )}
-            />
-            <span className="text-sm text-muted-foreground">
-              {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready'}
-            </span>
           </div>
 
           {/* Controls */}
@@ -453,11 +338,11 @@ export function VoiceInputModal({
               Cancel
             </Button>
             
-            {/* Stop button - always show when recording */}
+            {/* Stop button - show when recording */}
             {isRecording && (
               <Button
                 onClick={handleStop}
-                disabled={isProcessing}
+                disabled={isProcessing && !isRecording}
                 className="min-w-[120px] flex-shrink-0 bg-red-500 hover:bg-red-600 text-white"
               >
                 <MicOff className="h-4 w-4 mr-2" />
@@ -465,7 +350,7 @@ export function VoiceInputModal({
               </Button>
             )}
             
-            {/* Buttons when stopped and has transcript */}
+            {/* Action buttons when stopped and has transcript */}
             {!isRecording && transcript && !isProcessing && (
               <>
                 <Button variant="outline" onClick={handleStartOver} className="flex-shrink-0">

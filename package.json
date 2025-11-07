@@ -12,6 +12,7 @@
     "@azure/identity": "latest",
     "@azure/keyvault-secrets": "latest",
     "@clerk/nextjs": "latest",
+    "@google-cloud/speech": "^7.2.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",

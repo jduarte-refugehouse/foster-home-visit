@@ -64,3 +64,4 @@ When using Google Cloud Speech-to-Text:
 - ✅ No truncation issues
 - ✅ Handles long transcripts
 
+
