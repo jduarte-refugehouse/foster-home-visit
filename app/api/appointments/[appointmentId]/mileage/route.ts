@@ -84,12 +84,14 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       )
     }
 
-    // Validate coordinates
-    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-      return NextResponse.json(
-        { error: "Invalid coordinates" },
-        { status: 400 },
-      )
+    // Validate coordinates (only if provided)
+    if ((action === "start_drive" || action === "arrived") && (latitude !== undefined && longitude !== undefined)) {
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        return NextResponse.json(
+          { error: "Invalid coordinates" },
+          { status: 400 },
+        )
+      }
     }
 
     // Check if appointment exists and verify access
