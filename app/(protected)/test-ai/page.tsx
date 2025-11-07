@@ -202,26 +202,14 @@ export default function TestAIPage() {
                     <SelectItem value={ANTHROPIC_MODELS.OPUS_4_20250514}>
                       {ANTHROPIC_MODELS.OPUS_4_20250514} (Current Default)
                     </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4_1}>
-                      {ANTHROPIC_MODELS.OPUS_4_1}
+                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4_1_20250805}>
+                      {ANTHROPIC_MODELS.OPUS_4_1_20250805} (Claude Opus 4.1)
                     </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4}>
-                      {ANTHROPIC_MODELS.OPUS_4}
+                    <SelectItem value={ANTHROPIC_MODELS.SONNET_3_7_20250219}>
+                      {ANTHROPIC_MODELS.SONNET_3_7_20250219} (Claude Sonnet 3.7)
                     </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.SONNET_4}>
-                      {ANTHROPIC_MODELS.SONNET_4}
-                    </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.SONNET_3_7_LATEST}>
-                      {ANTHROPIC_MODELS.SONNET_3_7_LATEST}
-                    </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.SONNET_3_5_LATEST}>
-                      {ANTHROPIC_MODELS.SONNET_3_5_LATEST}
-                    </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.HAIKU_3_5_LATEST}>
-                      {ANTHROPIC_MODELS.HAIKU_3_5_LATEST}
-                    </SelectItem>
-                    <SelectItem value={ANTHROPIC_MODELS.HAIKU_3}>
-                      {ANTHROPIC_MODELS.HAIKU_3}
+                    <SelectItem value={ANTHROPIC_MODELS.HAIKU_3_5_20241022}>
+                      {ANTHROPIC_MODELS.HAIKU_3_5_20241022} (Claude Haiku 3.5)
                     </SelectItem>
                   </SelectContent>
                 </Select>
