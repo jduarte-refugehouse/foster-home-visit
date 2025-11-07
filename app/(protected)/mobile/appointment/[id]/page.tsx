@@ -770,17 +770,19 @@ export default function MobileAppointmentDetailPage() {
             </>
           )}
 
-          {/* Link to full form (for iPad/desktop) */}
-          <Button
-            variant="outline"
-            className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            asChild
-          >
-            <a href={`/appointment/${appointmentId}`} target="_blank">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open Full Form (Desktop/iPad)
-            </a>
-          </Button>
+          {/* Link to full form (for iPad/desktop) - Only show during visit */}
+          {showVisitContent && (
+            <Button
+              variant="outline"
+              className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              asChild
+            >
+              <a href={`/appointment/${appointmentId}`} target="_blank">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Full Form (Desktop/iPad)
+              </a>
+            </Button>
+          )}
         </div>
       </div>
 
