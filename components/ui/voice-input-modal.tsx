@@ -58,11 +58,12 @@ export function VoiceInputModal({
       audioChunksRef.current = []
 
       // Request microphone access
+      // Note: MediaRecorder with WebM Opus typically records at 48kHz
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 16000, // Google Cloud Speech-to-Text works well with 16kHz
+          // Don't specify sampleRate - let browser use default (usually 48kHz for WebM Opus)
         } 
       })
       
@@ -144,7 +145,7 @@ export function VoiceInputModal({
             body: JSON.stringify({
               audioData: base64Audio,
               encoding: 'WEBM_OPUS',
-              sampleRateHertz: 16000,
+              sampleRateHertz: 48000, // WebM Opus typically uses 48kHz
             }),
           })
 

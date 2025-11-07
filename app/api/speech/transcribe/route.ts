@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
  * {
  *   audioData: string (base64 encoded audio)
  *   encoding?: string (audio encoding, default: 'WEBM_OPUS')
- *   sampleRateHertz?: number (default: 16000 for WebM Opus)
+ *   sampleRateHertz?: number (default: 48000 for WebM Opus)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -43,14 +43,14 @@ export async function POST(request: NextRequest) {
 
     console.log('🎤 [API] Transcribing audio:', {
       encoding: encoding || 'WEBM_OPUS',
-      sampleRate: sampleRateHertz || 16000,
+      sampleRate: sampleRateHertz || 48000,
       dataLength: audioData.length,
     })
 
     // Transcribe using Google Cloud Speech-to-Text
     const result = await transcribeWithGoogleSpeech(audioData, {
       encoding: (encoding as any) || 'WEBM_OPUS',
-      sampleRateHertz: sampleRateHertz || 16000, // WebM Opus typically uses 16kHz
+      sampleRateHertz: sampleRateHertz || 48000, // WebM Opus typically uses 48kHz
       enableAutomaticPunctuation: true,
       enableSpokenPunctuation: true,
       model: 'latest_long', // Better for longer transcripts
