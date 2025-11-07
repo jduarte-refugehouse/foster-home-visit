@@ -288,12 +288,15 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           } else {
             // If calculation failed and locations are different, return error with details
             console.error("❌ [MILEAGE] Google Directions API returned null, but locations are different:", {
-              latDiff, lngDiff
+              latDiff, lngDiff,
+              startLat, startLng,
+              endLat, endLng
             })
             return NextResponse.json(
               { 
-                error: "Failed to calculate driving distance. Please check Google Maps API configuration.",
-                details: "API returned null for different locations"
+                error: "Failed to calculate driving distance. The Directions API returned an error.",
+                details: "Please check: 1) API key restrictions allow server-side calls, 2) Directions API billing is enabled, 3) API key has Directions API permissions. Check server logs for the specific error message.",
+                suggestion: "In Google Cloud Console, check API key restrictions and ensure Directions API is enabled for this key."
               },
               { status: 500 },
             )
@@ -383,11 +386,23 @@ async function calculateDrivingDistance(
     const data = await response.json()
 
     if (data.status !== "OK" || !data.routes || data.routes.length === 0) {
-      console.error("❌ [MILEAGE] Google Directions API error:", {
+      const errorDetails = {
         status: data.status,
         error_message: data.error_message,
+        available_errors: data.available_errors,
         fullResponse: JSON.stringify(data, null, 2)
-      })
+      }
+      console.error("❌ [MILEAGE] Google Directions API error:", errorDetails)
+      
+      // Log specific error messages for common issues
+      if (data.status === "REQUEST_DENIED") {
+        console.error("❌ [MILEAGE] API key may be restricted or invalid. Check API key restrictions in Google Cloud Console.")
+      } else if (data.status === "OVER_QUERY_LIMIT") {
+        console.error("❌ [MILEAGE] API quota exceeded. Check billing and quotas in Google Cloud Console.")
+      } else if (data.status === "INVALID_REQUEST") {
+        console.error("❌ [MILEAGE] Invalid request parameters. Check coordinates:", { startLat, startLng, endLat, endLng })
+      }
+      
       return null
     }
 
