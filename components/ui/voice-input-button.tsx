@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVoiceInput } from '@/hooks/use-voice-input'
@@ -80,6 +80,9 @@ export function VoiceInputButton({
 
   // Track if we're manually controlling the listening state
   const [manuallyStopped, setManuallyStopped] = useState(false)
+  // Track if button is currently being held (for iPad press-and-hold)
+  const [isHolding, setIsHolding] = useState(false)
+  const holdingRef = useRef(false)
 
   // Reset accumulated text when starting to listen
   useEffect(() => {
@@ -93,23 +96,27 @@ export function VoiceInputButton({
   }
 
   // For iPad: Use press-and-hold to keep recognition active
-  // For desktop: Use click to toggle
-  const handlePointerDown = (e: React.PointerEvent) => {
+  // Use touch events for better iOS support and to prevent context menu
+  const handleTouchStart = (e: React.TouchEvent) => {
     if (isIOS) {
-      // On iPad, start listening when button is pressed
-      e.preventDefault()
+      e.preventDefault() // Prevent context menu and scrolling
+      e.stopPropagation()
+      setIsHolding(true)
+      holdingRef.current = true
       setManuallyStopped(false)
       setAccumulatedText('')
-      console.log('🎤 Starting voice input (press-and-hold with auto-restart)...')
+      console.log('🎤 Starting voice input (press-and-hold)...')
       // Use auto-restart so if Safari aborts, it will restart while button is held
       startListeningWithAutoRestart()
     }
   }
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     if (isIOS) {
-      // On iPad, stop listening when button is released
       e.preventDefault()
+      e.stopPropagation()
+      setIsHolding(false)
+      holdingRef.current = false
       setManuallyStopped(true)
       stopListening()
       // Process any accumulated text
@@ -122,6 +129,11 @@ export function VoiceInputButton({
         console.log('ℹ️ No text accumulated on release')
       }
     }
+  }
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    // Handle if touch is cancelled (e.g., user drags finger away)
+    handleTouchEnd(e)
   }
 
   const handleClick = () => {
@@ -157,11 +169,17 @@ export function VoiceInputButton({
       variant={variant}
       size={size}
       onClick={handleClick}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp} // Handle if user drags finger away
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+      onContextMenu={(e) => {
+        // Prevent context menu on long press for iPad
+        if (isIOS) {
+          e.preventDefault()
+        }
+      }}
       className={cn(
-        'flex-shrink-0 touch-none', // touch-none prevents iOS from treating as scroll
+        'flex-shrink-0 select-none', // select-none prevents text selection
         isListening && 'bg-red-500 hover:bg-red-600 text-white',
         className
       )}

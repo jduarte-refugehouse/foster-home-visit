@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 interface UseVoiceInputOptions {
   onResult?: (text: string) => void
@@ -124,12 +124,13 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
 
       recognition.onend = () => {
-        const finalTranscript = transcript.trim()
-        console.log('🎤 Speech recognition ended, continuous:', continuous, 'transcript length:', finalTranscript.length)
-        console.log('🎤 Final transcript:', finalTranscript || '(empty)')
+        // Use a closure to capture current transcript and auto-restart state
+        const currentTranscript = transcript
+        const shouldAutoRestart = autoRestartRef.current
         
-        // Check if we should auto-restart (for press-and-hold on iPad)
-        const shouldAutoRestart = recognitionRef.current?._shouldAutoRestart || false
+        console.log('🎤 Speech recognition ended, continuous:', continuous, 'transcript length:', currentTranscript.trim().length)
+        console.log('🎤 Final transcript:', currentTranscript.trim() || '(empty)')
+        console.log('🎤 Auto-restart flag:', shouldAutoRestart)
         
         setIsListening(false)
         
@@ -141,6 +142,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           console.log('ℹ️ Continuous mode ended - user can restart if needed')
         } else {
           // Non-continuous mode: process final transcript
+          const finalTranscript = currentTranscript.trim()
           if (finalTranscript.length > 0 && onResult) {
             console.log('✅ Processing final transcript in non-continuous mode')
             // Small delay to ensure transcript is finalized
@@ -152,17 +154,41 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
           }
           
           // If we should auto-restart (button still being held), restart after a brief delay
-          if (shouldAutoRestart && recognitionRef.current) {
+          if (shouldAutoRestart) {
             console.log('🔄 Auto-restarting recognition (button still held)...')
             setTimeout(() => {
+              // Check flag again before restarting (it might have been cleared)
+              if (!autoRestartRef.current) {
+                console.log('ℹ️ Auto-restart cancelled (flag cleared)')
+                return
+              }
+              
               try {
-                if (recognitionRef.current && shouldAutoRestart) {
+                if (recognitionRef.current) {
+                  console.log('🔄 Actually restarting now...')
                   recognitionRef.current.start()
+                } else {
+                  console.log('ℹ️ Auto-restart cancelled (recognition object gone)')
                 }
               } catch (restartError) {
                 console.error('❌ Failed to auto-restart:', restartError)
+                // If restart fails, try one more time after a longer delay
+                if (autoRestartRef.current) {
+                  setTimeout(() => {
+                    try {
+                      if (recognitionRef.current && autoRestartRef.current) {
+                        console.log('🔄 Retrying auto-restart...')
+                        recognitionRef.current.start()
+                      }
+                    } catch (retryError) {
+                      console.error('❌ Retry also failed:', retryError)
+                    }
+                  }, 300)
+                }
               }
-            }, 100)
+            }, 150) // Slightly longer delay for iPad
+          } else {
+            console.log('ℹ️ No auto-restart (flag is false)')
           }
         }
       }
@@ -184,7 +210,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         }
       }
     }
-  }, [continuous, interimResults, onResult, onError])
+  }, [continuous, interimResults, onResult, onError, transcript])
 
   const startListening = (autoRestart = false) => {
     if (recognitionRef.current && !isListening) {
@@ -194,10 +220,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         console.log('🎤 Attempting to start recognition...', autoRestart ? '(auto-restart)' : '')
         const wasListening = isListening
         
-        // Mark if we should auto-restart on end (for press-and-hold)
-        if (recognitionRef.current) {
-          (recognitionRef.current as any)._shouldAutoRestart = autoRestart
-        }
+        // Store auto-restart flag in ref
+        autoRestartRef.current = autoRestart
         
         recognitionRef.current.start()
         console.log('🎤 Recognition.start() called successfully, wasListening:', wasListening, 'autoRestart:', autoRestart)
@@ -241,12 +265,12 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   }
 
   const stopListening = () => {
+    // Clear auto-restart flag immediately
+    autoRestartRef.current = false
+    console.log('🛑 Stopping recognition, auto-restart disabled')
+    
     if (recognitionRef.current) {
       try {
-        // Clear auto-restart flag
-        if (recognitionRef.current) {
-          (recognitionRef.current as any)._shouldAutoRestart = false
-        }
         // Only stop if we're actually listening
         if (isListening) {
           recognitionRef.current.stop()
