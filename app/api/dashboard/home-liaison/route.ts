@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
       impersonatedUserId,
       appUserId: userId,
       userName: `${user.first_name} ${user.last_name}`,
-      email: user.email,
+      email: userEmail,
+      appUserEmail: user.email,
+      note: "Filtering by email to handle multiple app_user records",
     })
 
     // Date range: today and next 30 days
