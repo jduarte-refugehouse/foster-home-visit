@@ -372,10 +372,22 @@ async function calculateDrivingDistance(
     console.log("🚗 [MILEAGE] Calculating driving distance:", { origin, destination })
 
     const response = await fetch(url)
+    
+    if (!response.ok) {
+      console.error("❌ [MILEAGE] Google Directions API HTTP error:", response.status, response.statusText)
+      const errorText = await response.text()
+      console.error("❌ [MILEAGE] Error response body:", errorText)
+      return null
+    }
+    
     const data = await response.json()
 
     if (data.status !== "OK" || !data.routes || data.routes.length === 0) {
-      console.error("❌ [MILEAGE] Google Directions API error:", data.status, data.error_message)
+      console.error("❌ [MILEAGE] Google Directions API error:", {
+        status: data.status,
+        error_message: data.error_message,
+        fullResponse: JSON.stringify(data, null, 2)
+      })
       return null
     }
 
