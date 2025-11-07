@@ -144,22 +144,41 @@ export function VoiceInputModal({
               console.log('📦 [STREAMING] Audio chunk:', event.data.size, 'bytes')
               
               // Convert Blob to Uint8Array and send to server
+              // Check if controller is still writable
               event.data.arrayBuffer().then(buffer => {
-                controller.enqueue(new Uint8Array(buffer))
+                try {
+                  if (controller.desiredSize !== null) {
+                    controller.enqueue(new Uint8Array(buffer))
+                  } else {
+                    console.log('⚠️ [STREAMING] Stream already closed, skipping chunk')
+                  }
+                } catch (e) {
+                  console.log('⚠️ [STREAMING] Failed to enqueue chunk:', e)
+                }
               })
             }
           }
 
           mediaRecorder.onstop = () => {
             console.log('🛑 [STREAMING] MediaRecorder stopped')
-            controller.close()
+            try {
+              if (controller.desiredSize !== null) {
+                controller.close()
+              }
+            } catch (e) {
+              console.log('⚠️ [STREAMING] Stream already closed')
+            }
             setIsRecording(false)
             setHasStopped(true)
           }
 
           mediaRecorder.onerror = (event) => {
             console.error('❌ [STREAMING] MediaRecorder error:', event)
-            controller.error(new Error('Recording error'))
+            try {
+              controller.error(new Error('Recording error'))
+            } catch (e) {
+              console.log('⚠️ [STREAMING] Failed to send error to stream')
+            }
             setError('Recording error occurred. Please try again.')
             setIsRecording(false)
           }
@@ -177,8 +196,12 @@ export function VoiceInputModal({
         // @ts-ignore - duplex is needed for streaming but not in TypeScript types yet
         duplex: 'half',
       }).then(async (response) => {
+        console.log('📡 [STREAMING] Server response status:', response.status, response.statusText)
+        
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          const errorText = await response.text().catch(() => 'Unable to read error')
+          console.error('❌ [STREAMING] Server error response:', errorText)
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
         }
 
         const reader = response.body?.getReader()
