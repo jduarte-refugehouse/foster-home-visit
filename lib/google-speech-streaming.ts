@@ -170,7 +170,11 @@ export function createStreamingRecognitionClient(
      */
     write: (audioChunk: Buffer) => {
       try {
-        recognizeStream.write(audioChunk)
+        // Google Streaming API expects request objects, not raw buffers
+        recognizeStream.write({
+          audioContent: audioChunk,
+        })
+        console.log('✍️ [STREAMING] Wrote audio chunk to Google:', audioChunk.length, 'bytes')
       } catch (error) {
         console.error('❌ [STREAMING] Error writing audio chunk:', error)
         onError(error as Error)
