@@ -409,8 +409,11 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
 
       <Alert className="border-blue-200 bg-blue-50">
         <AlertDescription>
-          <strong>T3C Preparation - For Development Only:</strong> This section helps prepare for future T3C
-          certification. Items here are NOT compliance requirements.
+          <strong>TBRI Quality Enhancement - T3C Preparation:</strong> This section helps prepare for future T3C
+          certification by observing TBRI (Trust-Based Relational Intervention) principles. TBRI focuses on three core areas:
+          <strong> Connecting</strong> (building trust and attachment), <strong>Empowering</strong> (meeting sensory and physical needs), 
+          and <strong>Correcting</strong> (teaching social skills and appropriate behaviors). Items here are NOT compliance requirements 
+          but help assess trauma-informed care practices.
         </AlertDescription>
       </Alert>
 
