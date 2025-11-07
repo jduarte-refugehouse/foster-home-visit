@@ -158,7 +158,8 @@ export function VoiceInputModal({
       mediaRecorderRef.current = mediaRecorder
 
       let audioChunks: Blob[] = []
-      let interimChunkCount = 0
+      let lastInterimSendTime = 0
+      const INTERIM_INTERVAL_MS = 1500 // Send interim chunks every 1.5 seconds
 
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
@@ -166,16 +167,18 @@ export function VoiceInputModal({
           audioChunks.push(event.data)
           allAudioChunksRef.current.push(event.data) // Store for final processing
           
-          interimChunkCount++
+          const now = Date.now()
           
-          // Send chunk for real-time transcription every 2-3 seconds
-          // This gives Google more audio to work with and reduces API calls
-          if (interimChunkCount >= 3) {
+          // Send chunk for real-time transcription every 1.5 seconds
+          // Google recommends 100ms-1s for streaming, but we use 1.5s to balance
+          // API calls with real-time feedback
+          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS) {
             const chunkToSend = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
             sendAudioChunk(chunkToSend, false, true)
-            // Reset for next interim chunk
-            audioChunks = []
-            interimChunkCount = 0
+            // Keep last 1 second of audio for continuity, but reset the rest
+            // This ensures we don't send duplicate audio
+            audioChunks = audioChunks.slice(-1) // Keep only the most recent chunk
+            lastInterimSendTime = now
           }
         }
       }
