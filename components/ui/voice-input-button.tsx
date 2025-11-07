@@ -23,15 +23,24 @@ export function VoiceInputButton({
 }: VoiceInputButtonProps) {
   const [accumulatedText, setAccumulatedText] = useState('')
   
+  // Detect if we're on iPad/iOS - use non-continuous mode which works better
+  const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+  
   const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
-      // In continuous mode, accumulate text as we get final results
-      // Don't call onTranscript yet - wait until user stops
+      // For iOS/iPad (non-continuous), immediately add text to field
+      // For continuous mode, accumulate text
       if (text && text.trim().length > 0) {
-        setAccumulatedText(prev => {
-          const newText = prev ? `${prev} ${text.trim()}` : text.trim()
-          return newText
-        })
+        if (isIOS) {
+          // On iOS, immediately add to field since it's non-continuous
+          onTranscript(text.trim())
+        } else {
+          // On desktop, accumulate for continuous mode
+          setAccumulatedText(prev => {
+            const newText = prev ? `${prev} ${text.trim()}` : text.trim()
+            return newText
+          })
+        }
       }
     },
     onError: (error) => {
@@ -42,9 +51,12 @@ export function VoiceInputButton({
         }
       }
     },
-    continuous: true, // Use continuous mode for better iPad support
-    interimResults: true, // Show interim results for better UX
+    continuous: !isIOS, // Use non-continuous on iOS/iPad, continuous on desktop
+    interimResults: !isIOS, // Don't use interim results on iOS (not well supported)
   })
+
+  // Track if we're manually controlling the listening state
+  const [manuallyStopped, setManuallyStopped] = useState(false)
 
   // Reset accumulated text when starting to listen
   useEffect(() => {
@@ -59,19 +71,29 @@ export function VoiceInputButton({
 
   const handleClick = () => {
     if (isListening) {
-      // Stop listening and process accumulated text
+      // Stop listening
+      setManuallyStopped(true)
       stopListening()
-      // Use accumulated text if available, otherwise use current transcript
-      const finalText = accumulatedText || transcript
-      if (finalText && finalText.trim().length > 0) {
-        onTranscript(finalText.trim())
-        setAccumulatedText('') // Reset after sending
+      // For desktop (continuous mode), process accumulated text
+      if (!isIOS) {
+        const finalText = accumulatedText || transcript
+        if (finalText && finalText.trim().length > 0) {
+          onTranscript(finalText.trim())
+          setAccumulatedText('') // Reset after sending
+        }
       }
+      // For iOS, text is already added in onResult callback
     } else {
+      setManuallyStopped(false)
       setAccumulatedText('') // Reset when starting
+      console.log('🎤 Starting voice input...', isIOS ? '(iOS mode)' : '(continuous mode)')
       startListening()
     }
   }
+
+  // On iPad, recognition may end quickly - this is normal Safari behavior
+  // User needs to tap the button again to continue speaking
+  // We don't auto-restart to avoid confusion
 
   return (
     <Button

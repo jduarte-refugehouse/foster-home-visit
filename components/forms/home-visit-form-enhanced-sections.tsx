@@ -410,22 +410,23 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
 
       <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
         <AlertDescription>
-          <strong>TBRI Quality Enhancement - T3C Preparation:</strong> This section helps prepare for future T3C
-          certification by observing TBRI (Trust-Based Relational Intervention) principles. TBRI focuses on three core areas:
-          <strong> Connecting</strong> (building trust and attachment), <strong>Empowering</strong> (meeting sensory and physical needs), 
-          and <strong>Correcting</strong> (teaching social skills and appropriate behaviors). Items here are NOT compliance requirements 
-          but help assess trauma-informed care practices.
+          <strong>Optional - T3C Preparation:</strong> This section is <strong>optional</strong> and only needed for homes preparing for T3C (Trust-Based Relational Intervention) certification. 
+          It helps document TBRI principles: <strong>Connecting</strong> (building trust), <strong>Empowering</strong> (meeting sensory needs), 
+          and <strong>Correcting</strong> (teaching social skills). <strong>This is NOT a compliance requirement</strong> for regular home visits.
         </AlertDescription>
       </Alert>
 
       <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            Trauma-Informed Practices Observed
-            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-              T3C Development
+            <span>Trauma-Informed Practices Observed</span>
+            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              Optional - T3C Only
             </Badge>
           </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            <strong>Optional:</strong> Only complete this if the home is preparing for T3C certification. Tap buttons to indicate what you observed.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -495,20 +496,52 @@ export const QualityEnhancementSection = ({ formData, onChange }) => {
       </Card>
 
       <div className="border-t pt-6">
-        <Label htmlFor="quality-enhancement-combined-notes">TBRI Quality Enhancement Observations</Label>
-        <p className="text-sm text-muted-foreground mb-2">
-          Use guided questions to document observations of TBRI (Trust-Based Relational Intervention) principles: 
-          <strong> Connecting</strong> (building trust), <strong>Empowering</strong> (meeting sensory needs), and 
-          <strong> Correcting</strong> (teaching social skills).
+        <div className="flex items-center gap-2 mb-2">
+          <Label htmlFor="quality-enhancement-combined-notes" className="text-base font-semibold">
+            TBRI Quality Enhancement Observations
+          </Label>
+          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            Optional - T3C Only
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground mb-3">
+          <strong>Optional:</strong> Only complete this if documenting for T3C certification. You can either:
         </p>
-        <GuidedQuestionField
-          fieldId="quality-enhancement-observations"
-          fieldType="qualityEnhancement"
-          value={quality.combinedNotes || ""}
-          onChange={(value) => onChange("qualityEnhancement.combinedNotes", value)}
-          label="Quality Enhancement Observations"
-          context={{}}
-        />
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium mb-2">Option 1: Simple Text Entry (Recommended)</p>
+            <TextareaWithVoice
+              id="quality-enhancement-combined-notes"
+              value={quality.combinedNotes || ""}
+              onChange={(e) => {
+                // Handle both structured JSON and plain text
+                const text = e.target.value
+                onChange("qualityEnhancement.combinedNotes", text)
+              }}
+              placeholder="Describe any TBRI principles you observed: Connecting (trust building), Empowering (sensory needs), Correcting (social skills)..."
+              rows={6}
+              showVoiceButton={true}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Simply describe what you observed. No navigation or dropdowns needed.
+            </p>
+          </div>
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium mb-2">Option 2: Guided Questions (Advanced)</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              If you prefer structured questions, click below to use guided questions. This will walk you through specific TBRI principles.
+            </p>
+            <GuidedQuestionField
+              fieldId="quality-enhancement-observations"
+              fieldType="qualityEnhancement"
+              value={quality.combinedNotes || ""}
+              onChange={(value) => onChange("qualityEnhancement.combinedNotes", value)}
+              label="Quality Enhancement Observations"
+              context={{}}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -32,6 +32,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       recognition.onstart = () => {
         setIsListening(true)
         setTranscript('')
+        console.log('🎤 Speech recognition started')
       }
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -91,15 +92,23 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       }
 
       recognition.onend = () => {
-        const finalTranscript = transcript.trim()
+        console.log('🎤 Speech recognition ended, continuous:', continuous, 'transcript length:', transcript.length)
         setIsListening(false)
-        // If we have a transcript when ending and no result was called yet, process it
-        // This handles cases where recognition ends naturally (non-continuous mode)
-        if (!continuous && finalTranscript.length > 0 && onResult) {
-          // Small delay to ensure transcript is finalized
-          setTimeout(() => {
-            onResult(finalTranscript)
-          }, 100)
+        
+        // In continuous mode on iPad, recognition may end automatically after a pause
+        // This is normal behavior - user needs to tap button again to continue
+        if (continuous) {
+          // Don't auto-restart - let the user control it via the button
+          // The button will handle restarting if needed
+        } else {
+          // Non-continuous mode: process final transcript
+          const finalTranscript = transcript.trim()
+          if (finalTranscript.length > 0 && onResult) {
+            // Small delay to ensure transcript is finalized
+            setTimeout(() => {
+              onResult(finalTranscript)
+            }, 100)
+          }
         }
       }
 
