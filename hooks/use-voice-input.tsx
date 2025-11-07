@@ -127,6 +127,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
 
       recognition.onend = () => {
         // Use a closure to capture current transcript and auto-restart state
+        // Get the latest transcript from state at the time onend fires
         const currentTranscript = transcript
         const shouldAutoRestart = autoRestartRef.current
         
@@ -136,11 +137,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         
         setIsListening(false)
         
-        // In continuous mode on iPad, recognition may end automatically after a pause
-        // This is normal behavior - user needs to tap button again to continue
+        // In continuous mode, we accumulate results as they come in
+        // The button component handles processing when user stops
+        // But if recognition ends unexpectedly, we should still process what we have
         if (continuous) {
-          // Don't auto-restart - let the user control it via the button
-          // The button will handle restarting if needed
+          // In continuous mode, process any final transcript we have
+          // The button will also process accumulated text, but this ensures we don't lose data
+          if (currentTranscript.trim().length > 0 && onResult) {
+            console.log('✅ Processing transcript on end (continuous mode):', currentTranscript.trim().substring(0, 100))
+            onResult(currentTranscript.trim())
+          }
           console.log('ℹ️ Continuous mode ended - user can restart if needed')
         } else {
           // Non-continuous mode: process final transcript ONCE

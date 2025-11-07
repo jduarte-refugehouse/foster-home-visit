@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { cn } from '@/lib/utils'
+import { accumulateTranscript, addPunctuation } from '@/lib/speech-utils'
 
 interface VoiceInputButtonProps {
   onTranscript: (text: string) => void
@@ -22,95 +23,87 @@ export function VoiceInputButton({
   variant = 'outline',
 }: VoiceInputButtonProps) {
   const [accumulatedText, setAccumulatedText] = useState('')
+  const lastProcessedTextRef = useRef<string>('') // Track what we've already processed
   
-  // Detect if we're on iPad/iOS - use non-continuous mode which works better
-  // Check for iPad (including newer iPads that report as Mac)
+  // Detect if we're on iPad/iOS
   const isIOS = typeof window !== 'undefined' && (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPad on iOS 13+
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   )
-  
-  console.log('🔍 Device detection:', {
-    userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A',
-    platform: typeof window !== 'undefined' ? navigator.platform : 'N/A',
-    maxTouchPoints: typeof window !== 'undefined' ? navigator.maxTouchPoints : 'N/A',
-    isIOS: isIOS
-  })
   
   const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
-      // Accumulate text for both iOS and desktop
-      // Text will be added when user stops recording
+      // Accumulate text intelligently (handles duplicates, overlaps, etc.)
       if (text && text.trim().length > 0) {
         setAccumulatedText(prev => {
-          const newText = prev ? `${prev} ${text.trim()}` : text.trim()
-          console.log('📝 Accumulating text:', newText)
-          return newText
+          const merged = accumulateTranscript(prev, text)
+          console.log('📝 Accumulating transcript:', { prev: prev.substring(0, 50), new: text.substring(0, 50), merged: merged.substring(0, 50) })
+          return merged
         })
       }
     },
     onError: (error) => {
-      // On iPad, "no-speech" errors are common and expected
-      // Safari aborts very quickly if you don't speak immediately
       if (error && error.includes('Speak immediately')) {
-        // This is our helpful message, show it
         if (onError) {
           onError(error)
         }
       } else if (error && !error.includes('aborted') && !error.includes('no-speech')) {
-        // Show other errors, but not aborted/no-speech
         if (onError) {
           onError(error)
         }
       }
     },
-    continuous: true, // Use continuous mode for both iOS and desktop (works better)
-    interimResults: true, // Use interim results for better responsiveness
+    continuous: true,
+    interimResults: true,
   })
 
-  // Track if we're manually controlling the listening state
   const [manuallyStopped, setManuallyStopped] = useState(false)
 
   // Reset accumulated text when starting to listen
   useEffect(() => {
     if (isListening) {
       setAccumulatedText('')
+      lastProcessedTextRef.current = '' // Reset tracking
     }
   }, [isListening])
 
   if (!isSupported) {
-    return null // Don't show button if not supported
+    return null
   }
 
-  // For iPad: Use simple toggle (press-and-hold doesn't work well with Safari's quick abort)
-  // Toggle on/off is simpler and more reliable
-
   const handleClick = () => {
-    // Both desktop and iPad: use toggle mode
     if (isListening) {
       // Stop listening
       setManuallyStopped(true)
       stopListening()
-      // Process accumulated text
+      
+      // Process accumulated text only if it's different from what we last processed
       const finalText = accumulatedText || transcript
       if (finalText && finalText.trim().length > 0) {
-        console.log('✅ Processing final text on stop:', finalText)
-        onTranscript(finalText.trim())
-        setAccumulatedText('') // Reset after sending
+        const trimmedFinal = finalText.trim()
+        
+        // Check if we've already processed this exact text
+        if (trimmedFinal !== lastProcessedTextRef.current) {
+          // Add punctuation before sending
+          const withPunctuation = addPunctuation(trimmedFinal)
+          console.log('✅ Processing final text on stop:', { original: trimmedFinal.substring(0, 100), withPunctuation: withPunctuation.substring(0, 100) })
+          lastProcessedTextRef.current = trimmedFinal
+          onTranscript(withPunctuation)
+          setAccumulatedText('') // Reset after sending
+        } else {
+          console.log('🚫 Skipping duplicate final text')
+        }
       } else {
         console.log('ℹ️ No text accumulated on stop')
       }
     } else {
       setManuallyStopped(false)
-      setAccumulatedText('') // Reset when starting
+      setAccumulatedText('')
+      lastProcessedTextRef.current = '' // Reset tracking
       console.log('🎤 Starting voice input (toggle mode)...', isIOS ? '(iPad)' : '(Desktop)')
       startListening()
     }
   }
-
-  // On iPad, recognition may end quickly - this is normal Safari behavior
-  // User needs to tap the button again to continue speaking
-  // We don't auto-restart to avoid confusion
 
   return (
     <Button
@@ -119,11 +112,10 @@ export function VoiceInputButton({
       size={size}
       onClick={handleClick}
       onContextMenu={(e) => {
-        // Prevent context menu on long press
         e.preventDefault()
       }}
       className={cn(
-        'flex-shrink-0 select-none flex items-center justify-center gap-1', // select-none prevents text selection
+        'flex-shrink-0 select-none flex items-center justify-center gap-1',
         isListening && 'bg-red-500 hover:bg-red-600 text-white',
         className
       )}
