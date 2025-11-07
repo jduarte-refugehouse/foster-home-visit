@@ -24,7 +24,18 @@ export function VoiceInputButton({
   const [accumulatedText, setAccumulatedText] = useState('')
   
   // Detect if we're on iPad/iOS - use non-continuous mode which works better
-  const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+  // Check for iPad (including newer iPads that report as Mac)
+  const isIOS = typeof window !== 'undefined' && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPad on iOS 13+
+  )
+  
+  console.log('🔍 Device detection:', {
+    userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'N/A',
+    platform: typeof window !== 'undefined' ? navigator.platform : 'N/A',
+    maxTouchPoints: typeof window !== 'undefined' ? navigator.maxTouchPoints : 'N/A',
+    isIOS: isIOS
+  })
   
   const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
@@ -44,8 +55,15 @@ export function VoiceInputButton({
       }
     },
     onError: (error) => {
-      // Filter out "aborted" errors - they're usually harmless
-      if (error && !error.includes('aborted')) {
+      // On iPad, "no-speech" errors are common and expected
+      // Safari aborts very quickly if you don't speak immediately
+      if (error && error.includes('Speak immediately')) {
+        // This is our helpful message, show it
+        if (onError) {
+          onError(error)
+        }
+      } else if (error && !error.includes('aborted') && !error.includes('no-speech')) {
+        // Show other errors, but not aborted/no-speech
         if (onError) {
           onError(error)
         }

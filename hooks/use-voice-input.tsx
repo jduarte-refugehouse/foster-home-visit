@@ -28,6 +28,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
       recognition.continuous = continuous
       recognition.interimResults = interimResults
       recognition.lang = 'en-US'
+      
+      // On iOS/iPad, set a longer timeout before aborting
+      // Safari on iPad aborts very quickly if no speech is detected
+      // We can't directly set timeout, but we can log it
+      console.log('🎤 Recognition configured:', {
+        continuous,
+        interimResults,
+        lang: recognition.lang,
+        userAgent: navigator.userAgent
+      })
 
       recognition.onstart = () => {
         setIsListening(true)
@@ -76,17 +86,30 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         console.error('❌ Speech recognition error:', event.error, event.message)
         setIsListening(false)
         
-        // Don't show error for "aborted" - it's usually intentional or a timing issue
+        // On iPad Safari, "aborted" with "No speech detected" happens immediately
+        // This is a known Safari quirk - it aborts if no speech is detected very quickly
         if (event.error === 'aborted') {
-          console.log('ℹ️ Recognition aborted (this is usually normal)')
-          // Silently handle abort - user may have stopped it manually
+          console.log('ℹ️ Recognition aborted')
+          // If it aborted immediately after starting, it might be Safari's quick abort
+          // Don't show error - user can try again
+          return
+        }
+        
+        // "no-speech" on iPad Safari often means it aborted too quickly
+        // This is different from desktop where it waits longer
+        if (event.error === 'no-speech') {
+          console.log('ℹ️ No speech detected - this may be Safari aborting too quickly on iPad')
+          // On iPad, this often happens immediately - don't show as error
+          // User can try again and speak immediately
+          if (onError) {
+            // Only show a helpful message, not an error
+            onError('Speak immediately after tapping the microphone button. If it stops, tap again.')
+          }
           return
         }
         
         const errorMessage = 
-          event.error === 'no-speech' 
-            ? 'No speech detected. Please try again.'
-            : event.error === 'audio-capture'
+          event.error === 'audio-capture'
             ? 'Microphone not found. Please check your device settings.'
             : event.error === 'not-allowed'
             ? 'Microphone permission denied. Please enable microphone access.'
