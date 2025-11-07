@@ -122,14 +122,25 @@ export function VoiceInputModal({
                 setTranscript(newText)
                 accumulatedTranscriptRef.current = newText
                 console.log('✅ [GOOGLE SPEECH] Final transcript:', newText.substring(0, 100))
+                setIsProcessing(false)
               } else if (isInterim) {
                 // For interim chunks, always update to show real-time progress
                 // Google returns progressively more complete transcripts
-                setTranscript(newText)
-                accumulatedTranscriptRef.current = newText
-                console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText.substring(0, 100))
+                // Only update if the new text is longer or different (avoids flicker)
+                if (newText.length > accumulatedTranscriptRef.current.length || 
+                    !accumulatedTranscriptRef.current.includes(newText)) {
+                  setTranscript(newText)
+                  accumulatedTranscriptRef.current = newText
+                  console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText.substring(0, 100))
+                } else {
+                  console.log('⏭️ [GOOGLE SPEECH] Skipping duplicate interim update')
+                }
               }
+            } else if (isInterim) {
+              console.log('⚠️ [GOOGLE SPEECH] Empty transcript received for interim chunk')
             }
+          } else if (isInterim) {
+            console.log('⚠️ [GOOGLE SPEECH] No transcript in response for interim chunk')
           }
         } catch (apiError: any) {
           console.error('❌ [GOOGLE SPEECH] API error:', apiError)
