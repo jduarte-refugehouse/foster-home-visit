@@ -48,6 +48,16 @@ export async function POST(request: NextRequest) {
     console.log("📋 [API] FormData keys:", Object.keys(formData))
     console.log("📋 [API] ComplianceReview keys:", formData.complianceReview ? Object.keys(formData.complianceReview) : "No complianceReview")
     console.log("📋 [API] ComplianceReview sections:", formData.complianceReview ? Object.keys(formData.complianceReview).filter(k => formData.complianceReview[k] !== null) : [])
+    
+    // Debug: Log sample compliance section to see structure
+    if (formData.complianceReview?.medication) {
+      console.log("📋 [API] Medication section sample:", {
+        itemsCount: formData.complianceReview.medication.items?.length || 0,
+        firstItem: formData.complianceReview.medication.items?.[0],
+        hasMonth1: formData.complianceReview.medication.items?.[0]?.month1 !== undefined,
+      })
+    }
+    
     console.log("📋 [API] Signatures:", formData.signatures)
     console.log("📋 [API] Observations:", formData.observations)
     console.log("📋 [API] FamilyInfo:", formData.familyInfo)

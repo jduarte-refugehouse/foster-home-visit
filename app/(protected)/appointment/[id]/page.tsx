@@ -506,12 +506,29 @@ export default function AppointmentDetailPage() {
         if (!section) return null
         if (!section.items || section.items.length === 0) return null
         
-        const filledItems = section.items.filter((item: any) => 
-          item.status || item.notes
-        )
+        // Check for items with data - handle both old format (status) and new format (month1, month2, month3)
+        const filledItems = section.items.filter((item: any) => {
+          // Old format: has status or notes
+          if (item.status || item.notes) return true
+          
+          // New format: has monthly tracking data
+          if (item.month1 || item.month2 || item.month3) {
+            // Check if any month has compliant/na set or notes
+            const hasData = [item.month1, item.month2, item.month3].some((month: any) => {
+              if (!month) return false
+              return month.compliant === true || month.na === true || (month.notes && month.notes.trim())
+            })
+            return hasData
+          }
+          
+          return false
+        })
         
+        // If no filled items but we have combined notes, still include the section
         if (filledItems.length === 0 && !section.combinedNotes) return null
         
+        // For saving, we only save items with data (to reduce payload size)
+        // But for the report, we'll include all items
         return {
           items: filledItems,
           combinedNotes: section.combinedNotes || ""
@@ -670,14 +687,30 @@ export default function AppointmentDetailPage() {
         if (!section) return null
         if (!section.items || section.items.length === 0) return null
         
-        const filledItems = section.items.filter((item: any) => 
-          item.status || item.notes
-        )
+        // Check for items with data - handle both old format (status) and new format (month1, month2, month3)
+        const filledItems = section.items.filter((item: any) => {
+          // Old format: has status or notes
+          if (item.status || item.notes) return true
+          
+          // New format: has monthly tracking data
+          if (item.month1 || item.month2 || item.month3) {
+            // Check if any month has compliant/na set or notes
+            const hasData = [item.month1, item.month2, item.month3].some((month: any) => {
+              if (!month) return false
+              return month.compliant === true || month.na === true || (month.notes && month.notes.trim())
+            })
+            return hasData
+          }
+          
+          return false
+        })
         
+        // If no filled items but we have combined notes, still include the section with all items
         if (filledItems.length === 0 && !section.combinedNotes) return null
         
+        // Return ALL items (not just filled ones) so the report can show "Not answered" for empty ones
         return {
-          items: filledItems,
+          items: section.items, // Return all items, not just filledItems
           combinedNotes: section.combinedNotes || ""
         }
       }
