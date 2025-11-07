@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateContextualQuestions, enhanceResponse } from "@/lib/anthropic-helper"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic"
  */
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const authResult = requireClerkAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Authenticate user using Clerk session cookies (for browser access)
+    const user = await currentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 })
     }
 
     // Check if API key is configured
