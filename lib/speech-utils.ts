@@ -11,8 +11,18 @@ export function addPunctuation(text: string): string {
 
   let processed = text.trim()
 
-  // Remove any existing punctuation at the end (we'll add our own)
-  processed = processed.replace(/[.,!?;:]+$/, '')
+  // Common sentence-ending words/phrases
+  const sentenceEnders = [
+    'period', 'question mark', 'exclamation point', 'exclamation',
+    'question', 'end of sentence', 'new sentence'
+  ]
+
+  // Common comma-indicating words
+  const commaIndicators = [
+    'comma', 'pause', 'and', 'but', 'or', 'so', 'then', 'also',
+    'however', 'therefore', 'furthermore', 'moreover', 'additionally',
+    'first', 'second', 'third', 'next', 'finally', 'lastly'
+  ]
 
   // Split into words
   const words = processed.split(/\s+/)
@@ -22,19 +32,55 @@ export function addPunctuation(text: string): string {
   let i = 0
 
   while (i < words.length) {
-    const word = words[i]
-    result.push(word)
+    const word = words[i].toLowerCase()
+    const originalWord = words[i]
+    const nextWord = i + 1 < words.length ? words[i + 1] : null
+    const nextWordLower = nextWord ? nextWord.toLowerCase() : null
 
-    // Check if this might be the end of a sentence
-    // Look for sentence-ending patterns
-    const nextWord = words[i + 1]
-    
+    // Check if this word indicates a sentence end
+    if (sentenceEnders.some(ender => word.includes(ender))) {
+      // Skip the word itself, just add punctuation
+      if (result.length > 0 && !/[.,!?;:]$/.test(result[result.length - 1])) {
+        // Determine punctuation type
+        if (word.includes('question')) {
+          result[result.length - 1] = result[result.length - 1] + '?'
+        } else if (word.includes('exclamation')) {
+          result[result.length - 1] = result[result.length - 1] + '!'
+        } else {
+          result[result.length - 1] = result[result.length - 1] + '.'
+        }
+      }
+      i++
+      continue
+    }
+
+    // Check if this word indicates a comma
+    if (commaIndicators.some(indicator => word === indicator || word.startsWith(indicator))) {
+      result.push(originalWord)
+      // Add comma if not already present and not at end
+      if (nextWord && !/[.,!?;:]$/.test(originalWord)) {
+        result[result.length - 1] = originalWord + ','
+      }
+      i++
+      continue
+    }
+
+    // Regular word - check for sentence boundaries
+    result.push(originalWord)
+
     if (nextWord) {
       // If next word starts with capital (likely new sentence), add period
-      if (nextWord[0] === nextWord[0].toUpperCase() && nextWord[0] !== nextWord[0].toLowerCase()) {
-        // But check if current word already ends with punctuation
-        if (!/[.,!?;:]$/.test(word)) {
-          result[result.length - 1] = word + '.'
+      const nextFirstChar = nextWord[0]
+      if (nextFirstChar === nextFirstChar.toUpperCase() && 
+          nextFirstChar !== nextFirstChar.toLowerCase() &&
+          !/[.,!?;:]$/.test(originalWord)) {
+        // But only if current word doesn't look like it's mid-sentence
+        // (e.g., not a conjunction or common mid-sentence word)
+        const isMidSentence = commaIndicators.some(indicator => 
+          word === indicator || word.startsWith(indicator)
+        )
+        if (!isMidSentence) {
+          result[result.length - 1] = originalWord + '.'
         }
       }
     }
@@ -49,11 +95,12 @@ export function addPunctuation(text: string): string {
 
   // Ensure the text ends with punctuation
   const finalText = result.join(' ')
-  if (!/[.,!?;:]$/.test(finalText)) {
-    return finalText + '.'
+  const trimmed = finalText.trim()
+  if (trimmed && !/[.,!?;:]$/.test(trimmed)) {
+    return trimmed + '.'
   }
 
-  return finalText
+  return trimmed
 }
 
 /**
