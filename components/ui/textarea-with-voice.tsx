@@ -68,9 +68,8 @@ const TextareaWithVoice = React.forwardRef<
           <VoiceInputButton
             onTranscript={handleVoiceTranscript}
             onError={handleVoiceError}
-            size="sm"
-            variant="outline"
-            className="bg-background border-border shadow-sm hover:bg-muted"
+            realTime={true}
+            className="bg-background/95 backdrop-blur-sm rounded-lg p-1.5 shadow-sm"
           />
         </div>
       )}

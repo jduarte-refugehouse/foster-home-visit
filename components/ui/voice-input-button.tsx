@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Mic } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { cn } from '@/lib/utils'
 import { accumulateTranscript, addPunctuation } from '@/lib/speech-utils'
@@ -11,19 +12,17 @@ interface VoiceInputButtonProps {
   onTranscript: (text: string) => void
   onError?: (error: string) => void
   className?: string
-  size?: 'sm' | 'default' | 'lg'
-  variant?: 'default' | 'outline' | 'ghost'
+  realTime?: boolean // If true, updates text field as you speak
 }
 
 export function VoiceInputButton({
   onTranscript,
   onError,
   className,
-  size = 'default',
-  variant = 'outline',
+  realTime = true, // Default to real-time updates
 }: VoiceInputButtonProps) {
   const [accumulatedText, setAccumulatedText] = useState('')
-  const lastProcessedTextRef = useRef<string>('') // Track what we've already processed
+  const lastSentTextRef = useRef<string>('') // Track what we've already sent to the field
   const isProcessingRef = useRef(false) // Track if we're currently processing
   const pendingStopRef = useRef(false) // Track if user clicked stop but we're waiting for recognition to end
   
@@ -40,6 +39,19 @@ export function VoiceInputButton({
         setAccumulatedText(prev => {
           const merged = accumulateTranscript(prev, text)
           console.log('📝 Accumulating transcript:', { prev: prev.substring(0, 50), new: text.substring(0, 50), merged: merged.substring(0, 50) })
+          
+          // If real-time mode, update the field as we speak
+          if (realTime && merged !== lastSentTextRef.current) {
+            // Only send the new part, not the whole accumulated text
+            // This prevents overwriting what the user might have typed
+            const newPart = merged.replace(lastSentTextRef.current, '').trim()
+            if (newPart) {
+              console.log('🔄 Real-time update:', newPart.substring(0, 50))
+              onTranscript(newPart) // Send just the new part
+              lastSentTextRef.current = merged
+            }
+          }
+          
           return merged
         })
       }
@@ -65,7 +77,7 @@ export function VoiceInputButton({
   useEffect(() => {
     if (isListening) {
       setAccumulatedText('')
-      lastProcessedTextRef.current = '' // Reset tracking
+      lastSentTextRef.current = '' // Reset tracking
       isProcessingRef.current = false
       pendingStopRef.current = false
     } else {
@@ -92,12 +104,28 @@ export function VoiceInputButton({
       if (finalText && finalText.trim().length > 0) {
         const trimmedFinal = finalText.trim()
         
-        // Check if we've already processed this exact text
-        if (trimmedFinal !== lastProcessedTextRef.current) {
-          lastProcessedTextRef.current = trimmedFinal
+        // If real-time mode was active, we've already sent the text
+        // Just add final punctuation
+        if (realTime && lastSentTextRef.current === trimmedFinal) {
+          // Text was already sent in real-time, just add punctuation to the end
+          const withPunctuation = addPunctuation(trimmedFinal)
+          if (withPunctuation !== trimmedFinal) {
+            // Only send if punctuation was added
+            const punctuationOnly = withPunctuation.replace(trimmedFinal, '').trim()
+            if (punctuationOnly) {
+              onTranscript(punctuationOnly)
+            }
+          }
+          setAccumulatedText('')
+          isProcessingRef.current = false
+          return
+        }
+        
+        // Non-real-time mode: process and send final text
+        if (trimmedFinal !== lastSentTextRef.current) {
+          lastSentTextRef.current = trimmedFinal
           
           // Try to enhance with Google Cloud Speech-to-Text if available
-          // This provides better punctuation and accuracy
           try {
             const response = await fetch('/api/speech/enhance', {
               method: 'POST',
@@ -124,7 +152,6 @@ export function VoiceInputButton({
             }
           } catch (error) {
             console.log('⚠️ Google Speech enhancement failed, using local punctuation:', error)
-            // Fall through to local punctuation
           }
           
           // Fallback: Use local punctuation if Google isn't available
@@ -134,7 +161,7 @@ export function VoiceInputButton({
             withPunctuation: withPunctuation.substring(0, 100),
           })
           onTranscript(withPunctuation)
-          setAccumulatedText('') // Reset after sending
+          setAccumulatedText('')
         } else {
           console.log('🚫 Skipping duplicate final text')
         }
@@ -150,49 +177,50 @@ export function VoiceInputButton({
     return null
   }
 
-  const handleClick = () => {
-    if (isListening) {
-      // Stop listening - but wait for recognition to fully stop before processing
-      setManuallyStopped(true)
-      pendingStopRef.current = true // Mark that we want to process when it stops
-      stopListening()
-      // Don't process immediately - wait for onend/useEffect to handle it
-      console.log('🛑 Stop requested, waiting for recognition to end...')
-    } else {
+  const handleSwitchChange = (checked: boolean) => {
+    if (checked) {
+      // Turn on: Start listening
       setManuallyStopped(false)
       setAccumulatedText('')
-      lastProcessedTextRef.current = '' // Reset tracking
+      lastSentTextRef.current = ''
       isProcessingRef.current = false
       pendingStopRef.current = false
-      console.log('🎤 Starting voice input (toggle mode)...', isIOS ? '(iPad)' : '(Desktop)')
+      console.log('🎤 Starting voice input (switch ON)...', isIOS ? '(iPad)' : '(Desktop)')
       startListening()
+    } else {
+      // Turn off: Stop listening and process final text
+      setManuallyStopped(true)
+      pendingStopRef.current = true
+      stopListening()
+      console.log('🛑 Stop requested (switch OFF), waiting for recognition to end...')
     }
   }
 
+  if (!isSupported) {
+    return null
+  }
+
   return (
-    <Button
-      type="button"
-      variant={variant}
-      size={size}
-      onClick={handleClick}
-      onContextMenu={(e) => {
-        e.preventDefault()
-      }}
-      className={cn(
-        'flex-shrink-0 select-none flex items-center justify-center gap-1',
-        isListening && 'bg-red-500 hover:bg-red-600 text-white',
-        className
-      )}
-      title={
-        isListening ? 'Click to stop recording' : 'Click to start voice input'
-      }
-    >
-      {isListening ? (
-        <MicOff className="h-4 w-4 flex-shrink-0" />
-      ) : (
-        <Mic className="h-4 w-4 flex-shrink-0" />
-      )}
-    </Button>
+    <div className={cn('flex items-center gap-2', className)}>
+      <Switch
+        checked={isListening}
+        onCheckedChange={handleSwitchChange}
+        className={cn(
+          isListening && 'data-[state=checked]:bg-red-500'
+        )}
+        aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+      />
+      <Label 
+        htmlFor="voice-input-switch" 
+        className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+        onClick={() => handleSwitchChange(!isListening)}
+      >
+        <Mic className={cn('h-4 w-4', isListening && 'text-red-500 animate-pulse')} />
+        <span className={cn(isListening && 'text-red-500')}>
+          {isListening ? 'Listening...' : 'Voice Input'}
+        </span>
+      </Label>
+    </div>
   )
 }
 
