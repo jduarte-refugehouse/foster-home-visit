@@ -10,7 +10,7 @@ import { Home, Map, Users, Shield, ExternalLink, Calendar, Clock, CheckCircle2, 
 import { usePermissions } from "@/hooks/use-permissions"
 import { useDeviceType } from "@/hooks/use-device-type"
 import Link from "next/link"
-import { format, parseISO, isToday, isTomorrow } from "date-fns"
+import { format, parseISO, isToday, isTomorrow, isSameDay } from "date-fns"
 
 interface DashboardData {
   totalHomes: number
@@ -28,6 +28,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [liaisonData, setLiaisonData] = useState<any>(null)
   const [liaisonLoading, setLiaisonLoading] = useState(true)
+
+  // Helper: Parse SQL datetime as local time (not UTC)
+  // SQL Server DATETIME2 has no timezone info, so we explicitly parse as local
+  const parseLocalDatetime = (sqlDatetime: string): Date => {
+    // SQL format: "2025-11-03T14:00:00" or "2025-11-03 14:00:00"
+    const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '')
+    const [datePart, timePart] = cleaned.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    
+    // Create Date in LOCAL timezone (not UTC)
+    return new Date(year, month - 1, day, hour, minute, second || 0)
+  }
 
   // Check if user has home_liaison role
   const isHomeLiaison = permissions.hasRole("home_liaison", "home-visits")
@@ -223,7 +236,7 @@ export default function DashboardPage() {
                     </CardTitle>
                     <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">
                       {liaisonData.currentOnCall.on_call_type || "On-Call"} • Until{" "}
-                      {format(parseISO(liaisonData.currentOnCall.end_datetime), "h:mm a")}
+                      {format(parseLocalDatetime(liaisonData.currentOnCall.end_datetime), "MMM d, h:mm a")}
                     </p>
                   </div>
                 </div>
@@ -251,7 +264,7 @@ export default function DashboardPage() {
               {liaisonData?.upcomingAppointments && liaisonData.upcomingAppointments.length > 0 ? (
                 <div className="space-y-3">
                   {liaisonData.upcomingAppointments.map((appointment: any) => {
-                    const startDate = parseISO(appointment.start_datetime)
+                    const startDate = parseLocalDatetime(appointment.start_datetime)
                     const isAppointmentToday = isToday(startDate)
                     const isAppointmentTomorrow = isTomorrow(startDate)
 
@@ -336,8 +349,9 @@ export default function DashboardPage() {
               {liaisonData?.upcomingOnCall && liaisonData.upcomingOnCall.length > 0 ? (
                 <div className="space-y-3">
                   {liaisonData.upcomingOnCall.map((schedule: any) => {
-                    const startDate = parseISO(schedule.start_datetime)
-                    const endDate = parseISO(schedule.end_datetime)
+                    const startDate = parseLocalDatetime(schedule.start_datetime)
+                    const endDate = parseLocalDatetime(schedule.end_datetime)
+                    const isMultiDay = !isSameDay(startDate, endDate)
 
                     return (
                       <div
@@ -358,9 +372,20 @@ export default function DashboardPage() {
                                 {schedule.on_call_type || "On-Call"}
                               </Badge>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              {format(startDate, "h:mm a")} - {format(endDate, "h:mm a")}
-                            </p>
+                            {isMultiDay ? (
+                              <div className="space-y-1">
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  <span className="font-medium">Start:</span> {format(startDate, "MMM d, yyyy h:mm a")}
+                                </p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  <span className="font-medium">End:</span> {format(endDate, "MMM d, yyyy h:mm a")}
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                {format(startDate, "h:mm a")} - {format(endDate, "h:mm a")}
+                              </p>
+                            )}
                             {schedule.duration_hours && (
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 {schedule.duration_hours} hours
