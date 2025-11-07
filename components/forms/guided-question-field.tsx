@@ -27,13 +27,14 @@ interface RegulatorySource {
 }
 
 // Question flow configurations with regulatory citations
+// Only includes questions required by TAC Chapter 749, RCC, or T3C Blueprint for monthly/quarterly home visit reviews
 const questionFlows = {
   behaviors: {
     regulatoryBasis: {
-      code: "RCC 3600 / Agency Practice",
-      description: "Maintaining child's connections documented - Behavioral monitoring required for service planning",
+      code: "RCC 3600",
+      description: "Behavioral monitoring required for service planning",
       required: true,
-      note: "Behavioral documentation supports service planning and placement stability assessment",
+      note: "Service planning requires documentation of behavioral concerns and interventions",
     } as RegulatorySource,
     questions: [
       {
@@ -45,44 +46,6 @@ const questionFlows = {
           code: "RCC 3600",
           description: "Behavioral monitoring for service planning",
           required: true,
-        } as RegulatorySource,
-      },
-      {
-        id: "behaviorTypes",
-        type: "multiselect",
-        text: "What type(s) of behavior?",
-        options: ["Aggression", "Withdrawal", "Defiance", "Self-harm", "Property Damage", "Verbal Outbursts", "Other"],
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        required: true,
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Specific behavior types needed for intervention planning",
-          required: false,
-        } as RegulatorySource,
-      },
-      {
-        id: "frequency",
-        type: "select",
-        text: "How often did this occur?",
-        options: ["Daily", "Several times per week", "Weekly", "Occasionally (2-3 times)", "Once"],
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        required: true,
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Frequency assessment for intervention planning",
-          required: false,
-        } as RegulatorySource,
-      },
-      {
-        id: "triggers",
-        type: "textarea",
-        text: "What seemed to trigger the behavior? (e.g., transitions, specific situations, times of day)",
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        placeholder: "Describe what typically precedes the behavior...",
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Trigger identification supports intervention strategies",
-          required: false,
         } as RegulatorySource,
       },
       {
@@ -98,41 +61,13 @@ const questionFlows = {
           required: true,
         } as RegulatorySource,
       },
-      {
-        id: "wasEffective",
-        type: "select",
-        text: "Was the response effective?",
-        options: ["Yes, behavior improved", "Partially effective", "No, behavior continued/escalated"],
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        required: true,
-        regulatorySource: {
-          code: "RCC 3600",
-          description: "Assess intervention effectiveness for service planning",
-          required: true,
-        } as RegulatorySource,
-      },
-      {
-        id: "followUpNeeded",
-        type: "yesno",
-        text: "Does this require follow-up support or intervention?",
-        conditional: { dependsOn: "hasBehaviors", value: true },
-        regulatorySource: {
-          code: "Agency Practice",
-          description: "Identify need for additional support services",
-          required: false,
-        } as RegulatorySource,
-      },
     ],
     generateSummary: (answers: Record<string, any>) => {
       if (!answers.hasBehaviors) {
         return "No challenging behaviors reported this month."
       }
-      const types = Array.isArray(answers.behaviorTypes) ? answers.behaviorTypes.join(", ") : answers.behaviorTypes
-      let summary = `Child exhibited ${types} behaviors ${answers.frequency?.toLowerCase() || ""}. `
-      if (answers.triggers) summary += `Triggers: ${answers.triggers}. `
+      let summary = "Challenging behaviors reported. "
       if (answers.parentResponse) summary += `Foster parent responded by: ${answers.parentResponse}. `
-      if (answers.wasEffective) summary += `Response was ${answers.wasEffective.toLowerCase()}. `
-      if (answers.followUpNeeded) summary += "Follow-up support needed."
       return summary.trim()
     },
   },
