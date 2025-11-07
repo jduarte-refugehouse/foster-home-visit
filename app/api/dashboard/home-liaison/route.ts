@@ -132,7 +132,6 @@ export async function GET(request: NextRequest) {
         ocs.duration_hours,
         ocs.user_id,
         ocs.user_email,
-        ocs.is_currently_active,
         CASE 
           WHEN GETDATE() BETWEEN ocs.start_datetime AND ocs.end_datetime 
           THEN 1 
