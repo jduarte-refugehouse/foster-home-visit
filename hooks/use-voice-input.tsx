@@ -15,6 +15,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
   const [transcript, setTranscript] = useState('')
   const [isSupported, setIsSupported] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // Store auto-restart flag in a ref so it persists across recognition object recreations
+  const autoRestartRef = useRef(false)
 
   useEffect(() => {
     // Check if Speech Recognition is supported
