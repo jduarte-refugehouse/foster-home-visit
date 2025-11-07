@@ -1267,6 +1267,15 @@ export default function AppointmentDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined && (
+                  <div className="pb-3 border-b">
+                    <p className="text-sm text-muted-foreground mb-1">Driving Distance</p>
+                    <p className="text-3xl font-bold text-refuge-purple">
+                      {appointment.calculated_mileage.toFixed(2)} miles
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Calculated using actual road travel</p>
+                  </div>
+                )}
                 {appointment.start_drive_timestamp && (
                   <div>
                     <p className="text-sm text-muted-foreground">Drive Started</p>
@@ -1291,14 +1300,6 @@ export default function AppointmentDetailPage() {
                         {appointment.arrived_latitude.toFixed(6)}, {appointment.arrived_longitude.toFixed(6)}
                       </p>
                     )}
-                  </div>
-                )}
-                {appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined && (
-                  <div className="pt-2 border-t">
-                    <p className="text-sm text-muted-foreground">Distance</p>
-                    <p className="text-2xl font-bold text-refuge-purple">
-                      {appointment.calculated_mileage.toFixed(2)} miles
-                    </p>
                   </div>
                 )}
               </CardContent>
