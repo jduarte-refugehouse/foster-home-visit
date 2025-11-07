@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, ChevronLeft, CheckCircle2, Edit2, Info } from "lucide-react"
+import { ChevronRight, ChevronLeft, CheckCircle2, Edit2, Info, Sparkles } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Tooltip,
@@ -317,6 +317,7 @@ export function GuidedQuestionField({
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [showSummary, setShowSummary] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  const [enhancing, setEnhancing] = useState<string | null>(null) // Track which field is being enhanced
   
   const flow = questionFlows[fieldType]
   
@@ -494,6 +495,8 @@ export function GuidedQuestionField({
 
   if (editMode) {
     const data = JSON.parse(value || '{"finalText":""}')
+    const [enhancingSummary, setEnhancingSummary] = useState(false)
+    
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -507,6 +510,46 @@ export function GuidedQuestionField({
           onChange={(e) => handleEditSummary(e.target.value)}
           rows={3}
         />
+        {data.finalText && data.finalText.trim().length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const currentText = data.finalText || ""
+              if (!currentText.trim()) return
+
+              setEnhancingSummary(true)
+              try {
+                const response = await fetch("/api/visit-forms/ai-enhance", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    originalText: currentText,
+                    fieldType: fieldType,
+                    context: context,
+                  }),
+                })
+
+                const data = await response.json()
+                if (data.success && data.enhancedText) {
+                  handleEditSummary(data.enhancedText)
+                }
+              } catch (error) {
+                console.error("Error enhancing text:", error)
+              } finally {
+                setEnhancingSummary(false)
+              }
+            }}
+            disabled={enhancingSummary}
+            className="w-full"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {enhancingSummary ? "Enhancing..." : "Enhance with AI"}
+          </Button>
+        )}
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -646,15 +689,58 @@ export function GuidedQuestionField({
           )}
 
           {currentQuestion.type === "textarea" && (
-            <Textarea
-              value={answers[currentQuestion.id] || ""}
-              onChange={(e) => {
-                const newAnswers = { ...answers, [currentQuestion.id]: e.target.value }
-                setAnswers(newAnswers)
-              }}
-              placeholder={currentQuestion.placeholder}
-              rows={3}
-            />
+            <div className="space-y-2">
+              <Textarea
+                value={answers[currentQuestion.id] || ""}
+                onChange={(e) => {
+                  const newAnswers = { ...answers, [currentQuestion.id]: e.target.value }
+                  setAnswers(newAnswers)
+                }}
+                placeholder={currentQuestion.placeholder}
+                rows={3}
+              />
+              {answers[currentQuestion.id] && answers[currentQuestion.id].trim().length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const currentText = answers[currentQuestion.id] || ""
+                    if (!currentText.trim()) return
+
+                    setEnhancing(currentQuestion.id)
+                    try {
+                      const response = await fetch("/api/visit-forms/ai-enhance", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          originalText: currentText,
+                          fieldType: fieldType,
+                          context: context,
+                        }),
+                      })
+
+                      const data = await response.json()
+                      if (data.success && data.enhancedText) {
+                        const newAnswers = { ...answers, [currentQuestion.id]: data.enhancedText }
+                        setAnswers(newAnswers)
+                      }
+                    } catch (error) {
+                      console.error("Error enhancing text:", error)
+                    } finally {
+                      setEnhancing(null)
+                    }
+                  }}
+                  disabled={enhancing === currentQuestion.id}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {enhancing === currentQuestion.id ? "Enhancing..." : "Enhance with AI"}
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
