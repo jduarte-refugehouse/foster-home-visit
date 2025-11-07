@@ -885,7 +885,7 @@ const EnhancedHomeVisitForm = ({
     { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
     { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true },
     { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
-    { id: "foster-parent-interview", title: "Section 9: Foster Parent Interview", icon: Users, required: true },
+    { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Users, required: true },
     { id: "observations", title: "Observations", icon: FileText, required: true },
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
     { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true },
@@ -1953,6 +1953,15 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
             This section applies to this home
           </Label>
         </div>
+      )}
+
+      {/* Show N/A message if section is not applicable */}
+      {hasApplicable && sectionData.applicable === false && (
+        <Alert className="bg-gray-50 border-gray-200">
+          <AlertDescription className="text-sm text-gray-600">
+            <strong>Not Applicable:</strong> This section does not apply to this home.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Show content only if applicable (or if no applicable field) */}

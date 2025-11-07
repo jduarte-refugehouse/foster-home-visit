@@ -679,7 +679,7 @@ function generateCompleteReportHTML(
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Biological Children:</h4>
                 ${formData.familyInfo.household.biologicalChildren.map((c: any) => {
                   const attendance = formData.attendees?.attendance || formData.attendance || {}
-                  const isPresent = typeof attendance === 'object'
+                  const isPresent = typeof attendance === 'object' && !Array.isArray(attendance)
                     ? attendance[c.name] === true
                     : false
                   return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${c.name}${c.age ? ` (Age: ${c.age})` : ""}</p>`
@@ -691,7 +691,7 @@ function generateCompleteReportHTML(
                 <h4 style="font-size: 14px; margin-bottom: 8px;">Other Household Members:</h4>
                 ${formData.familyInfo.household.otherMembers.map((m: any) => {
                   const attendance = formData.attendees?.attendance || formData.attendance || {}
-                  const isPresent = typeof attendance === 'object'
+                  const isPresent = typeof attendance === 'object' && !Array.isArray(attendance)
                     ? attendance[m.name] === true
                     : false
                   return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${m.name}${m.age ? ` (Age: ${m.age})` : ""}${m.relationship ? ` - ${m.relationship}` : ""}</p>`
@@ -707,7 +707,7 @@ function generateCompleteReportHTML(
                 ${formData.placements.children.map((child: any) => {
                   const childName = `${child.firstName || ""} ${child.lastName || ""}`.trim() || "Unknown"
                   const attendance = formData.attendees?.attendance || formData.attendance || {}
-                  const isPresent = typeof attendance === 'object'
+                  const isPresent = typeof attendance === 'object' && !Array.isArray(attendance)
                     ? attendance[childName] === true
                     : false
                   return `<p style="margin: 3px 0;">${isPresent ? '<span style="color: #16a34a; font-weight: bold;">✓ Present</span> ' : '<span style="color: #9ca3af;">○</span> '}${childName}${child.age ? ` (Age: ${child.age})` : ""}</p>`
@@ -716,7 +716,7 @@ function generateCompleteReportHTML(
             ` : ""}
             ${(() => {
               const attendance = formData.attendees?.attendance || formData.attendance || {}
-              if (typeof attendance === 'object') {
+              if (typeof attendance === 'object' && !Array.isArray(attendance)) {
                 // Show any additional attendees not in household or placements
                 const allKnownNames = new Set([
                   ...(formData.familyInfo?.household?.providers || []).map((p: any) => p.name),

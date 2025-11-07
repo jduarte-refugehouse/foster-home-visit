@@ -754,6 +754,36 @@ export default function AppointmentDetailPage() {
         }
       }
 
+      // Convert nested attendance structure to flat structure for report
+      const flatAttendance: Record<string, boolean> = {}
+      
+      // Add foster parents
+      if (formData.attendance?.fosterParents) {
+        formData.attendance.fosterParents.forEach((fp: any) => {
+          if (fp.present === true) {
+            flatAttendance[fp.name] = true
+          }
+        })
+      }
+      
+      // Add staff
+      if (formData.attendance?.staff) {
+        formData.attendance.staff.forEach((s: any) => {
+          if (s.present === true) {
+            flatAttendance[s.name] = true
+          }
+        })
+      }
+      
+      // Add others (biological children, other members, foster children)
+      if (formData.attendance?.others) {
+        formData.attendance.others.forEach((o: any) => {
+          if (o.present === true) {
+            flatAttendance[o.name] = true
+          }
+        })
+      }
+
       // Build complete report data structure
       const reportData = {
         visitInfo: formData.visitInfo,
@@ -762,7 +792,10 @@ export default function AppointmentDetailPage() {
           household: formData.household,
         },
         attendees: {
-          attendance: formData.attendance,
+          attendance: flatAttendance,
+        },
+        placements: {
+          children: formData.placements?.children || [],
         },
         homeEnvironment: {
           homeCondition: formData.homeCondition,
