@@ -64,14 +64,25 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         }
 
         const fullTranscript = finalTranscript || interimTranscript
-        console.log('📝 Full transcript:', fullTranscript)
+        console.log('📝 Full transcript:', fullTranscript, 'interim:', interimTranscript, 'final:', finalTranscript)
         setTranscript(fullTranscript)
         
-        // For continuous mode, only call onResult when we have final results
-        // For non-continuous mode, call onResult when we have any results
-        if (continuous) {
+        // For continuous mode with interim results, we can send both interim and final
+        if (continuous && interimResults) {
+          // Send interim results for real-time updates
+          if (interimTranscript && onResult) {
+            console.log('🔄 Calling onResult with interim transcript (real-time):', interimTranscript.substring(0, 50))
+            onResult(interimTranscript.trim())
+          }
+          // Also send final results when available
           if (finalTranscript && onResult) {
-            console.log('✅ Calling onResult with final transcript (continuous mode)')
+            console.log('✅ Calling onResult with final transcript (continuous mode):', finalTranscript.trim().substring(0, 50))
+            onResult(finalTranscript.trim())
+          }
+        } else if (continuous) {
+          // Continuous mode without interim results - only send final
+          if (finalTranscript && onResult) {
+            console.log('✅ Calling onResult with final transcript (continuous mode):', finalTranscript.trim().substring(0, 50))
             onResult(finalTranscript.trim())
           }
         } else {
