@@ -34,27 +34,45 @@ export function createStreamingRecognitionClient(
   onResult: (result: TranscriptionResult) => void,
   onError: (error: Error) => void
 ) {
-  // Initialize the Speech client
-  // For streaming API, we can try API key first, but it may require service account
+  // Initialize the Speech client with service account credentials
   let client: speech.SpeechClient
   
   try {
-    // Try using API key (may not work for streaming)
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    // Check for service account credentials
+    const credentialsJSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
     
-    if (apiKey) {
-      console.log('🔑 [STREAMING] Attempting to use API key authentication')
+    if (credentialsJSON) {
+      // Use credentials from environment variable (JSON string)
+      console.log('🔑 [STREAMING] Using service account from GOOGLE_APPLICATION_CREDENTIALS_JSON')
+      const credentials = JSON.parse(credentialsJSON)
       client = new speech.SpeechClient({
-        apiKey,
+        credentials,
+      })
+    } else if (credentialsPath) {
+      // Use credentials from file path
+      console.log('🔑 [STREAMING] Using service account from GOOGLE_APPLICATION_CREDENTIALS file')
+      client = new speech.SpeechClient({
+        keyFilename: credentialsPath,
       })
     } else {
-      // Fall back to Application Default Credentials (service account)
-      console.log('🔑 [STREAMING] Using Application Default Credentials (service account)')
-      client = new speech.SpeechClient()
+      // Try API key (may not work for streaming, but worth trying)
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      
+      if (apiKey) {
+        console.log('🔑 [STREAMING] Attempting to use API key (may not work for streaming)')
+        client = new speech.SpeechClient({
+          apiKey,
+        })
+      } else {
+        throw new Error('No authentication configured. Set GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS')
+      }
     }
+    
+    console.log('✅ [STREAMING] Speech client created successfully')
   } catch (error) {
     console.error('❌ [STREAMING] Failed to create Speech client:', error)
-    throw new Error('Failed to initialize Google Speech client. Check authentication configuration.')
+    throw new Error(`Failed to initialize Google Speech client: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 
   // Configure the streaming request
@@ -181,6 +199,11 @@ export function createStreamingRecognitionClient(
  * Check if Google Cloud Speech-to-Text streaming is available
  */
 export function isStreamingSpeechAvailable(): boolean {
-  return !!(process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+  return !!(
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  )
 }
 
