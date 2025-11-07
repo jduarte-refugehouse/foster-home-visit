@@ -214,6 +214,76 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       })
     }
 
+    if (action === "return") {
+      const appointment = existingAppointment[0]
+
+      // Check if arrived location exists (we need it to calculate return distance)
+      if (!appointment.arrived_latitude || !appointment.arrived_longitude) {
+        return NextResponse.json(
+          { error: "Arrived location not found. Please mark as arrived first." },
+          { status: 400 },
+        )
+      }
+
+      // Save return location
+      await query(
+        `UPDATE appointments 
+         SET return_latitude = @param1,
+             return_longitude = @param2,
+             return_timestamp = @param3,
+             updated_at = GETUTCDATE()
+         WHERE appointment_id = @param0`,
+        [appointmentId, latitude, longitude, now],
+      )
+
+      // Calculate return driving distance and tolls using Google Routes API
+      const routeData = await calculateDrivingDistance(
+        appointment.arrived_latitude,
+        appointment.arrived_longitude,
+        latitude,
+        longitude,
+      )
+
+      // If calculation failed or returned null, check if coordinates are the same (0 distance)
+      let returnMileage = 0.00
+      let returnEstimatedToll: number | null = null
+      
+      if (routeData === null) {
+        const latDiff = Math.abs(appointment.arrived_latitude - latitude)
+        const lngDiff = Math.abs(appointment.arrived_longitude - longitude)
+        // If coordinates are very close (within ~10 meters), treat as 0 miles
+        if (latDiff < 0.0001 && lngDiff < 0.0001) {
+          returnMileage = 0.00
+          console.log("📍 [MILEAGE] Return start and end locations are the same, setting return mileage to 0.00")
+        }
+      } else {
+        returnMileage = routeData.distance
+        returnEstimatedToll = routeData.estimatedTollCost
+      }
+
+      // Update appointment with return mileage
+      await query(
+        `UPDATE appointments 
+         SET return_mileage = @param1,
+             updated_at = GETUTCDATE()
+         WHERE appointment_id = @param0`,
+        [appointmentId, returnMileage],
+      )
+
+      console.log("✅ [MILEAGE] Return travel logged:", {
+        returnMileage: returnMileage.toFixed(2),
+        returnEstimatedToll: returnEstimatedToll,
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: "Return travel logged",
+        returnMileage: returnMileage,
+        returnEstimatedTollCost: returnEstimatedToll,
+        timestamp: now.toISOString(),
+      })
+    }
+
     if (action === "calculate") {
       try {
         console.log("🔢 [MILEAGE] Calculate action triggered for appointment:", appointmentId)

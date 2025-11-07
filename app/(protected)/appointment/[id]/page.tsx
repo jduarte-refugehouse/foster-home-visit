@@ -71,6 +71,11 @@ interface Appointment {
   estimated_toll_cost?: number | null
   toll_confirmed?: boolean
   actual_toll_cost?: number | null
+  // Return travel tracking fields
+  return_latitude?: number
+  return_longitude?: number
+  return_timestamp?: string
+  return_mileage?: number | null
 }
 
 export default function AppointmentDetailPage() {
@@ -101,6 +106,10 @@ export default function AppointmentDetailPage() {
   const [mileageRate, setMileageRate] = useState<number>(0.67) // Default rate
   const [showTollDialog, setShowTollDialog] = useState(false)
   const [tollAmount, setTollAmount] = useState<string>("")
+  const [showLeavingDialog, setShowLeavingDialog] = useState(false)
+  const [nextAppointment, setNextAppointment] = useState<{ appointmentId: string; title: string; startDateTime: string; locationAddress?: string; homeName?: string } | null>(null)
+  const [hasNextAppointment, setHasNextAppointment] = useState<boolean>(false)
+  const [leavingAction, setLeavingAction] = useState<"next" | "return" | null>(null)
 
   useEffect(() => {
     if (appointmentId) {
@@ -436,6 +445,123 @@ export default function AppointmentDetailPage() {
         description: error instanceof Error ? error.message : "Failed to confirm toll",
         variant: "destructive",
       })
+    }
+  }
+
+  const handleLeaving = async () => {
+    try {
+      // Check for next appointment
+      const response = await fetch(`/api/appointments/${appointmentId}/next-appointment`)
+      const data = await response.json()
+
+      if (data.success) {
+        setHasNextAppointment(data.hasNext)
+        setNextAppointment(data.nextAppointment)
+        setShowLeavingDialog(true)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to check for next appointment",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error checking for next appointment:", error)
+      toast({
+        title: "Error",
+        description: "Failed to check for next appointment",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleLeavingAction = async (action: "next" | "return") => {
+    try {
+      setLeavingAction(action)
+      setCapturingLocation(true)
+
+      const location = await captureLocation("arrived")
+      
+      if (action === "next" && nextAppointment) {
+        // Update next appointment's start_drive location
+        const response = await fetch(`/api/appointments/${nextAppointment.appointmentId}/mileage`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(user ? {
+              "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+              "x-user-clerk-id": user.id,
+              "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+            } : {}),
+          },
+          body: JSON.stringify({
+            action: "start_drive",
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }),
+        })
+
+        if (response.ok) {
+          toast({
+            title: "Travel Started",
+            description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
+          })
+          setShowLeavingDialog(false)
+          fetchAppointmentDetails()
+        } else {
+          const errorData = await response.json()
+          toast({
+            title: "Error",
+            description: errorData.error || "Failed to start travel to next visit",
+            variant: "destructive",
+          })
+        }
+      } else {
+        // Return travel - calculate return mileage for current appointment
+        const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(user ? {
+              "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+              "x-user-clerk-id": user.id,
+              "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+            } : {}),
+          },
+          body: JSON.stringify({
+            action: "return",
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          toast({
+            title: "Return Travel Logged",
+            description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
+          })
+          setShowLeavingDialog(false)
+          fetchAppointmentDetails()
+        } else {
+          const errorData = await response.json()
+          toast({
+            title: "Error",
+            description: errorData.error || "Failed to log return travel",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error handling leaving action:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process leaving action",
+        variant: "destructive",
+      })
+    } finally {
+      setCapturingLocation(false)
+      setLeavingAction(null)
     }
   }
 
@@ -1177,6 +1303,16 @@ export default function AppointmentDetailPage() {
                   <MapPinIcon className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Arrived"}
                 </Button>
+              ) : appointment.arrived_timestamp && !appointment.return_timestamp && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
+                <Button 
+                  size="sm"
+                  onClick={handleLeaving}
+                  disabled={capturingLocation}
+                  className="h-8 px-3 text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Navigation className="h-4 w-4 mr-1.5" />
+                  {capturingLocation ? "Capturing..." : "Leaving"}
+                </Button>
               ) : null}
             </>
           ) : null}
@@ -1448,27 +1584,40 @@ export default function AppointmentDetailPage() {
                     )}
                     
                     {/* Reimbursement Calculator */}
-                    {typeof appointment.calculated_mileage === 'number' && appointment.calculated_mileage > 0 && (
+                    {((typeof appointment.calculated_mileage === 'number' && appointment.calculated_mileage > 0) || 
+                      (typeof appointment.return_mileage === 'number' && appointment.return_mileage > 0)) && (
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm text-muted-foreground mb-1">Reimbursement</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          ${(
-                            (appointment.calculated_mileage * mileageRate) + 
-                            (appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined 
-                              ? appointment.actual_toll_cost 
-                              : (appointment.estimated_toll_cost || 0))
-                          ).toFixed(2)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {mileageRate.toFixed(2)} per mile × {appointment.calculated_mileage.toFixed(2)} miles
-                          {((appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined) || appointment.estimated_toll_cost) && (
-                            <span className="ml-2">
-                              + ${((appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined) 
-                                ? appointment.actual_toll_cost 
-                                : (appointment.estimated_toll_cost || 0)).toFixed(2)} tolls
-                            </span>
-                          )}
-                        </p>
+                        {(() => {
+                          const outboundMileage = appointment.calculated_mileage || 0
+                          const returnMileage = appointment.return_mileage || 0
+                          const totalMileage = outboundMileage + returnMileage
+                          const tollCost = (appointment.toll_confirmed && appointment.actual_toll_cost !== null && appointment.actual_toll_cost !== undefined) 
+                            ? appointment.actual_toll_cost 
+                            : (appointment.estimated_toll_cost || 0)
+                          const totalReimbursement = (totalMileage * mileageRate) + tollCost
+                          
+                          return (
+                            <>
+                              <p className="text-2xl font-bold text-green-600">
+                                ${totalReimbursement.toFixed(2)}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {mileageRate.toFixed(2)} per mile × {totalMileage.toFixed(2)} miles
+                                {outboundMileage > 0 && returnMileage > 0 && (
+                                  <span className="ml-1">
+                                    ({outboundMileage.toFixed(2)} outbound + {returnMileage.toFixed(2)} return)
+                                  </span>
+                                )}
+                                {tollCost > 0 && (
+                                  <span className="ml-2">
+                                    + ${tollCost.toFixed(2)} tolls
+                                  </span>
+                                )}
+                              </p>
+                            </>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1504,6 +1653,24 @@ export default function AppointmentDetailPage() {
                     {appointment.arrived_latitude && appointment.arrived_longitude && (
                       <p className="text-xs text-muted-foreground">
                         {appointment.arrived_latitude.toFixed(6)}, {appointment.arrived_longitude.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {appointment.return_timestamp && (
+                  <div className="pt-3 border-t">
+                    <p className="text-sm text-muted-foreground">Return Travel</p>
+                    <p className="text-sm">
+                      {format(new Date(appointment.return_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                    {appointment.return_mileage !== null && appointment.return_mileage !== undefined && (
+                      <p className="text-lg font-semibold text-purple-600 mt-1">
+                        {appointment.return_mileage.toFixed(2)} miles
+                      </p>
+                    )}
+                    {appointment.return_latitude && appointment.return_longitude && (
+                      <p className="text-xs text-muted-foreground">
+                        {appointment.return_latitude.toFixed(6)}, {appointment.return_longitude.toFixed(6)}
                       </p>
                     )}
                   </div>
