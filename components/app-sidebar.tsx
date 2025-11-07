@@ -312,10 +312,10 @@ export function AppSidebar() {
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-refuge-light-purple/20 to-refuge-magenta/20 rounded-full flex items-center justify-center">
               <Database className="w-8 h-8 text-refuge-purple" />
             </div>
-            <p className="text-sm font-medium text-gray-900 mb-2">No navigation items available</p>
-            {navError && <p className="text-xs text-red-600 mb-3">Error: {navError}</p>}
+            <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
+            {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
             {navigationMetadata?.dbError && (
-              <p className="text-xs text-gray-600 mb-3">Database: {navigationMetadata.dbError}</p>
+              <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
             )}
             <Link
               href="/diagnostics"
@@ -330,7 +330,7 @@ export function AppSidebar() {
             {/* Regular Navigation Groups */}
             {navigationGroups.map((group, groupIndex) => (
               <SidebarGroup key={group.title}>
-                <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   {group.title}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -342,9 +342,9 @@ export function AppSidebar() {
                           <SidebarMenuButton asChild className="group">
                             <Link
                               href={item.url}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
                             >
-                              <IconComponent className="h-5 w-5 text-gray-500 group-hover:text-refuge-purple transition-colors" />
+                              <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
                               <span className="font-medium">{item.title}</span>
                             </Link>
                           </SidebarMenuButton>
@@ -397,9 +397,9 @@ export function AppSidebar() {
                                 <SidebarMenuButton asChild className="group">
                                   <Link
                                     href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
                                   >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
+                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
                                     <span className="text-sm font-medium">{item.title}</span>
                                   </Link>
                                 </SidebarMenuButton>
@@ -436,9 +436,9 @@ export function AppSidebar() {
                                 <SidebarMenuButton asChild className="group">
                                   <Link
                                     href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-refuge-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
                                   >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple group-hover:text-refuge-magenta transition-colors" />
+                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
                                     <span className="text-sm font-medium">{item.title}</span>
                                   </Link>
                                 </SidebarMenuButton>
@@ -469,10 +469,10 @@ export function AppSidebar() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-900 truncate">{displayName}</span>
-                    {isAdmin && <span className="text-xs text-refuge-purple font-medium">Administrator</span>}
+                    <span className="text-sm font-medium text-foreground truncate">{displayName}</span>
+                    {isAdmin && <span className="text-xs text-refuge-purple dark:text-refuge-light-purple font-medium">Administrator</span>}
                   </div>
-                  <ChevronUp className="ml-auto h-4 w-4 text-gray-400" />
+                  <ChevronUp className="ml-auto h-4 w-4 text-muted-foreground" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
@@ -484,15 +484,15 @@ export function AppSidebar() {
                 </DropdownMenuItem>
                 {navigationMetadata && process.env.NODE_ENV === "development" && (
                   <>
-                    <DropdownMenuItem disabled className="text-xs text-gray-500">
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
                       Navigation: {navigationMetadata.source} ({navigationMetadata.visibleItems}/
                       {navigationMetadata.totalItems})
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled className="text-xs text-gray-500">
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
                       Service: {navigationMetadata.microservice.code}
                     </DropdownMenuItem>
                     {navigationMetadata.userPermissions && (
-                      <DropdownMenuItem disabled className="text-xs text-gray-500">
+                      <DropdownMenuItem disabled className="text-xs text-muted-foreground">
                         Permissions: {navigationMetadata.userPermissions.length}
                       </DropdownMenuItem>
                     )}

@@ -1258,9 +1258,9 @@ export default function AppointmentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Single Unified Header - Replaces AppHeader */}
-      <header className="flex h-16 shrink-0 items-center gap-2 bg-white border-b border-slate-200 px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 bg-card border-b border-border px-4">
         {/* Left: Sidebar Trigger + Navigation */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <SidebarTrigger className="-ml-1" />
@@ -1362,7 +1362,7 @@ export default function AppointmentDetailPage() {
       </header>
 
       {/* ROW 2: Status Badges */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2">
+      <div className="bg-card border-b border-border px-4 py-2 flex items-center gap-2">
         <Badge className={getStatusColor(appointment.status)}>
           {appointment.status.replace("_", " ").replace("-", " ")}
         </Badge>
@@ -1372,39 +1372,39 @@ export default function AppointmentDetailPage() {
 
       {/* ROW 3: Tab Menu */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="bg-white border-b border-slate-200">
+        <div className="bg-card border-b border-border">
           <TabsList className="h-auto bg-transparent w-full justify-start rounded-none border-0 p-0">
             <TabsTrigger 
               value="details" 
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <FileText className="h-4 w-4" />
               <span>Details</span>
             </TabsTrigger>
             <TabsTrigger 
               value="form" 
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <Edit className="h-4 w-4" />
               <span>Visit Form</span>
             </TabsTrigger>
             <TabsTrigger 
               value="history" 
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <History className="h-4 w-4" />
               <span>History</span>
             </TabsTrigger>
             <TabsTrigger 
               value="notes" 
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <MessageSquare className="h-4 w-4" />
               <span>Notes</span>
             </TabsTrigger>
             <TabsTrigger 
               value="attachments" 
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <Paperclip className="h-4 w-4" />
               <span>Files</span>
@@ -1414,9 +1414,9 @@ export default function AppointmentDetailPage() {
 
         {/* Details Tab */}
         <TabsContent value="details" className="mt-0">
-          <div className="container mx-auto p-6 max-w-full">
+            <div className="container mx-auto p-6 max-w-full">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Appointment Details</h2>
+              <h2 className="text-xl font-semibold text-foreground">Appointment Details</h2>
               <CreateAppointmentDialog
                 editingAppointment={appointment ? {
                   appointment_id: appointment.appointment_id,
