@@ -26,11 +26,13 @@ export function VoiceInputModal({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [transcript, setTranscript] = useState('')
+  const [hasStopped, setHasStopped] = useState(false) // Track if we've stopped at least once
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const accumulatedTranscriptRef = useRef<string>('')
+  const allAudioChunksRef = useRef<Blob[]>([]) // Store all audio for final processing
 
   // Cleanup when modal closes
   useEffect(() => {
@@ -53,11 +55,13 @@ export function VoiceInputModal({
       setTranscript('')
       setError(null)
       setIsProcessing(false)
+      setHasStopped(false)
       accumulatedTranscriptRef.current = ''
+      allAudioChunksRef.current = []
     }
   }, [open, isRecording])
 
-  const sendAudioChunk = async (audioBlob: Blob, isLastChunk: boolean = false) => {
+  const sendAudioChunk = async (audioBlob: Blob, isLastChunk: boolean = false, isInterim: boolean = false) => {
     try {
       // Convert to base64
       const reader = new FileReader()
@@ -86,20 +90,17 @@ export function VoiceInputModal({
           const data = await response.json()
           
           if (data.success && data.transcript) {
-            // Update transcript in real-time
             const newText = data.transcript.trim()
-            if (newText && newText !== accumulatedTranscriptRef.current) {
-              // If new text contains the previous text, it's an update
-              if (newText.includes(accumulatedTranscriptRef.current)) {
+            
+            if (isLastChunk) {
+              // For final chunk, use the full transcript
+              setTranscript(newText)
+              accumulatedTranscriptRef.current = newText
+            } else if (isInterim && newText) {
+              // For interim chunks, update if it's longer/more complete
+              if (newText.length > accumulatedTranscriptRef.current.length) {
                 setTranscript(newText)
                 accumulatedTranscriptRef.current = newText
-              } else {
-                // Otherwise, append new text
-                const combined = accumulatedTranscriptRef.current 
-                  ? `${accumulatedTranscriptRef.current} ${newText}`.trim()
-                  : newText
-                setTranscript(combined)
-                accumulatedTranscriptRef.current = combined
               }
             }
           }
@@ -128,11 +129,16 @@ export function VoiceInputModal({
     }
   }
 
-  const handleStart = async () => {
+  const handleStart = async (isContinuation: boolean = false) => {
     try {
       setError(null)
-      setTranscript('')
-      accumulatedTranscriptRef.current = ''
+      
+      // Only clear transcript if starting fresh, not continuing
+      if (!isContinuation) {
+        setTranscript('')
+        accumulatedTranscriptRef.current = ''
+        allAudioChunksRef.current = []
+      }
 
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -152,36 +158,43 @@ export function VoiceInputModal({
       mediaRecorderRef.current = mediaRecorder
 
       let audioChunks: Blob[] = []
+      let interimChunkCount = 0
 
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunks.push(event.data)
+          allAudioChunksRef.current.push(event.data) // Store for final processing
           
-          // Send chunk for real-time transcription every 1-2 seconds
-          if (audioChunks.length >= 2) {
+          interimChunkCount++
+          
+          // Send chunk for real-time transcription every 2-3 seconds
+          // This gives Google more audio to work with and reduces API calls
+          if (interimChunkCount >= 3) {
             const chunkToSend = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
-            sendAudioChunk(chunkToSend, false)
-            // Keep last chunk for continuity
-            audioChunks = audioChunks.slice(-1)
+            sendAudioChunk(chunkToSend, false, true)
+            // Reset for next interim chunk
+            audioChunks = []
+            interimChunkCount = 0
           }
         }
       }
 
       // Handle recording stop
       mediaRecorder.onstop = async () => {
-        // Send final chunk
-        if (audioChunks.length > 0) {
-          const finalChunk = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' })
-          await sendAudioChunk(finalChunk, true)
+        // Process ALL accumulated audio for final, complete transcript
+        if (allAudioChunksRef.current.length > 0) {
+          const finalAudio = new Blob(allAudioChunksRef.current, { type: 'audio/webm;codecs=opus' })
+          await sendAudioChunk(finalAudio, true, false)
         }
         setIsProcessing(false)
+        setHasStopped(true)
       }
 
-      // Start recording with 1 second intervals for real-time updates
+      // Start recording with 1 second intervals
       mediaRecorder.start(1000)
       setIsRecording(true)
-      console.log('🎤 [GOOGLE SPEECH] Recording started with real-time transcription')
+      console.log('🎤 [GOOGLE SPEECH] Recording started', isContinuation ? '(continuing)' : '(new)')
     } catch (err: any) {
       console.error('❌ [GOOGLE SPEECH] Error starting recording:', err)
       setError(
@@ -205,7 +218,24 @@ export function VoiceInputModal({
         streamRef.current = null
       }
       
-      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing final chunk...')
+      console.log('🛑 [GOOGLE SPEECH] Recording stopped, processing final audio...')
+    }
+  }
+
+  const handleKeepGoing = () => {
+    // Continue recording - don't clear transcript
+    handleStart(true)
+  }
+
+  const handleStartOver = () => {
+    setTranscript('')
+    accumulatedTranscriptRef.current = ''
+    allAudioChunksRef.current = []
+    setHasStopped(false)
+    setError(null)
+    // If recording, stop first
+    if (isRecording) {
+      handleStop()
     }
   }
 
@@ -272,8 +302,13 @@ export function VoiceInputModal({
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
+            {transcript && !isRecording && !isProcessing && (
+              <Button variant="outline" onClick={handleStartOver}>
+                Start Over
+              </Button>
+            )}
             <Button
-              onClick={isRecording ? handleStop : handleStart}
+              onClick={isRecording ? handleStop : (hasStopped ? handleKeepGoing : () => handleStart(false))}
               disabled={isProcessing}
               className={cn(
                 'min-w-[120px]',
@@ -284,6 +319,11 @@ export function VoiceInputModal({
                 <>
                   <MicOff className="h-4 w-4 mr-2" />
                   Stop
+                </>
+              ) : hasStopped ? (
+                <>
+                  <Mic className="h-4 w-4 mr-2" />
+                  Keep Going
                 </>
               ) : (
                 <>
