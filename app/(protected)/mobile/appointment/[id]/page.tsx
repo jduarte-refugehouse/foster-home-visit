@@ -79,8 +79,27 @@ export default function MobileAppointmentDetailPage() {
     // }
     if (appointmentId) {
       fetchAppointmentDetails()
+      fetchNextAppointment()
     }
   }, [appointmentId, isMobile, router])
+
+  const fetchNextAppointment = async () => {
+    try {
+      const response = await fetch(`/api/appointments/${appointmentId}/next-appointment`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setHasNextAppointment(data.hasNext)
+          setNextAppointment(data.nextAppointment)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching next appointment:", error)
+      // Silently fail - we'll just not show the "Drive to Next Visit" button
+      setHasNextAppointment(false)
+      setNextAppointment(null)
+    }
+  }
 
   const fetchAppointmentDetails = async () => {
     try {
@@ -307,30 +326,75 @@ export default function MobileAppointmentDetailPage() {
     }
   }
 
-  const handleLeaving = async () => {
-    try {
-      // Check for next appointment
-      const response = await fetch(`/api/appointments/${appointmentId}/next-appointment`)
-      const data = await response.json()
+  const handleLeaving = () => {
+    // Show dialog for return travel
+    setShowLeavingDialog(true)
+  }
 
-      if (data.success) {
-        setHasNextAppointment(data.hasNext)
-        setNextAppointment(data.nextAppointment)
-        setShowLeavingDialog(true)
-      } else {
+  const handleDriveToNext = async () => {
+    try {
+      if (!nextAppointment) {
         toast({
           title: "Error",
-          description: "Failed to check for next appointment",
+          description: "Next appointment information not available",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setCapturingLocation(true)
+      const location = await captureLocation("arrived")
+      
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      let currentUser = user
+      if (!currentUser && isLoaded) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      if (currentUser?.id) {
+        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
+        headers["x-user-clerk-id"] = currentUser.id
+        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
+      }
+
+      const response = await fetch(`/api/appointments/${nextAppointment.appointmentId}/mileage`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "start_drive",
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Travel Started",
+          description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
+        })
+        fetchAppointmentDetails()
+        // Refresh next appointment info
+        fetchNextAppointment()
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to start travel to next visit",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Error checking for next appointment:", error)
+      console.error("Error starting travel to next visit:", error)
       toast({
         title: "Error",
-        description: "Failed to check for next appointment",
+        description: error instanceof Error ? error.message : "Failed to start travel to next visit",
         variant: "destructive",
       })
+    } finally {
+      setCapturingLocation(false)
     }
   }
 
@@ -610,15 +674,28 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {hasArrived && !hasReturned && (appointment.status === "scheduled" || appointment.status === "in-progress") && (
-            <Button
-              onClick={handleLeaving}
-              disabled={capturingLocation}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50"
-              size="lg"
-            >
-              <Navigation className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Leaving"}
-            </Button>
+            <>
+              {hasNextAppointment && nextAppointment && (
+                <Button
+                  onClick={handleDriveToNext}
+                  disabled={capturingLocation}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                  size="lg"
+                >
+                  <Navigation className="h-5 w-5 mr-2" />
+                  {capturingLocation ? "Capturing Location..." : `Drive to Next Visit${nextAppointment.title ? `: ${nextAppointment.title}` : ""}`}
+                </Button>
+              )}
+              <Button
+                onClick={handleLeaving}
+                disabled={capturingLocation}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50"
+                size="lg"
+              >
+                <MapPin className="h-5 w-5 mr-2" />
+                {capturingLocation ? "Capturing Location..." : "Return to Office/Home"}
+              </Button>
+            </>
           )}
 
           {hasArrived && appointment.status === "scheduled" && !hasReturned && (
@@ -655,72 +732,35 @@ export default function MobileAppointmentDetailPage() {
         </div>
       </div>
 
-      {/* Leaving Dialog */}
+      {/* Return Travel Dialog */}
       <Dialog open={showLeavingDialog} onOpenChange={setShowLeavingDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Leaving Visit</DialogTitle>
+            <DialogTitle>Return to Office/Home</DialogTitle>
             <DialogDescription>
-              {hasNextAppointment && nextAppointment ? (
-                <>
-                  You have another visit scheduled: <strong>{nextAppointment.title || nextAppointment.homeName || "Next Visit"}</strong>
-                  <p className="mt-2">Would you like to start travel to your next visit, or return to the office/home?</p>
-                </>
-              ) : (
-                <>
-                  This is your last visit for today.
-                  <p className="mt-2">Would you like to log your return travel to the office/home?</p>
-                </>
-              )}
+              This is your last visit for today. Would you like to log your return travel to the office/home?
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
-            {hasNextAppointment && nextAppointment ? (
-              <>
-                <Button
-                  className="w-full justify-start"
-                  variant="outline"
-                  onClick={() => handleLeavingAction("next")}
-                  disabled={capturingLocation || leavingAction !== null}
-                >
-                  <Navigation className="h-4 w-4 mr-2" />
-                  {leavingAction === "next" ? "Capturing location..." : `Start Travel to Next Visit${nextAppointment.title ? `: ${nextAppointment.title}` : ""}`}
-                </Button>
-                <p className="text-xs text-muted-foreground px-2">
-                  This will capture your location and assign it as the start point for your next visit.
-                </p>
-              </>
-            ) : null}
-            <Button
-              className="w-full justify-start"
-              variant="outline"
-              onClick={() => handleLeavingAction("return")}
-              disabled={capturingLocation || leavingAction !== null}
-            >
-              <MapPin className="h-4 w-4 mr-2" />
-              {leavingAction === "return" ? "Capturing location..." : hasNextAppointment ? "Return to Office/Home" : "Log Return Travel"}
-            </Button>
-            {hasNextAppointment ? (
-              <p className="text-xs text-muted-foreground px-2">
-                This will log your return travel mileage for this visit.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground px-2">
-                This will calculate and log your return travel mileage for this visit.
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              This will calculate and log your return travel mileage for this visit.
+            </p>
           </div>
           <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => {
                 setShowLeavingDialog(false)
-                setNextAppointment(null)
-                setHasNextAppointment(false)
               }}
               disabled={capturingLocation || leavingAction !== null}
             >
               Cancel
+            </Button>
+            <Button
+              onClick={() => handleLeavingAction("return")}
+              disabled={capturingLocation || leavingAction !== null}
+            >
+              {leavingAction === "return" ? "Capturing location..." : "Log Return Travel"}
             </Button>
           </DialogFooter>
         </DialogContent>
