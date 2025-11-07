@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -314,6 +315,7 @@ export function GuidedQuestionField({
   context = {},
 }: GuidedQuestionFieldProps) {
   // Hooks must be called before any conditional returns
+  const { user } = useUser()
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [showSummary, setShowSummary] = useState(false)
@@ -322,6 +324,17 @@ export function GuidedQuestionField({
   const [enhancingSummary, setEnhancingSummary] = useState(false) // Track if summary is being enhanced
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  
+  // Get user headers for authenticated API calls (same pattern as test-ai page)
+  const getUserHeaders = () => {
+    if (!user) return { "Content-Type": "application/json" }
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
   
   const flow = questionFlows[fieldType]
   
@@ -536,9 +549,7 @@ export function GuidedQuestionField({
               try {
                 const response = await fetch("/api/visit-forms/ai-enhance", {
                   method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
+                  headers: getUserHeaders(),
                   body: JSON.stringify({
                     originalText: currentText,
                     fieldType: fieldType,
@@ -751,9 +762,7 @@ export function GuidedQuestionField({
                     try {
                       const response = await fetch("/api/visit-forms/ai-enhance", {
                         method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                        },
+                        headers: getUserHeaders(),
                         body: JSON.stringify({
                           originalText: currentText,
                           fieldType: fieldType,
