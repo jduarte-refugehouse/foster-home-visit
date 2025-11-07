@@ -46,6 +46,9 @@ export async function callAnthropicAPI(
     }
 
     console.log("🤖 [ANTHROPIC] Calling API with model:", model)
+    console.log("🤖 [ANTHROPIC] API Key present:", !!apiKey, "Length:", apiKey?.length || 0)
+    console.log("🤖 [ANTHROPIC] Request URL:", url)
+    console.log("🤖 [ANTHROPIC] Request body (first 500 chars):", JSON.stringify(requestBody).substring(0, 500))
 
     const response = await fetch(url, {
       method: "POST",
@@ -58,6 +61,7 @@ export async function callAnthropicAPI(
     })
 
     console.log("🤖 [ANTHROPIC] Response status:", response.status)
+    console.log("🤖 [ANTHROPIC] Response headers:", Object.fromEntries(response.headers.entries()))
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
