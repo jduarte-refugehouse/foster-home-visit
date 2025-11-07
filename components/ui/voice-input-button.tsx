@@ -37,14 +37,19 @@ export function VoiceInputButton({
     isIOS: isIOS
   })
   
-  const { isListening, isSupported, startListening, stopListening, transcript } = useVoiceInput({
+  const { isListening, isSupported, startListening, startListeningWithAutoRestart, stopListening, transcript } = useVoiceInput({
     onResult: (text) => {
-      // For iOS/iPad (non-continuous), immediately add text to field
+      // For iOS/iPad (press-and-hold), accumulate text while holding
       // For continuous mode, accumulate text
       if (text && text.trim().length > 0) {
         if (isIOS) {
-          // On iOS, immediately add to field since it's non-continuous
-          onTranscript(text.trim())
+          // On iOS, accumulate while holding button down
+          // Text will be added when button is released
+          setAccumulatedText(prev => {
+            const newText = prev ? `${prev} ${text.trim()}` : text.trim()
+            console.log('📝 Accumulating text on iOS:', newText)
+            return newText
+          })
         } else {
           // On desktop, accumulate for continuous mode
           setAccumulatedText(prev => {
@@ -87,26 +92,59 @@ export function VoiceInputButton({
     return null // Don't show button if not supported
   }
 
-  const handleClick = () => {
-    if (isListening) {
-      // Stop listening
+  // For iPad: Use press-and-hold to keep recognition active
+  // For desktop: Use click to toggle
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isIOS) {
+      // On iPad, start listening when button is pressed
+      e.preventDefault()
+      setManuallyStopped(false)
+      setAccumulatedText('')
+      console.log('🎤 Starting voice input (press-and-hold with auto-restart)...')
+      // Use auto-restart so if Safari aborts, it will restart while button is held
+      startListeningWithAutoRestart()
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isIOS) {
+      // On iPad, stop listening when button is released
+      e.preventDefault()
       setManuallyStopped(true)
       stopListening()
-      // For desktop (continuous mode), process accumulated text
-      if (!isIOS) {
+      // Process any accumulated text
+      const finalText = accumulatedText || transcript
+      if (finalText && finalText.trim().length > 0) {
+        console.log('✅ Processing final text on release:', finalText)
+        onTranscript(finalText.trim())
+        setAccumulatedText('')
+      } else {
+        console.log('ℹ️ No text accumulated on release')
+      }
+    }
+  }
+
+  const handleClick = () => {
+    // Desktop mode: toggle on/off
+    if (!isIOS) {
+      if (isListening) {
+        // Stop listening
+        setManuallyStopped(true)
+        stopListening()
+        // Process accumulated text
         const finalText = accumulatedText || transcript
         if (finalText && finalText.trim().length > 0) {
           onTranscript(finalText.trim())
           setAccumulatedText('') // Reset after sending
         }
+      } else {
+        setManuallyStopped(false)
+        setAccumulatedText('') // Reset when starting
+        console.log('🎤 Starting voice input (toggle mode)...')
+        startListening()
       }
-      // For iOS, text is already added in onResult callback
-    } else {
-      setManuallyStopped(false)
-      setAccumulatedText('') // Reset when starting
-      console.log('🎤 Starting voice input...', isIOS ? '(iOS mode)' : '(continuous mode)')
-      startListening()
     }
+    // On iOS, click is handled by pointer events
   }
 
   // On iPad, recognition may end quickly - this is normal Safari behavior
@@ -119,17 +157,30 @@ export function VoiceInputButton({
       variant={variant}
       size={size}
       onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp} // Handle if user drags finger away
       className={cn(
-        'flex-shrink-0',
+        'flex-shrink-0 touch-none', // touch-none prevents iOS from treating as scroll
         isListening && 'bg-red-500 hover:bg-red-600 text-white',
         className
       )}
-      title={isListening ? 'Stop recording' : 'Start voice input'}
+      title={
+        isIOS 
+          ? (isListening ? 'Release to stop recording' : 'Press and hold to record')
+          : (isListening ? 'Stop recording' : 'Start voice input')
+      }
     >
       {isListening ? (
-        <MicOff className="h-4 w-4" />
+        <>
+          <MicOff className="h-4 w-4" />
+          {isIOS && <span className="ml-1 text-xs">Release</span>}
+        </>
       ) : (
-        <Mic className="h-4 w-4" />
+        <>
+          <Mic className="h-4 w-4" />
+          {isIOS && <span className="ml-1 text-xs">Hold</span>}
+        </>
       )}
     </Button>
   )

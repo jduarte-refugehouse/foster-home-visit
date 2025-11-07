@@ -128,6 +128,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
         console.log('🎤 Speech recognition ended, continuous:', continuous, 'transcript length:', finalTranscript.length)
         console.log('🎤 Final transcript:', finalTranscript || '(empty)')
         
+        // Check if we should auto-restart (for press-and-hold on iPad)
+        const shouldAutoRestart = recognitionRef.current?._shouldAutoRestart || false
+        
         setIsListening(false)
         
         // In continuous mode on iPad, recognition may end automatically after a pause
@@ -146,6 +149,20 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
             }, 100)
           } else {
             console.log('ℹ️ No transcript to process (empty or no onResult callback)')
+          }
+          
+          // If we should auto-restart (button still being held), restart after a brief delay
+          if (shouldAutoRestart && recognitionRef.current) {
+            console.log('🔄 Auto-restarting recognition (button still held)...')
+            setTimeout(() => {
+              try {
+                if (recognitionRef.current && shouldAutoRestart) {
+                  recognitionRef.current.start()
+                }
+              } catch (restartError) {
+                console.error('❌ Failed to auto-restart:', restartError)
+              }
+            }, 100)
           }
         }
       }
@@ -169,15 +186,21 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
   }, [continuous, interimResults, onResult, onError])
 
-  const startListening = () => {
+  const startListening = (autoRestart = false) => {
     if (recognitionRef.current && !isListening) {
       try {
         // Reset transcript when starting
         setTranscript('')
-        console.log('🎤 Attempting to start recognition...')
+        console.log('🎤 Attempting to start recognition...', autoRestart ? '(auto-restart)' : '')
         const wasListening = isListening
+        
+        // Mark if we should auto-restart on end (for press-and-hold)
+        if (recognitionRef.current) {
+          (recognitionRef.current as any)._shouldAutoRestart = autoRestart
+        }
+        
         recognitionRef.current.start()
-        console.log('🎤 Recognition.start() called successfully, wasListening:', wasListening)
+        console.log('🎤 Recognition.start() called successfully, wasListening:', wasListening, 'autoRestart:', autoRestart)
         
         // Log that we've started - the onstart handler will confirm it actually started
       } catch (error: any) {
@@ -230,11 +253,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}) {
     }
   }
 
+  const startListeningWithAutoRestart = () => {
+    startListening(true)
+  }
+
   return {
     isListening,
     transcript,
     isSupported,
     startListening,
+    startListeningWithAutoRestart,
     stopListening,
   }
 }
