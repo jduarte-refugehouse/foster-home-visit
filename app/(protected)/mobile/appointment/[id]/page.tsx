@@ -456,7 +456,7 @@ export default function MobileAppointmentDetailPage() {
 
         {/* Action Buttons */}
         <div className="space-y-2">
-          {!hasStartedDrive && appointment.status === "scheduled" && (
+          {!hasStartedDrive && (
             <Button
               onClick={handleStartDrive}
               disabled={capturingLocation}
