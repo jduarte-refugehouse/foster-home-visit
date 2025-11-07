@@ -93,7 +93,7 @@ export async function transcribeWithGoogleSpeech(
     const alternative = bestResult.alternatives[0]
 
     console.log('✅ [GOOGLE SPEECH] Transcription successful:', {
-      transcript: alternative.transcript.substring(0, 100),
+      transcript: alternative.transcript?.substring?.(0, 100) || alternative.transcript || '(empty)',
       confidence: alternative.confidence,
     })
 

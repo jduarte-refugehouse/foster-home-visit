@@ -121,7 +121,7 @@ export function VoiceInputModal({
                 // For final chunk, use the full transcript
                 setTranscript(newText)
                 accumulatedTranscriptRef.current = newText
-                console.log('✅ [GOOGLE SPEECH] Final transcript:', newText.substring(0, 100))
+                console.log('✅ [GOOGLE SPEECH] Final transcript:', newText?.substring?.(0, 100) || newText)
                 setIsProcessing(false)
               } else if (isInterim) {
                 // For interim chunks, always update to show real-time progress
@@ -131,7 +131,7 @@ export function VoiceInputModal({
                     !accumulatedTranscriptRef.current.includes(newText)) {
                   setTranscript(newText)
                   accumulatedTranscriptRef.current = newText
-                  console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText.substring(0, 100))
+                  console.log('🔄 [GOOGLE SPEECH] Interim transcript update:', newText?.substring?.(0, 100) || newText)
                 } else {
                   console.log('⏭️ [GOOGLE SPEECH] Skipping duplicate interim update')
                 }
@@ -227,7 +227,8 @@ export function VoiceInputModal({
 
       let audioChunks: Blob[] = []
       let lastInterimSendTime = 0
-      const INTERIM_INTERVAL_MS = 2000 // Send interim chunks every 2 seconds (need more audio for Google)
+      const INTERIM_INTERVAL_MS = 3000 // Send interim chunks every 3 seconds (need more audio for Google)
+      const MIN_CHUNK_SIZE = 100000 // Minimum 100KB (~3-4 seconds of audio at 48kHz)
 
       // Collect audio chunks
       mediaRecorder.ondataavailable = (event) => {
@@ -237,12 +238,19 @@ export function VoiceInputModal({
           
           const now = Date.now()
           
-          // Send chunk for real-time transcription every 2 seconds
-          // Need to accumulate enough audio (2-3 seconds) for Google to process
-          // Google needs sufficient audio to return meaningful transcripts
-          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS && audioChunks.length >= 2) {
-            // Send accumulated chunks (2+ seconds of audio)
+          // Calculate total size of accumulated chunks
+          const totalSize = audioChunks.reduce((sum, chunk) => sum + chunk.size, 0)
+          
+          // Send chunk for real-time transcription every 3 seconds AND when we have enough audio
+          // Google needs sufficient audio (100KB+ = ~3-4 seconds) to return meaningful transcripts
+          if (now - lastInterimSendTime >= INTERIM_INTERVAL_MS && totalSize >= MIN_CHUNK_SIZE) {
+            // Send accumulated chunks (3+ seconds of audio, 100KB+)
             const chunkToSend = new Blob(audioChunks, { type: detectedMimeTypeRef.current || 'audio/webm;codecs=opus' })
+            console.log('📤 [GOOGLE SPEECH] Sending interim chunk:', {
+              size: chunkToSend.size,
+              chunkCount: audioChunks.length,
+              timeSinceLast: now - lastInterimSendTime
+            })
             sendAudioChunk(chunkToSend, false, true)
             // Keep last chunk for continuity (don't reset completely)
             // This ensures smooth transitions between interim chunks
