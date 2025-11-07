@@ -22,8 +22,17 @@ export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user - try headers first, then session cookies
-    const clerkUserId = getClerkUserIdFromRequest(request)
-    const user = clerkUserId ? null : await currentUser()
+    const headerAuth = getClerkUserIdFromRequest(request)
+    let clerkUserId = headerAuth.clerkUserId
+    let user = null
+    
+    if (!clerkUserId) {
+      // Fall back to Clerk session (browser cookies)
+      user = await currentUser()
+      if (user) {
+        clerkUserId = user.id
+      }
+    }
     
     if (!clerkUserId && !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
