@@ -1296,7 +1296,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
     onChange(`signatures.${key}`, value)
   }
 
-  // Auto-populate names if not already set
+  // Auto-populate names if not already set, and ensure dates are set when signatures exist
   useEffect(() => {
     // Pre-fill foster parent names
     providers.forEach((provider, index) => {
@@ -1307,6 +1307,14 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
           handleSignatureChange(sigKey, provider.name)
         }
       }
+      
+      // Ensure date is set if signature exists but date doesn't
+      const sigKey = `parent${index + 1}`
+      const signature = signatures[`${sigKey}Signature`]
+      const date = signatures[`${sigKey}Date`]
+      if (signature && (!date || date === "")) {
+        handleSignatureChange(`${sigKey}Date`, new Date().toISOString().split("T")[0])
+      }
     })
 
     // Pre-fill staff name
@@ -1316,8 +1324,28 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
         handleSignatureChange("staff", staffName)
       }
     }
+    
+    // Ensure staff date is set if signature exists but date doesn't
+    const staffSignature = signatures.staffSignature
+    const staffDate = signatures.staffDate
+    if (staffSignature && (!staffDate || staffDate === "")) {
+      handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+    }
+    
+    // Check fallback parent1/parent2 signatures
+    const parent1Sig = signatures.parent1Signature
+    const parent1Date = signatures.parent1Date
+    if (parent1Sig && (!parent1Date || parent1Date === "")) {
+      handleSignatureChange("parent1Date", new Date().toISOString().split("T")[0])
+    }
+    
+    const parent2Sig = signatures.parent2Signature
+    const parent2Date = signatures.parent2Date
+    if (parent2Sig && (!parent2Date || parent2Date === "")) {
+      handleSignatureChange("parent2Date", new Date().toISOString().split("T")[0])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providers.length, staffName]) // Only run when providers count or staffName changes
+  }, [providers.length, staffName, signatures]) // Run when providers, staffName, or signatures change
 
   return (
     <div className="space-y-3">
@@ -1371,7 +1399,17 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
                   <Input
                     type="date"
                     value={getSignatureValue(`${sigKey}Date`) || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => handleSignatureChange(`${sigKey}Date`, e.target.value)}
+                    onChange={(e) => {
+                      handleSignatureChange(`${sigKey}Date`, e.target.value)
+                    }}
+                    onBlur={(e) => {
+                      // Ensure date is saved even if user just clicked away without changing it
+                      const currentDate = getSignatureValue(`${sigKey}Date`)
+                      const signature = getSignatureValue(`${sigKey}Signature`)
+                      if (signature && (!currentDate || currentDate === "")) {
+                        handleSignatureChange(`${sigKey}Date`, new Date().toISOString().split("T")[0])
+                      }
+                    }}
                     className="text-sm"
                   />
                 </div>
@@ -1414,6 +1452,14 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
                   type="date"
                   value={getSignatureValue("parent1Date") || new Date().toISOString().split("T")[0]}
                   onChange={(e) => handleSignatureChange("parent1Date", e.target.value)}
+                  onBlur={(e) => {
+                    // Ensure date is saved even if user just clicked away without changing it
+                    const currentDate = getSignatureValue("parent1Date")
+                    const signature = getSignatureValue("parent1Signature")
+                    if (signature && (!currentDate || currentDate === "")) {
+                      handleSignatureChange("parent1Date", new Date().toISOString().split("T")[0])
+                    }
+                  }}
                   className="text-sm"
                 />
               </div>
@@ -1459,6 +1505,14 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
                   type="date"
                   value={getSignatureValue("staffDate") || new Date().toISOString().split("T")[0]}
                   onChange={(e) => handleSignatureChange("staffDate", e.target.value)}
+                  onBlur={(e) => {
+                    // Ensure date is saved even if user just clicked away without changing it
+                    const currentDate = getSignatureValue("staffDate")
+                    const signature = getSignatureValue("staffSignature")
+                    if (signature && (!currentDate || currentDate === "")) {
+                      handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+                    }
+                  }}
                   className="text-sm"
                 />
               </div>
