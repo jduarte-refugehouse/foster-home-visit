@@ -41,6 +41,50 @@ export interface AnthropicResponse {
 }
 
 /**
+ * Get information about a specific Anthropic model
+ * Uses the Models API endpoint: GET /v1/models/{model_id}
+ * 
+ * @param modelId - The model identifier or alias (e.g., "claude-opus-4-20250514")
+ * @returns Model information including id, display_name, created_at, type
+ */
+export async function getModelInfo(modelId: string): Promise<{
+  id: string
+  display_name: string
+  created_at: string
+  type: string
+} | null> {
+  try {
+    const apiKey = process.env.home_visit_general_key
+
+    if (!apiKey) {
+      console.error("❌ [ANTHROPIC] API key not configured")
+      return null
+    }
+
+    const url = `https://api.anthropic.com/v1/models/${modelId}`
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+    })
+
+    if (!response.ok) {
+      console.error(`❌ [ANTHROPIC] Failed to get model info: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error("❌ [ANTHROPIC] Error getting model info:", error)
+    return null
+  }
+}
+
+/**
  * Call Anthropic API with a prompt
  * Uses the home_visit_general_key environment variable
  */
