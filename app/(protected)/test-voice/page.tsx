@@ -83,7 +83,7 @@ export default function TestVoicePage() {
                 value={text1}
                 onChange={(e) => setText1(e.target.value)}
                 onVoiceTranscript={(text) => {
-                  setText1(prev => prev ? `${prev} ${text}` : text)
+                  // Just log it - TextareaWithVoice already handles appending via onChange
                   handleVoiceTranscript(text, 1)
                 }}
                 showVoiceButton={true}
@@ -115,7 +115,7 @@ export default function TestVoicePage() {
                 value={text2}
                 onChange={(e) => setText2(e.target.value)}
                 onVoiceTranscript={(text) => {
-                  setText2(prev => prev ? `${prev} ${text}` : text)
+                  // Just log it - TextareaWithVoice already handles appending via onChange
                   handleVoiceTranscript(text, 2)
                 }}
                 showVoiceButton={true}
@@ -147,7 +147,7 @@ export default function TestVoicePage() {
                 value={text3}
                 onChange={(e) => setText3(e.target.value)}
                 onVoiceTranscript={(text) => {
-                  setText3(prev => prev ? `${prev} ${text}` : text)
+                  // Just log it - TextareaWithVoice already handles appending via onChange
                   handleVoiceTranscript(text, 3)
                 }}
                 showVoiceButton={true}
