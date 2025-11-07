@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVoiceInput } from '@/hooks/use-voice-input'
