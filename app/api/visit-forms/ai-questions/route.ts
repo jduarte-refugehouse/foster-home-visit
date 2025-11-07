@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { fieldType, context } = body
+    const { fieldType, context, model } = body
 
     if (!fieldType) {
       return NextResponse.json(
@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("🤖 [AI-QUESTIONS] Generating questions for:", fieldType, context)
+    console.log("🤖 [AI-QUESTIONS] Generating questions for:", fieldType, context, "using model:", model || "default")
 
-    const questions = await generateContextualQuestions(fieldType, context || {})
+    const questions = await generateContextualQuestions(fieldType, context || {}, model)
 
     if (questions.length === 0) {
       return NextResponse.json(

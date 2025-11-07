@@ -182,7 +182,8 @@ export async function generateContextualQuestions(
     complianceStatus?: string
     visitNumber?: number
     quarter?: string
-  }
+  },
+  model?: string
 ): Promise<string[]> {
   const systemPrompt = `You are an assistant helping home visit liaisons conduct thorough, regulatory-compliant foster home visits. 
 Generate specific, actionable questions that help gather required information for ${fieldType} documentation.
@@ -247,7 +248,8 @@ export async function enhanceResponse(
   context?: {
     childName?: string
     regulatoryRequirement?: string
-  }
+  },
+  model?: string
 ): Promise<string> {
   const systemPrompt = `You are an assistant helping home visit liaisons improve their documentation quality.
 Enhance the provided response to be:
@@ -270,7 +272,7 @@ Do not add information that wasn't implied or stated in the original.`
     },
   ]
 
-  const response = await callAnthropicAPI(messages, systemPrompt)
+  const response = await callAnthropicAPI(messages, systemPrompt, model)
   
   if (response.error) {
     console.error("❌ [AI-ENHANCE] Error from Anthropic:", response.error)

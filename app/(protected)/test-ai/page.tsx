@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Info } from "lucide-react"
+import { Info, CheckCircle2, XCircle } from "lucide-react"
+import { ANTHROPIC_MODELS } from "@/lib/anthropic-helper"
 
 export default function TestAIPage() {
   const { user, isLoaded } = useUser()
@@ -17,6 +18,11 @@ export default function TestAIPage() {
   const [questionsResult, setQuestionsResult] = useState<string>("")
   const [enhanceResult, setEnhanceResult] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [validatingModel, setValidatingModel] = useState(false)
+  const [modelInfo, setModelInfo] = useState<any>(null)
+  
+  // Model selection
+  const [selectedModel, setSelectedModel] = useState(ANTHROPIC_MODELS.OPUS_4_20250514)
   
   // Form state for question generation
   const [questionFieldType, setQuestionFieldType] = useState("behaviors")
@@ -39,10 +45,31 @@ export default function TestAIPage() {
     }
   }
 
-  // Check API key status
-  const checkApiKey = async () => {
-    // We can't check server-side env vars from client, but we can test by making a call
-    setApiKeyConfigured(null)
+  // Validate selected model
+  const validateModel = async () => {
+    if (!user || !isLoaded) return
+
+    setValidatingModel(true)
+    setModelInfo(null)
+
+    try {
+      const response = await fetch(`/api/visit-forms/validate-model?modelId=${encodeURIComponent(selectedModel)}`, {
+        method: "GET",
+        headers: getUserHeaders(),
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.modelInfo) {
+        setModelInfo(data.modelInfo)
+      } else {
+        setModelInfo({ error: data.error || "Failed to validate model" })
+      }
+    } catch (error) {
+      setModelInfo({ error: error instanceof Error ? error.message : "Unknown error" })
+    } finally {
+      setValidatingModel(false)
+    }
   }
 
   const testQuestions = async () => {
@@ -68,7 +95,7 @@ export default function TestAIPage() {
       const response = await fetch("/api/visit-forms/ai-questions", {
         method: "POST",
         headers: getUserHeaders(),
-        body: JSON.stringify({ fieldType: questionFieldType, context }),
+        body: JSON.stringify({ fieldType: questionFieldType, context, model: selectedModel }),
       })
 
       const data = await response.json()
@@ -106,7 +133,7 @@ export default function TestAIPage() {
       const response = await fetch("/api/visit-forms/ai-enhance", {
         method: "POST",
         headers: getUserHeaders(),
-        body: JSON.stringify({ originalText, fieldType: enhanceFieldType }),
+        body: JSON.stringify({ originalText, fieldType: enhanceFieldType, model: selectedModel }),
       })
 
       const data = await response.json()
@@ -159,6 +186,77 @@ export default function TestAIPage() {
               <small>Environment Variable: home_visit_general_key</small>
             </AlertDescription>
           </Alert>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Model Selection</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Select Anthropic Model:</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4_20250514}>
+                      {ANTHROPIC_MODELS.OPUS_4_20250514} (Current Default)
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4_1}>
+                      {ANTHROPIC_MODELS.OPUS_4_1}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.OPUS_4}>
+                      {ANTHROPIC_MODELS.OPUS_4}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.SONNET_4}>
+                      {ANTHROPIC_MODELS.SONNET_4}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.SONNET_3_7_LATEST}>
+                      {ANTHROPIC_MODELS.SONNET_3_7_LATEST}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.SONNET_3_5_LATEST}>
+                      {ANTHROPIC_MODELS.SONNET_3_5_LATEST}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.HAIKU_3_5_LATEST}>
+                      {ANTHROPIC_MODELS.HAIKU_3_5_LATEST}
+                    </SelectItem>
+                    <SelectItem value={ANTHROPIC_MODELS.HAIKU_3}>
+                      {ANTHROPIC_MODELS.HAIKU_3}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={validateModel} disabled={validatingModel} variant="outline">
+                {validatingModel ? "Validating..." : "Validate Model"}
+              </Button>
+
+              {modelInfo && (
+                <div className="mt-4 p-4 bg-gray-50 rounded border">
+                  {modelInfo.error ? (
+                    <div className="flex items-center gap-2 text-red-600">
+                      <XCircle className="h-4 w-4" />
+                      <span className="font-medium">Error:</span>
+                      <span>{modelInfo.error}</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="font-medium">Model Valid</span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <div><strong>ID:</strong> {modelInfo.id}</div>
+                        <div><strong>Display Name:</strong> {modelInfo.display_name}</div>
+                        <div><strong>Created:</strong> {new Date(modelInfo.created_at).toLocaleDateString()}</div>
+                        <div><strong>Type:</strong> {modelInfo.type}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

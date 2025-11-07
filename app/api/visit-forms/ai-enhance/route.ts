@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { originalText, fieldType, context } = body
+    const { originalText, fieldType, context, model } = body
 
     if (!originalText || !fieldType) {
       return NextResponse.json(
@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("🤖 [AI-ENHANCE] Enhancing response for:", fieldType)
+    console.log("🤖 [AI-ENHANCE] Enhancing response for:", fieldType, "using model:", model || "default")
 
-    const enhanced = await enhanceResponse(originalText, fieldType, context)
+    const enhanced = await enhanceResponse(originalText, fieldType, context, model)
 
     return NextResponse.json({
       success: true,
