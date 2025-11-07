@@ -33,6 +33,7 @@ export function VoiceInputModal({
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const accumulatedTranscriptRef = useRef<string>('')
   const allAudioChunksRef = useRef<Blob[]>([]) // Store all audio for final processing
+  const detectedMimeTypeRef = useRef<string>('') // Store detected MIME type
 
   // Cleanup when modal closes
   useEffect(() => {
@@ -68,6 +69,29 @@ export function VoiceInputModal({
       reader.onloadend = async () => {
         const base64Audio = (reader.result as string).split(',')[1]
         
+        // Determine encoding based on detected MIME type
+        const mimeType = detectedMimeTypeRef.current || audioBlob.type
+        let encoding = 'WEBM_OPUS'
+        let sampleRate = 48000
+        
+        if (mimeType.includes('mp4') || mimeType.includes('mpeg')) {
+          encoding = 'MP3' // Google Cloud supports MP3
+          sampleRate = 44100 // MP3 typically uses 44.1kHz
+        } else if (mimeType.includes('ogg')) {
+          encoding = 'OGG_OPUS'
+          sampleRate = 48000
+        } else if (mimeType.includes('webm')) {
+          encoding = 'WEBM_OPUS'
+          sampleRate = 48000
+        }
+        
+        console.log('🎤 [GOOGLE SPEECH] Sending chunk:', {
+          mimeType,
+          encoding,
+          sampleRate,
+          blobSize: audioBlob.size,
+        })
+        
         try {
           // Send to API for transcription
           const response = await fetch('/api/speech/transcribe', {
@@ -77,8 +101,8 @@ export function VoiceInputModal({
             },
             body: JSON.stringify({
               audioData: base64Audio,
-              encoding: 'WEBM_OPUS',
-              sampleRateHertz: 48000,
+              encoding,
+              sampleRateHertz: sampleRate,
             }),
           })
 
@@ -149,10 +173,40 @@ export function VoiceInputModal({
       
       streamRef.current = stream
 
-      // Create MediaRecorder with WebM format
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      })
+      // Detect supported audio format (Safari/iPad doesn't support WebM Opus)
+      let mimeType = ''
+      const supportedTypes = [
+        'audio/webm;codecs=opus', // Preferred for Chrome/Desktop
+        'audio/webm',              // Fallback WebM
+        'audio/mp4',               // Safari/iPad often supports this
+        'audio/mpeg',              // Alternative for Safari
+        'audio/ogg;codecs=opus',  // Ogg Opus
+      ]
+      
+      // Find the first supported type
+      for (const type of supportedTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type
+          console.log('🎤 [GOOGLE SPEECH] Using audio format:', mimeType)
+          break
+        }
+      }
+      
+      // If no supported type found, let MediaRecorder use default (Safari fallback)
+      if (!mimeType) {
+        console.log('⚠️ [GOOGLE SPEECH] No explicit format supported, using MediaRecorder default')
+      }
+      
+      const recorderOptions: MediaRecorderOptions = mimeType 
+        ? { mimeType }
+        : {}
+
+      // Create MediaRecorder with detected format
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
+      
+      // Store the actual MIME type used (or detect from MediaRecorder)
+      detectedMimeTypeRef.current = mimeType || mediaRecorder.mimeType || 'audio/webm;codecs=opus'
+      console.log('🎤 [GOOGLE SPEECH] MediaRecorder mimeType:', mediaRecorder.mimeType || 'default')
 
       mediaRecorderRef.current = mediaRecorder
 
