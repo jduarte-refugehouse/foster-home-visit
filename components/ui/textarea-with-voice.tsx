@@ -2,7 +2,9 @@
 
 import * as React from 'react'
 import { Textarea } from '@/components/ui/textarea'
-import { VoiceInputButton } from '@/components/ui/voice-input-button'
+import { Button } from '@/components/ui/button'
+import { Mic } from 'lucide-react'
+import { VoiceInputModal } from '@/components/ui/voice-input-modal'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 
@@ -17,28 +19,15 @@ const TextareaWithVoice = React.forwardRef<
 >(({ className, onVoiceTranscript, showVoiceButton = true, value, onChange, ...props }, ref) => {
   const { toast } = useToast()
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const [modalOpen, setModalOpen] = React.useState(false)
 
   // Combine refs
   React.useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement)
 
-  const voiceTextRef = React.useRef<string>('') // Track voice text separately from user-typed text
-  
   const handleVoiceTranscript = (transcript: string) => {
-    // For real-time updates, we need to replace the previous voice text, not append
+    // Append transcript to existing text with a space
     const currentValue = (value as string) || ''
-    
-    // Remove previous voice text if it exists
-    const baseText = voiceTextRef.current 
-      ? currentValue.replace(voiceTextRef.current, '').trim()
-      : currentValue
-    
-    // Update voice text reference
-    voiceTextRef.current = transcript
-    
-    // Combine base text (user-typed) with new voice text
-    const newValue = baseText 
-      ? `${baseText} ${transcript}`.trim()
-      : transcript
+    const newValue = currentValue ? `${currentValue} ${transcript}`.trim() : transcript
 
     // Update the textarea value
     if (onChange) {
@@ -53,22 +42,12 @@ const TextareaWithVoice = React.forwardRef<
       onVoiceTranscript(transcript)
     }
 
-    // Only show toast for final results (not interim/real-time updates)
-    // We'll detect this by checking if transcript is being replaced or appended
-    if (!transcript.includes(voiceTextRef.current) || voiceTextRef.current === '') {
-      toast({
-        title: 'Voice input added',
-        description: 'Your spoken text has been added to the field.',
-      })
-    }
+    // Show success toast
+    toast({
+      title: 'Voice input added',
+      description: 'Your spoken text has been added to the field.',
+    })
   }
-  
-  // Reset voice text when component unmounts or value is cleared
-  React.useEffect(() => {
-    if (!value || (value as string).trim() === '') {
-      voiceTextRef.current = ''
-    }
-  }, [value])
 
   const handleVoiceError = (error: string) => {
     toast({
@@ -88,14 +67,27 @@ const TextareaWithVoice = React.forwardRef<
         {...props}
       />
       {showVoiceButton && (
-        <div className="absolute bottom-2 right-2 z-10">
-          <VoiceInputButton
+        <>
+          <div className="absolute bottom-2 right-2 z-10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setModalOpen(true)}
+              className="bg-background border-border shadow-sm hover:bg-muted h-8 w-8 p-0"
+              title="Open voice input"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+          </div>
+          <VoiceInputModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
             onTranscript={handleVoiceTranscript}
-            onError={handleVoiceError}
-            realTime={true}
-            className="bg-background/95 backdrop-blur-sm rounded-lg p-1.5 shadow-sm"
+            title="Voice Input"
+            description="Click 'Start Recording' to begin. Speak your text, then click 'Stop Recording' and 'Insert Text' to add it to the field."
           />
-        </div>
+        </>
       )}
     </div>
   )
