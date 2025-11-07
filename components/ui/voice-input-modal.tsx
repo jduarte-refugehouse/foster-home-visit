@@ -127,12 +127,35 @@ export function VoiceInputModal({
                 // For interim updates, APPEND new transcribed text
                 // We're sending only NEW audio chunks, not concatenated WebM
                 // Concatenating WebM breaks the container - Google can only read first chunk
+                
+                let processedText = newText
+                
+                // Clean up punctuation for better flow between chunks
+                // Remove trailing period if we're still recording (more chunks coming)
+                if (mediaRecorderRef.current?.state === 'recording') {
+                  processedText = newText.replace(/\.\s*$/, '')
+                }
+                
+                // Append to accumulated transcript
                 const currentText = accumulatedTranscriptRef.current
-                const updatedText = currentText ? `${currentText} ${newText}` : newText
+                let updatedText: string
+                
+                if (currentText) {
+                  // If current text ends with sentence-ending punctuation, start new sentence
+                  if (currentText.match(/[.!?]\s*$/)) {
+                    updatedText = `${currentText} ${processedText}`
+                  } else {
+                    // Otherwise, continue the sentence (Google might split mid-sentence)
+                    updatedText = `${currentText} ${processedText}`
+                  }
+                } else {
+                  updatedText = processedText
+                }
+                
                 setTranscript(updatedText)
                 accumulatedTranscriptRef.current = updatedText
                 console.log('🔄 [GOOGLE SPEECH] Appending interim text:', {
-                  newText: newText?.substring?.(0, 50) || newText,
+                  newText: processedText?.substring?.(0, 50) || processedText,
                   fullText: updatedText?.substring?.(0, 100) || updatedText
                 })
               }
@@ -227,8 +250,8 @@ export function VoiceInputModal({
 
       let audioChunksForInterim: Blob[] = [] // Accumulate chunks between interim sends
       let lastInterimSendTime = 0
-      const INTERIM_INTERVAL_MS = 3000 // Send interim updates every 3 seconds
-      const MIN_CHUNK_SIZE = 50000 // Minimum 50KB (~1-2 seconds of audio)
+      const INTERIM_INTERVAL_MS = 5000 // Send interim updates every 5 seconds (more context for punctuation)
+      const MIN_CHUNK_SIZE = 80000 // Minimum 80KB (~5 seconds of audio at 48kHz)
 
       // Monitor MediaRecorder state
       mediaRecorder.onstart = () => {
