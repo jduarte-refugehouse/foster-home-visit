@@ -91,8 +91,12 @@ export async function GET(request: NextRequest) {
         vf.visit_form_id
       FROM appointments a
       LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
-      LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-      LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+      LEFT JOIN app_users au_assigned ON 
+        (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+         OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+      LEFT JOIN app_users au_created ON 
+        (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+         OR a.created_by_user_id = au_created.clerk_user_id)
       LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
       WHERE (au_assigned.email = @param0 OR au_created.email = @param0)
         AND a.start_datetime >= @param1
@@ -160,8 +164,12 @@ export async function GET(request: NextRequest) {
       `
       SELECT COUNT(DISTINCT a.appointment_id) as count
       FROM appointments a
-      LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-      LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+      LEFT JOIN app_users au_assigned ON 
+        (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+         OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+      LEFT JOIN app_users au_created ON 
+        (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+         OR a.created_by_user_id = au_created.clerk_user_id)
       WHERE (au_assigned.email = @param0 OR au_created.email = @param0)
         AND a.start_datetime >= @param1
         AND a.start_datetime <= @param2
@@ -176,8 +184,12 @@ export async function GET(request: NextRequest) {
       `
       SELECT COUNT(DISTINCT a.appointment_id) as count
       FROM appointments a
-      LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-      LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+      LEFT JOIN app_users au_assigned ON 
+        (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+         OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+      LEFT JOIN app_users au_created ON 
+        (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+         OR a.created_by_user_id = au_created.clerk_user_id)
       WHERE (au_assigned.email = @param0 OR au_created.email = @param0)
         AND a.start_datetime >= @param1
         AND a.start_datetime <= @param2
@@ -191,8 +203,12 @@ export async function GET(request: NextRequest) {
       `
       SELECT COUNT(DISTINCT a.appointment_id) as count
       FROM appointments a
-      LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-      LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+      LEFT JOIN app_users au_assigned ON 
+        (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+         OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+      LEFT JOIN app_users au_created ON 
+        (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+         OR a.created_by_user_id = au_created.clerk_user_id)
       WHERE (au_assigned.email = @param0 OR au_created.email = @param0)
         AND a.status = 'scheduled'
         AND a.start_datetime >= @param1

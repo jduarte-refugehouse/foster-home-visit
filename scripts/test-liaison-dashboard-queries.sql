@@ -44,8 +44,12 @@ SELECT
     au_created.email AS created_by_email,
     a.is_deleted
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.is_deleted = 0
@@ -73,8 +77,12 @@ SELECT DISTINCT
     au_created.email AS created_by_email
 FROM appointments a
 LEFT JOIN visit_forms vf ON a.appointment_id = vf.appointment_id
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.start_datetime >= @Today
@@ -88,8 +96,12 @@ PRINT '4. TODAY''S APPOINTMENTS COUNT'
 PRINT '============================================'
 SELECT COUNT(DISTINCT a.appointment_id) as count
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.start_datetime >= @TodayStart
     AND a.start_datetime <= @TodayEnd
@@ -101,8 +113,12 @@ PRINT '5. THIS WEEK''S APPOINTMENTS COUNT'
 PRINT '============================================'
 SELECT COUNT(DISTINCT a.appointment_id) as count
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.start_datetime >= @TodayStart
     AND a.start_datetime <= @WeekEnd
@@ -114,8 +130,12 @@ PRINT '6. PENDING VISITS COUNT'
 PRINT '============================================'
 SELECT COUNT(DISTINCT a.appointment_id) as count
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.status = 'scheduled'
     AND a.start_datetime >= @Today
@@ -158,8 +178,12 @@ SELECT
     au_created.email AS created_by_email,
     a.is_deleted
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 WHERE (au_assigned.email = @UserEmail OR au_created.email = @UserEmail)
     AND a.is_deleted = 0
 ORDER BY a.start_datetime DESC
@@ -198,7 +222,9 @@ SELECT
     'Appointments matching email (assigned)' AS description,
     COUNT(*) AS count
 FROM appointments a
-INNER JOIN app_users au ON a.assigned_to_user_id = au.id
+INNER JOIN app_users au ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au.id 
+     OR a.assigned_to_user_id = au.clerk_user_id)
 WHERE au.email = @UserEmail
     AND a.is_deleted = 0
 
@@ -208,7 +234,9 @@ SELECT
     'Appointments matching email (created)' AS description,
     COUNT(*) AS count
 FROM appointments a
-INNER JOIN app_users au ON a.created_by_user_id = au.id
+INNER JOIN app_users au ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au.id 
+     OR a.created_by_user_id = au.clerk_user_id)
 WHERE au.email = @UserEmail
     AND a.is_deleted = 0
 
@@ -222,8 +250,12 @@ SELECT DISTINCT
     a.created_by_user_id,
     au_created.email AS created_email
 FROM appointments a
-LEFT JOIN app_users au_assigned ON a.assigned_to_user_id = au_assigned.id
-LEFT JOIN app_users au_created ON a.created_by_user_id = au_created.id
+LEFT JOIN app_users au_assigned ON 
+    (TRY_CAST(a.assigned_to_user_id AS UNIQUEIDENTIFIER) = au_assigned.id 
+     OR a.assigned_to_user_id = au_assigned.clerk_user_id)
+LEFT JOIN app_users au_created ON 
+    (TRY_CAST(a.created_by_user_id AS UNIQUEIDENTIFIER) = au_created.id 
+     OR a.created_by_user_id = au_created.clerk_user_id)
 WHERE a.is_deleted = 0
     AND (a.assigned_to_user_id IS NOT NULL OR a.created_by_user_id IS NOT NULL)
 ORDER BY a.assigned_to_user_id, a.created_by_user_id
