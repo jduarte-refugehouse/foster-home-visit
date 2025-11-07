@@ -227,18 +227,30 @@ function generateCompleteReportHTML(
     let dateDisplay = "Not provided"
     if (date && date.trim()) {
       try {
-        // Try to format the date if it's in ISO format
-        const dateObj = new Date(date)
-        if (!isNaN(dateObj.getTime())) {
+        // Handle YYYY-MM-DD format (HTML date input format)
+        let dateObj: Date | null = null
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+          // Parse YYYY-MM-DD format
+          const [year, month, day] = date.trim().split('-').map(Number)
+          dateObj = new Date(year, month - 1, day)
+        } else {
+          // Try standard Date parsing
+          dateObj = new Date(date)
+        }
+        
+        if (dateObj && !isNaN(dateObj.getTime())) {
           dateDisplay = format(dateObj, "MMMM d, yyyy")
         } else {
           // If it's already formatted, use as-is
-          dateDisplay = date
+          dateDisplay = date.trim()
         }
       } catch (e) {
         // If formatting fails, use the date as-is
-        dateDisplay = date
+        console.log(`⚠️ [REPORT] Date formatting error for ${label}:`, date, e)
+        dateDisplay = date.trim()
       }
+    } else {
+      console.log(`⚠️ [REPORT] No date provided for ${label}`)
     }
     
     const signatureImg = signature && typeof signature === 'string' && (signature.startsWith('data:image') || signature.startsWith('data:image/png') || signature.length > 100)
@@ -884,9 +896,21 @@ function generateCompleteReportHTML(
               formData.familyInfo.household.providers.forEach((provider: any, index: number) => {
                 const sigKey = `parent${index + 1}`
                 // Handle flat structure: parent1, parent1Signature, parent1Date
-                const name = formData.signatures[sigKey] || provider.name || `Foster Parent ${index + 1}`
-                const signature = formData.signatures[`${sigKey}Signature`] || ""
-                const date = formData.signatures[`${sigKey}Date`] || ""
+                const name = formData.signatures?.[sigKey] || provider.name || `Foster Parent ${index + 1}`
+                const signature = formData.signatures?.[`${sigKey}Signature`] || ""
+                // Check multiple possible date field formats
+                const date = formData.signatures?.[`${sigKey}Date`] || 
+                            formData.signatures?.[`${sigKey}_date`] || 
+                            formData.signatures?.[`${sigKey.toLowerCase()}Date`] || ""
+                
+                console.log(`📋 [REPORT] Foster Parent ${index + 1} signature data:`, {
+                  sigKey,
+                  name,
+                  hasSignature: !!signature,
+                  date,
+                  allSignatureKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.includes(sigKey)) : []
+                })
+                
                 signatureHtml += formatSignatureField(
                   provider.name || `Foster Parent ${index + 1}`,
                   name,
@@ -896,25 +920,49 @@ function generateCompleteReportHTML(
               })
             } else {
               // Fallback to old format (flat structure)
-              const parent1Name = formData.signatures.parent1 || ""
-              const parent1Sig = formData.signatures.parent1Signature || ""
-              const parent1Date = formData.signatures.parent1Date || ""
+              const parent1Name = formData.signatures?.parent1 || ""
+              const parent1Sig = formData.signatures?.parent1Signature || ""
+              const parent1Date = formData.signatures?.parent1Date || ""
+              
+              console.log("📋 [REPORT] Parent1 signature data:", {
+                name: parent1Name,
+                hasSignature: !!parent1Sig,
+                date: parent1Date,
+                allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('parent1')) : []
+              })
+              
               if (parent1Name || parent1Sig) {
                 signatureHtml += formatSignatureField("Foster Parent 1", parent1Name, parent1Sig, parent1Date)
               }
               
-              const parent2Name = formData.signatures.parent2 || ""
-              const parent2Sig = formData.signatures.parent2Signature || ""
-              const parent2Date = formData.signatures.parent2Date || ""
+              const parent2Name = formData.signatures?.parent2 || ""
+              const parent2Sig = formData.signatures?.parent2Signature || ""
+              const parent2Date = formData.signatures?.parent2Date || ""
+              
+              console.log("📋 [REPORT] Parent2 signature data:", {
+                name: parent2Name,
+                hasSignature: !!parent2Sig,
+                date: parent2Date,
+                allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('parent2')) : []
+              })
+              
               if (parent2Name || parent2Sig) {
                 signatureHtml += formatSignatureField("Foster Parent 2", parent2Name, parent2Sig, parent2Date)
               }
             }
             
             // Staff signature (flat structure: staff, staffSignature, staffDate)
-            const staffName = formData.signatures.staff || formData.visitInfo?.conductedBy || ""
-            const staffSig = formData.signatures.staffSignature || ""
-            const staffDate = formData.signatures.staffDate || ""
+            const staffName = formData.signatures?.staff || formData.visitInfo?.conductedBy || ""
+            const staffSig = formData.signatures?.staffSignature || ""
+            const staffDate = formData.signatures?.staffDate || ""
+            
+            console.log("📋 [REPORT] Staff signature data:", {
+              name: staffName,
+              hasSignature: !!staffSig,
+              date: staffDate,
+              allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('staff')) : []
+            })
+            
             if (staffName || staffSig) {
               signatureHtml += formatSignatureField(
                 formData.visitInfo?.conductedBy || "Staff",
@@ -925,9 +973,17 @@ function generateCompleteReportHTML(
             }
             
             // Supervisor signature (flat structure: supervisor, supervisorSignature, supervisorDate)
-            const supervisorName = formData.signatures.supervisor || ""
-            const supervisorSig = formData.signatures.supervisorSignature || ""
-            const supervisorDate = formData.signatures.supervisorDate || ""
+            const supervisorName = formData.signatures?.supervisor || ""
+            const supervisorSig = formData.signatures?.supervisorSignature || ""
+            const supervisorDate = formData.signatures?.supervisorDate || ""
+            
+            console.log("📋 [REPORT] Supervisor signature data:", {
+              name: supervisorName,
+              hasSignature: !!supervisorSig,
+              date: supervisorDate,
+              allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('supervisor')) : []
+            })
+            
             if (supervisorName || supervisorSig) {
               signatureHtml += formatSignatureField(
                 "Supervisor",
