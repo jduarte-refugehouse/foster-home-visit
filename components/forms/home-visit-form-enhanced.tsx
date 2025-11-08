@@ -27,6 +27,7 @@ import {
   VisitSummarySection,
   SignaturesSection,
 } from "./home-visit-form-enhanced-sections"
+import { QuarterlyReviewSection } from "./quarterly-review-section"
 
 interface EnhancedHomeVisitFormProps {
   appointmentId?: string | null
@@ -490,6 +491,62 @@ const EnhancedHomeVisitForm = ({
       ],
       combinedNotes: "",
     },
+    // Quarterly Review Items (TAC §749.2815)
+    quarterlyReview: {
+      // Household Composition Updates (§749.2815(c)(1))
+      householdComposition: {
+        currentMembers: [], // Array of { name: string, role: string, relationship: string }
+        frequentVisitors: [], // Array of { name: string, relationship: string, frequency: string }
+        backupCaregivers: [], // Array of { name: string, relationship: string, contactInfo: string }
+        changesSinceLastQuarter: "",
+        notes: "",
+      },
+      // Major Life Changes (§749.2815(c)(2))
+      majorLifeChanges: {
+        changes: [], // Array of { type: string, description: string, date: string, impact: string }
+        // Types: marriage, divorce, birth, serious-illness, employment-change, extended-absence, other
+        notes: "",
+      },
+      // Disaster and Emergency Planning Updates (§749.2815(c)(3))
+      disasterEmergencyPlanning: {
+        fireDrillDate: "",
+        evacuationRoutesReviewed: false,
+        severeWeatherPlanUpdated: false,
+        contingencyContactsCurrent: false,
+        planAccountsForAllMembers: false,
+        lastReviewDate: "",
+        nextReviewDue: "",
+        changesSinceLastQuarter: "",
+        notes: "",
+      },
+      // Family Stress and Well-Being Assessment (§749.2815(c)(4))
+      familyStressWellbeing: {
+        stressLevel: "", // low, moderate, high, critical
+        financialPressures: "",
+        healthPressures: "",
+        emotionalPressures: "",
+        methodsForChallengingBehaviors: "",
+        stressAlleviationMethods: "",
+        supportSystemsInPlace: "",
+        additionalSupportNeeded: "",
+        notes: "",
+      },
+      // Quarterly Visit Documentation Standards (§749.2815(d), (e))
+      documentationStandards: {
+        householdMembersPresent: [], // Array of names
+        rulesStandardsReviewed: [], // Array of rule/standard codes reviewed
+        evaluationResults: "",
+        deficienciesIdentified: [],
+        plannedCorrectiveActions: [],
+        changesFromPriorScreening: "",
+        explanationsForChanges: "",
+        fosterParentSignatures: [], // Array of { name: string, signature: string, date: string }
+        staffSignature: "",
+        staffSignatureDate: "",
+        notes: "",
+      },
+      combinedNotes: "",
+    },
     // Follow-up Items from Previous Visit
     followUpItems: [],
     // Corrective Actions Required
@@ -866,32 +923,53 @@ const EnhancedHomeVisitForm = ({
     }
   }, [])
 
-  // ALL sections shown on EVERY monthly visit
-  // Liaisons can complete quarterly items across 3 visits or all at once
+  // Sections organized into three groups:
+  // 1. Monthly Compliance Items (required every visit)
+  // 2. T3C Readiness Items (development/preparation)
+  // 3. Quarterly Review Items (required once per quarter per TAC §749.2815)
+  
+  const monthlyComplianceSections = [
+    { id: "visit-info", title: "Visit Information", icon: Calendar, required: true, group: "compliance" },
+    { id: "foster-home", title: "Foster Home Info", icon: Home, required: true, group: "compliance" },
+    { id: "medication", title: "Section 1: Medication", icon: Activity, group: "compliance" },
+    { id: "inspections", title: "Section 2A: Inspections", icon: Flame, group: "compliance" },
+    { id: "health-safety", title: "Section 2B: Health & Safety", icon: Shield, group: "compliance" },
+    { id: "childrens-rights", title: "Section 3: Children's Rights", icon: Heart, group: "compliance" },
+    { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home, group: "compliance" },
+    { id: "education", title: "Section 5: Education", icon: GraduationCap, group: "compliance" },
+    { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home, group: "compliance" },
+    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList, group: "compliance" },
+    { id: "trauma-care", title: "Trauma-Informed Care & Training", icon: Brain, group: "compliance" },
+    { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true, group: "compliance" },
+    { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true, group: "compliance" },
+    { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true, group: "compliance" },
+    { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true, group: "compliance" },
+  ]
+
+  const t3cReadinessSections = [
+    { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true, group: "t3c" },
+    { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true, group: "t3c" },
+  ]
+
+  const quarterlyReviewSections = [
+    { id: "quarterly-review", title: "Quarterly Review Items", icon: ClipboardList, required: true, group: "quarterly", frequency: "quarterly" },
+  ]
+
+  const standardSections = [
+    { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Users, required: true, group: "standard" },
+    { id: "observations", title: "Observations", icon: FileText, required: true, group: "standard" },
+    { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true, group: "standard" },
+    { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true, group: "standard" },
+    { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true, group: "standard" },
+    { id: "signatures", title: "Signatures", icon: FileText, required: true, group: "standard" },
+  ]
+
+  // Combine all sections for rendering
   const sections = [
-    { id: "visit-info", title: "Visit Information", icon: Calendar, required: true },
-    { id: "foster-home", title: "Foster Home Info", icon: Home, required: true },
-    { id: "medication", title: "Section 1: Medication", icon: Activity },
-    { id: "inspections", title: "Section 2A: Inspections", icon: Flame },
-    { id: "health-safety", title: "Section 2B: Health & Safety", icon: Shield },
-    { id: "childrens-rights", title: "Section 3: Children's Rights", icon: Heart },
-    { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home },
-    { id: "education", title: "Section 5: Education", icon: GraduationCap },
-    { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home },
-    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList },
-    { id: "trauma-care", title: "Trauma-Informed Care & Training", icon: Brain },
-    { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true },
-    { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true },
-    { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true },
-    { id: "infants", title: "Section 13: Infants", icon: Baby, optional: true },
-    { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true },
-    { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true },
-    { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Users, required: true },
-    { id: "observations", title: "Observations", icon: FileText, required: true },
-    { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true },
-    { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true },
-    { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true },
-    { id: "signatures", title: "Signatures", icon: FileText, required: true },
+    ...monthlyComplianceSections,
+    ...t3cReadinessSections,
+    ...quarterlyReviewSections,
+    ...standardSections,
   ]
 
   // Handle input changes
@@ -1063,6 +1141,8 @@ const EnhancedHomeVisitForm = ({
         return <PackageComplianceSection formData={formData} onChange={handleChange} onComplianceChange={handleComplianceChange} onNotesChange={handleChange} />
       case "quality-enhancement":
         return <QualityEnhancementSection formData={formData} onChange={handleChange} />
+      case "quarterly-review":
+        return <QuarterlyReviewSection formData={formData} onChange={handleChange} />
       case "observations":
         return <ObservationsSection formData={formData} onChange={handleChange} />
       case "follow-up":
@@ -1167,11 +1247,57 @@ const EnhancedHomeVisitForm = ({
                   <SelectValue placeholder="Jump to section..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {sections.map((section, idx) => (
-                    <SelectItem key={idx} value={idx.toString()} className="text-sm">
-                      <span>{section.title}</span>
-                    </SelectItem>
-                  ))}
+                  {/* Monthly Compliance Items */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                    📋 Monthly Compliance Items
+                  </div>
+                  {monthlyComplianceSections.map((section, idx) => {
+                    const sectionIndex = sections.findIndex(s => s.id === section.id)
+                    return (
+                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                        <span>{section.title}</span>
+                      </SelectItem>
+                    )
+                  })}
+                  
+                  {/* T3C Readiness Items */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                    🔵 T3C Readiness Items
+                  </div>
+                  {t3cReadinessSections.map((section, idx) => {
+                    const sectionIndex = sections.findIndex(s => s.id === section.id)
+                    return (
+                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                        <span>{section.title}</span>
+                      </SelectItem>
+                    )
+                  })}
+                  
+                  {/* Quarterly Review Items */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                    🟢 Quarterly Review Items
+                  </div>
+                  {quarterlyReviewSections.map((section, idx) => {
+                    const sectionIndex = sections.findIndex(s => s.id === section.id)
+                    return (
+                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                        <span>{section.title}</span>
+                      </SelectItem>
+                    )
+                  })}
+                  
+                  {/* Standard Sections */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                    📝 Standard Sections
+                  </div>
+                  {standardSections.map((section, idx) => {
+                    const sectionIndex = sections.findIndex(s => s.id === section.id)
+                    return (
+                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                        <span>{section.title}</span>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
               
@@ -1377,10 +1503,48 @@ const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationDa
 }
 
 const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
+  const [datesSummary, setDatesSummary] = useState("")
+  const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [summaryError, setSummaryError] = useState("")
+  
   const providers = formData.household?.providers || []
   const biologicalChildren = formData.household?.biologicalChildren || []
   const otherMembers = formData.household?.otherMembers || []
   const placements = formData.placements?.children || []
+  
+  // Get user headers for API calls
+  const getUserHeaders = () => {
+    return {
+      "Content-Type": "application/json",
+    }
+  }
+  
+  // Generate significant dates summary using AI
+  const generateDatesSummary = async () => {
+    setGeneratingSummary(true)
+    setSummaryError("")
+    
+    try {
+      const response = await fetch("/api/visit-forms/generate-dates-summary", {
+        method: "POST",
+        headers: getUserHeaders(),
+        body: JSON.stringify({ formData }),
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.summary) {
+        setDatesSummary(data.summary)
+      } else {
+        setSummaryError(data.error || "Failed to generate summary")
+      }
+    } catch (error) {
+      console.error("Error generating dates summary:", error)
+      setSummaryError(error instanceof Error ? error.message : "Failed to generate summary")
+    } finally {
+      setGeneratingSummary(false)
+    }
+  }
   
   // Auto-check staff member on mount if they're not already checked
   useEffect(() => {
@@ -1402,6 +1566,45 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   
   return (
     <div className="space-y-6">
+      {/* AI-Powered Significant Dates Summary */}
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-refuge-purple" />
+              Significant Dates Summary
+            </CardTitle>
+            <Button
+              onClick={generateDatesSummary}
+              disabled={generatingSummary}
+              size="sm"
+              className="bg-refuge-purple hover:bg-refuge-magenta"
+            >
+              {generatingSummary ? "Generating..." : "🤖 Generate Summary"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {summaryError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{summaryError}</AlertDescription>
+            </Alert>
+          )}
+          {datesSummary ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap text-sm bg-white dark:bg-gray-900 p-4 rounded border">
+                {datesSummary}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Click "Generate Summary" to create an AI-powered summary of significant dates from the loaded form data,
+              including birthdays, placement dates, inspection expirations, and upcoming deadlines.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      
       {/* SECTION 1: Home Composition with Attendance */}
       <Card className="bg-card shadow-sm">
         <CardHeader className="pb-3">
