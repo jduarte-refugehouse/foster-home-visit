@@ -225,13 +225,28 @@ export default function AppointmentDetailPage() {
         }),
       })
 
-      const responseData = await response.json()
+      let responseData
+      try {
+        responseData = await response.json()
+      } catch (parseError) {
+        console.error("❌ [API] Failed to parse response:", parseError)
+        const text = await response.text()
+        console.error("❌ [API] Response text:", text)
+        toast({
+          title: "Error",
+          description: `Server error (${response.status}). Check console for details.`,
+          variant: "destructive",
+        })
+        return
+      }
 
       if (!response.ok) {
         console.error("❌ [API] Failed to update appointment:", responseData)
+        console.error("❌ [API] Response status:", response.status)
+        console.error("❌ [API] Full error object:", JSON.stringify(responseData, null, 2))
         toast({
           title: "Error",
-          description: responseData.error || responseData.details || "Failed to start visit",
+          description: responseData.error || responseData.details || `Failed to start visit (${response.status})`,
           variant: "destructive",
         })
         return

@@ -281,6 +281,16 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     console.error("❌ [API] Error updating appointment:", error)
     console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
     console.error("❌ [API] Appointment ID:", params.appointmentId)
+    console.error("❌ [API] Request body:", JSON.stringify(body, null, 2))
+    
+    // Log SQL Server specific error details
+    if (error && typeof error === 'object' && 'number' in error) {
+      console.error("❌ [API] SQL Error Number:", (error as any).number)
+      console.error("❌ [API] SQL Error State:", (error as any).state)
+      console.error("❌ [API] SQL Error Class:", (error as any).class)
+      console.error("❌ [API] SQL Error Procedure:", (error as any).procedure)
+      console.error("❌ [API] SQL Error Line Number:", (error as any).lineNumber)
+    }
 
     return NextResponse.json(
       {
@@ -288,6 +298,11 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
         error: "Failed to update appointment",
         details: error instanceof Error ? error.message : "Unknown error",
         appointmentId: params.appointmentId,
+        sqlError: error && typeof error === 'object' && 'number' in error ? {
+          number: (error as any).number,
+          state: (error as any).state,
+          message: (error as any).message,
+        } : undefined,
       },
       { status: 500 },
     )
