@@ -15,7 +15,7 @@ const ALLOWED_ORIGINS = [
  * This allows flexibility: use API key for extra security, or rely on origin checking alone
  */
 function isValidApiKey(request: NextRequest): boolean {
-  const expectedKey = process.env.PLACEMENT_HISTORY_API_KEY
+  const expectedKey = process.env.PULSE_APP_API_KEY
   
   // If no API key is configured, skip API key check (origin checking will protect)
   if (!expectedKey) {
@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': process.env.PULSE_APP_API_KEY || '',
       },
     })
 
@@ -231,6 +232,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': process.env.PULSE_APP_API_KEY || '',
       },
       body: JSON.stringify({
         homeGUID,
