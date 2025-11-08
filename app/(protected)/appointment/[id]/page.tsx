@@ -225,42 +225,65 @@ export default function AppointmentDetailPage() {
         }),
       })
 
-      if (response.ok) {
-        // Log visit start to continuum
-        if (appointmentId && user && homeGuid && appointment) {
-          try {
-            await logVisitStart({
-              appointmentId,
-              staffUserId: user.id,
-              staffName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-              homeGuid,
-              homeXref: appointment.home_xref ? parseInt(String(appointment.home_xref)) : undefined,
-              homeName: appointment.home_name,
-              locationLatitude: appointment.arrived_latitude,
-              locationLongitude: appointment.arrived_longitude,
-              locationAddress: appointment.location_address,
-              createdByUserId: user.id,
-            })
-            console.log("✅ [CONTINUUM] Visit start logged")
-            setHistoryRefreshKey(prev => prev + 1)
-          } catch (error) {
-            console.error("❌ [CONTINUUM] Failed to log visit start:", error)
-          }
-        }
-        
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        console.error("❌ [API] Failed to update appointment:", responseData)
         toast({
-          title: "Visit Started",
-          description: "Visit status updated to in-progress",
+          title: "Error",
+          description: responseData.error || responseData.details || "Failed to start visit",
+          variant: "destructive",
         })
-        fetchAppointmentDetails()
-        // Navigate to visit form
-        router.push(`/visit-form?appointmentId=${appointmentId}`)
+        return
       }
+
+      // Log visit start to continuum (non-blocking - don't fail if this fails)
+      if (appointmentId && user && homeGuid && appointment) {
+        logVisitStart({
+          appointmentId,
+          staffUserId: user.id,
+          staffName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+          homeGuid,
+          homeXref: appointment.home_xref ? parseInt(String(appointment.home_xref)) : undefined,
+          homeName: appointment.home_name,
+          locationLatitude: appointment.arrived_latitude,
+          locationLongitude: appointment.arrived_longitude,
+          locationAddress: appointment.location_address,
+          createdByUserId: user.id,
+        })
+          .then((result) => {
+            if (result.success) {
+              console.log("✅ [CONTINUUM] Visit start logged:", result.entryId)
+              setHistoryRefreshKey(prev => prev + 1)
+            } else {
+              console.warn("⚠️ [CONTINUUM] Failed to log visit start:", result.error)
+            }
+          })
+          .catch((error) => {
+            console.error("❌ [CONTINUUM] Error logging visit start:", error)
+            // Don't show error to user - logging is non-critical
+          })
+      } else {
+        console.warn("⚠️ [CONTINUUM] Missing required data for logging:", {
+          appointmentId: !!appointmentId,
+          user: !!user,
+          homeGuid: !!homeGuid,
+          appointment: !!appointment,
+        })
+      }
+      
+      toast({
+        title: "Visit Started",
+        description: "Visit status updated to in-progress",
+      })
+      fetchAppointmentDetails()
+      // Navigate to visit form
+      router.push(`/visit-form?appointmentId=${appointmentId}`)
     } catch (error) {
-      console.error("Error starting visit:", error)
+      console.error("❌ [ERROR] Error starting visit:", error)
       toast({
         title: "Error",
-        description: "Failed to start visit",
+        description: error instanceof Error ? error.message : "Failed to start visit",
         variant: "destructive",
       })
     }

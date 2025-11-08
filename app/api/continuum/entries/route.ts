@@ -126,11 +126,33 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("❌ [CONTINUUM] Error logging entry:", error)
+    console.error("❌ [CONTINUUM] Error details:", {
+      message: error.message,
+      code: error.code,
+      number: error.number,
+      originalError: error.originalError?.message,
+    })
+    
+    // Check if table doesn't exist
+    if (error.message?.includes("Invalid object name") || 
+        error.message?.includes("continuum_entries") ||
+        error.number === 208) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Continuum entries table not found",
+          details: "Please run the create-continuum-entries-table.sql script first",
+          errorCode: "TABLE_NOT_FOUND",
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to log continuum entry",
-        details: error.message,
+        details: error.message || "Unknown error",
       },
       { status: 500 }
     )
@@ -226,11 +248,25 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error("❌ [CONTINUUM] Error fetching entries:", error)
+    
+    // Check if table doesn't exist
+    if (error.message?.includes("Invalid object name") || 
+        error.message?.includes("continuum_entries") ||
+        error.number === 208) {
+      // Return empty array if table doesn't exist yet
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        entries: [],
+        warning: "Continuum entries table not found. Please run the create-continuum-entries-table.sql script.",
+      })
+    }
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch continuum entries",
-        details: error.message,
+        details: error.message || "Unknown error",
       },
       { status: 500 }
     )
