@@ -1,9 +1,94 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(request: Request) {
+// Allowed origin patterns for placement history API
+const ALLOWED_ORIGINS = [
+  /^https?:\/\/.*\.vercel\.app$/,
+  /^https?:\/\/.*\.refugehouse\.org$/,
+  /^https?:\/\/.*\.refugehouse\.app$/,
+]
+
+/**
+ * Check if the API key is valid (if configured)
+ * Note: API key is optional - if not configured, origin checking provides protection
+ * This allows flexibility: use API key for extra security, or rely on origin checking alone
+ */
+function isValidApiKey(request: NextRequest): boolean {
+  const expectedKey = process.env.PLACEMENT_HISTORY_API_KEY
+  
+  // If no API key is configured, skip API key check (origin checking will protect)
+  if (!expectedKey) {
+    return true
+  }
+  
+  // If API key is configured, require it
+  const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "")
+  return apiKey === expectedKey
+}
+
+/**
+ * Check if the request origin is allowed
+ * Checks both Origin and Referer headers for better coverage
+ */
+function isOriginAllowed(request: NextRequest): boolean {
+  const origin = request.headers.get("origin")
+  const referer = request.headers.get("referer")
+  
+  // Check Origin header first (most reliable for CORS requests)
+  if (origin) {
+    const originAllowed = ALLOWED_ORIGINS.some(pattern => pattern.test(origin))
+    if (originAllowed) {
+      return true
+    }
+  }
+  
+  // Fallback to Referer header (for same-origin requests)
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer)
+      const refererOrigin = `${refererUrl.protocol}//${refererUrl.host}`
+      const refererAllowed = ALLOWED_ORIGINS.some(pattern => pattern.test(refererOrigin))
+      if (refererAllowed) {
+        return true
+      }
+    } catch (e) {
+      // Invalid referer URL, ignore
+    }
+  }
+  
+  // If no origin/referer headers, deny (could be a direct API call)
+  return false
+}
+
+export async function GET(request: NextRequest) {
   try {
+    // Security check: Verify request origin (primary protection)
+    if (!isOriginAllowed(request)) {
+      const origin = request.headers.get("origin") || "none"
+      const referer = request.headers.get("referer") || "none"
+      console.warn(`🚫 [API] Unauthorized origin attempt - Origin: ${origin}, Referer: ${referer}`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized: Request must come from an allowed origin",
+        },
+        { status: 403 }
+      )
+    }
+
+    // Security check: Verify API key if configured (optional additional layer)
+    if (!isValidApiKey(request)) {
+      console.warn(`🚫 [API] Invalid API key attempt`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized: Invalid API key",
+        },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const homeGUID = searchParams.get("homeGUID")
     const startDate = searchParams.get("startDate")
@@ -80,8 +165,34 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Security check: Verify request origin (primary protection)
+    if (!isOriginAllowed(request)) {
+      const origin = request.headers.get("origin") || "none"
+      const referer = request.headers.get("referer") || "none"
+      console.warn(`🚫 [API] Unauthorized origin attempt - Origin: ${origin}, Referer: ${referer}`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized: Request must come from an allowed origin",
+        },
+        { status: 403 }
+      )
+    }
+
+    // Security check: Verify API key if configured (optional additional layer)
+    if (!isValidApiKey(request)) {
+      console.warn(`🚫 [API] Invalid API key attempt`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized: Invalid API key",
+        },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { homeGUID, startDate, endDate } = body
 
