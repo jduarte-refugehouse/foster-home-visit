@@ -60,25 +60,9 @@ export const QuarterlyReviewSection = ({ formData, onChange }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          <div>
-            <Label>Changes Since Last Quarter</Label>
-            <TextareaWithVoice
-              value={quarterly.householdComposition?.changesSinceLastQuarter || ""}
-              onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
-              placeholder="Document any changes to household composition since last quarter..."
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <Label>Notes</Label>
-            <Textarea
-              value={quarterly.householdComposition?.notes || ""}
-              onChange={(e) => onChange("quarterlyReview.householdComposition.notes", e.target.value)}
-              placeholder="Additional notes..."
-              rows={2}
-            />
-          </div>
+          <p className="text-sm text-muted-foreground italic">
+            Note: "Changes Since Last Quarter" has been moved to the Foster Home Info section and will be automatically populated with placement history data.
+          </p>
         </CardContent>
       </Card>
 

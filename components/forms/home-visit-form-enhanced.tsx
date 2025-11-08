@@ -78,7 +78,6 @@ const EnhancedHomeVisitForm = ({
       currentCensus: 0,
       serviceLevels: [], // basic, moderate, specialized, intense
       respiteOnly: false,
-      placementChanges: "", // Placement changes from last 6 months
     },
     // Section 1: Medication - Quarterly tracking with Month 1, 2, 3
     medication: {
@@ -1509,6 +1508,15 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   const [datesSummary, setDatesSummary] = useState("")
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [summaryError, setSummaryError] = useState("")
+  const [pulseApiStatus, setPulseApiStatus] = useState<{
+    loading: boolean
+    lastCall: string | null
+    error: string | null
+  }>({
+    loading: false,
+    lastCall: null,
+    error: null,
+  })
   
   const providers = formData.household?.providers || []
   const biologicalChildren = formData.household?.biologicalChildren || []
@@ -1571,17 +1579,18 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentData?.appointment?.assigned_to_name]) // Only run when staff name changes
 
-  // Auto-populate placement changes if field is empty
+  // Auto-populate "Changes Since Last Quarter" if field is empty
   useEffect(() => {
     const homeGUID = formData.fosterHome?.homeId
-    const currentPlacementChanges = formData.fosterHome?.placementChanges || ""
+    const currentChanges = formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""
     
     // Only fetch if we have a home GUID and the field is empty
-    if (!homeGUID || currentPlacementChanges.trim() !== "") {
+    if (!homeGUID || currentChanges.trim() !== "") {
       return
     }
 
     const fetchPlacementChanges = async () => {
+      setPulseApiStatus({ loading: true, lastCall: null, error: null })
       try {
         // Calculate date range: last 6 months
         const endDate = new Date()
@@ -1596,8 +1605,13 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         )
 
         if (!response.ok) {
-          // Silently fail - don't show error if API fails
-          console.warn("Failed to fetch placement changes:", response.status)
+          const errorText = await response.text()
+          setPulseApiStatus({ 
+            loading: false, 
+            lastCall: new Date().toLocaleTimeString(), 
+            error: `API Error: ${response.status}` 
+          })
+          console.warn("Failed to fetch placement changes:", response.status, errorText)
           return
         }
 
@@ -1605,7 +1619,12 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         
         if (!result.success || !result.data || result.data.length === 0) {
           // No placement changes found - set a message
-          onChange("fosterHome.placementChanges", "No placement changes found in the last 6 months.")
+          onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", "No placement changes found in the last 6 months.")
+          setPulseApiStatus({ 
+            loading: false, 
+            lastCall: new Date().toLocaleTimeString(), 
+            error: null 
+          })
           return
         }
 
@@ -1622,9 +1641,18 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
           })
           .join('\n\n')
 
-        onChange("fosterHome.placementChanges", `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`)
+        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`)
+        setPulseApiStatus({ 
+          loading: false, 
+          lastCall: new Date().toLocaleTimeString(), 
+          error: null 
+        })
       } catch (error: any) {
-        // Silently fail - don't show error to user
+        setPulseApiStatus({ 
+          loading: false, 
+          lastCall: new Date().toLocaleTimeString(), 
+          error: error.message || "Network error" 
+        })
         console.warn("Error fetching placement changes:", error)
       }
     }
@@ -1635,6 +1663,34 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   
   return (
     <div className="space-y-6">
+      {/* Pulse API Status Indicator */}
+      {(pulseApiStatus.loading || pulseApiStatus.lastCall || pulseApiStatus.error) && (
+        <Card className="bg-card shadow-sm border-l-4 border-l-blue-500">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">Pulse API Status:</span>
+                {pulseApiStatus.loading && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                    <span className="animate-pulse">Loading...</span>
+                  </Badge>
+                )}
+                {!pulseApiStatus.loading && pulseApiStatus.error && (
+                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                    Error: {pulseApiStatus.error}
+                  </Badge>
+                )}
+                {!pulseApiStatus.loading && !pulseApiStatus.error && pulseApiStatus.lastCall && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                    ✓ Last updated: {pulseApiStatus.lastCall}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* AI-Powered Significant Dates Summary */}
       <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
         <CardHeader className="pb-3">
@@ -2123,19 +2179,19 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         </CardContent>
       </Card>
 
-      {/* SECTION 4: Placement Changes (Last 6 Months) */}
+      {/* SECTION 4: Changes Since Last Quarter */}
       <Card className="bg-card shadow-sm">
         <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Placement Changes (Last 6 Months)
+            Changes Since Last Quarter
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <Label>Placement Changes</Label>
+          <Label>Changes Since Last Quarter</Label>
           <TextareaWithVoice
-            value={formData.fosterHome?.placementChanges || ""}
-            onChange={(value) => onChange("fosterHome.placementChanges", value)}
+            value={formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""}
+            onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
             placeholder="Placement changes from the last 6 months will be automatically populated..."
             rows={4}
             className="mt-2"
