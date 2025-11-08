@@ -10,22 +10,10 @@ const ALLOWED_ORIGINS = [
 ]
 
 /**
- * Check if the API key is valid (if configured)
- * Note: API key is optional - if not configured, origin checking provides protection
- * This allows flexibility: use API key for extra security, or rely on origin checking alone
+ * NOTE: This function is no longer used for incoming requests.
+ * The API key is only used when making outbound calls to the external Pulse app API.
+ * Incoming requests to our endpoint are protected by origin checking only.
  */
-function isValidApiKey(request: NextRequest): boolean {
-  const expectedKey = process.env.PULSE_APP_API_KEY
-  
-  // If no API key is configured, skip API key check (origin checking will protect)
-  if (!expectedKey) {
-    return true
-  }
-  
-  // If API key is configured, require it
-  const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "")
-  return apiKey === expectedKey
-}
 
 /**
  * Check if the request origin is allowed
@@ -64,6 +52,7 @@ function isOriginAllowed(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   try {
     // Security check: Verify request origin (primary protection)
+    // Note: API key is NOT checked here - it's only used when calling the external Pulse app API
     if (!isOriginAllowed(request)) {
       const origin = request.headers.get("origin") || "none"
       const referer = request.headers.get("referer") || "none"
@@ -74,18 +63,6 @@ export async function GET(request: NextRequest) {
           error: "Unauthorized: Request must come from an allowed origin",
         },
         { status: 403 }
-      )
-    }
-
-    // Security check: Verify API key if configured (optional additional layer)
-    if (!isValidApiKey(request)) {
-      console.warn(`🚫 [API] Invalid API key attempt`)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unauthorized: Invalid API key",
-        },
-        { status: 401 }
       )
     }
 
@@ -169,6 +146,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Security check: Verify request origin (primary protection)
+    // Note: API key is NOT checked here - it's only used when calling the external Pulse app API
     if (!isOriginAllowed(request)) {
       const origin = request.headers.get("origin") || "none"
       const referer = request.headers.get("referer") || "none"
@@ -179,18 +157,6 @@ export async function POST(request: NextRequest) {
           error: "Unauthorized: Request must come from an allowed origin",
         },
         { status: 403 }
-      )
-    }
-
-    // Security check: Verify API key if configured (optional additional layer)
-    if (!isValidApiKey(request)) {
-      console.warn(`🚫 [API] Invalid API key attempt`)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unauthorized: Invalid API key",
-        },
-        { status: 401 }
       )
     }
 
