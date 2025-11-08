@@ -227,14 +227,24 @@ export default function AppointmentDetailPage() {
 
       let responseData
       try {
-        responseData = await response.json()
+        const responseText = await response.text()
+        if (!responseText || responseText.trim() === '') {
+          console.error("❌ [API] Empty response body")
+          toast({
+            title: "Error",
+            description: `Server error (${response.status}). Empty response from server.`,
+            variant: "destructive",
+          })
+          return
+        }
+        responseData = JSON.parse(responseText)
       } catch (parseError) {
         console.error("❌ [API] Failed to parse response:", parseError)
-        const text = await response.text()
-        console.error("❌ [API] Response text:", text)
+        console.error("❌ [API] Response status:", response.status)
+        console.error("❌ [API] Response headers:", Object.fromEntries(response.headers.entries()))
         toast({
           title: "Error",
-          description: `Server error (${response.status}). Check console for details.`,
+          description: `Server error (${response.status}). Invalid response from server.`,
           variant: "destructive",
         })
         return
