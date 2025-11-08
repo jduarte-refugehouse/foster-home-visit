@@ -2180,22 +2180,10 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                 <span className="ml-2">{formData.fosterHome.licenseType || "—"}</span>
               </div>
               <div>
-                <span className="text-gray-600 font-medium">License Number:</span>
-                <span className="ml-2">{formData.fosterHome.licenseNumber || "—"}</span>
-              </div>
-              <div>
                 <span className="text-gray-600 font-medium">License Effective Date:</span>
                 <span className="ml-2">
                   {formData.fosterHome.licenseEffective 
                     ? new Date(formData.fosterHome.licenseEffective).toLocaleDateString()
-                    : "—"}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600 font-medium">License Expiration:</span>
-                <span className="ml-2">
-                  {formData.fosterHome.licenseExpiration 
-                    ? new Date(formData.fosterHome.licenseExpiration).toLocaleDateString()
                     : "—"}
                 </span>
               </div>
