@@ -6,7 +6,7 @@ import {
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
   GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink,
-  Info, ChevronDown, ChevronUp
+  Info, ChevronDown, ChevronUp, Clock, History
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import {
   FosterParentInterviewSection,
   QualityEnhancementSection,
@@ -617,6 +618,7 @@ const EnhancedHomeVisitForm = ({
   const [errors, setErrors] = useState({})
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const previousSectionRef = useRef<number | null>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -1209,6 +1211,17 @@ const EnhancedHomeVisitForm = ({
                     Save failed
                   </Badge>
                 )}
+                {existingFormData && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoryModalOpen(true)}
+                    className="text-white hover:bg-white/20 h-8 px-2"
+                    title="View document history"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                )}
                 <Badge className="bg-white text-refuge-purple text-xs">
                   {formData.visitInfo.visitType === "announced" ? "Announced" : "Unannounced"}
                 </Badge>
@@ -1378,8 +1391,124 @@ const EnhancedHomeVisitForm = ({
         <Card className="mb-2 bg-card">
           <CardContent className="py-3 px-3">{renderSectionContent(sections[currentSection].id)}</CardContent>
         </Card>
+
+        {/* Document History Modal */}
+        {existingFormData && (
+          <DocumentHistoryModal
+            open={historyModalOpen}
+            onOpenChange={setHistoryModalOpen}
+            formData={existingFormData}
+          />
+        )}
       </div>
     </div>
+  )
+}
+
+// Document History Modal Component
+const DocumentHistoryModal = ({ open, onOpenChange, formData }: { open: boolean; onOpenChange: (open: boolean) => void; formData: any }) => {
+  const createdBy = formData.created_by_name || formData.created_by_user_id || "Unknown"
+  const createdDate = formData.created_at ? new Date(formData.created_at).toLocaleString() : "Unknown"
+  
+  const currentSession = {
+    lastSave: formData.current_session_last_save ? new Date(formData.current_session_last_save).toLocaleString() : null,
+    saveType: formData.current_session_save_type || "manual",
+    userName: formData.current_session_user_name || formData.current_session_user_id || "Unknown",
+  }
+  
+  const historyEntries = formData.save_history_json ? (typeof formData.save_history_json === 'string' ? JSON.parse(formData.save_history_json) : formData.save_history_json) : []
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="h-5 w-5 text-refuge-purple" />
+            Document History
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6 mt-4">
+          {/* Created By Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Created</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Created by:</span>
+                <span className="font-medium">{createdBy}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Created on:</span>
+                <span className="font-medium">{createdDate}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Session */}
+          {currentSession.lastSave && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Current Session</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Last saved:</span>
+                  <span className="font-medium">{currentSession.lastSave}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Save type:</span>
+                  <Badge variant={currentSession.saveType === "auto" ? "secondary" : "default"}>
+                    {currentSession.saveType === "auto" ? "Auto-save" : "Manual"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Saved by:</span>
+                  <span className="font-medium">{currentSession.userName}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Previous Sessions History */}
+          {historyEntries.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Previous Sessions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {historyEntries.map((entry: any, index: number) => (
+                    <div key={index} className="border-l-2 border-refuge-purple/30 pl-4 py-2">
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="font-medium">
+                          {entry.lastSave ? new Date(entry.lastSave).toLocaleString() : "Unknown date"}
+                        </span>
+                        <Badge variant={entry.saveType === "auto" ? "secondary" : "default"}>
+                          {entry.saveType === "auto" ? "Auto-save" : "Manual"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Saved by: {entry.userName || entry.userId || "Unknown"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {historyEntries.length === 0 && !currentSession.lastSave && (
+            <Alert>
+              <AlertDescription className="text-sm text-muted-foreground">
+                No save history available yet. History will appear after the form is saved.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
