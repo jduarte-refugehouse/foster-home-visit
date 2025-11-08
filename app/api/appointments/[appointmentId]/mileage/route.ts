@@ -149,69 +149,119 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     }
 
     if (action === "arrived") {
-      const appointment = existingAppointment[0]
+      try {
+        const appointment = existingAppointment[0]
 
-      // Check if start drive location exists
-      if (!appointment.start_drive_latitude || !appointment.start_drive_longitude) {
+        // Check if start drive location exists
+        if (!appointment.start_drive_latitude || !appointment.start_drive_longitude) {
+          return NextResponse.json(
+            { error: "Start drive location not captured. Please click 'Start Drive' first." },
+            { status: 400 },
+          )
+        }
+
+        console.log("📍 [MILEAGE] Saving arrived location:", {
+          appointmentId,
+          latitude,
+          longitude,
+          startLat: appointment.start_drive_latitude,
+          startLng: appointment.start_drive_longitude,
+        })
+
+        // Save arrived location
+        await query(
+          `UPDATE appointments 
+           SET arrived_latitude = @param1,
+               arrived_longitude = @param2,
+               arrived_timestamp = @param3,
+               updated_at = GETUTCDATE()
+           WHERE appointment_id = @param0`,
+          [appointmentId, latitude, longitude, now],
+        )
+
+        console.log("✅ [MILEAGE] Arrived location saved, calculating distance...")
+
+        // Calculate driving distance and tolls using Google Routes API
+        let routeData: { distance: number; estimatedTollCost: number | null } | null = null
+        try {
+          routeData = await calculateDrivingDistance(
+            appointment.start_drive_latitude,
+            appointment.start_drive_longitude,
+            latitude,
+            longitude,
+          )
+        } catch (routeError) {
+          console.error("❌ [MILEAGE] Error calculating route:", routeError)
+          // Continue with fallback calculation
+        }
+
+        // If calculation failed or returned null, check if coordinates are the same (0 distance)
+        let finalMileage = 0.00
+        let estimatedToll: number | null = null
+        
+        if (routeData === null) {
+          const latDiff = Math.abs(appointment.start_drive_latitude - latitude)
+          const lngDiff = Math.abs(appointment.start_drive_longitude - longitude)
+          // If coordinates are very close (within ~10 meters), treat as 0 miles
+          if (latDiff < 0.0001 && lngDiff < 0.0001) {
+            finalMileage = 0.00
+            console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
+          } else {
+            console.warn("⚠️ [MILEAGE] Route calculation returned null, but locations differ. Using 0.00 miles.")
+          }
+        } else {
+          finalMileage = routeData.distance
+          estimatedToll = routeData.estimatedTollCost
+        }
+
+        console.log("💾 [MILEAGE] Updating appointment with mileage:", {
+          mileage: finalMileage,
+          estimatedToll,
+        })
+
+        // Always update appointment with calculated mileage and estimated toll (even if 0.00)
+        await query(
+          `UPDATE appointments 
+           SET calculated_mileage = @param1,
+               estimated_toll_cost = @param2,
+               updated_at = GETUTCDATE()
+           WHERE appointment_id = @param0`,
+          [appointmentId, finalMileage, estimatedToll],
+        )
+
+        console.log("✅ [MILEAGE] Arrived action completed successfully")
+
+        return NextResponse.json({
+          success: true,
+          message: "Arrived location captured",
+          mileage: finalMileage,
+          estimatedTollCost: estimatedToll,
+          timestamp: now.toISOString(),
+        })
+      } catch (arrivedError) {
+        console.error("❌ [MILEAGE] Error in arrived action:", arrivedError)
+        console.error("❌ [MILEAGE] Error stack:", arrivedError instanceof Error ? arrivedError.stack : "No stack trace")
+        
+        // Log SQL Server specific error details
+        if (arrivedError && typeof arrivedError === 'object' && 'number' in arrivedError) {
+          console.error("❌ [MILEAGE] SQL Error Number:", (arrivedError as any).number)
+          console.error("❌ [MILEAGE] SQL Error State:", (arrivedError as any).state)
+          console.error("❌ [MILEAGE] SQL Error Message:", (arrivedError as any).message)
+        }
+
         return NextResponse.json(
-          { error: "Start drive location not captured. Please click 'Start Drive' first." },
-          { status: 400 },
+          {
+            error: "Failed to capture arrived location",
+            details: arrivedError instanceof Error ? arrivedError.message : "Unknown error",
+            sqlError: arrivedError && typeof arrivedError === 'object' && 'number' in arrivedError ? {
+              number: (arrivedError as any).number,
+              state: (arrivedError as any).state,
+              message: (arrivedError as any).message,
+            } : undefined,
+          },
+          { status: 500 },
         )
       }
-
-      // Save arrived location
-      await query(
-        `UPDATE appointments 
-         SET arrived_latitude = @param1,
-             arrived_longitude = @param2,
-             arrived_timestamp = @param3,
-             updated_at = GETUTCDATE()
-         WHERE appointment_id = @param0`,
-        [appointmentId, latitude, longitude, now],
-      )
-
-      // Calculate driving distance and tolls using Google Routes API
-      const routeData = await calculateDrivingDistance(
-        appointment.start_drive_latitude,
-        appointment.start_drive_longitude,
-        latitude,
-        longitude,
-      )
-
-      // If calculation failed or returned null, check if coordinates are the same (0 distance)
-      let finalMileage = 0.00
-      let estimatedToll: number | null = null
-      
-      if (routeData === null) {
-        const latDiff = Math.abs(appointment.start_drive_latitude - latitude)
-        const lngDiff = Math.abs(appointment.start_drive_longitude - longitude)
-        // If coordinates are very close (within ~10 meters), treat as 0 miles
-        if (latDiff < 0.0001 && lngDiff < 0.0001) {
-          finalMileage = 0.00
-          console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
-        }
-      } else {
-        finalMileage = routeData.distance
-        estimatedToll = routeData.estimatedTollCost
-      }
-
-      // Always update appointment with calculated mileage and estimated toll (even if 0.00)
-      await query(
-        `UPDATE appointments 
-         SET calculated_mileage = @param1,
-             estimated_toll_cost = @param2,
-             updated_at = GETUTCDATE()
-         WHERE appointment_id = @param0`,
-        [appointmentId, finalMileage, estimatedToll],
-      )
-
-      return NextResponse.json({
-        success: true,
-        message: "Arrived location captured",
-        mileage: finalMileage,
-        estimatedTollCost: estimatedToll,
-        timestamp: now.toISOString(),
-      })
     }
 
     if (action === "return") {
@@ -441,10 +491,25 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (error) {
     console.error("❌ [API] Error capturing mileage location:", error)
+    console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("❌ [API] Request body:", JSON.stringify(await request.json().catch(() => ({}))))
+    
+    // Log SQL Server specific error details
+    if (error && typeof error === 'object' && 'number' in error) {
+      console.error("❌ [API] SQL Error Number:", (error as any).number)
+      console.error("❌ [API] SQL Error State:", (error as any).state)
+      console.error("❌ [API] SQL Error Message:", (error as any).message)
+    }
+
     return NextResponse.json(
       {
         error: "Failed to capture location",
         details: error instanceof Error ? error.message : "Unknown error",
+        sqlError: error && typeof error === 'object' && 'number' in error ? {
+          number: (error as any).number,
+          state: (error as any).state,
+          message: (error as any).message,
+        } : undefined,
       },
       { status: 500 },
     )
