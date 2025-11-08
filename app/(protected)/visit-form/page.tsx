@@ -26,20 +26,34 @@ export default function VisitFormPage() {
     lastAttempt: null,
   })
   
-  // Session tracking
+  // Session tracking - uses sessionStorage to persist across page refreshes within same browser session
   const sessionIdRef = useRef<string | null>(null)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   
-  // Initialize session ID on mount
+  // Initialize session ID on mount - persists across page refreshes within same browser session
   useEffect(() => {
-    if (!sessionIdRef.current) {
-      // Generate a unique session ID
-      const newSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      sessionIdRef.current = newSessionId
-      setCurrentSessionId(newSessionId)
-      console.log("🆔 [SESSION] New session started:", newSessionId)
+    // Check if we already have a session ID in sessionStorage
+    const storageKey = `visit-form-session-${appointmentId || 'new'}`
+    let sessionId = null
+    
+    if (typeof window !== 'undefined') {
+      sessionId = sessionStorage.getItem(storageKey)
     }
-  }, [])
+    
+    if (!sessionId) {
+      // Generate a unique session ID
+      sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(storageKey, sessionId)
+      }
+      console.log("🆔 [SESSION] New browser session started:", sessionId)
+    } else {
+      console.log("🆔 [SESSION] Resuming browser session:", sessionId)
+    }
+    
+    sessionIdRef.current = sessionId
+    setCurrentSessionId(sessionId)
+  }, [appointmentId])
 
   useEffect(() => {
     if (appointmentId) {
