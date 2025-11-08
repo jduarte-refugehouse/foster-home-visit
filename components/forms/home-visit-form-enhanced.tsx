@@ -650,7 +650,9 @@ const EnhancedHomeVisitForm = ({
         // CRITICAL: License info NEVER carried forward - always fresh from DB
         licenseNumber: home?.license?.id || "",
         licenseType: home?.license?.type || "",
+        licenseEffective: home?.license?.effective ? (home.license.effective.split('T')[0] || home.license.effective) : "",
         licenseExpiration: home?.license?.expiration ? home.license.expiration.split('T')[0] : "",
+        originallyLicensed: home?.license?.originallyLicensed || "",
         totalCapacity: home?.license?.capacity || 0,
         fosterCareCapacity: home?.license?.capacity || 0, // Using same value as default
         currentCensus: home?.license?.filledBeds || 0,
@@ -2180,6 +2182,14 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                 <span className="ml-2">{formData.fosterHome.licenseNumber || "—"}</span>
               </div>
               <div>
+                <span className="text-gray-600 font-medium">License Effective Date:</span>
+                <span className="ml-2">
+                  {formData.fosterHome.licenseEffective 
+                    ? new Date(formData.fosterHome.licenseEffective).toLocaleDateString()
+                    : "—"}
+                </span>
+              </div>
+              <div>
                 <span className="text-gray-600 font-medium">License Expiration:</span>
                 <span className="ml-2">
                   {formData.fosterHome.licenseExpiration 
@@ -2187,6 +2197,14 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
                     : "—"}
                 </span>
               </div>
+              {formData.fosterHome.originallyLicensed && (
+                <div>
+                  <span className="text-gray-600 font-medium">Originally Licensed:</span>
+                  <span className="ml-2">
+                    {new Date(formData.fosterHome.originallyLicensed).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
               <div>
                 <span className="text-gray-600 font-medium">Respite Only:</span>
                 <span className="ml-2">{formData.fosterHome.respiteOnly ? "Yes" : "No"}</span>

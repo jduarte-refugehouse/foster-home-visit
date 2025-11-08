@@ -6,7 +6,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
     const { homeGuid } = params
     console.log(`📋 [API] Fetching pre-population data for home: ${homeGuid}`)
 
-    // 1. Get home/license info from syncLicenseCurrent and service levels from syncActiveHomes
+    // 1. Get home/license info from syncLicenseCurrent
     const homeInfoQuery = `
       SELECT TOP 1
         lc.HomeName,
@@ -27,11 +27,11 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         lc.AgeMax,
         lc.OpenBeds,
         lc.FilledBeds,
+        lc.LegacyDFPSLevel,
+        lc.OriginallyLicensed,
+        lc.LicenseLastUpdated,
         ah.HomePhone,
-        ah.CaregiverEmail,
-        ah.Mod,
-        ah.Spec,
-        ah.Intense
+        ah.CaregiverEmail
       FROM syncLicenseCurrent lc
       LEFT JOIN syncActiveHomes ah ON lc.FacilityGUID = ah.Guid
       WHERE lc.FacilityGUID = @param0
@@ -152,19 +152,37 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         license: {
           id: home.LicenseID,
           type: home.LicenseType,
-          effective: home.LicenseEffective,
+          effective: home.LicenseEffective || home.LicenseLastUpdated, // Use LicenseLastUpdated if LicenseEffective is null
           expiration: home.LicenseExpiration,
           capacity: home.TotalCapacity,
           ageMin: home.AgeMin,
           ageMax: home.AgeMax,
           openBeds: home.OpenBeds,
           filledBeds: home.FilledBeds,
+          originallyLicensed: home.OriginallyLicensed,
+          lastUpdated: home.LicenseLastUpdated || home.LicenseEffective, // LicenseLastUpdated and LicenseEffective are the same
         },
         serviceLevels: (() => {
-          const levels = ['basic'] // Basic is always checked
-          if (home.Mod) levels.push('moderate')
-          if (home.Spec) levels.push('specialized')
-          if (home.Intense) levels.push('intense')
+          // Legacy DFPS levels: Basic > Moderate > Specialized > Intense
+          // If they have a higher level, they have all levels below it
+          const levels: string[] = []
+          const legacyLevel = home.LegacyDFPSLevel?.toLowerCase() || ''
+          
+          // Basic is always included
+          levels.push('basic')
+          
+          if (legacyLevel === 'moderate' || legacyLevel === 'specialized' || legacyLevel === 'intense') {
+            levels.push('moderate')
+          }
+          
+          if (legacyLevel === 'specialized' || legacyLevel === 'intense') {
+            levels.push('specialized')
+          }
+          
+          if (legacyLevel === 'intense') {
+            levels.push('intense')
+          }
+          
           return levels
         })(),
       },
