@@ -74,7 +74,9 @@ const EnhancedHomeVisitForm = ({
       email: "",
       licenseType: "Full", // Full, Provisional, Kinship
       licenseNumber: "",
+      licenseEffective: "", // Current license effective date (same as last updated)
       licenseExpiration: "",
+      originallyLicensed: "", // Date first licensed
       totalCapacity: 0,
       fosterCareCapacity: 0,
       currentCensus: 0,
