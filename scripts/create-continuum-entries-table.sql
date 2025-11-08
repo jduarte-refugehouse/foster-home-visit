@@ -79,3 +79,8 @@ CREATE NONCLUSTERED INDEX [IX_continuum_entries_activity_type]
 
 GO
 
+-- Grant permissions to v0_application_role
+GRANT SELECT, INSERT, UPDATE, DELETE ON [dbo].[continuum_entries] TO [v0_application_role]
+
+GO
+
