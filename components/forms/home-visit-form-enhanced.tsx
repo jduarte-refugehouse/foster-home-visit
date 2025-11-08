@@ -79,6 +79,7 @@ const EnhancedHomeVisitForm = ({
       currentCensus: 0,
       serviceLevels: [], // basic, moderate, specialized, intense
       respiteOnly: false,
+      placementHistory: [], // Raw placement history data for display
     },
     // Section 1: Medication - Quarterly tracking with Month 1, 2, 3
     medication: {
@@ -1580,13 +1581,13 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentData?.appointment?.assigned_to_name]) // Only run when staff name changes
 
-  // Auto-populate "Changes Since Last Quarter" if field is empty
+  // Auto-populate placement history if not already loaded
   useEffect(() => {
     const homeGUID = formData.fosterHome?.homeId
-    const currentChanges = formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""
+    const existingHistory = formData.fosterHome?.placementHistory
     
-    // Only fetch if we have a home GUID and the field is empty
-    if (!homeGUID || currentChanges.trim() !== "") {
+    // Only fetch if we have a home GUID and no existing history
+    if (!homeGUID || (existingHistory && existingHistory.length > 0)) {
       return
     }
 
@@ -1619,8 +1620,8 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         const result = await response.json()
         
         if (!result.success || !result.data || result.data.length === 0) {
-          // No placement changes found - set a message
-          onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", "No placement changes found in the last 6 months.")
+          // No placement changes found - set empty array
+          onChange("fosterHome.placementHistory", [])
           setPulseApiStatus({ 
             loading: false, 
             lastCall: new Date().toLocaleTimeString(), 
@@ -1629,23 +1630,8 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
           return
         }
 
-        // Format placement changes as a table
-        const tableRows = result.data
-          .map((placement: any) => {
-            const date = new Date(placement.effectiveDate).toLocaleDateString()
-            const role = placement.homeRole === 'to' ? 'Placed TO this home' : 'Moved FROM this home'
-            const fromHome = placement.fromHome || 'N/A'
-            const toHome = placement.toHome || 'N/A'
-            
-            return `| ${date} | ${placement.childName} | ${placement.changeType} | ${role} | ${fromHome} | ${toHome} |`
-          })
-          .join('\n')
-
-        const tableText = `Date | Child Name | Change Type | Home Role | From Home | To Home
---- | --- | --- | --- | --- | ---
-${tableRows}`
-
-        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", tableText)
+        // Store raw placement data for display in table
+        onChange("fosterHome.placementHistory", result.data)
         setPulseApiStatus({ 
           loading: false, 
           lastCall: new Date().toLocaleTimeString(), 
@@ -2060,26 +2046,60 @@ ${tableRows}`
         </CardContent>
       </Card>
 
-      {/* Changes Since Last Quarter - Placement History */}
+      {/* Placement Changes (6 month history) */}
       <Card className="bg-card shadow-sm">
         <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Changes Since Last Quarter
+            Placement Changes (6 month history)
             <Badge variant="secondary" className="ml-2 text-xs">
               §749.2815(c)(1)
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <Label>Changes Since Last Quarter</Label>
-          <TextareaWithVoice
-            value={formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""}
-            onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
-            placeholder="Placement changes from the last 6 months will be automatically populated..."
-            rows={4}
-            className="mt-2"
-          />
+          {formData.fosterHome?.placementHistory && formData.fosterHome.placementHistory.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Child Name</TableHead>
+                    <TableHead>Change Type</TableHead>
+                    <TableHead>Home Role</TableHead>
+                    <TableHead>From Home</TableHead>
+                    <TableHead>To Home</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {formData.fosterHome.placementHistory.map((placement: any, index: number) => (
+                    <TableRow key={index}>
+                      <TableCell>{new Date(placement.effectiveDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{placement.childName}</TableCell>
+                      <TableCell>{placement.changeType}</TableCell>
+                      <TableCell>
+                        {placement.homeRole === 'to' ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                            Placed TO this home
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                            Moved FROM this home
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{placement.fromHome || 'N/A'}</TableCell>
+                      <TableCell className="text-muted-foreground">{placement.toHome || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Placement changes from the last 6 months will be automatically populated when available.
+            </p>
+          )}
         </CardContent>
       </Card>
 
