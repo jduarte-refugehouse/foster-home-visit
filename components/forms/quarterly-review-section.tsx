@@ -16,6 +16,71 @@ import { SignaturePad } from "@/components/ui/signature-pad"
 
 export const QuarterlyReviewSection = ({ formData, onChange }) => {
   const quarterly = formData.quarterlyReview || {}
+  const [isLoadingPlacementChanges, setIsLoadingPlacementChanges] = useState(false)
+
+  const handlePopulatePlacementChanges = async () => {
+    const homeGUID = formData.fosterHome?.homeId
+    if (!homeGUID) {
+      alert("Home GUID not available. Please ensure the form is properly loaded.")
+      return
+    }
+
+    setIsLoadingPlacementChanges(true)
+    try {
+      // Calculate date range: last 6 months
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setMonth(startDate.getMonth() - 6)
+
+      const startDateStr = startDate.toISOString().split('T')[0]
+      const endDateStr = endDate.toISOString().split('T')[0]
+
+      const response = await fetch(
+        `/api/placement-history?homeGUID=${encodeURIComponent(homeGUID)}&startDate=${startDateStr}&endDate=${endDateStr}`
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch placement history')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success || !result.data || result.data.length === 0) {
+        const currentValue = quarterly.householdComposition?.changesSinceLastQuarter || ""
+        const message = "No placement changes found in the last 6 months."
+        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", 
+          currentValue ? `${currentValue}\n\n${message}` : message
+        )
+        return
+      }
+
+      // Format placement changes as simple text
+      const placementText = result.data
+        .map((placement: any) => {
+          const date = new Date(placement.effectiveDate).toLocaleDateString()
+          const role = placement.homeRole === 'to' ? 'placed TO this home' : 'moved FROM this home'
+          const direction = placement.homeRole === 'to' 
+            ? `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
+            : `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
+          
+          return `${date}: ${placement.childName} - ${placement.changeType} (${role})\n  ${direction}`
+        })
+        .join('\n\n')
+
+      const currentValue = quarterly.householdComposition?.changesSinceLastQuarter || ""
+      const newValue = currentValue 
+        ? `${currentValue}\n\n--- Placement Changes (Last 6 Months) ---\n\n${placementText}`
+        : `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`
+
+      onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", newValue)
+    } catch (error: any) {
+      console.error("Error fetching placement changes:", error)
+      alert(`Failed to fetch placement changes: ${error.message}`)
+    } finally {
+      setIsLoadingPlacementChanges(false)
+    }
+  }
 
   const addHouseholdMember = () => {
     const current = quarterly.householdComposition?.currentMembers || []
@@ -145,7 +210,19 @@ export const QuarterlyReviewSection = ({ formData, onChange }) => {
           </div>
 
           <div>
-            <Label>Changes Since Last Quarter</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Changes Since Last Quarter</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handlePopulatePlacementChanges}
+                disabled={isLoadingPlacementChanges || !formData.fosterHome?.homeId}
+                className="text-xs"
+              >
+                {isLoadingPlacementChanges ? "Loading..." : "Populate Placement Changes"}
+              </Button>
+            </div>
             <TextareaWithVoice
               value={quarterly.householdComposition?.changesSinceLastQuarter || ""}
               onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
