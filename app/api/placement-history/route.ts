@@ -38,7 +38,10 @@ export async function GET(request: Request) {
 
     // Call the external placement history API
     const apiUrl = `${pulseBaseUrl}/api/placement-history`
-    const response = await fetch(`${apiUrl}?homeGUID=${encodeURIComponent(homeGUID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`, {
+    const fullUrl = `${apiUrl}?homeGUID=${encodeURIComponent(homeGUID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    console.log(`📋 [API] Calling external API: ${fullUrl}`)
+    
+    const response = await fetch(fullUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -47,12 +50,15 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`❌ [API] Placement history API error: ${response.status} - ${errorText}`)
+      console.error(`❌ [API] Placement history API error: ${response.status}`)
+      console.error(`❌ [API] External API URL: ${fullUrl}`)
+      console.error(`❌ [API] Error response: ${errorText}`)
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to fetch placement history from external service",
-          details: errorText,
+          error: `External API returned ${response.status}. Check if PULSE_ENVIRONMENT_URL is correct and the endpoint exists.`,
+          details: errorText || `External API at ${apiUrl} returned status ${response.status}`,
+          externalUrl: apiUrl,
         },
         { status: response.status }
       )
@@ -108,6 +114,8 @@ export async function POST(request: Request) {
 
     // Call the external placement history API
     const apiUrl = `${pulseBaseUrl}/api/placement-history`
+    console.log(`📋 [API] Calling external API: ${apiUrl}`)
+    
     const response = await fetch(`${apiUrl}`, {
       method: 'POST',
       headers: {
@@ -122,12 +130,15 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`❌ [API] Placement history API error: ${response.status} - ${errorText}`)
+      console.error(`❌ [API] Placement history API error: ${response.status}`)
+      console.error(`❌ [API] External API URL: ${apiUrl}`)
+      console.error(`❌ [API] Error response: ${errorText}`)
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to fetch placement history from external service",
-          details: errorText,
+          error: `External API returned ${response.status}. Check if PULSE_ENVIRONMENT_URL is correct and the endpoint exists.`,
+          details: errorText || `External API at ${apiUrl} returned status ${response.status}`,
+          externalUrl: apiUrl,
         },
         { status: response.status }
       )
