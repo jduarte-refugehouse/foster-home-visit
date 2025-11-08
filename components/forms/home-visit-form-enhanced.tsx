@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useUser } from "@clerk/nextjs"
 import { 
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
@@ -1503,6 +1504,7 @@ const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationDa
 }
 
 const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
+  const { user } = useUser()
   const [datesSummary, setDatesSummary] = useState("")
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [summaryError, setSummaryError] = useState("")
@@ -1514,8 +1516,12 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
   
   // Get user headers for API calls
   const getUserHeaders = () => {
+    if (!user) return { "Content-Type": "application/json" }
     return {
       "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
     }
   }
   
