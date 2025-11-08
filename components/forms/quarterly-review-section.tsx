@@ -61,7 +61,7 @@ export const QuarterlyReviewSection = ({ formData, onChange }) => {
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           <p className="text-sm text-muted-foreground italic">
-            Note: "Changes Since Last Quarter" has been moved to the Foster Home Info section and will be automatically populated with placement history data.
+            Note: "Changes Since Last Quarter" is now located in the Foster Home Info section and is automatically populated with placement history data.
           </p>
         </CardContent>
       </Card>

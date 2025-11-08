@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   FosterParentInterviewSection,
   QualityEnhancementSection,
@@ -1628,20 +1629,23 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
           return
         }
 
-        // Format placement changes as simple text
-        const placementText = result.data
+        // Format placement changes as a table
+        const tableRows = result.data
           .map((placement: any) => {
             const date = new Date(placement.effectiveDate).toLocaleDateString()
-            const role = placement.homeRole === 'to' ? 'placed TO this home' : 'moved FROM this home'
-            const direction = placement.homeRole === 'to' 
-              ? `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
-              : `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
+            const role = placement.homeRole === 'to' ? 'Placed TO this home' : 'Moved FROM this home'
+            const fromHome = placement.fromHome || 'N/A'
+            const toHome = placement.toHome || 'N/A'
             
-            return `${date}: ${placement.childName} - ${placement.changeType} (${role})\n  ${direction}`
+            return `| ${date} | ${placement.childName} | ${placement.changeType} | ${role} | ${fromHome} | ${toHome} |`
           })
-          .join('\n\n')
+          .join('\n')
 
-        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`)
+        const tableText = `Date | Child Name | Change Type | Home Role | From Home | To Home
+--- | --- | --- | --- | --- | ---
+${tableRows}`
+
+        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", tableText)
         setPulseApiStatus({ 
           loading: false, 
           lastCall: new Date().toLocaleTimeString(), 
@@ -2056,6 +2060,29 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         </CardContent>
       </Card>
 
+      {/* Changes Since Last Quarter - Placement History */}
+      <Card className="bg-card shadow-sm">
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Changes Since Last Quarter
+            <Badge variant="secondary" className="ml-2 text-xs">
+              §749.2815(c)(1)
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Label>Changes Since Last Quarter</Label>
+          <TextareaWithVoice
+            value={formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""}
+            onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
+            placeholder="Placement changes from the last 6 months will be automatically populated..."
+            rows={4}
+            className="mt-2"
+          />
+        </CardContent>
+      </Card>
+
       {/* SECTION 2: Home Logistics - Display Only */}
       <Card className="bg-card shadow-sm">
         <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
@@ -2179,25 +2206,6 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
         </CardContent>
       </Card>
 
-      {/* SECTION 4: Changes Since Last Quarter */}
-      <Card className="bg-card shadow-sm">
-        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Changes Since Last Quarter
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <Label>Changes Since Last Quarter</Label>
-          <TextareaWithVoice
-            value={formData.quarterlyReview?.householdComposition?.changesSinceLastQuarter || ""}
-            onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}
-            placeholder="Placement changes from the last 6 months will be automatically populated..."
-            rows={4}
-            className="mt-2"
-          />
-        </CardContent>
-      </Card>
   </div>
   )
 }
