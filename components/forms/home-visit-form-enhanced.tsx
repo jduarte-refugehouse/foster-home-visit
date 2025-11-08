@@ -1245,99 +1245,102 @@ const EnhancedHomeVisitForm = ({
             
             {/* Navigation Controls: Previous | Section Dropdown | Next | Save */}
             <div className="mt-2 flex items-center gap-2">
-              {/* Previous Button */}
-              <Button
-                onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-                disabled={currentSection === 0}
-                variant="outline"
-                size="default"
-                className="flex-shrink-0"
-              >
-                Previous
-              </Button>
-              
-              {/* Section Dropdown */}
-              <Select 
-                value={currentSection.toString()} 
-                onValueChange={(value) => setCurrentSection(parseInt(value))}
-                className="flex-1"
-              >
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Jump to section..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Monthly Compliance Items */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                    📋 Monthly Compliance Items
-                  </div>
-                  {monthlyComplianceSections.map((section, idx) => {
-                    const sectionIndex = sections.findIndex(s => s.id === section.id)
-                    return (
-                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
-                        <span>{section.title}</span>
-                      </SelectItem>
-                    )
-                  })}
-                  
-                  {/* T3C Readiness Items */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
-                    🔵 T3C Readiness Items
-                  </div>
-                  {t3cReadinessSections.map((section, idx) => {
-                    const sectionIndex = sections.findIndex(s => s.id === section.id)
-                    return (
-                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
-                        <span>{section.title}</span>
-                      </SelectItem>
-                    )
-                  })}
-                  
-                  {/* Quarterly Review Items */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
-                    🟢 Quarterly Review Items
-                  </div>
-                  {quarterlyReviewSections.map((section, idx) => {
-                    const sectionIndex = sections.findIndex(s => s.id === section.id)
-                    return (
-                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
-                        <span>{section.title}</span>
-                      </SelectItem>
-                    )
-                  })}
-                  
-                  {/* Standard Sections */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
-                    📝 Standard Sections
-                  </div>
-                  {standardSections.map((section, idx) => {
-                    const sectionIndex = sections.findIndex(s => s.id === section.id)
-                    return (
-                      <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
-                        <span>{section.title}</span>
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-              
-              {/* Next Button */}
-              {currentSection === sections.length - 1 ? (
-                <Button 
-                  size="default"
-                  className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
-                  onClick={() => onSubmit?.(formData)}
-                >
-                  Submit
-                </Button>
-              ) : (
+              {/* Navigation Group - Limited to half width */}
+              <div className="flex items-center gap-2 w-1/2">
+                {/* Previous Button */}
                 <Button
-                  onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+                  onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
+                  disabled={currentSection === 0}
+                  variant="outline"
                   size="default"
-                  className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
+                  className="flex-shrink-0"
                 >
-                  Next
+                  Previous
                 </Button>
-              )}
+                
+                {/* Section Dropdown */}
+                <Select 
+                  value={currentSection.toString()} 
+                  onValueChange={(value) => setCurrentSection(parseInt(value))}
+                  className="flex-1"
+                >
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue placeholder="Jump to section..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Monthly Compliance Items */}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                      📋 Monthly Compliance Items
+                    </div>
+                    {monthlyComplianceSections.map((section, idx) => {
+                      const sectionIndex = sections.findIndex(s => s.id === section.id)
+                      return (
+                        <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                          <span>{section.title}</span>
+                        </SelectItem>
+                      )
+                    })}
+                    
+                    {/* T3C Readiness Items */}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                      🔵 T3C Readiness Items
+                    </div>
+                    {t3cReadinessSections.map((section, idx) => {
+                      const sectionIndex = sections.findIndex(s => s.id === section.id)
+                      return (
+                        <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                          <span>{section.title}</span>
+                        </SelectItem>
+                      )
+                    })}
+                    
+                    {/* Quarterly Review Items */}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                      🟢 Quarterly Review Items
+                    </div>
+                    {quarterlyReviewSections.map((section, idx) => {
+                      const sectionIndex = sections.findIndex(s => s.id === section.id)
+                      return (
+                        <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                          <span>{section.title}</span>
+                        </SelectItem>
+                      )
+                    })}
+                    
+                    {/* Standard Sections */}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-2">
+                      📝 Standard Sections
+                    </div>
+                    {standardSections.map((section, idx) => {
+                      const sectionIndex = sections.findIndex(s => s.id === section.id)
+                      return (
+                        <SelectItem key={sectionIndex} value={sectionIndex.toString()} className="text-sm pl-4">
+                          <span>{section.title}</span>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                
+                {/* Next Button */}
+                {currentSection === sections.length - 1 ? (
+                  <Button 
+                    size="default"
+                    className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
+                    onClick={() => onSubmit?.(formData)}
+                  >
+                    Submit
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+                    size="default"
+                    className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
+                  >
+                    Next
+                  </Button>
+                )}
+              </div>
               
               {/* Spacer */}
               <div className="flex-1" />

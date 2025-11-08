@@ -39,6 +39,7 @@ import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
+import { logDriveStart, logDriveEnd, logVisitStart } from "@/lib/continuum-logger"
 
 interface Appointment {
   appointment_id: string
@@ -101,6 +102,8 @@ export default function AppointmentDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [sendingLink, setSendingLink] = useState(false)
+  const [homeGuid, setHomeGuid] = useState<string | null>(null)
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
   const [showPhoneMissingDialog, setShowPhoneMissingDialog] = useState(false)
   const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
   const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
@@ -146,6 +149,19 @@ export default function AppointmentDetailPage() {
       }
       const data = await response.json()
       setAppointment(data.appointment)
+      
+      // Fetch home GUID if we have home_xref
+      if (data.appointment?.home_xref && !homeGuid) {
+        try {
+          const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${data.appointment.home_xref}`)
+          if (homeLookupResponse.ok) {
+            const homeLookupData = await homeLookupResponse.json()
+            setHomeGuid(homeLookupData.guid)
+          }
+        } catch (error) {
+          console.error("Error fetching home GUID:", error)
+        }
+      }
     } catch (error) {
       console.error("Error fetching appointment:", error)
       toast({
@@ -210,6 +226,28 @@ export default function AppointmentDetailPage() {
       })
 
       if (response.ok) {
+        // Log visit start to continuum
+        if (appointmentId && user && homeGuid && appointment) {
+          try {
+            await logVisitStart({
+              appointmentId,
+              staffUserId: user.id,
+              staffName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+              homeGuid,
+              homeXref: appointment.home_xref ? parseInt(String(appointment.home_xref)) : undefined,
+              homeName: appointment.home_name,
+              locationLatitude: appointment.arrived_latitude,
+              locationLongitude: appointment.arrived_longitude,
+              locationAddress: appointment.location_address,
+              createdByUserId: user.id,
+            })
+            console.log("✅ [CONTINUUM] Visit start logged")
+            setHistoryRefreshKey(prev => prev + 1)
+          } catch (error) {
+            console.error("❌ [CONTINUUM] Failed to log visit start:", error)
+          }
+        }
+        
         toast({
           title: "Visit Started",
           description: "Visit status updated to in-progress",
@@ -284,6 +322,24 @@ export default function AppointmentDetailPage() {
       const data = await response.json()
 
       if (response.ok) {
+        // Log drive start to continuum
+        if (appointmentId && user) {
+          try {
+            await logDriveStart({
+              appointmentId,
+              staffUserId: user.id,
+              staffName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+              locationLatitude: location.latitude,
+              locationLongitude: location.longitude,
+              createdByUserId: user.id,
+            })
+            console.log("✅ [CONTINUUM] Drive start logged")
+            setHistoryRefreshKey(prev => prev + 1)
+          } catch (error) {
+            console.error("❌ [CONTINUUM] Failed to log drive start:", error)
+          }
+        }
+        
         toast({
           title: "Drive Started",
           description: "Starting location captured",
@@ -332,6 +388,29 @@ export default function AppointmentDetailPage() {
       const data = await response.json()
 
       if (response.ok) {
+        // Log drive end to continuum
+        if (appointmentId && user && appointment?.start_drive_timestamp) {
+          try {
+            const driveStartTime = new Date(appointment.start_drive_timestamp)
+            const driveEndTime = new Date()
+            const durationMinutes = Math.round((driveEndTime.getTime() - driveStartTime.getTime()) / 60000)
+            
+            await logDriveEnd({
+              appointmentId,
+              staffUserId: user.id,
+              staffName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+              durationMinutes,
+              locationLatitude: location.latitude,
+              locationLongitude: location.longitude,
+              createdByUserId: user.id,
+            })
+            console.log("✅ [CONTINUUM] Drive end logged")
+            setHistoryRefreshKey(prev => prev + 1)
+          } catch (error) {
+            console.error("❌ [CONTINUUM] Failed to log drive end:", error)
+          }
+        }
+        
         toast({
           title: "Arrived",
           description: data.mileage
@@ -1317,7 +1396,7 @@ export default function AppointmentDetailPage() {
               ) : null}
             </>
           ) : null}
-          {appointment && appointment.status === "scheduled" && (
+          {appointment && appointment.status === "scheduled" && appointment.arrived_timestamp && (
             <Button 
               size="sm"
               onClick={handleStartVisit}
@@ -1325,6 +1404,21 @@ export default function AppointmentDetailPage() {
             >
               <Play className="h-4 w-4 mr-1.5" />
               Start Visit
+            </Button>
+          )}
+          {appointment && appointment.status === "in-progress" && (
+            <Button 
+              size="sm"
+              onClick={() => {
+                toast({
+                  title: "Visit In Progress",
+                  description: "Use the form to complete the visit",
+                })
+              }}
+              className="h-8 px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              Visit In Progress
             </Button>
           )}
           <Button 
@@ -1824,7 +1918,7 @@ export default function AppointmentDetailPage() {
 
         {/* History Tab */}
         <TabsContent value="history" className="mt-0">
-          <VisitHistoryTab appointmentId={appointmentId} />
+          <VisitHistoryTab key={historyRefreshKey} appointmentId={appointmentId} />
         </TabsContent>
 
         {/* Notes Tab */}
