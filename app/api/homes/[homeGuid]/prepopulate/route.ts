@@ -6,7 +6,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
     const { homeGuid } = params
     console.log(`📋 [API] Fetching pre-population data for home: ${homeGuid}`)
 
-    // 1. Get home/license info from syncLicenseCurrent
+    // 1. Get home/license info from syncLicenseCurrent and service levels from syncActiveHomes
     const homeInfoQuery = `
       SELECT TOP 1
         lc.HomeName,
@@ -28,7 +28,10 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         lc.OpenBeds,
         lc.FilledBeds,
         ah.HomePhone,
-        ah.CaregiverEmail
+        ah.CaregiverEmail,
+        ah.Mod,
+        ah.Spec,
+        ah.Intense
       FROM syncLicenseCurrent lc
       LEFT JOIN syncActiveHomes ah ON lc.FacilityGUID = ah.Guid
       WHERE lc.FacilityGUID = @param0
@@ -157,6 +160,13 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
           openBeds: home.OpenBeds,
           filledBeds: home.FilledBeds,
         },
+        serviceLevels: (() => {
+          const levels = ['basic'] // Basic is always checked
+          if (home.Mod) levels.push('moderate')
+          if (home.Spec) levels.push('specialized')
+          if (home.Intense) levels.push('intense')
+          return levels
+        })(),
       },
       household: {
         providers: householdMembers

@@ -69,6 +69,7 @@ const EnhancedHomeVisitForm = ({
       city: "",
       state: "",
       zip: "",
+      fullAddress: "", // Formatted single-line address
       phone: "",
       email: "",
       licenseType: "Full", // Full, Provisional, Kinship
@@ -634,6 +635,16 @@ const EnhancedHomeVisitForm = ({
         city: home?.address?.city || "",
         state: home?.address?.state || "",
         zip: home?.address?.zip || "",
+        fullAddress: (() => {
+          const parts = [
+            home?.address?.street,
+            home?.address?.street2,
+            home?.address?.city,
+            home?.address?.state,
+            home?.address?.zip
+          ].filter(Boolean)
+          return parts.join(', ') || ""
+        })(),
         phone: home?.phone || "",
         email: home?.email || "",
         // CRITICAL: License info NEVER carried forward - always fresh from DB
@@ -643,6 +654,7 @@ const EnhancedHomeVisitForm = ({
         totalCapacity: home?.license?.capacity || 0,
         fosterCareCapacity: home?.license?.capacity || 0, // Using same value as default
         currentCensus: home?.license?.filledBeds || 0,
+        serviceLevels: home?.serviceLevels || ['basic'], // Populate from API (Basic always included)
       },
       household: {
         ...prev.household,
@@ -2117,21 +2129,20 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               <span className="text-foreground font-medium">Family Name:</span>
               <span className="ml-2">{formData.fosterHome.familyName || "—"}</span>
             </div>
-            <div>
+            <div className="md:col-span-2">
               <span className="text-gray-600 font-medium">Address:</span>
-              <span className="ml-2">{formData.fosterHome.address || "—"}</span>
-            </div>
-            <div>
-              <span className="text-gray-600 font-medium">City:</span>
-              <span className="ml-2">{formData.fosterHome.city || "—"}</span>
-            </div>
-            <div>
-              <span className="text-gray-600 font-medium">State:</span>
-              <span className="ml-2">{formData.fosterHome.state || "—"}</span>
-            </div>
-            <div>
-              <span className="text-gray-600 font-medium">ZIP:</span>
-              <span className="ml-2">{formData.fosterHome.zip || "—"}</span>
+              <span className="ml-2">
+                {formData.fosterHome.fullAddress || 
+                 (() => {
+                   const parts = [
+                     formData.fosterHome.address,
+                     formData.fosterHome.city,
+                     formData.fosterHome.state,
+                     formData.fosterHome.zip
+                   ].filter(Boolean)
+                   return parts.join(', ') || "—"
+                 })()}
+              </span>
             </div>
             <div>
               <span className="text-gray-600 font-medium">Phone:</span>
@@ -2163,6 +2174,10 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               <div>
                 <span className="text-foreground font-medium">License Type:</span>
                 <span className="ml-2">{formData.fosterHome.licenseType || "—"}</span>
+              </div>
+              <div>
+                <span className="text-gray-600 font-medium">License Number:</span>
+                <span className="ml-2">{formData.fosterHome.licenseNumber || "—"}</span>
               </div>
               <div>
                 <span className="text-gray-600 font-medium">License Expiration:</span>
