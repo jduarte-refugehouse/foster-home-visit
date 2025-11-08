@@ -41,6 +41,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         vf.created_by_name,
         vf.updated_by_user_id,
         vf.updated_by_name,
+        vf.current_session_id,
+        vf.current_session_last_save,
+        vf.current_session_save_type,
+        vf.current_session_user_id,
+        vf.current_session_user_name,
+        vf.save_history_json,
         -- Include appointment details
         a.title as appointment_title,
         a.home_name,

@@ -1,7 +1,8 @@
 // Additional Section Components for Enhanced Home Visit Form
 // This file contains the remaining section components that were too large to fit in one file
 
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -1079,7 +1080,53 @@ export const CorrectiveActionsSection = ({ formData, onChange, onAdd }) => {
 }
 
 export const VisitSummarySection = ({ formData, onChange }) => {
+  const { user } = useUser()
   const summary = formData.visitSummary
+  const [aiSummary, setAiSummary] = useState("")
+  const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [summaryError, setSummaryError] = useState("")
+
+  // Get user headers for API calls
+  const getUserHeaders = () => {
+    if (!user) return { "Content-Type": "application/json" }
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
+
+  // Generate full visit summary using AI
+  const generateVisitSummary = async () => {
+    setGeneratingSummary(true)
+    setSummaryError("")
+    
+    try {
+      const response = await fetch("/api/visit-forms/generate-visit-summary", {
+        method: "POST",
+        headers: getUserHeaders(),
+        body: JSON.stringify({ formData }),
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.summary) {
+        setAiSummary(data.summary)
+        // Also save to formData if there's a field for it
+        if (onChange) {
+          onChange("visitSummary.aiGeneratedSummary", data.summary)
+        }
+      } else {
+        setSummaryError(data.error || "Failed to generate summary")
+      }
+    } catch (error) {
+      console.error("Error generating visit summary:", error)
+      setSummaryError(error instanceof Error ? error.message : "Failed to generate summary")
+    } finally {
+      setGeneratingSummary(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1087,6 +1134,45 @@ export const VisitSummarySection = ({ formData, onChange }) => {
         <Briefcase className="h-6 w-6 text-refuge-purple" />
         Visit Summary
       </h2>
+
+      {/* AI-Powered Visit Summary */}
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-refuge-purple" />
+              AI-Generated Visit Summary
+            </CardTitle>
+            <Button
+              onClick={generateVisitSummary}
+              disabled={generatingSummary}
+              size="sm"
+              className="bg-refuge-purple hover:bg-refuge-magenta"
+            >
+              {generatingSummary ? "Generating..." : "🤖 Generate Summary"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {summaryError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{summaryError}</AlertDescription>
+            </Alert>
+          )}
+          {aiSummary || summary.aiGeneratedSummary ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap text-sm bg-white dark:bg-gray-900 p-4 rounded border">
+                {aiSummary || summary.aiGeneratedSummary}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Click "Generate Summary" to create an AI-powered comprehensive summary of the visit, including significant dates, 
+              compliance status, observations, and key highlights. This summary will be generated before collecting signatures.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Alert>
         <AlertDescription>

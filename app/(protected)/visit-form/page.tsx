@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ export default function VisitFormPage() {
   const searchParams = useSearchParams()
   const appointmentId = searchParams.get("appointmentId")
   const { toast } = useToast()
+  const { user } = useUser()
 
   const [appointmentData, setAppointmentData] = useState(null)
   const [prepopulationData, setPrepopulationData] = useState(null)
@@ -23,6 +25,21 @@ export default function VisitFormPage() {
     error: null,
     lastAttempt: null,
   })
+  
+  // Session tracking
+  const sessionIdRef = useRef<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  
+  // Initialize session ID on mount
+  useEffect(() => {
+    if (!sessionIdRef.current) {
+      // Generate a unique session ID
+      const newSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      sessionIdRef.current = newSessionId
+      setCurrentSessionId(newSessionId)
+      console.log("🆔 [SESSION] New session started:", newSessionId)
+    }
+  }, [])
 
   useEffect(() => {
     if (appointmentId) {
@@ -58,6 +75,12 @@ export default function VisitFormPage() {
           const existingForm = existingFormResult.visitForms[0]
           console.log("✅ [FORM] Found existing visit form:", existingForm)
           setExistingFormData(existingForm)
+          
+          // Check if we're opening in a new session (different from stored session)
+          if (existingForm.current_session_id && existingForm.current_session_id !== sessionIdRef.current) {
+            console.log("🔄 [SESSION] New session detected - previous session:", existingForm.current_session_id)
+            // The API will handle committing the previous session's save to history
+          }
         } else {
           console.log("ℹ️ [FORM] No existing visit form found - will create new")
         }
@@ -245,9 +268,13 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || "system",
-        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || "System",
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || user?.id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "System",
         isAutoSave: false,
+        // Session tracking
+        currentSessionId: sessionIdRef.current,
+        currentSessionUserId: user?.id || "",
+        currentSessionUserName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "",
       }
 
       // Calculate and log payload size
@@ -403,9 +430,13 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || "system",
-        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || "System",
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || user?.id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "System",
         isAutoSave: false,
+        // Session tracking
+        currentSessionId: sessionIdRef.current,
+        currentSessionUserId: user?.id || "",
+        currentSessionUserName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "",
       }
 
       // Calculate and log payload size
