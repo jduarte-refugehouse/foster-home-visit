@@ -346,6 +346,27 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
       console.log(`✅ [API] Deleted ${visitForms.length} visit form(s)`)
     }
 
+    // Soft delete all related continuum entries
+    const continuumEntries = await query(
+      `SELECT entry_id FROM continuum_entries WHERE appointment_id = @param0 AND is_deleted = 0`,
+      [appointmentId],
+    )
+
+    if (continuumEntries.length > 0) {
+      console.log(`🗑️ [API] Deleting ${continuumEntries.length} related continuum entry/entries`)
+      
+      await query(
+        `
+        UPDATE continuum_entries 
+        SET is_deleted = 1
+        WHERE appointment_id = @param0 AND is_deleted = 0
+      `,
+        [appointmentId],
+      )
+      
+      console.log(`✅ [API] Deleted ${continuumEntries.length} continuum entry/entries`)
+    }
+
     // Then soft delete the appointment
     await query(
       `

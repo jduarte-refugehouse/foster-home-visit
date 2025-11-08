@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
+import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
 
 interface Appointment {
   appointment_id: string
@@ -1823,21 +1824,7 @@ export default function AppointmentDetailPage() {
 
         {/* History Tab */}
         <TabsContent value="history" className="mt-0">
-          <Card className="rounded-xl shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Visit History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="text-center text-muted-foreground py-8">
-                <History className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                <p>Visit history and activity log will appear here.</p>
-                <p className="text-sm mt-2">Feature coming soon.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <VisitHistoryTab appointmentId={appointmentId} />
         </TabsContent>
 
         {/* Notes Tab */}
