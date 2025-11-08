@@ -46,7 +46,7 @@ interface Appointment {
   title: string
   start_datetime: string
   end_datetime: string
-  status: "scheduled" | "completed" | "cancelled" | "in-progress" | "rescheduled"
+  status: "scheduled" | "completed" | "cancelled" | "in_progress" | "rescheduled"
   appointment_type: string
   home_name: string
   home_xref?: string
@@ -221,7 +221,7 @@ export default function AppointmentDetailPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          status: "in-progress",
+          status: "in_progress",
         }),
       })
 
@@ -299,7 +299,7 @@ export default function AppointmentDetailPage() {
       
       toast({
         title: "Visit Started",
-        description: "Visit status updated to in-progress",
+        description: "Visit status updated to in_progress",
       })
       fetchAppointmentDetails()
       // Navigate to visit form
@@ -1290,7 +1290,6 @@ export default function AppointmentDetailPage() {
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
       case "cancelled":
         return "bg-refuge-magenta/10 text-refuge-magenta dark:bg-refuge-magenta/20 dark:text-refuge-magenta-light"
-      case "in-progress":
       case "in_progress":
         return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400"
       case "rescheduled":
@@ -1409,7 +1408,7 @@ export default function AppointmentDetailPage() {
         {/* Right: Action Buttons */}
         <div className="flex items-center gap-2">
           {/* Mileage Tracking Buttons */}
-          {appointment && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
+          {appointment && (appointment.status === "scheduled" || appointment.status === "in_progress") ? (
             <>
               {!appointment.start_drive_timestamp ? (
                 <Button 
@@ -1454,7 +1453,7 @@ export default function AppointmentDetailPage() {
               Start Visit
             </Button>
           )}
-          {appointment && appointment.status === "in-progress" && (
+          {appointment && appointment.status === "in_progress" && (
             <Button 
               size="sm"
               onClick={() => {

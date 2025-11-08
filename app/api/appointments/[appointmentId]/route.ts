@@ -80,9 +80,10 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
 
 // PUT - Update appointment
 export async function PUT(request: NextRequest, { params }: { params: { appointmentId: string } }) {
+  let body: any = null
   try {
     const { appointmentId } = params
-    const body = await request.json()
+    body = await request.json()
 
     console.log(`📅 [API] Updating appointment: ${appointmentId}`)
     console.log(`📝 [API] Request body:`, JSON.stringify(body, null, 2))
@@ -281,7 +282,11 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     console.error("❌ [API] Error updating appointment:", error)
     console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
     console.error("❌ [API] Appointment ID:", params.appointmentId)
-    console.error("❌ [API] Request body:", JSON.stringify(body, null, 2))
+    if (body) {
+      console.error("❌ [API] Request body:", JSON.stringify(body, null, 2))
+    } else {
+      console.error("❌ [API] Request body: (could not parse)")
+    }
     
     // Log SQL Server specific error details
     if (error && typeof error === 'object' && 'number' in error) {

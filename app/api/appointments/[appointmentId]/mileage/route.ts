@@ -220,14 +220,32 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         })
 
         // Always update appointment with calculated mileage and estimated toll (even if 0.00)
-        await query(
-          `UPDATE appointments 
-           SET calculated_mileage = @param1,
-               estimated_toll_cost = @param2,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, finalMileage, estimatedToll],
-        )
+        // Check if estimated_toll_cost column exists before trying to update it
+        try {
+          await query(
+            `UPDATE appointments 
+             SET calculated_mileage = @param1,
+                 estimated_toll_cost = @param2,
+                 updated_at = GETUTCDATE()
+             WHERE appointment_id = @param0`,
+            [appointmentId, finalMileage, estimatedToll],
+          )
+        } catch (tollUpdateError: any) {
+          // If estimated_toll_cost column doesn't exist, update without it
+          if (tollUpdateError?.message?.includes("Invalid column name") || 
+              tollUpdateError?.message?.includes("estimated_toll_cost")) {
+            console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
+            await query(
+              `UPDATE appointments 
+               SET calculated_mileage = @param1,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, finalMileage],
+            )
+          } else {
+            throw tollUpdateError
+          }
+        }
 
         console.log("✅ [MILEAGE] Arrived action completed successfully")
 
@@ -412,14 +430,30 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             const finalMileage = 0.00
             console.log("📍 [MILEAGE] Start and end locations are the same, setting mileage to 0.00")
             
-            await query(
-              `UPDATE appointments 
-               SET calculated_mileage = @param1,
-                   estimated_toll_cost = NULL,
-                   updated_at = GETUTCDATE()
-               WHERE appointment_id = @param0`,
-              [appointmentId, finalMileage],
-            )
+            // Try to update with estimated_toll_cost, fallback if column doesn't exist
+            try {
+              await query(
+                `UPDATE appointments 
+                 SET calculated_mileage = @param1,
+                     estimated_toll_cost = NULL,
+                     updated_at = GETUTCDATE()
+                 WHERE appointment_id = @param0`,
+                [appointmentId, finalMileage],
+              )
+            } catch (tollError: any) {
+              if (tollError?.message?.includes("Invalid column name") || 
+                  tollError?.message?.includes("estimated_toll_cost")) {
+                await query(
+                  `UPDATE appointments 
+                   SET calculated_mileage = @param1,
+                       updated_at = GETUTCDATE()
+                   WHERE appointment_id = @param0`,
+                  [appointmentId, finalMileage],
+                )
+              } else {
+                throw tollError
+              }
+            }
 
             return NextResponse.json({
               success: true,
@@ -454,14 +488,31 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           estimatedToll: estimatedToll,
         })
         
-        await query(
-          `UPDATE appointments 
-           SET calculated_mileage = @param1,
-               estimated_toll_cost = @param2,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, finalMileage, estimatedToll],
-        )
+        // Try to update with estimated_toll_cost, fallback if column doesn't exist
+        try {
+          await query(
+            `UPDATE appointments 
+             SET calculated_mileage = @param1,
+                 estimated_toll_cost = @param2,
+                 updated_at = GETUTCDATE()
+             WHERE appointment_id = @param0`,
+            [appointmentId, finalMileage, estimatedToll],
+          )
+        } catch (tollError: any) {
+          if (tollError?.message?.includes("Invalid column name") || 
+              tollError?.message?.includes("estimated_toll_cost")) {
+            console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
+            await query(
+              `UPDATE appointments 
+               SET calculated_mileage = @param1,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, finalMileage],
+            )
+          } else {
+            throw tollError
+          }
+        }
 
         console.log("✅ [MILEAGE] Mileage calculation completed successfully:", {
           mileage: finalMileage,
