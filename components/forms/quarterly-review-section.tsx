@@ -1,7 +1,7 @@
 // Quarterly Review Section Component
 // Implements TAC §749.2815 requirements
 
-import React, { useState } from "react"
+import React from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,84 +16,6 @@ import { SignaturePad } from "@/components/ui/signature-pad"
 
 export const QuarterlyReviewSection = ({ formData, onChange }) => {
   const quarterly = formData.quarterlyReview || {}
-  const [isLoadingPlacementChanges, setIsLoadingPlacementChanges] = useState(false)
-
-  const handlePopulatePlacementChanges = async () => {
-    const homeGUID = formData.fosterHome?.homeId
-    if (!homeGUID) {
-      alert("Home GUID not available. Please ensure the form is properly loaded.")
-      return
-    }
-
-    setIsLoadingPlacementChanges(true)
-    try {
-      // Calculate date range: last 6 months
-      const endDate = new Date()
-      const startDate = new Date()
-      startDate.setMonth(startDate.getMonth() - 6)
-
-      const startDateStr = startDate.toISOString().split('T')[0]
-      const endDateStr = endDate.toISOString().split('T')[0]
-
-      const response = await fetch(
-        `/api/placement-history?homeGUID=${encodeURIComponent(homeGUID)}&startDate=${startDateStr}&endDate=${endDateStr}`
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch placement history')
-      }
-
-      const result = await response.json()
-      
-      if (!result.success || !result.data || result.data.length === 0) {
-        const currentValue = quarterly.householdComposition?.changesSinceLastQuarter || ""
-        const message = "No placement changes found in the last 6 months."
-        onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", 
-          currentValue ? `${currentValue}\n\n${message}` : message
-        )
-        return
-      }
-
-      // Format placement changes as simple text
-      const placementText = result.data
-        .map((placement: any) => {
-          const date = new Date(placement.effectiveDate).toLocaleDateString()
-          const role = placement.homeRole === 'to' ? 'placed TO this home' : 'moved FROM this home'
-          const direction = placement.homeRole === 'to' 
-            ? `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
-            : `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
-          
-          return `${date}: ${placement.childName} - ${placement.changeType} (${role})\n  ${direction}`
-        })
-        .join('\n\n')
-
-      const currentValue = quarterly.householdComposition?.changesSinceLastQuarter || ""
-      const newValue = currentValue 
-        ? `${currentValue}\n\n--- Placement Changes (Last 6 Months) ---\n\n${placementText}`
-        : `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`
-
-      onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", newValue)
-    } catch (error: any) {
-      console.error("Error fetching placement changes:", error)
-      alert(`Failed to fetch placement changes: ${error.message}`)
-    } finally {
-      setIsLoadingPlacementChanges(false)
-    }
-  }
-
-  const addHouseholdMember = () => {
-    const current = quarterly.householdComposition?.currentMembers || []
-    onChange("quarterlyReview.householdComposition.currentMembers", [
-      ...current,
-      { name: "", role: "", relationship: "" },
-    ])
-  }
-
-  const removeHouseholdMember = (index) => {
-    const current = quarterly.householdComposition?.currentMembers || []
-    onChange("quarterlyReview.householdComposition.currentMembers", current.filter((_, i) => i !== index))
-  }
 
   const addLifeChange = () => {
     const current = quarterly.majorLifeChanges?.changes || []
@@ -138,91 +60,8 @@ export const QuarterlyReviewSection = ({ formData, onChange }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Current Household Members</Label>
-              <div className="space-y-2 mt-2">
-                {(quarterly.householdComposition?.currentMembers || []).map((member, index) => (
-                  <div key={index} className="flex gap-2 items-end">
-                    <Input
-                      placeholder="Name"
-                      value={member.name}
-                      onChange={(e) => {
-                        const updated = [...(quarterly.householdComposition?.currentMembers || [])]
-                        updated[index].name = e.target.value
-                        onChange("quarterlyReview.householdComposition.currentMembers", updated)
-                      }}
-                      className="flex-1"
-                    />
-                    <Input
-                      placeholder="Role"
-                      value={member.role}
-                      onChange={(e) => {
-                        const updated = [...(quarterly.householdComposition?.currentMembers || [])]
-                        updated[index].role = e.target.value
-                        onChange("quarterlyReview.householdComposition.currentMembers", updated)
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeHouseholdMember(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button size="sm" variant="outline" onClick={addHouseholdMember} className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Member
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label>Frequent Visitors</Label>
-              <Textarea
-                placeholder="List frequent visitors, their relationship, and frequency of visits..."
-                value={quarterly.householdComposition?.frequentVisitors?.map(v => `${v.name} (${v.relationship}) - ${v.frequency}`).join('\n') || ""}
-                onChange={(e) => {
-                  // Simple text input for now - can be enhanced with structured data later
-                  onChange("quarterlyReview.householdComposition.frequentVisitors", e.target.value)
-                }}
-                rows={4}
-                className="mt-2"
-              />
-            </div>
-
-            <div>
-              <Label>Backup Caregivers</Label>
-              <Textarea
-                placeholder="List backup caregivers with contact information..."
-                value={quarterly.householdComposition?.backupCaregivers?.map(c => `${c.name} (${c.relationship}) - ${c.contactInfo}`).join('\n') || ""}
-                onChange={(e) => {
-                  onChange("quarterlyReview.householdComposition.backupCaregivers", e.target.value)
-                }}
-                rows={4}
-                className="mt-2"
-              />
-            </div>
-          </div>
-
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Changes Since Last Quarter</Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handlePopulatePlacementChanges}
-                disabled={isLoadingPlacementChanges || !formData.fosterHome?.homeId}
-                className="text-xs"
-              >
-                {isLoadingPlacementChanges ? "Loading..." : "Populate Placement Changes"}
-              </Button>
-            </div>
+            <Label>Changes Since Last Quarter</Label>
             <TextareaWithVoice
               value={quarterly.householdComposition?.changesSinceLastQuarter || ""}
               onChange={(value) => onChange("quarterlyReview.householdComposition.changesSinceLastQuarter", value)}

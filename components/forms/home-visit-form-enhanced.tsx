@@ -78,6 +78,7 @@ const EnhancedHomeVisitForm = ({
       currentCensus: 0,
       serviceLevels: [], // basic, moderate, specialized, intense
       respiteOnly: false,
+      placementChanges: "", // Placement changes from last 6 months
     },
     // Section 1: Medication - Quarterly tracking with Month 1, 2, 3
     medication: {
@@ -1569,6 +1570,68 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentData?.appointment?.assigned_to_name]) // Only run when staff name changes
+
+  // Auto-populate placement changes if field is empty
+  useEffect(() => {
+    const homeGUID = formData.fosterHome?.homeId
+    const currentPlacementChanges = formData.fosterHome?.placementChanges || ""
+    
+    // Only fetch if we have a home GUID and the field is empty
+    if (!homeGUID || currentPlacementChanges.trim() !== "") {
+      return
+    }
+
+    const fetchPlacementChanges = async () => {
+      try {
+        // Calculate date range: last 6 months
+        const endDate = new Date()
+        const startDate = new Date()
+        startDate.setMonth(startDate.getMonth() - 6)
+
+        const startDateStr = startDate.toISOString().split('T')[0]
+        const endDateStr = endDate.toISOString().split('T')[0]
+
+        const response = await fetch(
+          `/api/placement-history?homeGUID=${encodeURIComponent(homeGUID)}&startDate=${startDateStr}&endDate=${endDateStr}`
+        )
+
+        if (!response.ok) {
+          // Silently fail - don't show error if API fails
+          console.warn("Failed to fetch placement changes:", response.status)
+          return
+        }
+
+        const result = await response.json()
+        
+        if (!result.success || !result.data || result.data.length === 0) {
+          // No placement changes found - set a message
+          onChange("fosterHome.placementChanges", "No placement changes found in the last 6 months.")
+          return
+        }
+
+        // Format placement changes as simple text
+        const placementText = result.data
+          .map((placement: any) => {
+            const date = new Date(placement.effectiveDate).toLocaleDateString()
+            const role = placement.homeRole === 'to' ? 'placed TO this home' : 'moved FROM this home'
+            const direction = placement.homeRole === 'to' 
+              ? `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
+              : `From: ${placement.fromHome || 'N/A'} → To: ${placement.toHome || 'N/A'}`
+            
+            return `${date}: ${placement.childName} - ${placement.changeType} (${role})\n  ${direction}`
+          })
+          .join('\n\n')
+
+        onChange("fosterHome.placementChanges", `--- Placement Changes (Last 6 Months) ---\n\n${placementText}`)
+      } catch (error: any) {
+        // Silently fail - don't show error to user
+        console.warn("Error fetching placement changes:", error)
+      }
+    }
+
+    fetchPlacementChanges()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.fosterHome?.homeId]) // Only run when home GUID is available
   
   return (
     <div className="space-y-6">
@@ -1613,9 +1676,9 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
       
       {/* SECTION 1: Home Composition with Attendance */}
       <Card className="bg-card shadow-sm">
-        <CardHeader className="pb-3">
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5 text-refuge-purple" />
+            <Users className="h-5 w-5" />
             Home Composition & Attendance
           </CardTitle>
         </CardHeader>
@@ -1939,9 +2002,9 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
 
       {/* SECTION 2: Home Logistics - Display Only */}
       <Card className="bg-card shadow-sm">
-        <CardHeader className="pb-2">
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Home className="h-5 w-5 text-refuge-purple" />
+            <Home className="h-5 w-5" />
             Home Logistics
           </CardTitle>
         </CardHeader>
@@ -1983,9 +2046,9 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
 
       {/* SECTION 3: License & Regulatory Information - Display Only */}
       <Card className="bg-card shadow-sm">
-        <CardHeader className="pb-2">
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <FileText className="h-5 w-5 text-refuge-purple" />
+            <FileText className="h-5 w-5" />
             License & Regulatory Information
           </CardTitle>
         </CardHeader>
@@ -2057,6 +2120,26 @@ const FosterHomeSection = ({ formData, onChange, appointmentData }) => {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* SECTION 4: Placement Changes (Last 6 Months) */}
+      <Card className="bg-card shadow-sm">
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Placement Changes (Last 6 Months)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Label>Placement Changes</Label>
+          <TextareaWithVoice
+            value={formData.fosterHome?.placementChanges || ""}
+            onChange={(value) => onChange("fosterHome.placementChanges", value)}
+            placeholder="Placement changes from the last 6 months will be automatically populated..."
+            rows={4}
+            className="mt-2"
+          />
         </CardContent>
       </Card>
   </div>
