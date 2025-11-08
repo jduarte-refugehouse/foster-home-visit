@@ -492,7 +492,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
   } catch (error) {
     console.error("❌ [API] Error capturing mileage location:", error)
     console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
-    console.error("❌ [API] Request body:", JSON.stringify(await request.json().catch(() => ({}))))
+    console.error("❌ [API] Appointment ID:", params.appointmentId)
     
     // Log SQL Server specific error details
     if (error && typeof error === 'object' && 'number' in error) {
@@ -505,6 +505,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       {
         error: "Failed to capture location",
         details: error instanceof Error ? error.message : "Unknown error",
+        appointmentId: params.appointmentId,
         sqlError: error && typeof error === 'object' && 'number' in error ? {
           number: (error as any).number,
           state: (error as any).state,
