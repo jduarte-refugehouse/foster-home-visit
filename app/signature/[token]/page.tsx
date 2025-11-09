@@ -79,7 +79,7 @@ export default function SignaturePage() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/signature-tokens/${token}/submit`, {
+      const response = await fetch(`/api/signature-tokens/${token}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
