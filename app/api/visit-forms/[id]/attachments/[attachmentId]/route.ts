@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic"
 // DELETE - Delete attachment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { formId: string; attachmentId: string } }
+  { params }: { params: { id: string; attachmentId: string } }
 ) {
   try {
-    const { formId, attachmentId } = params
+    const formId = params.id
+    const attachmentId = params.attachmentId
 
     // Get attachment info
     const attachments = await query(

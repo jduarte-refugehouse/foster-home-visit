@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic"
 // POST - Upload file attachment
 export async function POST(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const formId = params.formId
+    const formId = params.id
     const formData = await request.formData()
     const file = formData.get("file") as File
     const description = formData.get("description") as string || ""
@@ -124,10 +124,10 @@ export async function POST(
 // GET - List attachments for a form
 export async function GET(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const formId = params.formId
+    const formId = params.id
 
     const attachments = await query(
       `SELECT 

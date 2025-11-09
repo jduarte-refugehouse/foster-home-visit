@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic"
 // POST - Generate and send signature token link
 export async function POST(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const formId = params.formId
+    const formId = params.id
     const body = await request.json()
     const {
       signatureType, // 'parent1', 'parent2', 'staff', etc.
@@ -278,10 +278,10 @@ This link will expire in 7 days. If you did not expect this request, please igno
 // GET - List signature tokens for a form
 export async function GET(
   request: NextRequest,
-  { params }: { params: { formId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const formId = params.formId
+    const formId = params.id
 
     const tokens = await query(
       `SELECT 
