@@ -87,8 +87,12 @@ export async function POST(
       ]
     )
 
-    // Generate signature link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "https://foster-home-visit.vercel.app"
+    // Generate signature link (ensure https:// protocol for clickable SMS links)
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "https://foster-home-visit.vercel.app"
+    // Ensure protocol is included
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      baseUrl = `https://${baseUrl}`
+    }
     const signatureUrl = `${baseUrl}/signature/${token}`
 
     // Determine if sending via SMS or email
