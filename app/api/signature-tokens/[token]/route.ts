@@ -135,7 +135,7 @@ export async function POST(
       }
 
       // Parse existing signatures
-      let signatures = {}
+      let signatures: Record<string, any> = {}
       try {
         signatures = forms[0].signatures ? JSON.parse(forms[0].signatures) : {}
       } catch (e) {
