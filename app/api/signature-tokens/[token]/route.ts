@@ -167,6 +167,11 @@ export async function POST(
           const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
           const testEmail = process.env.TEST_SIGNATURE_EMAIL || fromEmail
 
+          console.error("📧 [TEST] Starting email send process")
+          console.error("📧 [TEST] From email:", fromEmail)
+          console.error("📧 [TEST] To email:", testEmail)
+          console.error("📧 [TEST] API key configured:", !!apiKey)
+
           if (!apiKey) {
             console.error("⚠️ [TEST] SendGrid API key not configured, skipping email")
             return
@@ -221,6 +226,11 @@ export async function POST(
             "Signature Image: (see HTML version)\n\n" +
             "This is a test signature from the signature link testing system."
 
+          console.error("📧 [TEST] Attempting to send email to:", testEmail)
+          console.error("📧 [TEST] Subject:", subject)
+          console.error("📧 [TEST] HTML content length:", htmlContent.length)
+          console.error("📧 [TEST] Text content length:", textContent.length)
+
           const emailResult = await sgMail.send({
             to: testEmail,
             from: {
@@ -234,6 +244,7 @@ export async function POST(
 
           console.error("✅ [TEST] Email sent successfully to:", testEmail)
           console.error("✅ [TEST] SendGrid response status:", emailResult[0]?.statusCode)
+          console.error("✅ [TEST] SendGrid response headers:", JSON.stringify(emailResult[0]?.headers || {}))
         } catch (emailError: any) {
           console.error("❌ [TEST] Failed to send test signature email:", emailError)
           console.error("❌ [TEST] Email error details:", {
