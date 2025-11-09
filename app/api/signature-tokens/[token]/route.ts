@@ -139,16 +139,27 @@ export async function POST(
         [tokenData.visit_form_id, JSON.stringify(signatures)]
       )
     } else {
-      // For test tokens, send email with signature image
+      // For test tokens, send email with signature image (non-blocking)
       console.log(`✅ [TEST] Test signature submitted for token ${token}`)
       
-      try {
-        const apiKey = process.env.SENDGRID_API_KEY
-        const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
-        const testEmail = process.env.TEST_SIGNATURE_EMAIL || fromEmail
+      // Send email asynchronously without blocking signature submission
+      (async () => {
+        try {
+          const apiKey = process.env.SENDGRID_API_KEY
+          const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
+          const testEmail = process.env.TEST_SIGNATURE_EMAIL || fromEmail
 
-        if (apiKey) {
+          if (!apiKey) {
+            console.warn("⚠️ [TEST] SendGrid API key not configured, skipping email")
+            return
+          }
+
           sgMail.setApiKey(apiKey)
+
+          // Truncate signature if too long (base64 images can be very large)
+          const signaturePreview = signature.length > 50000 
+            ? signature.substring(0, 50000) + "... (truncated)" 
+            : signature
 
           const subject = `Test Signature Received - ${signerName}`
           const htmlContent = `
@@ -162,7 +173,7 @@ export async function POST(
               </div>
               <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">
                 <h3 style="margin-top: 0;">Signature Image:</h3>
-                <img src="${signature}" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />
+                <img src="${signaturePreview}" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />
               </div>
               <p style="color: #666; font-size: 12px; margin-top: 30px;">
                 This is a test signature from the signature link testing system.
@@ -179,7 +190,7 @@ Signer Name: ${signerName}
 Signed Date: ${signedDate}
 Token: ${token}
 
-Signature Image: ${signature}
+Signature Image: (see HTML version)
 
 This is a test signature from the signature link testing system.
           `
@@ -196,13 +207,16 @@ This is a test signature from the signature link testing system.
           })
 
           console.log(`📧 [TEST] Email sent to ${testEmail} with signature image`)
-        } else {
-          console.warn("⚠️ [TEST] SendGrid API key not configured, skipping email")
+        } catch (emailError: any) {
+          console.error("❌ [TEST] Failed to send test signature email:", emailError)
+          console.error("❌ [TEST] Email error details:", {
+            message: emailError?.message,
+            code: emailError?.code,
+            response: emailError?.response?.body,
+          })
+          // Don't fail the signature submission if email fails
         }
-      } catch (emailError) {
-        console.error("❌ [TEST] Failed to send test signature email:", emailError)
-        // Don't fail the signature submission if email fails
-      }
+      })()
     }
 
     // Mark token as used
@@ -218,7 +232,15 @@ This is a test signature from the signature link testing system.
       message: "Signature submitted successfully",
     })
   } catch (error: any) {
-    console.error("Error submitting signature:", error)
+    console.error("❌ [SIGNATURE] Error submitting signature:", error)
+    console.error("❌ [SIGNATURE] Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("❌ [SIGNATURE] Error details:", {
+      message: error?.message,
+      code: error?.code,
+      number: error?.number,
+      state: error?.state,
+    })
+    
     return NextResponse.json(
       {
         success: false,
