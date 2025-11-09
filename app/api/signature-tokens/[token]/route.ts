@@ -64,7 +64,7 @@ export async function POST(
 
     // Fetch token
     const tokens = await query(
-      `SELECT token_id, visit_form_id, signature_key, expires_at, used_at
+      `SELECT token_id, visit_form_id, signature_key, signature_type, expires_at, used_at
       FROM dbo.signature_tokens
       WHERE token = @param0 AND is_deleted = 0`,
       [token]
