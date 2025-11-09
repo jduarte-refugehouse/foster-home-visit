@@ -242,20 +242,29 @@ export async function POST(
     // Mark token as used
     try {
       // Convert signedDate to proper format for SQL Server DATE type (YYYY-MM-DD)
-      let formattedDate = signedDate
+      let formattedDate: string | null = null
       if (signedDate) {
-        // Ensure it's in YYYY-MM-DD format
-        const dateObj = new Date(signedDate)
-        if (!isNaN(dateObj.getTime())) {
-          formattedDate = dateObj.toISOString().split('T')[0] // Get YYYY-MM-DD part
+        try {
+          // Ensure it's in YYYY-MM-DD format
+          const dateObj = new Date(signedDate)
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toISOString().split('T')[0] // Get YYYY-MM-DD part
+          }
+        } catch (dateError) {
+          // If date parsing fails, use null
+          formattedDate = null
         }
       }
+
+      // Ensure signature is a string or null
+      const signatureValue = signature ? String(signature) : null
+      const signerNameValue = signerName ? String(signerName) : null
 
       await query(
         `UPDATE dbo.signature_tokens
         SET used_at = GETUTCDATE(), signature_data = @param1, signer_name = @param2, signed_date = @param3
         WHERE token_id = @param0`,
-        [tokenData.token_id, signature || null, signerName || null, formattedDate || null]
+        [tokenData.token_id, signatureValue, signerNameValue, formattedDate]
       )
     } catch (dbError: any) {
       // Use try-catch around console.error to prevent errors from breaking error handling
