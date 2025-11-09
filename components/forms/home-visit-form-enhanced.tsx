@@ -6,7 +6,7 @@ import {
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
   GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink,
-  Info, ChevronDown, ChevronUp, Clock, History
+  Info, ChevronDown, ChevronUp, Clock, History, Upload
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -1136,7 +1136,7 @@ const EnhancedHomeVisitForm = ({
       case "medication":
         return <ComplianceSection title="Medication" section="medication" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} />
       case "inspections":
-        return <InspectionSection formData={formData} onChange={handleChange} onAddExtinguisher={addFireExtinguisher} />
+        return <InspectionSection formData={formData} onChange={handleChange} onAddExtinguisher={addFireExtinguisher} existingFormData={existingFormData} />
       case "health-safety":
         return <ComplianceSection title="General Health and Safety" section="healthSafety" formData={formData} onChange={handleComplianceChange} onNotesChange={handleChange} />
       case "childrens-rights":
@@ -2994,8 +2994,80 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
   )
 }
 
-const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
+const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingFormData }) => {
   const inspections = formData.inspections
+  const { user } = useUser()
+  const [uploading, setUploading] = useState<Record<string, boolean>>({})
+  const fireCertRef = useRef<HTMLInputElement>(null)
+  const healthCertRef = useRef<HTMLInputElement>(null)
+  const extinguisherTagRefs = useRef<Record<number, HTMLInputElement>>({})
+
+  const visitFormId = existingFormData?.visit_form_id || null
+
+  const handleFileUpload = async (file: File, attachmentType: string, description: string) => {
+    if (!visitFormId || !file) return
+
+    const key = `${attachmentType}-${Date.now()}`
+    setUploading(prev => ({ ...prev, [key]: true }))
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("description", description)
+      formData.append("attachmentType", attachmentType)
+      formData.append("createdByUserId", user?.id || "")
+      formData.append("createdByName", `${user?.firstName || ""} ${user?.lastName || ""}`.trim())
+
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`, {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to upload file")
+      }
+
+      // Show success message (you might want to use toast here)
+      alert(`${description} uploaded successfully`)
+    } catch (error: any) {
+      console.error("Error uploading file:", error)
+      alert(`Failed to upload ${description}: ${error.message}`)
+    } finally {
+      setUploading(prev => {
+        const newState = { ...prev }
+        delete newState[key]
+        return newState
+      })
+    }
+  }
+
+  const handleFireCertCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileUpload(file, "fire_certificate", `Fire Certificate - ${inspections.fire.certificateNumber || "No cert number"}`)
+    }
+    if (fireCertRef.current) fireCertRef.current.value = ""
+  }
+
+  const handleHealthCertCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileUpload(file, "health_certificate", `Health Certificate - ${inspections.health.certificateNumber || "No cert number"}`)
+    }
+    if (healthCertRef.current) healthCertRef.current.value = ""
+  }
+
+  const handleExtinguisherTagCapture = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const location = inspections.fireExtinguishers[index]?.location || `Location ${index + 1}`
+      handleFileUpload(file, "fire_extinguisher_tag", `Fire Extinguisher Tag - ${location}`)
+    }
+    const ref = extinguisherTagRefs.current[index]
+    if (ref) ref.value = ""
+  }
 
   const getExpirationBadge = (days) => {
     if (days > 60) return <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Current</Badge>
@@ -3085,6 +3157,30 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                 <Label htmlFor="fireCopyOnFile" className="cursor-pointer">
                   Copy on File
                 </Label>
+              </div>
+
+              <div className="md:col-span-3">
+                <input
+                  ref={fireCertRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFireCertCapture}
+                  className="hidden"
+                  id="fire-cert-camera"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fireCertRef.current?.click()}
+                  disabled={!visitFormId || uploading[Object.keys(uploading)[0] || ""]}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading[Object.keys(uploading).find(k => k.includes("fire_certificate")) || ""] 
+                    ? "Uploading..." 
+                    : "Take Photo of Fire Certificate"}
+                </Button>
               </div>
 
               <div className="md:col-span-3">
@@ -3254,6 +3350,33 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher }) => {
                       <Label htmlFor={`ext-tag-${index}`} className="cursor-pointer">
                         Tag Present
                       </Label>
+                    </div>
+
+                    <div>
+                      <input
+                        ref={(el) => {
+                          if (el) extinguisherTagRefs.current[index] = el
+                        }}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleExtinguisherTagCapture(index)}
+                        className="hidden"
+                        id={`ext-tag-camera-${index}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => extinguisherTagRefs.current[index]?.click()}
+                        disabled={!visitFormId || uploading[Object.keys(uploading).find(k => k.includes(`extinguisher-${index}`)) || ""]}
+                        className="w-full"
+                      >
+                        <Upload className="h-3 w-3 mr-1" />
+                        {uploading[Object.keys(uploading).find(k => k.includes(`extinguisher-${index}`)) || ""] 
+                          ? "Uploading..." 
+                          : "Photo Tag"}
+                      </Button>
                     </div>
 
                     <div className="flex items-center space-x-2">
