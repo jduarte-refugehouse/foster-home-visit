@@ -96,43 +96,51 @@ export async function POST(
       )
     }
 
-    // Get current visit form data
-    const forms = await query(
-      "SELECT signatures FROM dbo.visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
-      [tokenData.visit_form_id]
-    )
+    // Check if this is a test token (signature_type = 'test')
+    const isTestToken = tokenData.signature_type === 'test'
 
-    if (forms.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Visit form not found" },
-        { status: 404 }
+    if (!isTestToken) {
+      // For real visit forms, update the form
+      const forms = await query(
+        "SELECT signatures FROM dbo.visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
+        [tokenData.visit_form_id]
       )
+
+      if (forms.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Visit form not found" },
+          { status: 404 }
+        )
+      }
+
+      // Parse existing signatures
+      let signatures = {}
+      try {
+        signatures = forms[0].signatures ? JSON.parse(forms[0].signatures) : {}
+      } catch (e) {
+        console.warn("Failed to parse existing signatures:", e)
+      }
+
+      // Update signatures with new signature
+      const signatureKey = tokenData.signature_key
+      const nameKey = signatureKey.replace("Signature", "")
+      const dateKey = signatureKey.replace("Signature", "Date")
+
+      signatures[signatureKey] = signature
+      signatures[nameKey] = signerName
+      signatures[dateKey] = signedDate
+
+      // Update visit form with new signature
+      await query(
+        `UPDATE dbo.visit_forms 
+        SET signatures = @param1, updated_at = GETUTCDATE()
+        WHERE visit_form_id = @param0 AND is_deleted = 0`,
+        [tokenData.visit_form_id, JSON.stringify(signatures)]
+      )
+    } else {
+      // For test tokens, just log that it was used (no visit form to update)
+      console.log(`✅ [TEST] Test signature submitted for token ${token}`)
     }
-
-    // Parse existing signatures
-    let signatures = {}
-    try {
-      signatures = forms[0].signatures ? JSON.parse(forms[0].signatures) : {}
-    } catch (e) {
-      console.warn("Failed to parse existing signatures:", e)
-    }
-
-    // Update signatures with new signature
-    const signatureKey = tokenData.signature_key
-    const nameKey = signatureKey.replace("Signature", "")
-    const dateKey = signatureKey.replace("Signature", "Date")
-
-    signatures[signatureKey] = signature
-    signatures[nameKey] = signerName
-    signatures[dateKey] = signedDate
-
-    // Update visit form with new signature
-    await query(
-      `UPDATE dbo.visit_forms 
-      SET signatures = @param1, updated_at = GETUTCDATE()
-      WHERE visit_form_id = @param0 AND is_deleted = 0`,
-      [tokenData.visit_form_id, JSON.stringify(signatures)]
-    )
 
     // Mark token as used
     await query(
