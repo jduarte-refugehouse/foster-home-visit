@@ -1,7 +1,7 @@
 // Additional Section Components for Enhanced Home Visit Form
 // This file contains the remaining section components that were too large to fit in one file
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { useUser } from "@clerk/nextjs"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,8 @@ import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SignaturePad } from "@/components/ui/signature-pad"
 import { GuidedQuestionField } from "@/components/forms/guided-question-field"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
 
 export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange }) => {
   const traumaCare = formData.traumaInformedCare
@@ -1421,7 +1423,9 @@ export const VisitSummarySection = ({ formData, onChange }) => {
   )
 }
 
-export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
+export const SignaturesSection = ({ formData, onChange, appointmentData, appointmentId, existingFormData }) => {
+  const { user } = useUser()
+  const { toast } = useToast()
   const signatures = formData.signatures || {}
   
   // Get foster parents from household data
@@ -1430,6 +1434,9 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
   // Get staff conducting the visit
   const staffName = appointmentData?.appointment?.assigned_to_name || ""
   const staffRole = appointmentData?.appointment?.assigned_to_role || "Staff"
+  
+  // Get visit form ID
+  const visitFormId = existingFormData?.visit_form_id || null
   
   // Helper to get signature value safely
   const getSignatureValue = (key) => {
@@ -1558,6 +1565,21 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
                     className="text-sm"
                   />
                 </div>
+                
+                {/* Send Signature Link Button */}
+                {visitFormId && provider.email && (
+                  <SendSignatureLinkButton
+                    visitFormId={visitFormId}
+                    signatureType={`parent${index + 1}`}
+                    signatureKey={`${sigKey}Signature`}
+                    recipientEmail={provider.email}
+                    recipientName={displayName}
+                    visitDate={formData.visitInfo?.date}
+                    familyName={formData.fosterHome?.familyName}
+                    createdByUserId={user?.id}
+                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                  />
+                )}
               </CardContent>
             </Card>
             )
@@ -1673,6 +1695,369 @@ export const SignaturesSection = ({ formData, onChange, appointmentData }) => {
           <strong>Ready to Submit:</strong> Review all sections before final submission. Ensure all required fields and signatures are complete.
         </AlertDescription>
       </Alert>
+    </div>
+  )
+}
+
+// Send Signature Link Button Component
+const SendSignatureLinkButton = ({ 
+  visitFormId, 
+  signatureType, 
+  signatureKey, 
+  recipientEmail, 
+  recipientName,
+  visitDate,
+  familyName,
+  createdByUserId,
+  createdByName,
+}: {
+  visitFormId: string
+  signatureType: string
+  signatureKey: string
+  recipientEmail: string
+  recipientName: string
+  visitDate?: string
+  familyName?: string
+  createdByUserId?: string
+  createdByName?: string
+}) => {
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState(recipientEmail)
+  const [sending, setSending] = useState(false)
+  const { toast } = useToast()
+
+  const handleSend = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSending(true)
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/signature-tokens`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          signatureType,
+          signatureKey,
+          recipientEmail: email.trim(),
+          recipientName,
+          visitDate,
+          familyName,
+          createdByUserId,
+          createdByName,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send signature link")
+      }
+
+      toast({
+        title: "Signature Link Sent",
+        description: `A signature link has been sent to ${email}`,
+      })
+      setOpen(false)
+    } catch (error: any) {
+      console.error("Error sending signature link:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send signature link",
+        variant: "destructive",
+      })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="w-full">
+          <Mail className="h-4 w-4 mr-2" />
+          Send Signature Link via Email
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send Signature Link</DialogTitle>
+          <DialogDescription>
+            Send a secure link to {recipientName} to sign this document via email.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-4">
+          <div>
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSend} disabled={sending}>
+              {sending ? "Sending..." : "Send Link"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Files Section Component
+export const FilesSection = ({ formData, onChange, appointmentId, existingFormData }) => {
+  const { user } = useUser()
+  const { toast } = useToast()
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const visitFormId = existingFormData?.visit_form_id || null
+
+  // Fetch attachments
+  useEffect(() => {
+    if (visitFormId) {
+      fetchAttachments()
+    } else {
+      setLoading(false)
+    }
+  }, [visitFormId])
+
+  const fetchAttachments = async () => {
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`)
+      const data = await response.json()
+
+      if (data.success) {
+        setAttachments(data.attachments || [])
+      }
+    } catch (error) {
+      console.error("Error fetching attachments:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0 || !visitFormId) return
+
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("description", "")
+        formData.append("attachmentType", "photo")
+        formData.append("createdByUserId", user?.id || "")
+        formData.append("createdByName", `${user?.firstName || ""} ${user?.lastName || ""}`.trim())
+
+        const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`, {
+          method: "POST",
+          body: formData,
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to upload file")
+        }
+      }
+
+      toast({
+        title: "Files Uploaded",
+        description: "Files have been successfully uploaded",
+      })
+
+      // Refresh attachments list
+      await fetchAttachments()
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    } catch (error: any) {
+      console.error("Error uploading file:", error)
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!confirm("Are you sure you want to delete this file?")) return
+
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete file")
+      }
+
+      toast({
+        title: "File Deleted",
+        description: "File has been successfully deleted",
+      })
+
+      // Refresh attachments list
+      await fetchAttachments()
+    } catch (error: any) {
+      console.error("Error deleting file:", error)
+      toast({
+        title: "Delete Error",
+        description: error.message || "Failed to delete file",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType?.startsWith("image/")) return Image
+    return File
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  if (!visitFormId) {
+    return (
+      <div className="space-y-6">
+        <Alert>
+          <AlertDescription>
+            Please save the form first before uploading files.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
+        <FileText className="h-6 w-6 text-refuge-purple" />
+        Files & Attachments
+      </h2>
+
+      <Alert>
+        <AlertDescription>
+          Upload photos, screenshots, or documents related to this visit. Files can be viewed and managed here.
+        </AlertDescription>
+      </Alert>
+
+      {/* Upload Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Upload Files</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploading ? "Uploading..." : "Choose Files"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Supported: Images, PDF, Word documents (Max 10MB per file)
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Attachments List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Uploaded Files</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading files...</div>
+          ) : attachments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No files uploaded yet</div>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((attachment) => {
+                const FileIcon = getFileIcon(attachment.mime_type)
+                return (
+                  <div
+                    key={attachment.attachment_id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileIcon className="h-5 w-5 text-refuge-purple flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{attachment.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(attachment.file_size || 0)} • {new Date(attachment.created_at).toLocaleDateString()}
+                        </p>
+                        {attachment.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{attachment.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(attachment.file_path, "_blank")}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteAttachment(attachment.attachment_id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

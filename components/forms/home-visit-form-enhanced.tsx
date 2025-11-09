@@ -29,6 +29,7 @@ import {
   CorrectiveActionsSection,
   VisitSummarySection,
   SignaturesSection,
+  FilesSection,
 } from "./home-visit-form-enhanced-sections"
 import { QuarterlyReviewSection } from "./quarterly-review-section"
 
@@ -983,6 +984,7 @@ const EnhancedHomeVisitForm = ({
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true, group: "standard" },
     { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true, group: "standard" },
     { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true, group: "standard" },
+    { id: "files", title: "Files", icon: FileText, required: false, group: "standard" },
     { id: "signatures", title: "Signatures", icon: FileText, required: true, group: "standard" },
   ]
 
@@ -1173,8 +1175,10 @@ const EnhancedHomeVisitForm = ({
         return <CorrectiveActionsSection formData={formData} onChange={handleChange} onAdd={addCorrectiveAction} />
       case "visit-summary":
         return <VisitSummarySection formData={formData} onChange={handleChange} />
+      case "files":
+        return <FilesSection formData={formData} onChange={handleChange} appointmentId={appointmentId} existingFormData={existingFormData} />
       case "signatures":
-        return <SignaturesSection formData={formData} onChange={handleChange} appointmentData={appointmentData} />
+        return <SignaturesSection formData={formData} onChange={handleChange} appointmentData={appointmentData} appointmentId={appointmentId} existingFormData={existingFormData} />
       default:
         return <div>Section not implemented</div>
     }
