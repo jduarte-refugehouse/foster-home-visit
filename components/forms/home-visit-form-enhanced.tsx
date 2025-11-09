@@ -3264,6 +3264,30 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
               </div>
 
               <div className="md:col-span-3">
+                <input
+                  ref={healthCertRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleHealthCertCapture}
+                  className="hidden"
+                  id="health-cert-camera"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => healthCertRef.current?.click()}
+                  disabled={!visitFormId || uploading[Object.keys(uploading).find(k => k.includes("health_certificate")) || ""]}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading[Object.keys(uploading).find(k => k.includes("health_certificate")) || ""] 
+                    ? "Uploading..." 
+                    : "Take Photo of Health Certificate"}
+                </Button>
+              </div>
+
+              <div className="md:col-span-3">
                 <Label htmlFor="healthNotes">Notes</Label>
                 <Textarea
                   id="healthNotes"
