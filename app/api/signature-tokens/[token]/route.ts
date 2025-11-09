@@ -177,43 +177,47 @@ export async function POST(
           sgMail.setApiKey(apiKey)
 
           // Truncate signature if too long (base64 images can be very large)
-          const signaturePreview = signature.length > 50000 
-            ? signature.substring(0, 50000) + "... (truncated)" 
-            : signature
+          // Also escape any special characters that might break the template
+          const signatureStr = String(signature || "")
+          const signaturePreview = signatureStr.length > 50000 
+            ? signatureStr.substring(0, 50000) + "... (truncated)" 
+            : signatureStr
+          
+          // Escape HTML and ensure safe string interpolation
+          const safeSignerName = String(signerName || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+          const safeSignedDate = String(signedDate || "").replace(/"/g, "&quot;")
+          const safeToken = String(token || "").replace(/"/g, "&quot;")
+          // For base64 data URLs, we need to be careful - just use it directly but ensure it's a string
+          const safeSignature = String(signaturePreview || "")
 
-          const subject = `Test Signature Received - ${signerName}`
-          const htmlContent = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #5E3989;">Test Signature Received</h2>
-              <p>A test signature has been submitted through the signature link system.</p>
-              <div style="margin: 20px 0;">
-                <p><strong>Signer Name:</strong> ${signerName}</p>
-                <p><strong>Signed Date:</strong> ${signedDate}</p>
-                <p><strong>Token:</strong> ${token}</p>
-              </div>
-              <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">
-                <h3 style="margin-top: 0;">Signature Image:</h3>
-                <img src="${signaturePreview}" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />
-              </div>
-              <p style="color: #666; font-size: 12px; margin-top: 30px;">
-                This is a test signature from the signature link testing system.
-              </p>
-            </div>
-          `
+          const subject = "Test Signature Received - " + safeSignerName
+          // Build HTML content using string concatenation to avoid template literal issues with large base64 strings
+          const htmlContent = 
+            '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
+            '<h2 style="color: #5E3989;">Test Signature Received</h2>' +
+            '<p>A test signature has been submitted through the signature link system.</p>' +
+            '<div style="margin: 20px 0;">' +
+            '<p><strong>Signer Name:</strong> ' + safeSignerName + '</p>' +
+            '<p><strong>Signed Date:</strong> ' + safeSignedDate + '</p>' +
+            '<p><strong>Token:</strong> ' + safeToken + '</p>' +
+            '</div>' +
+            '<div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">' +
+            '<h3 style="margin-top: 0;">Signature Image:</h3>' +
+            '<img src="' + safeSignature + '" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />' +
+            '</div>' +
+            '<p style="color: #666; font-size: 12px; margin-top: 30px;">' +
+            'This is a test signature from the signature link testing system.' +
+            '</p>' +
+            '</div>'
 
-          const textContent = `
-Test Signature Received
-
-A test signature has been submitted through the signature link system.
-
-Signer Name: ${signerName}
-Signed Date: ${signedDate}
-Token: ${token}
-
-Signature Image: (see HTML version)
-
-This is a test signature from the signature link testing system.
-          `
+          const textContent = 
+            "Test Signature Received\n\n" +
+            "A test signature has been submitted through the signature link system.\n\n" +
+            "Signer Name: " + safeSignerName + "\n" +
+            "Signed Date: " + safeSignedDate + "\n" +
+            "Token: " + safeToken + "\n\n" +
+            "Signature Image: (see HTML version)\n\n" +
+            "This is a test signature from the signature link testing system."
 
           await sgMail.send({
             to: testEmail,
