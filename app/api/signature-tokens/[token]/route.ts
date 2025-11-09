@@ -160,8 +160,6 @@ export async function POST(
       )
     } else {
       // For test tokens, send email with signature image (non-blocking)
-      console.log("✅ [TEST] Test signature submitted for token", token)
-      
       // Send email asynchronously without blocking signature submission
       (async () => {
         try {
@@ -229,8 +227,6 @@ export async function POST(
             text: textContent,
             html: htmlContent,
           })
-
-          console.log("📧 [TEST] Email sent to", testEmail, "with signature image")
         } catch (emailError: any) {
           console.error("❌ [TEST] Failed to send test signature email:", emailError)
           console.error("❌ [TEST] Email error details:", {
@@ -245,11 +241,6 @@ export async function POST(
 
     // Mark token as used
     try {
-      console.log("💾 [SIGNATURE] Updating token", tokenData.token_id, "with signature data")
-      console.log("💾 [SIGNATURE] Signature length:", signature?.length || 0, "characters")
-      console.log("💾 [SIGNATURE] Signer name:", signerName)
-      console.log("💾 [SIGNATURE] Signed date:", signedDate)
-      
       // Convert signedDate to proper format for SQL Server DATE type (YYYY-MM-DD)
       let formattedDate = signedDate
       if (signedDate) {
@@ -266,16 +257,20 @@ export async function POST(
         WHERE token_id = @param0`,
         [tokenData.token_id, signature || null, signerName || null, formattedDate || null]
       )
-      
-      console.log("✅ [SIGNATURE] Token marked as used successfully")
     } catch (dbError: any) {
-      console.error("❌ [SIGNATURE] Database update failed:", dbError)
-      console.error("❌ [SIGNATURE] DB Error details:", {
-        message: dbError?.message,
-        number: dbError?.number,
-        state: dbError?.state,
-        class: dbError?.class,
-      })
+      // Use try-catch around console.error to prevent errors from breaking error handling
+      try {
+        console.error("❌ [SIGNATURE] Database update failed:", dbError)
+        console.error("❌ [SIGNATURE] DB Error details:", {
+          message: dbError?.message,
+          number: dbError?.number,
+          state: dbError?.state,
+          class: dbError?.class,
+        })
+      } catch (logError) {
+        // If console.error fails, at least try to log to stderr directly
+        process.stderr.write("Failed to log DB error: " + String(logError) + "\n")
+      }
       throw dbError // Re-throw to be caught by outer catch
     }
 
@@ -284,22 +279,30 @@ export async function POST(
       message: "Signature submitted successfully",
     })
   } catch (error: any) {
-    console.error("❌ [SIGNATURE] Error submitting signature:", error)
-    console.error("❌ [SIGNATURE] Error stack:", error instanceof Error ? error.stack : "No stack trace")
-    console.error("❌ [SIGNATURE] Error details:", {
-      message: error?.message,
-      code: error?.code,
-      number: error?.number,
-      state: error?.state,
-      class: error?.class,
-      originalError: error?.originalError,
-    })
+    // Use try-catch around console.error to prevent errors from breaking error handling
+    try {
+      console.error("❌ [SIGNATURE] Error submitting signature:", error)
+      if (error instanceof Error) {
+        console.error("❌ [SIGNATURE] Error stack:", error.stack)
+      }
+      console.error("❌ [SIGNATURE] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        number: error?.number,
+        state: error?.state,
+        class: error?.class,
+        originalError: error?.originalError,
+      })
+    } catch (logError) {
+      // If console.error fails, at least try to log to stderr directly
+      process.stderr.write("Failed to log error: " + String(logError) + "\n")
+    }
     
     // Return more detailed error for debugging
     const errorResponse: any = {
       success: false,
       error: "Failed to submit signature",
-      details: error instanceof Error ? error.message : "Unknown error",
+      details: error instanceof Error ? error.message : String(error),
     }
     
     // Include SQL error details if available
@@ -310,6 +313,9 @@ export async function POST(
         message: error.message,
       }
     }
+    
+    // Include the error type to help debug
+    errorResponse.errorType = error?.constructor?.name || typeof error
     
     return NextResponse.json(errorResponse, { status: 500 })
   }
