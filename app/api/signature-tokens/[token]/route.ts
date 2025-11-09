@@ -64,12 +64,32 @@ export async function POST(
     }
 
     // Fetch token
-    const tokens = await query(
-      `SELECT token_id, visit_form_id, signature_key, signature_type, expires_at, used_at
-      FROM dbo.signature_tokens
-      WHERE token = @param0 AND is_deleted = 0`,
-      [token]
-    )
+    let tokens
+    try {
+      tokens = await query(
+        `SELECT token_id, visit_form_id, signature_key, signature_type, expires_at, used_at
+        FROM dbo.signature_tokens
+        WHERE token = @param0 AND is_deleted = 0`,
+        [token]
+      )
+    } catch (queryError: any) {
+      // Check if table doesn't exist
+      if (queryError?.message?.includes("Invalid object name") || 
+          queryError?.message?.includes("signature_tokens") ||
+          queryError?.number === 208) {
+        console.error("❌ [SIGNATURE] signature_tokens table does not exist")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Database table not found",
+            details: "The signature_tokens table has not been created. Please run the create-signature-tokens-table.sql script.",
+            errorCode: "TABLE_NOT_FOUND",
+          },
+          { status: 500 }
+        )
+      }
+      throw queryError // Re-throw if it's a different error
+    }
 
     if (tokens.length === 0) {
       return NextResponse.json(
@@ -226,11 +246,21 @@ This is a test signature from the signature link testing system.
       console.log(`💾 [SIGNATURE] Signer name: ${signerName}`)
       console.log(`💾 [SIGNATURE] Signed date: ${signedDate}`)
       
+      // Convert signedDate to proper format for SQL Server DATE type (YYYY-MM-DD)
+      let formattedDate = signedDate
+      if (signedDate) {
+        // Ensure it's in YYYY-MM-DD format
+        const dateObj = new Date(signedDate)
+        if (!isNaN(dateObj.getTime())) {
+          formattedDate = dateObj.toISOString().split('T')[0] // Get YYYY-MM-DD part
+        }
+      }
+
       await query(
         `UPDATE dbo.signature_tokens
         SET used_at = GETUTCDATE(), signature_data = @param1, signer_name = @param2, signed_date = @param3
         WHERE token_id = @param0`,
-        [tokenData.token_id, signature, signerName, signedDate]
+        [tokenData.token_id, signature || null, signerName || null, formattedDate || null]
       )
       
       console.log(`✅ [SIGNATURE] Token marked as used successfully`)

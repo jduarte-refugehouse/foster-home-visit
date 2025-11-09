@@ -104,7 +104,12 @@ export default function SignaturePage() {
 
       if (!response.ok) {
         console.error("Signature submission failed:", data)
-        setError(data.error || data.details || "Failed to submit signature")
+        console.error("Full error object:", JSON.stringify(data, null, 2))
+        const errorMsg = data.error || data.details || data.message || "Failed to submit signature"
+        if (data.sqlError) {
+          console.error("SQL Error:", data.sqlError)
+        }
+        setError(errorMsg)
         setSubmitting(false)
         return
       }
