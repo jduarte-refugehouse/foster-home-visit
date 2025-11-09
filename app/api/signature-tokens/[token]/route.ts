@@ -165,7 +165,7 @@ export async function POST(
         try {
           const apiKey = process.env.SENDGRID_API_KEY
           const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
-          const testEmail = process.env.TEST_SIGNATURE_EMAIL || fromEmail
+          const testEmail = "jduarte@refugehouse.org" // Hardcoded for testing
 
           console.error("📧 [TEST] Starting email send process")
           console.error("📧 [TEST] From email:", fromEmail)
@@ -175,10 +175,6 @@ export async function POST(
           if (!apiKey) {
             console.error("⚠️ [TEST] SendGrid API key not configured, skipping email")
             return
-          }
-
-          if (!testEmail || testEmail === fromEmail) {
-            console.error("⚠️ [TEST] TEST_SIGNATURE_EMAIL not configured, using fromEmail:", fromEmail)
           }
 
           sgMail.setApiKey(apiKey)
