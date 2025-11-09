@@ -91,10 +91,20 @@ export default function SignaturePage() {
         }),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        const text = await response.text()
+        data = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError)
+        setError("Failed to parse server response")
+        setSubmitting(false)
+        return
+      }
 
       if (!response.ok) {
-        setError(data.error || "Failed to submit signature")
+        console.error("Signature submission failed:", data)
+        setError(data.error || data.details || "Failed to submit signature")
         setSubmitting(false)
         return
       }

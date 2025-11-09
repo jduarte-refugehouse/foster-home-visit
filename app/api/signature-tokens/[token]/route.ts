@@ -257,16 +257,27 @@ This is a test signature from the signature link testing system.
       code: error?.code,
       number: error?.number,
       state: error?.state,
+      class: error?.class,
+      originalError: error?.originalError,
     })
     
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to submit signature",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    )
+    // Return more detailed error for debugging
+    const errorResponse: any = {
+      success: false,
+      error: "Failed to submit signature",
+      details: error instanceof Error ? error.message : "Unknown error",
+    }
+    
+    // Include SQL error details if available
+    if (error?.number) {
+      errorResponse.sqlError = {
+        number: error.number,
+        state: error.state,
+        message: error.message,
+      }
+    }
+    
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 
