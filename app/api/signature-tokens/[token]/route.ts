@@ -220,12 +220,30 @@ This is a test signature from the signature link testing system.
     }
 
     // Mark token as used
-    await query(
-      `UPDATE dbo.signature_tokens
-      SET used_at = GETUTCDATE(), signature_data = @param1, signer_name = @param2, signed_date = @param3
-      WHERE token_id = @param0`,
-      [tokenData.token_id, signature, signerName, signedDate]
-    )
+    try {
+      console.log(`💾 [SIGNATURE] Updating token ${tokenData.token_id} with signature data`)
+      console.log(`💾 [SIGNATURE] Signature length: ${signature?.length || 0} characters`)
+      console.log(`💾 [SIGNATURE] Signer name: ${signerName}`)
+      console.log(`💾 [SIGNATURE] Signed date: ${signedDate}`)
+      
+      await query(
+        `UPDATE dbo.signature_tokens
+        SET used_at = GETUTCDATE(), signature_data = @param1, signer_name = @param2, signed_date = @param3
+        WHERE token_id = @param0`,
+        [tokenData.token_id, signature, signerName, signedDate]
+      )
+      
+      console.log(`✅ [SIGNATURE] Token marked as used successfully`)
+    } catch (dbError: any) {
+      console.error("❌ [SIGNATURE] Database update failed:", dbError)
+      console.error("❌ [SIGNATURE] DB Error details:", {
+        message: dbError?.message,
+        number: dbError?.number,
+        state: dbError?.state,
+        class: dbError?.class,
+      })
+      throw dbError // Re-throw to be caught by outer catch
+    }
 
     return NextResponse.json({
       success: true,
