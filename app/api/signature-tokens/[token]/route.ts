@@ -160,7 +160,7 @@ export async function POST(
       )
     } else {
       // For test tokens, send email with signature image (non-blocking)
-      console.log(`✅ [TEST] Test signature submitted for token ${token}`)
+      console.log("✅ [TEST] Test signature submitted for token", token)
       
       // Send email asynchronously without blocking signature submission
       (async () => {
@@ -230,7 +230,7 @@ export async function POST(
             html: htmlContent,
           })
 
-          console.log(`📧 [TEST] Email sent to ${testEmail} with signature image`)
+          console.log("📧 [TEST] Email sent to", testEmail, "with signature image")
         } catch (emailError: any) {
           console.error("❌ [TEST] Failed to send test signature email:", emailError)
           console.error("❌ [TEST] Email error details:", {
@@ -245,10 +245,10 @@ export async function POST(
 
     // Mark token as used
     try {
-      console.log(`💾 [SIGNATURE] Updating token ${tokenData.token_id} with signature data`)
-      console.log(`💾 [SIGNATURE] Signature length: ${signature?.length || 0} characters`)
-      console.log(`💾 [SIGNATURE] Signer name: ${signerName}`)
-      console.log(`💾 [SIGNATURE] Signed date: ${signedDate}`)
+      console.log("💾 [SIGNATURE] Updating token", tokenData.token_id, "with signature data")
+      console.log("💾 [SIGNATURE] Signature length:", signature?.length || 0, "characters")
+      console.log("💾 [SIGNATURE] Signer name:", signerName)
+      console.log("💾 [SIGNATURE] Signed date:", signedDate)
       
       // Convert signedDate to proper format for SQL Server DATE type (YYYY-MM-DD)
       let formattedDate = signedDate
@@ -267,7 +267,7 @@ export async function POST(
         [tokenData.token_id, signature || null, signerName || null, formattedDate || null]
       )
       
-      console.log(`✅ [SIGNATURE] Token marked as used successfully`)
+      console.log("✅ [SIGNATURE] Token marked as used successfully")
     } catch (dbError: any) {
       console.error("❌ [SIGNATURE] Database update failed:", dbError)
       console.error("❌ [SIGNATURE] DB Error details:", {
