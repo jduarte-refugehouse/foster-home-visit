@@ -13,16 +13,27 @@ BEGIN
     ALTER TABLE [dbo].[signature_tokens]
     ADD [signer_type] [nvarchar](50) NULL;
     
-    -- Copy data from signature_type to signer_type for existing records
-    UPDATE [dbo].[signature_tokens]
-    SET [signer_type] = [signature_type]
-    WHERE [signer_type] IS NULL;
-    
     PRINT 'Added signer_type column to signature_tokens table';
 END
 ELSE
 BEGIN
     PRINT 'signer_type column already exists in signature_tokens table';
+END
+GO
+
+-- Copy data from signature_type to signer_type for existing records (only if column exists)
+IF EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
+    AND name = 'signer_type'
+)
+BEGIN
+    UPDATE [dbo].[signature_tokens]
+    SET [signer_type] = [signature_type]
+    WHERE [signer_type] IS NULL;
+    
+    PRINT 'Copied data from signature_type to signer_type';
 END
 GO
 
@@ -37,16 +48,27 @@ BEGIN
     ALTER TABLE [dbo].[signature_tokens]
     ADD [email_address] [nvarchar](255) NULL;
     
-    -- Copy data from recipient_email to email_address for existing records
-    UPDATE [dbo].[signature_tokens]
-    SET [email_address] = [recipient_email]
-    WHERE [email_address] IS NULL;
-    
     PRINT 'Added email_address column to signature_tokens table';
 END
 ELSE
 BEGIN
     PRINT 'email_address column already exists in signature_tokens table';
+END
+GO
+
+-- Copy data from recipient_email to email_address for existing records (only if column exists)
+IF EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
+    AND name = 'email_address'
+)
+BEGIN
+    UPDATE [dbo].[signature_tokens]
+    SET [email_address] = [recipient_email]
+    WHERE [email_address] IS NULL;
+    
+    PRINT 'Copied data from recipient_email to email_address';
 END
 GO
 
@@ -61,15 +83,26 @@ BEGIN
     ALTER TABLE [dbo].[signature_tokens]
     ADD [is_used] [bit] NOT NULL DEFAULT 0;
     
-    -- Set is_used based on used_at for existing records
-    UPDATE [dbo].[signature_tokens]
-    SET [is_used] = CASE WHEN [used_at] IS NOT NULL THEN 1 ELSE 0 END;
-    
     PRINT 'Added is_used column to signature_tokens table';
 END
 ELSE
 BEGIN
     PRINT 'is_used column already exists in signature_tokens table';
+END
+GO
+
+-- Set is_used based on used_at for existing records (only if column exists)
+IF EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
+    AND name = 'is_used'
+)
+BEGIN
+    UPDATE [dbo].[signature_tokens]
+    SET [is_used] = CASE WHEN [used_at] IS NOT NULL THEN 1 ELSE 0 END;
+    
+    PRINT 'Set is_used values based on used_at';
 END
 GO
 
@@ -84,16 +117,27 @@ BEGIN
     ALTER TABLE [dbo].[signature_tokens]
     ADD [updated_at] [datetime2](7) NULL;
     
-    -- Set updated_at to created_at for existing records
-    UPDATE [dbo].[signature_tokens]
-    SET [updated_at] = [created_at]
-    WHERE [updated_at] IS NULL;
-    
     PRINT 'Added updated_at column to signature_tokens table';
 END
 ELSE
 BEGIN
     PRINT 'updated_at column already exists in signature_tokens table';
+END
+GO
+
+-- Set updated_at to created_at for existing records (only if column exists)
+IF EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
+    AND name = 'updated_at'
+)
+BEGIN
+    UPDATE [dbo].[signature_tokens]
+    SET [updated_at] = [created_at]
+    WHERE [updated_at] IS NULL;
+    
+    PRINT 'Set updated_at values based on created_at';
 END
 GO
 
