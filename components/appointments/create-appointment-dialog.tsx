@@ -83,15 +83,31 @@ export function CreateAppointmentDialog({
 
   const initializeFormData = () => {
     if (editingAppointment) {
-      const startDate = new Date(editingAppointment.start_datetime)
-      const endDate = new Date(editingAppointment.end_datetime)
+      // Parse datetime strings as LOCAL time (not UTC)
+      // SQL Server DATETIME2 has no timezone, so we parse as local time
+      const parseLocalDatetime = (sqlDatetime: string): Date => {
+        // Handle formats: "2025-11-08T10:00:00" or "2025-11-08 10:00:00" or "2025-11-08T10:00:00.000"
+        const cleaned = sqlDatetime.replace(' ', 'T').replace('Z', '').split('.')[0]
+        const [datePart, timePart] = cleaned.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        
+        // Create Date in LOCAL timezone (not UTC)
+        return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      }
+
+      const startDate = parseLocalDatetime(editingAppointment.start_datetime)
+      const endDate = parseLocalDatetime(editingAppointment.end_datetime)
       const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+
+      // Format date as YYYY-MM-DD string for the date input
+      const dateString = format(startDate, "yyyy-MM-dd")
 
       return {
         title: editingAppointment.title,
         description: editingAppointment.description || "",
         appointmentType: editingAppointment.appointment_type,
-        date: startDate,
+        date: dateString, // Use string format for date input
         startTime: format(startDate, "HH:mm"),
         endTime: format(endDate, "HH:mm"),
         duration: duration.toString(),
@@ -111,7 +127,7 @@ export function CreateAppointmentDialog({
       title: "",
       description: "",
       appointmentType: "home_visit",
-      date: selectedDate || new Date(),
+      date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Use string format
       startTime: selectedTime || "09:00",
       endTime: "",
       duration: "60",
@@ -193,23 +209,67 @@ export function CreateAppointmentDialog({
       if (!formData.title || !formData.assignedToUserId || !formData.assignedToName) {
         toast({
           title: "Validation Error",
-          description: "Please fill in all required fields",
+          description: "Please fill in all required fields (title, assigned staff)",
           variant: "destructive",
         })
+        setLoading(false)
         return
       }
 
-      // Create start and end datetime objects
-      // IMPORTANT: Treat the user's input as local time, store as-is without timezone conversion
-      // This prevents timezone shifts when displaying in the calendar
-      const [year, month, day] = formData.date.split("-").map(Number)
-      const [startHours, startMinutes] = formData.startTime.split(":").map(Number)
-      const [endHours, endMinutes] = formData.endTime.split(":").map(Number)
+      // Validate date and time fields
+      if (!formData.date || !formData.startTime || !formData.endTime) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a date and time for the appointment",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Create start and end datetime objects in local timezone
+      // Parse the date string and time separately to avoid timezone issues
+      // IMPORTANT: Treat user input as local time, not UTC
+      const dateParts = formData.date.split("-")
+      if (dateParts.length !== 3) {
+        toast({
+          title: "Validation Error",
+          description: "Invalid date format",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const [year, month, day] = dateParts.map(Number)
+      const startTimeParts = formData.startTime.split(":")
+      const endTimeParts = formData.endTime.split(":")
       
-      // Create dates in local timezone
-      // Use Date constructor with individual components to avoid timezone conversion
+      if (startTimeParts.length < 2 || endTimeParts.length < 2) {
+        toast({
+          title: "Validation Error",
+          description: "Invalid time format. Please use HH:mm format",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const [startHours, startMinutes] = startTimeParts.map(Number)
+      const [endHours, endMinutes] = endTimeParts.map(Number)
+      
+      // Create dates using Date constructor with components (avoids timezone conversion)
+      // This creates a date in LOCAL timezone
       const startDateTime = new Date(year, month - 1, day, startHours, startMinutes, 0, 0)
       const endDateTime = new Date(year, month - 1, day, endHours, endMinutes, 0, 0)
+
+      // Format as ISO string but WITHOUT timezone (remove 'Z')
+      // SQL Server DATETIME2 has no timezone, so we store as local time string
+      // Format: YYYY-MM-DDTHH:mm:ss (no Z, no timezone offset)
+      const formatLocalISO = (date: Date) => {
+        const pad = (n: number) => n.toString().padStart(2, '0')
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+      }
 
       // Format as ISO string but ensure we're treating it as the user's local time
       // The calendar will display this correctly because react-big-calendar handles timezones
@@ -217,8 +277,8 @@ export function CreateAppointmentDialog({
         title: formData.title,
         description: formData.description,
         appointmentType: formData.appointmentType,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString(),
+        startDateTime: formatLocalISO(startDateTime),
+        endDateTime: formatLocalISO(endDateTime),
         homeXref: formData.homeXref ? Number.parseInt(formData.homeXref) : null,
         homeName: formData.homeName,
         locationAddress: formData.locationAddress,
@@ -235,6 +295,8 @@ export function CreateAppointmentDialog({
       const url = isEditing ? `/api/appointments/${editingAppointment.appointment_id}` : "/api/appointments"
       const method = isEditing ? "PUT" : "POST"
 
+      console.log("📅 [DIALOG] Submitting appointment:", appointmentData)
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -243,8 +305,16 @@ export function CreateAppointmentDialog({
         body: JSON.stringify(appointmentData),
       })
 
+      const responseData = await response.json()
+
       if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? "update" : "create"} appointment`)
+        const errorMessage = responseData.error || responseData.details || `Failed to ${isEditing ? "update" : "create"} appointment`
+        console.error("❌ [DIALOG] Appointment API error:", {
+          status: response.status,
+          error: errorMessage,
+          responseData,
+        })
+        throw new Error(errorMessage)
       }
 
       toast({
@@ -283,12 +353,16 @@ export function CreateAppointmentDialog({
   const handleHomeChange = (homeXref: string) => {
     const selectedHome = homes.find((h) => h.xref.toString() === homeXref)
     if (selectedHome) {
+      // Auto-generate title based on appointment type and home name
+      const appointmentTypeLabel = formData.appointmentType.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      const newTitle = `${appointmentTypeLabel} - ${selectedHome.name}`
+      
       setFormData((prev) => ({
         ...prev,
         homeXref,
         homeName: selectedHome.name,
         locationAddress: selectedHome.address,
-        title: prev.title || `${prev.appointmentType.replace("_", " ")} - ${selectedHome.name}`,
+        title: newTitle, // Always update title when home changes
       }))
     }
   }
@@ -310,24 +384,79 @@ export function CreateAppointmentDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Location - Moved to top */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Location
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="home">Foster Home *</Label>
+                <Select value={formData.homeXref} onValueChange={handleHomeChange} disabled={loadingData} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingData ? "Loading homes..." : "Select a home"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {homes.map((home) => (
+                      <SelectItem key={home.xref} value={home.xref.toString()}>
+                        {home.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationAddress">Address</Label>
+                <Input
+                  id="locationAddress"
+                  value={formData.locationAddress}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, locationAddress: e.target.value }))}
+                  placeholder="Full address (auto-filled from home)"
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="locationNotes">Location Notes</Label>
+              <Textarea
+                id="locationNotes"
+                value={formData.locationNotes}
+                onChange={(e) => setFormData((prev) => ({ ...prev, locationNotes: e.target.value }))}
+                placeholder="Special instructions, parking info, etc."
+                rows={2}
+              />
+            </div>
+          </div>
+
           {/* Basic Information */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">Title * (Auto-generated)</Label>
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Home Visit - Johnson Family"
+                  readOnly
+                  className="bg-muted"
+                  placeholder="Select home and type to generate title"
                   required
                 />
+                <p className="text-xs text-muted-foreground">Title is automatically generated from appointment type and home name</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Appointment Type</Label>
                 <Select
                   value={formData.appointmentType}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, appointmentType: value }))}
+                  onValueChange={(value) => {
+                    setFormData((prev) => {
+                      // Auto-update title when type changes if home is selected
+                      const appointmentTypeLabel = value.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+                      const newTitle = prev.homeName ? `${appointmentTypeLabel} - ${prev.homeName}` : prev.title
+                      return { ...prev, appointmentType: value, title: newTitle }
+                    })
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -377,15 +506,19 @@ export function CreateAppointmentDialog({
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span className="truncate">
-                        {formData.date ? format(formData.date, "MMMM do, yyyy") : "Pick a date"}
+                        {formData.date ? format(new Date(formData.date + "T00:00:00"), "MMMM do, yyyy") : "Pick a date"}
                       </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={8} alignOffset={0}>
                     <Calendar
                       mode="single"
-                      selected={formData.date}
-                      onSelect={(date) => date && setFormData((prev) => ({ ...prev, date }))}
+                      selected={formData.date ? new Date(formData.date + "T00:00:00") : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormData((prev) => ({ ...prev, date: format(date, "yyyy-MM-dd") }))
+                        }
+                      }}
                       initialFocus
                       className="rounded-md border-0"
                       classNames={{
@@ -445,56 +578,15 @@ export function CreateAppointmentDialog({
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2"></div>
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time</Label>
                 <Input id="endTime" type="time" value={formData.endTime} readOnly className="bg-muted" />
               </div>
+              <div></div>
             </div>
           </div>
 
-          {/* Location */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Location
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="home">Foster Home</Label>
-                <Select value={formData.homeXref} onValueChange={handleHomeChange} disabled={loadingData}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingData ? "Loading homes..." : "Select a home"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {homes.map((home) => (
-                      <SelectItem key={home.xref} value={home.xref.toString()}>
-                        {home.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="locationAddress">Address</Label>
-                <Input
-                  id="locationAddress"
-                  value={formData.locationAddress}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, locationAddress: e.target.value }))}
-                  placeholder="Full address"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="locationNotes">Location Notes</Label>
-              <Textarea
-                id="locationNotes"
-                value={formData.locationNotes}
-                onChange={(e) => setFormData((prev) => ({ ...prev, locationNotes: e.target.value }))}
-                placeholder="Special instructions, parking info, etc."
-                rows={2}
-              />
-            </div>
-          </div>
 
           {/* Staff Assignment */}
           <div className="space-y-4">

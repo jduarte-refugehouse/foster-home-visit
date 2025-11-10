@@ -32,7 +32,18 @@ export async function GET(request: NextRequest) {
         let userQuery = ""
         let queryParam = ""
 
-        if (userClerkId) {
+        // Check for impersonation first
+        const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
+        
+        if (impersonatedUserId) {
+          // Use impersonated user
+          userQuery = `
+            SELECT id, email, first_name, last_name, is_active, clerk_user_id
+            FROM app_users 
+            WHERE id = @param0
+          `
+          queryParam = impersonatedUserId
+        } else if (userClerkId) {
           userQuery = `
             SELECT id, email, first_name, last_name, is_active, clerk_user_id
             FROM app_users 

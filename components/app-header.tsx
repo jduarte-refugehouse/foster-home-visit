@@ -15,15 +15,50 @@ import { usePathname } from "next/navigation"
 export function AppHeader() {
   const pathname = usePathname()
 
+  // Special handling for appointment detail pages - use simpler breadcrumb
+  const isAppointmentDetail = pathname.startsWith("/appointment/") && pathname.split("/").length === 3
+  
+  // Special handling for mobile routes - hide header (they have custom headers)
+  const isMobileRoute = pathname.startsWith("/mobile")
+  
   // Generate breadcrumbs from pathname
   const pathSegments = pathname.split("/").filter(Boolean)
-  const breadcrumbs = pathSegments.map((segment, index) => {
+  const breadcrumbs: Array<{ href: string; label: string }> = []
+  
+  pathSegments.forEach((segment, index) => {
+    // For appointment detail pages, link back to visits calendar and stop
+    if (isAppointmentDetail && segment === "appointment") {
+      breadcrumbs.push({ href: "/visits-calendar", label: "Appointments" })
+      return
+    }
+    
+    // Special handling for mobile routes
+    if (segment === "mobile") {
+      breadcrumbs.push({ href: "/mobile", label: "Mobile View" })
+      return
+    }
+    
+    // Skip GUID segments for appointment detail pages
+    if (isAppointmentDetail && segment.length > 30 && /^[A-F0-9-]+$/i.test(segment)) {
+      return
+    }
+    
     const href = "/" + pathSegments.slice(0, index + 1).join("/")
-    const label = segment
+    
+    // Special handling for GUIDs and dynamic routes
+    let label = segment
+    
+    // If this looks like a GUID (long hex string), replace with generic label
+    if (segment.length > 30 && /^[A-F0-9-]+$/i.test(segment)) {
+      label = "Details"
+    } else {
+      label = segment
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ")
-    return { href, label }
+    }
+    
+    breadcrumbs.push({ href, label })
   })
 
   // Generate page title from pathname
@@ -37,12 +72,26 @@ export function AppHeader() {
       "homes-list": "Homes List",
       "homes-map": "Homes Map",
       "visits-calendar": "Visits Calendar",
+      "visits-list": "Visits List",
       reports: "Reports",
       admin: "Admin",
       "system-admin": "System Admin",
       diagnostics: "Diagnostics",
       users: "User Management",
       invitations: "Invitations",
+      "visit-form": "Visit Form",
+      "visit-forms": "Visit Forms",
+      mobile: "Home Visits",
+    }
+
+    // Special handling for dynamic routes (appointment/[id], etc.)
+    if (segments[0] === "appointment" && segments.length === 2) {
+      return "Appointment Details"
+    }
+    
+    // Special handling for mobile routes
+    if (segments[0] === "mobile") {
+      return "Home Visits"
     }
 
     return (
@@ -55,6 +104,11 @@ export function AppHeader() {
   }
 
   const pageTitle = generatePageTitle(pathname)
+
+  // Hide header for appointment detail pages and mobile routes - they have their own custom headers
+  if (isAppointmentDetail || isMobileRoute) {
+    return null
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

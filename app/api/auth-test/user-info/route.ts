@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
+import { checkUserAccess } from "@/lib/user-access-check"
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,6 +8,20 @@ export async function POST(request: NextRequest) {
 
     if (!clerkUserId || !email) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Check user access (this will send email notification if new external user without access)
+    const accessCheck = await checkUserAccess(clerkUserId, email, firstName, lastName)
+
+    if (!accessCheck.hasAccess) {
+      return NextResponse.json(
+        {
+          error: "Access denied. External users require an invitation to join.",
+          requiresInvitation: true,
+          isNewUser: accessCheck.isNewUser,
+        },
+        { status: 403 },
+      )
     }
 
     // Check if user already exists
@@ -19,7 +34,7 @@ export async function POST(request: NextRequest) {
       is_active: boolean
       created_at: Date
       updated_at: Date
-    }>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [clerkUserId])
+    }>("SELECT * FROM app_users WHERE clerk_user_id = @param0 OR email = @param1", [clerkUserId, email])
 
     let appUser
 
@@ -28,28 +43,12 @@ export async function POST(request: NextRequest) {
       await query(
         `UPDATE app_users 
          SET email = @param1, first_name = @param2, last_name = @param3, updated_at = GETDATE()
-         WHERE clerk_user_id = @param0`,
+         WHERE clerk_user_id = @param0 OR email = @param1`,
         [clerkUserId, email, firstName || "", lastName || ""],
       )
       appUser = existingUser[0]
     } else {
-      // Check if non-refugehouse user has invitation
-      if (!email.endsWith("@refugehouse.org")) {
-        const invitation = await query<{ id: string }>(
-          "SELECT id FROM invited_users WHERE email = @param0 AND is_active = 1",
-          [email],
-        )
-
-        if (invitation.length === 0) {
-          return NextResponse.json(
-            {
-              error: "Access denied. External users require an invitation to join.",
-              requiresInvitation: true,
-            },
-            { status: 403 },
-          )
-        }
-      }
+      // User has access (via invitation or refugehouse.org), create new user
 
       // Create new user
       const newUserResult = await query<{ id: string }>(

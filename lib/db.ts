@@ -1,23 +1,13 @@
 import sql from "mssql"
-import type net from "net"
-import tls from "tls"
-import { SocksClient } from "socks"
 import { SecretClient } from "@azure/keyvault-secrets"
 import { ClientSecretCredential } from "@azure/identity"
 
 let pool: sql.ConnectionPool | null = null
 
-// ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
-// DO NOT CHANGE THE DATABASE CONNECTION PARAMETERS BELOW WITHOUT EXPLICIT USER PERMISSION
-// THESE PARAMETERS ARE LOCKED AND WORKING
-// CHANGING THEM WILL BREAK THE APPLICATION
-// IF YOU CHANGE THESE, YOU WILL HAVE TO BREAK YOUR OWN FINGERS
-// ⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️
-
-// 🔒 CONNECTION LOCK ACTIVE 🔒
-// This connection is protected by lib/db-connection-lock.ts
-// Any modifications require explicit user permission
-// See the lock file for details on what's forbidden
+// ✨ STATIC IP CONNECTION ✨
+// Using Vercel Static IPs (18.217.75.119, 18.116.232.18)
+// These IPs are whitelisted in Azure SQL firewall
+// No proxy needed - direct connection for better performance!
 
 // Azure Key Vault client setup
 async function getPasswordFromKeyVault(): Promise<{ password: string; source: string; error?: string }> {
@@ -47,70 +37,6 @@ async function getPasswordFromKeyVault(): Promise<{ password: string; source: st
   }
 }
 
-// Custom connector function for Fixie SOCKS proxy
-function createFixieConnector(config: sql.config) {
-  return new Promise<net.Socket>((resolve, reject) => {
-    if (!process.env.FIXIE_SOCKS_HOST) {
-      return reject(new Error("FIXIE_SOCKS_HOST environment variable not set."))
-    }
-    const fixieUrl = process.env.FIXIE_SOCKS_HOST
-    // This regex is designed for the format: socks://user:password@host:port
-    const match = fixieUrl.match(/(?:socks:\/\/)?([^:]+):([^@]+)@([^:]+):(\d+)/)
-    if (!match) {
-      return reject(new Error("Invalid FIXIE_SOCKS_HOST format. Expected: user:password@host:port"))
-    }
-    const [, userId, password, host, port] = match
-    console.log(`Attempting SOCKS connection via ${host}:${port}`)
-    SocksClient.createConnection(
-      {
-        proxy: {
-          host: host,
-          port: Number.parseInt(port, 10),
-          type: 5, // SOCKS5
-          userId: userId,
-          password: password,
-        },
-        destination: {
-          host: config.server,
-          port: config.port || 1433,
-        },
-        command: "connect",
-      },
-      (err, info) => {
-        if (err) {
-          console.error("SOCKS connection error:", err)
-          return reject(err)
-        }
-        console.log("SOCKS connection established. Initiating TLS handshake...")
-        if (!info) {
-          return reject(new Error("SOCKS connection info is undefined."))
-        }
-        const tlsSocket = tls.connect(
-          {
-            socket: info.socket,
-            servername: config.server,
-            rejectUnauthorized: true, // Enforce certificate validation
-          },
-          () => {
-            if (tlsSocket.authorized) {
-              console.log("TLS handshake successful. Socket is authorized.")
-              resolve(tlsSocket)
-            } else {
-              const tlsError = tlsSocket.authorizationError || new Error("TLS authorization failed")
-              console.error("TLS authorization failed:", tlsError)
-              reject(tlsError)
-            }
-          },
-        )
-        tlsSocket.on("error", (error) => {
-          console.error("TLS socket error:", error)
-          reject(error)
-        })
-      },
-    )
-  })
-}
-
 // Store password source for diagnostics
 let lastPasswordSource = ""
 let lastPasswordError = ""
@@ -127,12 +53,10 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
     const passwordResult = await getPasswordFromKeyVault()
     lastPasswordSource = passwordResult.source
     lastPasswordError = passwordResult.error || ""
-    // ⚠️⚠️⚠️ THESE ARE THE CORRECT, WORKING, LOCKED DATABASE PARAMETERS ⚠️⚠️⚠️
-    // DO NOT CHANGE THESE WITHOUT EXPLICIT USER PERMISSION
-    // THESE PARAMETERS WORK AND ARE STABLE
+    // Database configuration with direct connection via Vercel Static IPs
     const config: sql.config = {
       user: "v0_app_user",
-      password: passwordResult.password, // Retrieved securely from Key Vault only
+      password: passwordResult.password, // Retrieved securely from Key Vault
       database: "RadiusBifrost",
       server: "refugehouse-bifrost-server.database.windows.net",
       port: 1433,
@@ -145,18 +69,13 @@ export async function getConnection(): Promise<sql.ConnectionPool> {
         encrypt: true,
         trustServerCertificate: false,
         connectTimeout: 60000,
-        requestTimeout: 60000,
+        requestTimeout: 120000, // 120 seconds for large queries
       },
     }
-    // ⚠️⚠️⚠️ END LOCKED PARAMETERS ⚠️⚠️⚠️
-    if (process.env.FIXIE_SOCKS_HOST) {
-      console.log("Using Fixie SOCKS proxy for connection.")
-      config.options.connector = () => createFixieConnector(config)
-    } else {
-      console.warn("⚠️ No Fixie proxy detected. Attempting direct connection.")
-    }
-    console.log(`🔌 Attempting new connection to ${config.server}...`)
+    
+    console.log(`🔌 Attempting direct connection to ${config.server}...`)
     console.log(`🔑 Password source: ${lastPasswordSource}`)
+    console.log(`✨ Using Vercel Static IPs - no proxy needed!`)
     pool = new sql.ConnectionPool(config)
     pool.on("error", (err) => {
       console.error("❌ Database Pool Error:", err)
@@ -185,10 +104,14 @@ export async function closeConnection() {
   }
 }
 
-export async function query<T = any>(queryText: string, params: any[] = []): Promise<T[]> {
+export async function query<T = any>(queryText: string, params: any[] = [], timeout: number = 120000): Promise<T[]> {
   try {
     const connection = await getConnection()
     const request = connection.request()
+    
+    // Set request-specific timeout (default 120 seconds, configurable per query)
+    request.timeout = timeout
+    
     if (params) {
       params.forEach((param, index) => {
         request.input(`param${index}`, param)

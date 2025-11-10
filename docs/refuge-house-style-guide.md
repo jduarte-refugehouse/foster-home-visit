@@ -101,6 +101,19 @@ className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 d
 className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
 \`\`\`
 
+**⚠️ IMPORTANT: Dark Mode Awareness for Forms**
+- **ALWAYS ensure forms are dark mode aware** - Forms are frequently used on iPads which may be in dark mode
+- Use theme-aware classes instead of hardcoded colors:
+  - `text-gray-700` → `text-foreground` or `text-card-foreground`
+  - `text-gray-500/600` → `text-muted-foreground`
+  - `bg-white` → `bg-card`
+  - `bg-gray-100/50` → `bg-muted`
+  - `bg-gray-200` → `bg-secondary`
+- For colored alerts/badges, always include dark mode variants:
+  - `bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800`
+  - `text-yellow-800 dark:text-yellow-200`
+- Test all forms in both light and dark mode before deployment
+
 ### Navigation
 \`\`\`tsx
 // Nav Link

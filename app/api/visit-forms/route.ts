@@ -3,6 +3,7 @@ import { query } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
+export const maxDuration = 60 // Vercel function timeout in seconds (Pro plan: max 60s, Enterprise: max 900s)
 
 // GET - Fetch visit forms with optional filtering
 export async function GET(request: NextRequest) {
@@ -70,6 +71,12 @@ export async function GET(request: NextRequest) {
         vf.created_by_name,
         vf.updated_by_user_id,
         vf.updated_by_name,
+        vf.current_session_id,
+        vf.current_session_last_save,
+        vf.current_session_save_type,
+        vf.current_session_user_id,
+        vf.current_session_user_name,
+        vf.save_history_json,
         -- Include appointment details
         a.title as appointment_title,
         a.location_address
@@ -156,6 +163,10 @@ export async function POST(request: NextRequest) {
       createdByUserId,
       createdByName,
       isAutoSave = false,
+      // Session tracking
+      currentSessionId,
+      currentSessionUserId,
+      currentSessionUserName,
     } = body
 
     console.log("🔍 [API] Validating required fields...")
@@ -227,14 +238,40 @@ export async function POST(request: NextRequest) {
     console.log("🔍 [API] Checking for existing visit form...")
     // Check if visit form already exists for this appointment
     const existingForm = await query(
-      "SELECT visit_form_id FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
+      "SELECT visit_form_id, current_session_id, current_session_last_save, current_session_save_type, current_session_user_id, current_session_user_name, save_history_json FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
       [appointmentId],
     )
 
     if (existingForm.length > 0) {
       // Update existing form
       const visitFormId = existingForm[0].visit_form_id
+      const previousSessionId = existingForm[0].current_session_id
+      const previousSessionLastSave = existingForm[0].current_session_last_save
+      const previousSessionSaveType = existingForm[0].current_session_save_type
+      const previousSessionUserId = existingForm[0].current_session_user_id
+      const previousSessionUserName = existingForm[0].current_session_user_name
+      const existingHistory = existingForm[0].save_history_json ? JSON.parse(existingForm[0].save_history_json) : []
+      
       console.log("🔄 [API] Updating existing form:", visitFormId)
+      console.log("🆔 [SESSION] Previous session:", previousSessionId, "Current session:", currentSessionId)
+
+      // If this is a new session, commit previous session's save to history
+      let updatedHistory = existingHistory
+      if (previousSessionId && currentSessionId && previousSessionId !== currentSessionId && previousSessionLastSave) {
+        console.log("📝 [SESSION] Committing previous session to history")
+        const historyEntry = {
+          sessionId: previousSessionId,
+          lastSave: previousSessionLastSave,
+          saveType: previousSessionSaveType || "manual",
+          userId: previousSessionUserId || createdByUserId,
+          userName: previousSessionUserName || createdByName,
+        }
+        updatedHistory = [...existingHistory, historyEntry]
+        console.log("📚 [SESSION] Updated history:", updatedHistory)
+      }
+
+      // Determine save type
+      const saveType = isAutoSave ? "auto" : "manual"
 
       try {
         await query(
@@ -260,7 +297,13 @@ export async function POST(request: NextRequest) {
             updated_by_user_id = @param17,
             updated_by_name = @param18,
             last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
-            auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"}
+            auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
+            current_session_id = @param19,
+            current_session_last_save = GETUTCDATE(),
+            current_session_save_type = @param20,
+            current_session_user_id = @param21,
+            current_session_user_name = @param22,
+            save_history_json = @param23
           WHERE visit_form_id = @param0 AND is_deleted = 0
         `,
           [
@@ -283,6 +326,11 @@ export async function POST(request: NextRequest) {
             serializedFields.complianceReview,
             createdByUserId,
             createdByName,
+            currentSessionId || null,
+            saveType,
+            currentSessionUserId || createdByUserId,
+            currentSessionUserName || createdByName,
+            JSON.stringify(updatedHistory),
           ],
         )
 
@@ -304,6 +352,9 @@ export async function POST(request: NextRequest) {
       console.log("➕ [API] Creating new visit form...")
 
       try {
+        // Determine save type for new form
+        const saveType = isAutoSave ? "auto" : "manual"
+
         const result = await query(
           `
           INSERT INTO dbo.visit_forms (
@@ -330,6 +381,12 @@ export async function POST(request: NextRequest) {
             created_by_name,
             last_auto_save,
             auto_save_count,
+            current_session_id,
+            current_session_last_save,
+            current_session_save_type,
+            current_session_user_id,
+            current_session_user_name,
+            save_history_json,
             created_at,
             updated_at
           )
@@ -338,9 +395,8 @@ export async function POST(request: NextRequest) {
             @param0, @param1, @param2, @param3, @param4, @param5,
             @param6, @param7, @param8, @param9, @param10, @param11,
             @param12, @param13, @param14, @param15, @param16, @param17,
-            @param18, @param19, @param20,
-            ${isAutoSave ? "GETUTCDATE()" : "NULL"},
-            ${isAutoSave ? "1" : "0"},
+            @param18, @param19, @param20, @param21, @param22, @param23,
+            @param24, @param25, @param26, @param27, @param28,
             GETUTCDATE(), GETUTCDATE()
           )
         `,
@@ -366,6 +422,14 @@ export async function POST(request: NextRequest) {
             serializedFields.complianceReview, // @param18
             createdByUserId, // @param19
             createdByName, // @param20
+            isAutoSave ? new Date() : null, // @param21 last_auto_save
+            isAutoSave ? 1 : 0, // @param22 auto_save_count
+            currentSessionId || null, // @param23 current_session_id
+            new Date(), // @param24 current_session_last_save
+            saveType, // @param25 current_session_save_type
+            currentSessionUserId || createdByUserId, // @param26 current_session_user_id
+            currentSessionUserName || createdByName, // @param27 current_session_user_name
+            "[]", // @param28 save_history_json (empty array for new form)
           ],
         )
 

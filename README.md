@@ -264,6 +264,27 @@ Ensure you have the following environment variables configured in your `.env.loc
 
 **Note**: The database connection parameters are hardcoded in `lib/db.ts` and should not be changed. The password is retrieved securely from Azure Key Vault.
 
+### Database Setup
+
+**Database Setup Notes:**
+
+**Important**: The database user `v0_app_user` is a member of `v0_application_role`. All table permissions are granted to the role, not directly to the user.
+
+**Phone Number Feature**: 
+- User phone numbers are stored centrally in the `app_users` table
+- When assigning on-call schedules, the system automatically pulls phone from `app_users`
+- If a phone number is missing, the user is prompted to enter it, and it's saved to their profile
+- This eliminates redundant data entry and keeps contact information up-to-date
+
+**Navigation Configuration**:
+- Navigation items are stored in the `navigation_items` table
+- Navigation items are managed through the admin interface or database directly
+- All navigation changes require a database update AND a browser cache clear to be visible
+
+**Reference Scripts**:
+- `scripts/bifrost-schema.sql` - Complete database schema reference
+- `scripts/prepopulate-visit-form-queries.sql` - Example queries for form prepopulation
+
 ### Installation
 
 1. **Clone the repository:**

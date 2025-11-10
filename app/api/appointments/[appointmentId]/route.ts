@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
+import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -37,14 +38,30 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     const appointment = appointments[0]
     console.log(`✅ [API] Retrieved appointment: ${appointment.title}`)
 
+    // Format datetime as local time string (no timezone conversion)
+    // SQL Server DATETIME2 has no timezone, so we return as local time string
+    const formatLocalDatetime = (dt: any): string => {
+      if (!dt) return ""
+      // If it's already a string in format YYYY-MM-DDTHH:mm:ss, return as-is
+      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
+        return dt.split('.')[0].split('Z')[0] // Remove milliseconds and Z if present
+      }
+      // If it's a Date object or SQL datetime, format as local time
+      const date = new Date(dt)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+
     return NextResponse.json({
       success: true,
       appointment: {
         ...appointment,
-        start_datetime: new Date(appointment.start_datetime).toISOString(),
-        end_datetime: new Date(appointment.end_datetime).toISOString(),
-        created_at: new Date(appointment.created_at).toISOString(),
-        updated_at: new Date(appointment.updated_at).toISOString(),
+        // Return datetime strings WITHOUT timezone conversion
+        // The form will parse these as local time
+        start_datetime: formatLocalDatetime(appointment.start_datetime),
+        end_datetime: formatLocalDatetime(appointment.end_datetime),
+        created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
+        updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
       },
       timestamp: new Date().toISOString(),
     })
@@ -63,9 +80,10 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
 
 // PUT - Update appointment
 export async function PUT(request: NextRequest, { params }: { params: { appointmentId: string } }) {
+  let body: any = null
   try {
     const { appointmentId } = params
-    const body = await request.json()
+    body = await request.json()
 
     console.log(`📅 [API] Updating appointment: ${appointmentId}`)
     console.log(`📝 [API] Request body:`, JSON.stringify(body, null, 2))
@@ -87,6 +105,8 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       preparationNotes,
       completionNotes,
       outcome,
+      tollConfirmed,
+      actualTollCost,
     } = body
 
     const updateFields: string[] = []
@@ -113,13 +133,33 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
 
     if (startDateTime !== undefined) {
       updateFields.push(`start_datetime = @param${paramIndex}`)
-      queryParams.push(new Date(startDateTime))
+      // Parse as local time if string (no timezone conversion)
+      let startDate: Date
+      if (typeof startDateTime === 'string') {
+        const [datePart, timePart] = startDateTime.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        startDate = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      } else {
+        startDate = new Date(startDateTime)
+      }
+      queryParams.push(startDate)
       paramIndex++
     }
 
     if (endDateTime !== undefined) {
       updateFields.push(`end_datetime = @param${paramIndex}`)
-      queryParams.push(new Date(endDateTime))
+      // Parse as local time if string (no timezone conversion)
+      let endDate: Date
+      if (typeof endDateTime === 'string') {
+        const [datePart, timePart] = endDateTime.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hour, minute, second] = (timePart || '').split(':').map(Number)
+        endDate = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0)
+      } else {
+        endDate = new Date(endDateTime)
+      }
+      queryParams.push(endDate)
       paramIndex++
     }
 
@@ -189,6 +229,18 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       paramIndex++
     }
 
+    if (tollConfirmed !== undefined) {
+      updateFields.push(`toll_confirmed = @param${paramIndex}`)
+      queryParams.push(tollConfirmed ? 1 : 0)
+      paramIndex++
+    }
+
+    if (actualTollCost !== undefined) {
+      updateFields.push(`actual_toll_cost = @param${paramIndex}`)
+      queryParams.push(actualTollCost !== null ? actualTollCost : null)
+      paramIndex++
+    }
+
     // Always update the updated_by_user_id and updated_at fields
     updateFields.push(`updated_by_user_id = @param${paramIndex}`)
     queryParams.push("system") // Use system user instead of Clerk userId
@@ -230,6 +282,20 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
     console.error("❌ [API] Error updating appointment:", error)
     console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
     console.error("❌ [API] Appointment ID:", params.appointmentId)
+    if (body) {
+      console.error("❌ [API] Request body:", JSON.stringify(body, null, 2))
+    } else {
+      console.error("❌ [API] Request body: (could not parse)")
+    }
+    
+    // Log SQL Server specific error details
+    if (error && typeof error === 'object' && 'number' in error) {
+      console.error("❌ [API] SQL Error Number:", (error as any).number)
+      console.error("❌ [API] SQL Error State:", (error as any).state)
+      console.error("❌ [API] SQL Error Class:", (error as any).class)
+      console.error("❌ [API] SQL Error Procedure:", (error as any).procedure)
+      console.error("❌ [API] SQL Error Line Number:", (error as any).lineNumber)
+    }
 
     return NextResponse.json(
       {
@@ -237,19 +303,91 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
         error: "Failed to update appointment",
         details: error instanceof Error ? error.message : "Unknown error",
         appointmentId: params.appointmentId,
+        sqlError: error && typeof error === 'object' && 'number' in error ? {
+          number: (error as any).number,
+          state: (error as any).state,
+          message: (error as any).message,
+        } : undefined,
       },
       { status: 500 },
     )
   }
 }
 
-// DELETE - Soft delete appointment
+// DELETE - Soft delete appointment and all related documentation
+// ONLY available to jduarte@refugehouse.org for testing purposes
 export async function DELETE(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
     const { appointmentId } = params
 
-    console.log(`📅 [API] Deleting appointment: ${appointmentId}`)
+    // Check authorization - ONLY jduarte@refugehouse.org can delete
+    const { email } = getClerkUserIdFromRequest(request)
+    const AUTHORIZED_EMAIL = "jduarte@refugehouse.org"
 
+    if (!email || email.toLowerCase() !== AUTHORIZED_EMAIL.toLowerCase()) {
+      console.log(`❌ [API] Unauthorized delete attempt by: ${email}`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          message: "Only authorized administrators can delete appointments",
+        },
+        { status: 403 },
+      )
+    }
+
+    console.log(`📅 [API] Authorized delete request for appointment: ${appointmentId} by ${email}`)
+
+    // First, soft delete all related visit forms
+    const visitForms = await query(
+      `SELECT visit_form_id FROM visit_forms WHERE appointment_id = @param0 AND is_deleted = 0`,
+      [appointmentId],
+    )
+
+    if (visitForms.length > 0) {
+      console.log(`🗑️ [API] Deleting ${visitForms.length} related visit form(s)`)
+      
+      for (const form of visitForms) {
+        await query(
+          `
+          UPDATE visit_forms 
+          SET 
+            is_deleted = 1,
+            deleted_at = GETUTCDATE(),
+            deleted_by_user_id = @param0,
+            deleted_by_name = @param1,
+            updated_at = GETUTCDATE()
+          WHERE visit_form_id = @param2 AND is_deleted = 0
+        `,
+          ["system", "System Administrator", form.visit_form_id],
+        )
+      }
+      
+      console.log(`✅ [API] Deleted ${visitForms.length} visit form(s)`)
+    }
+
+    // Soft delete all related continuum entries
+    const continuumEntries = await query(
+      `SELECT entry_id FROM continuum_entries WHERE appointment_id = @param0 AND is_deleted = 0`,
+      [appointmentId],
+    )
+
+    if (continuumEntries.length > 0) {
+      console.log(`🗑️ [API] Deleting ${continuumEntries.length} related continuum entry/entries`)
+      
+      await query(
+        `
+        UPDATE continuum_entries 
+        SET is_deleted = 1
+        WHERE appointment_id = @param0 AND is_deleted = 0
+      `,
+        [appointmentId],
+      )
+      
+      console.log(`✅ [API] Deleted ${continuumEntries.length} continuum entry/entries`)
+    }
+
+    // Then soft delete the appointment
     await query(
       `
       UPDATE appointments 
@@ -261,14 +399,15 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
         updated_by_user_id = @param0
       WHERE appointment_id = @param1 AND is_deleted = 0
     `,
-      ["system", appointmentId], // Use system user instead of Clerk userId
+      ["system", appointmentId],
     )
 
-    console.log(`✅ [API] Deleted appointment: ${appointmentId}`)
+    console.log(`✅ [API] Deleted appointment: ${appointmentId} and ${visitForms.length} related visit form(s)`)
 
     return NextResponse.json({
       success: true,
-      message: "Appointment deleted successfully",
+      message: "Appointment and all related documentation deleted successfully",
+      deletedVisitForms: visitForms.length,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

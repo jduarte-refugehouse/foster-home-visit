@@ -293,9 +293,14 @@ export default function VisitFormsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/appointment/${form.appointment_id}`}>
+                              View Details
+                            </Link>
+                          </Button>
                           <Button size="sm" asChild>
                             <Link href={`/visit-form?appointmentId=${form.appointment_id}`}>
-                              {form.status === "completed" ? "View" : "Edit"}
+                              {form.status === "completed" ? "View Form" : "Edit Form"}
                             </Link>
                           </Button>
                         </div>

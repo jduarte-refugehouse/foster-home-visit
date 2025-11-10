@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         DATABASE_USER: process.env.DATABASE_USER,
         DATABASE_PORT: process.env.DATABASE_PORT,
         AZURE_KEY_VAULT_NAME: process.env.AZURE_KEY_VAULT_NAME,
-        FIXIE_SOCKS_HOST: process.env.FIXIE_SOCKS_HOST ? "SET" : "NOT_SET",
+        VERCEL_STATIC_IPS: "18.217.75.119, 18.116.232.18 (whitelisted in Azure SQL)",
         hasPassword: !!process.env.DATABASE_PASSWORD,
       },
       connection: {

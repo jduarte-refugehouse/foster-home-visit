@@ -145,21 +145,30 @@ export async function GET(request: NextRequest) {
                   : null,
             }
           : null,
-        // Ensure consistent date formatting
-        start_datetime: new Date(appointment.start_datetime).toISOString(),
-        end_datetime: new Date(appointment.end_datetime).toISOString(),
-        created_at: new Date(appointment.created_at).toISOString(),
-        updated_at: new Date(appointment.updated_at).toISOString(),
+        // Return datetime strings WITHOUT timezone conversion
+        // SQL Server DATETIME2 has no timezone, so we return as-is (local time)
+        // The calendar will parse these as local time using parseLocalDatetime
+        start_datetime: appointment.start_datetime,
+        end_datetime: appointment.end_datetime,
+        created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
+        updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
       })),
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error("❌ [API] Error fetching appointments:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch appointments",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : "Unknown",
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 },
     )
@@ -205,26 +214,58 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate dates
-    // Parse ISO strings - these come from the client and should be in local time
-    // The database stores DATETIME2 without timezone, so we store the literal datetime value
-    const start = new Date(startDateTime)
-    const end = new Date(endDateTime)
-    if (start >= end) {
+    // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
+    // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
+    // We pass the string directly to SQL Server to avoid timezone conversion
+    let startStr: string
+    let endStr: string
+    
+    if (typeof startDateTime === 'string') {
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startDateTime)) {
+        return NextResponse.json({ error: "Invalid startDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      startStr = startDateTime
+    } else {
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(startDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      startStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+    
+    if (typeof endDateTime === 'string') {
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endDateTime)) {
+        return NextResponse.json({ error: "Invalid endDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      endStr = endDateTime
+    } else {
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(endDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      endStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+    
+    // Validate that end is after start by parsing as local time
+    const [startDatePart, startTimePart] = startStr.split('T')
+    const [startYear, startMonth, startDay] = startDatePart.split('-').map(Number)
+    const [startHour, startMinute] = startTimePart.split(':').map(Number)
+    const startDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute, 0)
+    
+    const [endDatePart, endTimePart] = endStr.split('T')
+    const [endYear, endMonth, endDay] = endDatePart.split('-').map(Number)
+    const [endHour, endMinute] = endTimePart.split(':').map(Number)
+    const endDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute, 0)
+    
+    if (startDate >= endDate) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
-
-    // Log the datetime values for debugging
     console.log("📅 [API] Creating new appointment:", { 
       title, 
       appointmentType, 
       assignedToName,
-      startDateTime,
-      endDateTime,
-      startISO: start.toISOString(),
-      endISO: end.toISOString(),
-      startLocal: start.toLocaleString(),
-      endLocal: end.toLocaleString()
+      startDateTime: startStr,
+      endDateTime: endStr,
     })
 
     const result = await query(
@@ -263,8 +304,8 @@ export async function POST(request: NextRequest) {
         title,
         description,
         appointmentType,
-        start,
-        end,
+        startStr, // Pass as string to avoid timezone conversion
+        endStr, // Pass as string to avoid timezone conversion
         homeXref,
         locationAddress,
         locationNotes,
@@ -358,14 +399,60 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Validate dates
-    const start = new Date(startDateTime)
-    const end = new Date(endDateTime)
-    if (start >= end) {
+    // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
+    // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
+    // We pass the string directly to SQL Server to avoid timezone conversion
+    let startStr: string
+    let endStr: string
+    
+    if (typeof startDateTime === 'string') {
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startDateTime)) {
+        return NextResponse.json({ error: "Invalid startDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      startStr = startDateTime
+    } else {
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(startDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      startStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+    
+    if (typeof endDateTime === 'string') {
+      // Validate format: YYYY-MM-DDTHH:mm:ss
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endDateTime)) {
+        return NextResponse.json({ error: "Invalid endDateTime format. Expected YYYY-MM-DDTHH:mm:ss" }, { status: 400 })
+      }
+      endStr = endDateTime
+    } else {
+      // If it's a Date object, format it as local time string (no UTC conversion)
+      const date = new Date(endDateTime)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      endStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+    
+    // Validate that end is after start by parsing as local time
+    const [startDatePart, startTimePart] = startStr.split('T')
+    const [startYear, startMonth, startDay] = startDatePart.split('-').map(Number)
+    const [startHour, startMinute] = startTimePart.split(':').map(Number)
+    const startDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute, 0)
+    
+    const [endDatePart, endTimePart] = endStr.split('T')
+    const [endYear, endMonth, endDay] = endDatePart.split('-').map(Number)
+    const [endHour, endMinute] = endTimePart.split(':').map(Number)
+    const endDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute, 0)
+    
+    if (startDate >= endDate) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 })
     }
 
-    console.log("📝 [API] Updating appointment:", { appointmentId, title, assignedToName })
+    console.log("📝 [API] Updating appointment:", { 
+      appointmentId, 
+      title, 
+      assignedToName,
+      startDateTime: startStr,
+      endDateTime: endStr,
+    })
 
     await query(
       `
@@ -392,8 +479,8 @@ export async function PUT(request: NextRequest) {
         title,
         description,
         appointmentType,
-        start,
-        end,
+        startStr, // Pass as string to avoid timezone conversion
+        endStr, // Pass as string to avoid timezone conversion
         homeXref,
         locationAddress,
         locationNotes,

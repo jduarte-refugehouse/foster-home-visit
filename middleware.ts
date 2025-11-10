@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// This function can be marked `async` if using `await` inside
+// This middleware is completely passive and does nothing.
+// NO CLERK MIDDLEWARE AT ALL.
+// All authentication is handled at the component/API level using @clerk/backend directly.
 export function middleware(request: NextRequest) {
-  // This middleware is completely passive and does nothing.
-  // NO CLERK MIDDLEWARE AT ALL.
-  // All authentication is handled at the component/API level.
   return NextResponse.next()
 }
 

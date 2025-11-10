@@ -60,12 +60,19 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
       title: "Navigation",
       items: [
         { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
-        { code: "guide", title: "Home Visit Guide", url: "/guide", icon: "BookOpen", order: 2 },
         {
           code: "visits_calendar",
           title: "Visits Calendar",
           url: "/visits-calendar",
           icon: "Calendar",
+          permission: "view_visits",
+          order: 2,
+        },
+        {
+          code: "on_call_schedule",
+          title: "On-Call Schedule",
+          url: "/on-call-schedule",
+          icon: "Shield",
           permission: "view_visits",
           order: 3,
         },

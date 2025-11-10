@@ -2,6 +2,7 @@
 
 import { useUser, SignInButton, SignOutButton } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -41,9 +42,20 @@ interface UserInfoResponse {
 
 export default function HomePage() {
   const { isSignedIn, user, isLoaded } = useUser()
+  const router = useRouter()
   const [userInfo, setUserInfo] = useState<UserInfoResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // AUTO-REDIRECT: Skip this auth test page and go straight to dashboard
+  // Dashboard will automatically show Liaison Dashboard for home_liaison users
+  // To view this page again, manually navigate to root URL (/)
+  useEffect(() => {
+    if (isSignedIn && isLoaded) {
+      // Immediately redirect to dashboard - it will show the appropriate view
+      router.replace("/dashboard")
+    }
+  }, [isSignedIn, isLoaded, router])
 
   useEffect(() => {
     if (isSignedIn && user && isLoaded) {
