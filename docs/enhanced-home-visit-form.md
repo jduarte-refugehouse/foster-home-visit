@@ -314,10 +314,14 @@ Monthly visits capture all necessary data to generate quarterly summaries:
 ## Technical Implementation
 
 ### Files
-- `components/forms/home-visit-form-enhanced.tsx`: Main form component with monthly tracking
-- `components/forms/home-visit-form-enhanced-sections.tsx`: Compliance section components with compact table layout
+- `components/forms/home-visit-form-enhanced.tsx`: Main form component with monthly tracking and photo capture
+- `components/forms/home-visit-form-enhanced-sections.tsx`: Compliance section components with compact table layout and file management
+- `app/api/signature-tokens/[token]/route.ts`: Signature token validation and submission
+- `app/api/visit-forms/[id]/attachments/route.ts`: File upload and management API
+- `app/signature/[token]/page.tsx`: Public signature collection page
 - `docs/enhanced-monitoring-checklist.md`: Original requirement specifications
 - `docs/daily-activity-summary-2025-11-05.md`: Detailed changelog for version 3.2
+- `docs/daily-activity-summary-2025-11-08.md`: Detailed changelog for version 3.3
 
 ### Key Technologies
 - React hooks for state management
