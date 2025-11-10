@@ -27,18 +27,19 @@ export async function GET(
     }
 
     // Look up token in database
+    // Note: Using COALESCE to handle both old and new column names
     const tokenData = await query(
       `
       SELECT 
         st.token,
         st.visit_form_id,
         st.signer_name,
-        st.signer_role,
-        st.signer_type,
-        st.phone_number,
-        st.email_address,
+        COALESCE(st.signer_role, NULL) as signer_role,
+        COALESCE(st.signer_type, st.signature_type) as signer_type,
+        COALESCE(st.phone_number, NULL) as phone_number,
+        COALESCE(st.email_address, st.recipient_email) as email_address,
         st.expires_at,
-        st.is_used,
+        COALESCE(st.is_used, CASE WHEN st.used_at IS NOT NULL THEN 1 ELSE 0 END) as is_used,
         st.used_at,
         st.description,
         vf.form_type,
@@ -139,16 +140,17 @@ export async function POST(
     }
 
     // Validate token
+    // Note: Using COALESCE to handle both old and new column names
     const tokenData = await query(
       `
       SELECT 
         st.token,
         st.visit_form_id,
         st.signer_name,
-        st.signer_role,
-        st.signer_type,
+        COALESCE(st.signer_role, NULL) as signer_role,
+        COALESCE(st.signer_type, st.signature_type) as signer_type,
         st.expires_at,
-        st.is_used,
+        COALESCE(st.is_used, CASE WHEN st.used_at IS NOT NULL THEN 1 ELSE 0 END) as is_used,
         st.description
       FROM signature_tokens st
       WHERE st.token = @param0

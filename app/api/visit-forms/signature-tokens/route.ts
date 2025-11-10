@@ -68,35 +68,41 @@ export async function POST(request: NextRequest) {
     expiresAt.setHours(expiresAt.getHours() + (expiresInHours || 24))
 
     // Insert token into database
+    // Using existing schema columns (works with current database structure)
+    // Note: appointment_id is required in schema but can be a placeholder GUID for standalone signatures
+    const placeholderAppointmentId = '00000000-0000-0000-0000-000000000000'
+    
     await query(
       `
       INSERT INTO signature_tokens (
         token,
         visit_form_id,
+        appointment_id,
+        signature_type,
+        signature_key,
+        recipient_email,
+        recipient_name,
         signer_name,
-        signer_role,
-        signer_type,
-        phone_number,
-        email_address,
         description,
         expires_at,
-        is_used,
         is_deleted,
         created_at,
-        updated_at
+        created_by_user_id,
+        created_by_name
       )
       VALUES (
-        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, 0, 0, GETUTCDATE(), GETUTCDATE()
+        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, @param9, 0, GETUTCDATE(), 'system', 'System'
       )
       `,
       [
         token,
-        visitFormId,
-        signerName || null,
-        signerRole || null,
-        signerType,
-        phoneNumber || null,
-        emailAddress || null,
+        visitFormId || null,
+        placeholderAppointmentId, // appointment_id - required by schema
+        signerType || 'test', // signature_type
+        `${signerType || 'test'}Signature`, // signature_key
+        emailAddress || phoneNumber || 'test@example.com', // recipient_email - required by schema
+        signerName || null, // recipient_name
+        signerName || null, // signer_name
         description || null,
         expiresAt.toISOString(),
       ]
