@@ -43,6 +43,13 @@ This application uses a microservice-aware authentication and permissions system
 
 The application follows the authentication methodology documented in `docs/authentication-permissions-methodology.md`.
 
+**Schema Documentation**: See `docs/database-architecture.md` for complete database architecture documentation, including:
+- `docs/bifrost-schema.sql` - Primary database schema (Bifrost - direct access)
+- `docs/rhdata-schema.sql` - Unified historical data schema (API access only)
+- `docs/radius-radiusrhsa-schema.sql` - Unit-specific historical databases (API access only)
+
+**Important**: Bifrost and RHData schemas are actively under development and may change regularly. During significant development, schema documentation should be updated.
+
 ## ⚠️⚠️⚠️ CRITICAL WARNING FOR v0 AI ASSISTANT ⚠️⚠️⚠️
 
 **DO NOT CHANGE THE DATABASE CONNECTION PARAMETERS IN `lib/db.ts` WITHOUT EXPLICIT USER PERMISSION**
