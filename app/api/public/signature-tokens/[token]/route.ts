@@ -27,7 +27,7 @@ export async function GET(
     }
 
     // Look up token in database
-    // Using actual schema columns: signer_role and phone_number exist, signer_type and email_address may not
+    // All columns now exist in schema
     const tokenData = await query(
       `
       SELECT 
@@ -35,11 +35,11 @@ export async function GET(
         st.visit_form_id,
         st.signer_name,
         st.signer_role,
-        COALESCE(st.signer_type, st.signature_type) as signer_type,
+        st.signer_type,
         st.phone_number,
-        COALESCE(st.email_address, st.recipient_email) as email_address,
+        st.email_address,
         st.expires_at,
-        COALESCE(st.is_used, CASE WHEN st.used_at IS NOT NULL THEN 1 ELSE 0 END) as is_used,
+        st.is_used,
         st.used_at,
         st.description,
         vf.form_type,
@@ -140,7 +140,7 @@ export async function POST(
     }
 
     // Validate token
-    // Using actual schema columns: signer_role exists, signer_type may not
+    // All columns now exist in schema
     const tokenData = await query(
       `
       SELECT 
@@ -148,9 +148,9 @@ export async function POST(
         st.visit_form_id,
         st.signer_name,
         st.signer_role,
-        COALESCE(st.signer_type, st.signature_type) as signer_type,
+        st.signer_type,
         st.expires_at,
-        COALESCE(st.is_used, CASE WHEN st.used_at IS NOT NULL THEN 1 ELSE 0 END) as is_used,
+        st.is_used,
         st.description
       FROM signature_tokens st
       WHERE st.token = @param0

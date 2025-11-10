@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     expiresAt.setHours(expiresAt.getHours() + (expiresInHours || 24))
 
     // Insert token into database
-    // Using actual schema: visit_form_id and appointment_id are nullable, signer_role and phone_number exist
+    // All columns now exist in schema - populate all for consistency
     await query(
       `
       INSERT INTO signature_tokens (
@@ -82,15 +82,18 @@ export async function POST(request: NextRequest) {
         signer_name,
         signer_role,
         phone_number,
+        signer_type,
+        email_address,
         description,
         expires_at,
         is_deleted,
         created_at,
         created_by_user_id,
-        created_by_name
+        created_by_name,
+        updated_at
       )
       VALUES (
-        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, @param9, @param10, @param11, 0, GETUTCDATE(), 'system', 'System'
+        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, @param9, @param10, @param11, @param12, @param13, 0, GETUTCDATE(), 'system', 'System', GETUTCDATE()
       )
       `,
       [
@@ -102,8 +105,10 @@ export async function POST(request: NextRequest) {
         emailAddress || phoneNumber || 'test@example.com', // recipient_email - required by schema
         signerName || null, // recipient_name
         signerName || null, // signer_name
-        signerRole || null, // signer_role - exists in schema
-        phoneNumber || null, // phone_number - exists in schema
+        signerRole || null, // signer_role
+        phoneNumber || null, // phone_number
+        signerType || 'test', // signer_type - populate for consistency
+        emailAddress || phoneNumber || null, // email_address - populate for consistency
         description || null,
         expiresAt.toISOString(),
       ]
