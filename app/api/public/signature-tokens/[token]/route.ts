@@ -141,9 +141,11 @@ export async function POST(
 
     // Validate token
     // All columns now exist in schema
+    // Need token_id for UPDATE statement
     const tokenData = await query(
       `
       SELECT 
+        st.token_id,
         st.token,
         st.visit_form_id,
         st.signer_name,
@@ -259,7 +261,25 @@ export async function POST(
     // Store signature data in token record for reference (even if no visit form)
     // This allows the signature to be retrieved later regardless of document type
 
-    // Mark token as used and store signature data in description for standalone signatures
+    // Mark token as used and store signature data
+    // Match the working version: store signature_data, signer_name, signed_date
+    // Convert date to proper format for SQL Server DATE type (YYYY-MM-DD)
+    let formattedDate: string | null = null
+    try {
+      const dateObj = new Date(now)
+      if (!isNaN(dateObj.getTime())) {
+        formattedDate = dateObj.toISOString().split('T')[0] // Get YYYY-MM-DD part
+      }
+    } catch (dateError) {
+      // If date parsing fails, use null
+      formattedDate = null
+    }
+
+    // Ensure signature is a string or null
+    const signatureValue = signature ? String(signature) : null
+    const signerNameValue = finalSignerName ? String(finalSignerName) : null
+
+    // Store signature data in description for standalone signatures (if no visit form)
     const signatureMetadata = JSON.stringify({
       signature: signatureData,
       submittedAt: now,
@@ -271,18 +291,40 @@ export async function POST(
       ? tokenInfo.description || "Signature submitted"
       : signatureMetadata
     
-    await query(
-      `
-      UPDATE signature_tokens
-      SET 
-        is_used = 1,
-        used_at = GETUTCDATE(),
-        updated_at = GETUTCDATE(),
-        description = @param1
-      WHERE token = @param0
-      `,
-      [token, updateDescription]
-    )
+    // Update token - match working version structure
+    // Wrap in try-catch for detailed error logging
+    try {
+      await query(
+        `
+        UPDATE signature_tokens
+        SET 
+          is_used = 1,
+          used_at = GETUTCDATE(),
+          updated_at = GETUTCDATE(),
+          signature_data = @param1,
+          signer_name = @param2,
+          signed_date = @param3,
+          description = @param4
+        WHERE token_id = @param0
+        `,
+        [tokenInfo.token_id, signatureValue, signerNameValue, formattedDate, updateDescription]
+      )
+    } catch (dbError: any) {
+      // Use try-catch around console.error to prevent errors from breaking error handling
+      try {
+        console.error("❌ [SIGNATURE] Database update failed:", dbError)
+        console.error("❌ [SIGNATURE] DB Error details:", {
+          message: dbError?.message,
+          number: dbError?.number,
+          state: dbError?.state,
+          class: dbError?.class,
+        })
+      } catch (logError) {
+        // If console.error fails, at least try to log to stderr directly
+        process.stderr.write("Failed to log DB error: " + String(logError) + "\n")
+      }
+      throw dbError // Re-throw to be caught by outer catch
+    }
 
     // Send email notification to test email (hardcoded for testing)
     // Send email asynchronously without blocking signature submission
@@ -393,14 +435,45 @@ export async function POST(
       signatureData: signatureData,
     })
   } catch (error: any) {
-    console.error("Error submitting signature:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to submit signature",
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
-      { status: 500 }
-    )
+    // Use try-catch around console.error to prevent errors from breaking error handling
+    try {
+      console.error("❌ [SIGNATURE] Error submitting signature:", error)
+      if (error instanceof Error) {
+        console.error("❌ [SIGNATURE] Error stack:", error.stack)
+      }
+      console.error("❌ [SIGNATURE] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        number: error?.number,
+        state: error?.state,
+        class: error?.class,
+        originalError: error?.originalError,
+      })
+    } catch (logError) {
+      // If console.error fails, at least try to log to stderr directly
+      process.stderr.write("Failed to log error: " + String(logError) + "\n")
+    }
+    
+    // Return more detailed error for debugging
+    const errorResponse: any = {
+      success: false,
+      error: "Failed to submit signature",
+      details: error instanceof Error ? error.message : String(error),
+    }
+    
+    // Include SQL error details if available
+    if (error?.number) {
+      errorResponse.sqlError = {
+        number: error.number,
+        state: error.state,
+        message: error.message,
+      }
+    }
+    
+    // Include the error type to help debug
+    errorResponse.errorType = error?.constructor?.name || typeof error
+    
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 
