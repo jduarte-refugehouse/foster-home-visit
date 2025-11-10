@@ -48,10 +48,12 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
 
   // AUTO-REDIRECT: Skip this auth test page and go straight to dashboard
+  // Dashboard will automatically show Liaison Dashboard for home_liaison users
   // To view this page again, manually navigate to root URL (/)
   useEffect(() => {
     if (isSignedIn && isLoaded) {
-      router.push("/dashboard")
+      // Immediately redirect to dashboard - it will show the appropriate view
+      router.replace("/dashboard")
     }
   }, [isSignedIn, isLoaded, router])
 

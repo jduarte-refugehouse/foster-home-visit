@@ -17,6 +17,7 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
   const [isDrawing, setIsDrawing] = useState(false)
   const [isEmpty, setIsEmpty] = useState(true)
 
+  // Initialize canvas on mount
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -35,17 +36,29 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
     ctx.lineWidth = 2
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
+  }, [])
 
-    // Load existing signature if provided
-    if (value && isEmpty) {
+  // Load existing signature when value changes
+  useEffect(() => {
+    if (!value) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const rect = canvas.getBoundingClientRect()
       const img = new Image()
       img.onload = () => {
+      // Clear canvas first
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      // Draw the signature
         ctx.drawImage(img, 0, 0, rect.width, rect.height)
         setIsEmpty(false)
       }
       img.src = value
-    }
-  }, [value, isEmpty])
+  }, [value])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled) return

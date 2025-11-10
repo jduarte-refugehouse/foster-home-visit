@@ -4,175 +4,182 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Send, CheckCircle2, XCircle } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { Send, Loader2, CheckCircle, XCircle } from "lucide-react"
 
 export default function TestSignatureSMSPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [recipientName, setRecipientName] = useState("")
+  const [description, setDescription] = useState("")
+  const [sending, setSending] = useState(false)
   const [result, setResult] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const [formData, setFormData] = useState({
-    phoneNumber: "+19723427857",
-    signerName: "Test Signer",
-  })
 
   const handleSend = async () => {
-    if (!formData.phoneNumber || !formData.signerName) {
-      setError("Phone Number and Name are required")
+    if (!phoneNumber.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number",
+        variant: "destructive",
+      })
       return
     }
 
-    setLoading(true)
-    setError(null)
+    if (!recipientName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a recipient name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSending(true)
     setResult(null)
 
     try {
-      // Create the signature token (no visit form required for testing)
-      const tokenResponse = await fetch("/api/visit-forms/signature-tokens", {
+      const response = await fetch("/api/test-signature-sms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          visitFormId: null, // No visit form required for testing
-          signerName: formData.signerName,
-          signerRole: "foster_parent",
-          signerType: "foster_parent_1",
-          phoneNumber: formData.phoneNumber,
-          emailAddress: null,
-          description: "Test Signature Request",
-          expiresInHours: 24,
+          phoneNumber: phoneNumber.trim(),
+          recipientName: recipientName.trim(),
+          description: description.trim(),
         }),
       })
 
-      const tokenData = await tokenResponse.json()
+      const data = await response.json()
 
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.error || "Failed to create signature token")
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send SMS")
       }
 
-      const { token, signatureUrl } = tokenData
-
-      // Build the SMS message
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
-      const fullUrl = signatureUrl || `${baseUrl}/signature/${token}`
-
-      // Send SMS
-      const smsResponse = await fetch("/api/dev/twilio-test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: formData.phoneNumber,
-          body: `Please sign the visit form: ${fullUrl}`,
-        }),
-      })
-
-      const smsData = await smsResponse.json()
-
-      if (!smsResponse.ok) {
-        throw new Error(smsData.error || "Failed to send SMS")
-      }
-
-      setResult({
-        token,
-        signatureUrl: fullUrl,
-        smsSid: smsData.sid,
-        phoneNumber: formData.phoneNumber,
-      })
-
+      setResult(data)
       toast({
-        title: "Success",
-        description: "Signature request sent successfully",
+        title: "SMS Sent",
+        description: `Signature link sent to ${phoneNumber}`,
       })
-    } catch (err: any) {
-      console.error("Error sending test signature SMS:", err)
-      setError(err.message || "Failed to send test signature SMS")
+    } catch (error: any) {
+      console.error("Error sending SMS:", error)
       toast({
         title: "Error",
-        description: err.message || "Failed to send test signature SMS",
+        description: error.message || "Failed to send SMS",
         variant: "destructive",
       })
+      setResult({ success: false, error: error.message })
     } finally {
-      setLoading(false)
+      setSending(false)
     }
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto py-8 max-w-2xl">
       <Card>
         <CardHeader>
-          <CardTitle>Test Signature SMS</CardTitle>
-          <CardDescription>
-            Send a signature request via SMS for testing
-          </CardDescription>
+          <CardTitle>Test Signature Request via SMS</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">
-              Phone Number <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              placeholder="+19723427857"
-              required
-            />
-            <p className="text-xs text-muted-foreground">Include country code (e.g., +1)</p>
-          </div>
+          <Alert>
+            <AlertDescription>
+              This page allows you to test the SMS signature request functionality. Enter a phone number and name,
+              then send an SMS with a signature link. The recipient can click the link from their phone to sign.
+            </AlertDescription>
+          </Alert>
 
-          <div className="space-y-2">
-            <Label htmlFor="signerName">
-              Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="signerName"
-              value={formData.signerName}
-              onChange={(e) => setFormData({ ...formData, signerName: e.target.value })}
-              placeholder="Test Signer"
-              required
-            />
-          </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="phone">Phone Number *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+1234567890"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: +1 followed by 10 digits (e.g., +1234567890)
+              </p>
+            </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            <div>
+              <Label htmlFor="name">Recipient Name *</Label>
+              <Input
+                id="name"
+                type="text"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="John Doe"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Request Description (Optional)</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Please sign the foster home visit form for the visit on..."
+                className="mt-1"
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This description will be shown to the recipient when they open the signature link.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleSend}
+              disabled={sending || !phoneNumber.trim() || !recipientName.trim()}
+              className="w-full"
+            >
+              {sending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending SMS...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Signature Link via SMS
+                </>
+              )}
+            </Button>
+          </div>
 
           {result && (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription>
-                <div className="font-semibold text-green-800 mb-2">SMS Sent Successfully!</div>
-                <div className="text-sm space-y-1">
-                  <div><strong>Phone:</strong> {result.phoneNumber}</div>
-                  <div><strong>SMS SID:</strong> <code className="text-xs">{result.smsSid}</code></div>
-                </div>
-              </AlertDescription>
-            </Alert>
+            <div className="mt-6">
+              {result.success ? (
+                <Alert className="border-green-200 bg-green-50 dark:bg-green-950/30">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <div className="space-y-2">
+                      <p><strong>SMS sent successfully!</strong></p>
+                      <p className="text-sm">Message SID: {result.sid}</p>
+                      <p className="text-sm">Signature URL: {result.signatureUrl}</p>
+                      <p className="text-xs mt-2">
+                        The recipient should receive an SMS with a link to sign. You can test by clicking the link
+                        above or having the recipient open it on their phone.
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p><strong>Error:</strong> {result.error || "Unknown error"}</p>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
           )}
-
-          <Button onClick={handleSend} disabled={loading} className="w-full" size="lg">
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Send Signature Request
-              </>
-            )}
-          </Button>
         </CardContent>
       </Card>
     </div>

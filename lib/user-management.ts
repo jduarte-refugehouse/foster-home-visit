@@ -89,8 +89,9 @@ export async function getCurrentAppUser(): Promise<AppUser | null> {
   if (!user) return null
 
   try {
-    const result = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [user.id])
-    return result[0] || null
+    // Use effective user (impersonated if active, otherwise real user)
+    const { getEffectiveUser } = await import("./impersonation")
+    return await getEffectiveUser(user.id)
   } catch (error) {
     console.error("Error fetching app user:", error)
     return null
@@ -529,22 +530,39 @@ export async function updateUserRoles(
       .input("microservice_id", microserviceId)
       .query("UPDATE user_roles SET is_active = 0 WHERE user_id = @user_id AND microservice_id = @microservice_id")
 
+    // Get existing roles from database to support database-defined roles
+    // Note: user_roles table doesn't have role_display_name or role_level columns
+    // We'll generate these from the role_name
+    const existingDbRoles = await transaction
+      .request()
+      .input("microservice_id", microserviceId)
+      .query("SELECT DISTINCT role_name FROM user_roles WHERE microservice_id = @microservice_id")
+    
+    const dbRoleMap = new Map<string, boolean>()
+    existingDbRoles.recordset.forEach((r: any) => {
+      dbRoleMap.set(r.role_name, true)
+    })
+
     // Grant new roles
     for (const roleName of roleNames) {
+      // Check if role exists in config or database
       const roleConfig = Object.entries(MICROSERVICE_ROLES).find(([key, value]) => value === roleName)
-      if (!roleConfig) {
-        console.warn(`Role ${roleName} not found in MICROSERVICE_ROLES`)
-        continue
-      }
+      const roleExistsInDb = dbRoleMap.has(roleName)
 
-      const roleLevel = roleName.includes("admin")
+      // Generate display name and level from role_name (these columns don't exist in the table)
+      const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      const roleLevel = roleName.includes("admin") || roleName === "global_admin"
         ? 4
         : roleName.includes("director")
           ? 3
-          : roleName.includes("liaison")
+          : roleName.includes("liaison") || roleName.includes("coordinator") || roleName.includes("manager")
             ? 2
             : 1
-      const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+
+      // If role doesn't exist in config or database, we still create it (it was validated in the API)
+      if (!roleConfig && !roleExistsInDb) {
+        console.log(`Creating new role assignment for ${roleName} (not in config or database)`)
+      }
 
       // Check if role assignment already exists but is inactive
       const existingRole = await transaction
@@ -565,16 +583,15 @@ export async function updateUserRoles(
           .query("UPDATE user_roles SET is_active = 1, granted_by = @granted_by, granted_at = GETDATE() WHERE id = @id")
       } else {
         // Insert new role assignment
+        // Note: role_display_name and role_level columns don't exist in the table
         await transaction
           .request()
           .input("user_id", userId)
           .input("microservice_id", microserviceId)
           .input("role_name", roleName)
-          .input("role_display_name", roleDisplayName)
-          .input("role_level", roleLevel)
           .input("granted_by", grantedBy)
-          .query(`INSERT INTO user_roles (user_id, microservice_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active) 
-                              VALUES (@user_id, @microservice_id, @role_name, @role_display_name, @role_level, @granted_by, GETDATE(), 1)`)
+          .query(`INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active) 
+                              VALUES (@user_id, @microservice_id, @role_name, @granted_by, GETDATE(), 1)`)
       }
     }
     await transaction.commit()

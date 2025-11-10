@@ -268,10 +268,9 @@ export default function VisitsCalendarPage() {
     : appointmentEvents
 
   const handleSelectEvent = (event: CalendarEvent) => {
-    // Only show appointment details for appointments, not on-call events
+    // Navigate to appointment detail page for appointments
     if (event.eventType === "appointment") {
-    setSelectedAppointment(event.resource)
-    setSelectedSlot(null)
+      window.location.href = `/appointment/${event.resource.appointment_id}`
     } else if (event.eventType === "on-call") {
       // For on-call events, open edit dialog
       const schedule = event.resource
@@ -678,6 +677,7 @@ export default function VisitsCalendarPage() {
                   timeslots={2}
                   min={new Date(2025, 0, 1, 0, 0)}
                   max={new Date(2025, 0, 1, 23, 59)}
+                  scrollToTime={new Date(2025, 0, 1, 8, 0)}
                 />
               </div>
             </CardContent>

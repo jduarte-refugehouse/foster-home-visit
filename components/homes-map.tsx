@@ -171,7 +171,13 @@ export default function HomesMap({ homes, onHomeSelect, selectedHome }: HomesMap
       if (typeof window !== "undefined" && !window.google) {
         console.log("📦 Loading Google Maps API...")
         const script = document.createElement("script")
-        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCx6DSV5XxD5D0VAuODGakQrhejpR6062M&libraries=marker&loading=async&callback=initGoogleMaps`
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        if (!apiKey) {
+          console.error("❌ Google Maps API key not configured. Please set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY")
+          setMapError("Google Maps API key not configured")
+          return
+        }
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker&loading=async&callback=initGoogleMaps`
         script.async = true
         script.defer = true
 

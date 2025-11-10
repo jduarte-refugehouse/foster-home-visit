@@ -1,15 +1,31 @@
-import { auth } from "@clerk/nextjs/server"
+import type { NextRequest } from "next/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
+import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
+import { getClerkUserIdFromRequest } from "./clerk-auth-helper"
 
-export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string) {
-  const { userId } = await auth()
+export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
+  // SAFE: Use header-based auth for API routes (no middleware required)
+  // If request is provided, use headers. Otherwise, this is a server component (not used in API routes)
+  let userId: string | null = null
+  
+  if (request) {
+    // API route - use header-based auth
+    const auth = getClerkUserIdFromRequest(request)
+    userId = auth.clerkUserId
+  } else {
+    // Server component - this shouldn't happen in API routes, but keep for compatibility
+    // Note: Server components should use getEffectiveUser directly
+    return { authorized: false, user: null, reason: "checkPermission requires NextRequest for API routes" }
+  }
 
   if (!userId) {
     return { authorized: false, user: null, reason: "Not authenticated" }
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -42,14 +58,26 @@ export async function checkPermission(requiredPermission: string | string[], mic
   }
 }
 
-export async function checkRole(requiredRole: string | string[], microserviceCode?: string) {
-  const { userId } = await auth()
+export async function checkRole(requiredRole: string | string[], microserviceCode?: string, request?: NextRequest) {
+  // SAFE: Use header-based auth for API routes (no middleware required)
+  let userId: string | null = null
+  
+  if (request) {
+    // API route - use header-based auth
+    const auth = getClerkUserIdFromRequest(request)
+    userId = auth.clerkUserId
+  } else {
+    // Server component - this shouldn't happen in API routes
+    return { authorized: false, user: null, reason: "checkRole requires NextRequest for API routes" }
+  }
 
   if (!userId) {
     return { authorized: false, user: null, reason: "Not authenticated" }
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     return { authorized: false, user: null, reason: "User not found in system" }
@@ -85,14 +113,22 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
   }
 }
 
-export async function requireAuth() {
-  const { userId } = await auth()
+export async function requireAuth(request?: NextRequest) {
+  // SAFE: Use header-based auth for API routes (no middleware required)
+  if (!request) {
+    throw new Error("requireAuth requires NextRequest for API routes")
+  }
+  
+  const auth = getClerkUserIdFromRequest(request)
+  const userId = auth.clerkUserId
 
   if (!userId) {
-    throw new Error("Authentication required")
+    throw new Error("Authentication required: Missing x-user-clerk-id or x-user-email header")
   }
 
-  const user = await getUserByClerkId(userId)
+  // Use effective user (impersonated if active, otherwise real user)
+  // Pass request if available (for API routes)
+  const user = await getEffectiveUser(userId, request)
 
   if (!user) {
     throw new Error("User not found in system")
@@ -105,8 +141,8 @@ export async function requireAuth() {
   return { userId, user }
 }
 
-export async function requirePermission(permission: string | string[], microserviceCode?: string) {
-  const result = await checkPermission(permission, microserviceCode)
+export async function requirePermission(permission: string | string[], microserviceCode?: string, request?: NextRequest) {
+  const result = await checkPermission(permission, microserviceCode, request)
 
   if (!result.authorized) {
     throw new Error(`Access denied: ${result.reason}`)
@@ -115,8 +151,8 @@ export async function requirePermission(permission: string | string[], microserv
   return result.user
 }
 
-export async function requireRole(role: string | string[], microserviceCode?: string) {
-  const result = await checkRole(role, microserviceCode)
+export async function requireRole(role: string | string[], microserviceCode?: string, request?: NextRequest) {
+  const result = await checkRole(role, microserviceCode, request)
 
   if (!result.authorized) {
     throw new Error(`Access denied: ${result.reason}`)
@@ -130,9 +166,10 @@ export async function withPermissionCheck(
   handler: (user: any) => Promise<Response>,
   requiredPermission: string | string[],
   microserviceCode?: string,
+  request?: NextRequest,
 ): Promise<Response> {
   try {
-    const user = await requirePermission(requiredPermission, microserviceCode)
+    const user = await requirePermission(requiredPermission, microserviceCode, request)
     return await handler(user)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Access denied"
@@ -148,9 +185,10 @@ export async function withRoleCheck(
   handler: (user: any) => Promise<Response>,
   requiredRole: string | string[],
   microserviceCode?: string,
+  request?: NextRequest,
 ): Promise<Response> {
   try {
-    const user = await requireRole(requiredRole, microserviceCode)
+    const user = await requireRole(requiredRole, microserviceCode, request)
     return await handler(user)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Access denied"

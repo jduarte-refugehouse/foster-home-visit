@@ -6,82 +6,80 @@ import { SignaturePad } from "@/components/ui/signature-pad"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
+import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 
-/**
- * PUBLIC SIGNATURE PAGE - No authentication required
- * Token-based signature collection for external users
- * Accessible via: /signature/[token]
- */
 export default function SignaturePage() {
   const params = useParams()
   const router = useRouter()
-  const token = params?.token as string
+  const token = params.token as string
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [tokenInfo, setTokenInfo] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [signature, setSignature] = useState<string>("")
-  const [signerName, setSignerName] = useState<string>("")
-  const [success, setSuccess] = useState(false)
+  const [tokenData, setTokenData] = useState<any>(null)
+  const [signature, setSignature] = useState("")
+  const [signerName, setSignerName] = useState("")
+  const [signedDate, setSignedDate] = useState(new Date().toISOString().split("T")[0])
+  const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
     if (token) {
-      validateToken()
+      fetchTokenData()
     }
   }, [token])
 
-  const validateToken = async () => {
+  const fetchTokenData = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
-      const response = await fetch(`/api/public/signature-tokens/${token}`)
+      const response = await fetch(`/api/signature-tokens/${token}`)
+      const data = await response.json()
 
       if (!response.ok) {
-        const data = await response.json()
-        if (response.status === 404) {
-          setError("Invalid signature link. Please check the link and try again.")
-        } else if (response.status === 410) {
-          setError(data.error || "This signature link has expired or already been used.")
-        } else {
-          setError(data.error || "Failed to load signature request.")
-        }
+        setError(data.error || "Invalid or expired signature link")
+        setLoading(false)
         return
       }
 
-      const data = await response.json()
-      setTokenInfo(data)
-      setSignerName(data.signerName || "")
-    } catch (err: any) {
-      console.error("Error validating token:", err)
-      setError("Failed to load signature request. Please try again.")
+      if (data.token.used_at) {
+        setError("This signature link has already been used")
+        setLoading(false)
+        return
+      }
+
+      const expiresAt = new Date(data.token.expires_at)
+      if (expiresAt < new Date()) {
+        setError("This signature link has expired")
+        setLoading(false)
+        return
+      }
+
+      setTokenData(data.token)
+      setSignerName(data.token.recipient_name || "")
+    } catch (error) {
+      console.error("Error fetching token data:", error)
+      setError("Failed to load signature page")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSubmit = async () => {
     if (!signature) {
-      setError("Please provide your signature before submitting.")
+      setError("Please provide your signature")
       return
     }
 
     if (!signerName.trim()) {
-      setError("Please enter your name.")
+      setError("Please enter your name")
       return
     }
 
-    try {
-      setSubmitting(true)
-      setError(null)
+    setSubmitting(true)
+    setError(null)
 
-      const response = await fetch(`/api/public/signature-tokens/${token}`, {
+    try {
+      const response = await fetch(`/api/signature-tokens/${token}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,84 +87,91 @@ export default function SignaturePage() {
         body: JSON.stringify({
           signature,
           signerName: signerName.trim(),
+          signedDate,
         }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 410) {
-          setError(data.error || "This signature link has expired or already been used.")
-        } else {
-          setError(data.error || "Failed to submit signature. Please try again.")
-        }
+      let data
+      try {
+        const text = await response.text()
+        data = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError)
+        setError("Failed to parse server response")
+        setSubmitting(false)
         return
       }
 
-      setSuccess(true)
-    } catch (err: any) {
-      console.error("Error submitting signature:", err)
+      if (!response.ok) {
+        console.error("Signature submission failed:", data)
+        console.error("Full error object:", JSON.stringify(data, null, 2))
+        const errorMsg = data.error || data.details || data.message || "Failed to submit signature"
+        if (data.sqlError) {
+          console.error("SQL Error:", data.sqlError)
+        }
+        setError(errorMsg)
+        setSubmitting(false)
+        return
+      }
+
+      setSubmitted(true)
+    } catch (error) {
+      console.error("Error submitting signature:", error)
       setError("Failed to submit signature. Please try again.")
-    } finally {
       setSubmitting(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <p className="text-sm text-gray-600">Loading signature request...</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-refuge-purple mb-4" />
+          <p className="text-muted-foreground">Loading signature page...</p>
+        </div>
       </div>
     )
   }
 
-  if (error && !tokenInfo) {
+  if (error && !tokenData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
               <XCircle className="h-5 w-5" />
               Error
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-            <Button onClick={() => router.push("/")} variant="outline" className="w-full">
-              Return to Home
-            </Button>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  if (success) {
+  if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <CheckCircle2 className="h-16 w-16 text-green-600" />
-              <h2 className="text-2xl font-semibold text-gray-900">Signature Submitted</h2>
-              <p className="text-gray-600">
-                Thank you! Your signature has been successfully submitted.
-              </p>
-              {tokenInfo?.visitDate && (
-                <p className="text-sm text-gray-500">
-                  Visit Date: {new Date(tokenInfo.visitDate).toLocaleDateString()}
-                </p>
-              )}
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              Signature Submitted
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                Thank you! Your signature has been successfully submitted and added to the visit form.
+              </AlertDescription>
+            </Alert>
+            <div className="text-sm text-muted-foreground">
+              <p><strong>Signed by:</strong> {signerName}</p>
+              <p><strong>Date:</strong> {new Date(signedDate).toLocaleDateString()}</p>
             </div>
           </CardContent>
         </Card>
@@ -175,78 +180,75 @@ export default function SignaturePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Digital Signature Request</CardTitle>
-          <CardDescription>
-            {tokenInfo?.description || "Please sign below to complete this request."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {tokenInfo?.visitDate && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Visit Date:</strong> {new Date(tokenInfo.visitDate).toLocaleDateString()}
-                </p>
-                {tokenInfo?.formType && (
-                  <p className="text-sm text-blue-800 mt-1">
-                    <strong>Form Type:</strong> {tokenInfo.formType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="signerName">
-                Your Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="signerName"
-                value={signerName}
-                onChange={(e) => setSignerName(e.target.value)}
-                placeholder={tokenInfo?.signerName || "Enter your full name"}
-                required
-                disabled={submitting}
-                className="text-lg"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                Signature <span className="text-red-500">*</span>
-              </Label>
-              <div className="border-2 border-gray-300 rounded-lg bg-white">
-                <SignaturePad
-                  value={signature}
-                  onChange={setSignature}
-                  label=""
-                  disabled={submitting}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Please sign using your mouse, touchpad, or touchscreen
-              </p>
-            </div>
-
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Sign Foster Home Visit Form</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
             {error && (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
+            {tokenData && (
+              <div className="space-y-3 p-4 bg-muted rounded-lg">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Signature Request</p>
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Requested for:</strong> {tokenData.recipient_name || tokenData.recipient_email}
+                  </p>
+                  {tokenData.description && (
+                    <p className="text-sm text-muted-foreground mt-2">{tokenData.description}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="signer-name">Your Name *</Label>
+              <Input
+                id="signer-name"
+                value={signerName}
+                onChange={(e) => setSignerName(e.target.value)}
+                placeholder="Enter your full name"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label>Signature *</Label>
+              <div className="mt-1">
+                <SignaturePad
+                  label=""
+                  value={signature}
+                  onChange={setSignature}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="sign-date">Date *</Label>
+              <Input
+                id="sign-date"
+                type="date"
+                value={signedDate}
+                onChange={(e) => setSignedDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+
             <div className="flex gap-3">
               <Button
-                type="submit"
+                onClick={handleSubmit}
                 disabled={submitting || !signature || !signerName.trim()}
-                className="flex-1"
-                size="lg"
+                className="flex-1 bg-refuge-purple hover:bg-refuge-magenta"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Submitting...
                   </>
                 ) : (
@@ -254,13 +256,9 @@ export default function SignaturePage() {
                 )}
               </Button>
             </div>
-
-            <p className="text-xs text-gray-500 text-center">
-              By submitting, you confirm that this is your electronic signature and you agree to the terms.
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

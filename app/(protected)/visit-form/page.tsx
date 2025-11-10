@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -13,15 +14,46 @@ export default function VisitFormPage() {
   const searchParams = useSearchParams()
   const appointmentId = searchParams.get("appointmentId")
   const { toast } = useToast()
+  const { user } = useUser()
 
   const [appointmentData, setAppointmentData] = useState(null)
   const [prepopulationData, setPrepopulationData] = useState(null)
+  const [existingFormData, setExistingFormData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [debugData, setDebugData] = useState({
     apiResponse: null,
     error: null,
     lastAttempt: null,
   })
+  
+  // Session tracking - uses sessionStorage to persist across page refreshes within same browser session
+  const sessionIdRef = useRef<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  
+  // Initialize session ID on mount - persists across page refreshes within same browser session
+  useEffect(() => {
+    // Check if we already have a session ID in sessionStorage
+    const storageKey = `visit-form-session-${appointmentId || 'new'}`
+    let sessionId = null
+    
+    if (typeof window !== 'undefined') {
+      sessionId = sessionStorage.getItem(storageKey)
+    }
+    
+    if (!sessionId) {
+      // Generate a unique session ID
+      sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(storageKey, sessionId)
+      }
+      console.log("🆔 [SESSION] New browser session started:", sessionId)
+    } else {
+      console.log("🆔 [SESSION] Resuming browser session:", sessionId)
+    }
+    
+    sessionIdRef.current = sessionId
+    setCurrentSessionId(sessionId)
+  }, [appointmentId])
 
   useEffect(() => {
     if (appointmentId) {
@@ -47,7 +79,28 @@ export default function VisitFormPage() {
       console.log("📋 [FORM] Appointment data received:", appointmentData)
       setAppointmentData(appointmentData.appointment)
 
-      // 2. Get home GUID from appointment via home_xref
+      // 2. Check if a visit form already exists for this appointment
+      console.log("🔍 [FORM] Checking for existing visit form...")
+      const existingFormResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
+      
+      if (existingFormResponse.ok) {
+        const existingFormResult = await existingFormResponse.json()
+        if (existingFormResult.visitForms && existingFormResult.visitForms.length > 0) {
+          const existingForm = existingFormResult.visitForms[0]
+          console.log("✅ [FORM] Found existing visit form:", existingForm)
+          setExistingFormData(existingForm)
+          
+          // Check if we're opening in a new session (different from stored session)
+          if (existingForm.current_session_id && existingForm.current_session_id !== sessionIdRef.current) {
+            console.log("🔄 [SESSION] New session detected - previous session:", existingForm.current_session_id)
+            // The API will handle committing the previous session's save to history
+          }
+        } else {
+          console.log("ℹ️ [FORM] No existing visit form found - will create new")
+        }
+      }
+
+      // 3. Get home GUID from appointment via home_xref
       const homeXref = appointmentData.appointment?.home_xref
       
       if (!homeXref) {
@@ -56,7 +109,7 @@ export default function VisitFormPage() {
         return
       }
 
-      // 3. Look up home GUID from syncActiveHomes using xref
+      // 4. Look up home GUID from syncActiveHomes using xref
       console.log(`🔍 [FORM] Looking up home GUID for xref: ${homeXref}`)
       const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
       
@@ -75,7 +128,7 @@ export default function VisitFormPage() {
         return
       }
 
-      // 4. Fetch pre-population data for this home
+      // 5. Fetch pre-population data for this home
       console.log(`📋 [FORM] Fetching pre-population data for home GUID: ${homeGuid}`)
       const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
       
@@ -120,10 +173,10 @@ export default function VisitFormPage() {
     try {
       console.log("💾 [FORM] Saving form draft:", formData)
 
-      if (!appointmentData) {
+      if (!appointmentId) {
         toast({
           title: "Error",
-          description: "No appointment data available",
+          description: "No appointment ID available",
           variant: "destructive",
         })
         return
@@ -229,9 +282,13 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData.appointment?.assigned_to_user_id || appointmentData.appointment?.created_by_user_id || "system",
-        createdByName: appointmentData.appointment?.assigned_to_name || appointmentData.appointment?.created_by_name || "System",
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || user?.id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "System",
         isAutoSave: false,
+        // Session tracking
+        currentSessionId: sessionIdRef.current,
+        currentSessionUserId: user?.id || "",
+        currentSessionUserName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "",
       }
 
       // Calculate and log payload size
@@ -387,9 +444,13 @@ export default function VisitFormPage() {
           fosterParentInterview: formData.fosterParentInterview,
         },
         
-        createdByUserId: appointmentData.appointment?.assigned_to_user_id || appointmentData.appointment?.created_by_user_id || "system",
-        createdByName: appointmentData.appointment?.assigned_to_name || appointmentData.appointment?.created_by_name || "System",
+        createdByUserId: appointmentData?.appointment?.assigned_to_user_id || appointmentData?.appointment?.created_by_user_id || user?.id || "system",
+        createdByName: appointmentData?.appointment?.assigned_to_name || appointmentData?.appointment?.created_by_name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "System",
         isAutoSave: false,
+        // Session tracking
+        currentSessionId: sessionIdRef.current,
+        currentSessionUserId: user?.id || "",
+        currentSessionUserName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "",
       }
 
       // Calculate and log payload size
@@ -552,7 +613,12 @@ export default function VisitFormPage() {
         appointmentId={appointmentId}
         appointmentData={appointmentData}
         prepopulationData={prepopulationData}
-        onSave={handleSave}
+        existingFormData={existingFormData}
+        onSave={async (formData) => {
+          // The form component handles saving internally via saveFormData
+          // This callback is just for notification
+          await handleSave(formData)
+        }}
         onSubmit={handleSubmit}
       />
     </div>

@@ -27,9 +27,10 @@ export async function GET() {
         clientId: process.env.AZURE_CLIENT_ID || "Not configured",
         secretName: "database-password",
       },
-      proxy: {
-        configured: !!process.env.FIXIE_SOCKS_HOST,
-        host: process.env.FIXIE_SOCKS_HOST || "Not configured",
+      connection: {
+        type: "Direct via Vercel Static IPs",
+        staticIPs: ["18.217.75.119", "18.116.232.18"],
+        whitelisted: "Azure SQL Firewall",
       },
       database: {
         server: "refugehouse-bifrost-server.database.windows.net",
