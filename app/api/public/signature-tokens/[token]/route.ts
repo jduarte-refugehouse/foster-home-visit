@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
+import sgMail from "@sendgrid/mail"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -269,10 +270,14 @@ export async function POST(
       [token]
     )
 
-    // For test tokens, send email notification
-    if (tokenInfo.description?.toLowerCase().includes("test")) {
-      try {
-        const testEmail = process.env.TEST_SIGNATURE_EMAIL || "jduarte@refugehouse.org"
+    // Send email notification to test email (hardcoded for testing)
+    try {
+      const testEmail = "jduarte@refugehouse.org"
+      const apiKey = process.env.SENDGRID_API_KEY
+      const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
+      
+      if (apiKey) {
+        sgMail.setApiKey(apiKey)
         
         // Truncate signature if too large for email
         let signatureForEmail = signature
@@ -280,25 +285,42 @@ export async function POST(
           signatureForEmail = signature.substring(0, 50000) + "... (truncated)"
         }
 
-        const emailBody = `
-          <h2>Test Signature Received</h2>
-          <p><strong>Signer:</strong> ${finalSignerName}</p>
-          <p><strong>Role:</strong> ${tokenInfo.signer_role || "N/A"}</p>
-          <p><strong>Signed:</strong> ${new Date(now).toLocaleString()}</p>
-          <p><strong>Token:</strong> ${token}</p>
-          <p><strong>Description:</strong> ${tokenInfo.description || "N/A"}</p>
-          <hr>
-          <h3>Signature Image:</h3>
-          <img src="${signatureForEmail}" alt="Signature" style="max-width: 100%; border: 1px solid #ccc; padding: 10px;" />
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Test Signature Received</h2>
+            <p><strong>Signer:</strong> ${finalSignerName}</p>
+            <p><strong>Role:</strong> ${tokenInfo.signer_role || "N/A"}</p>
+            <p><strong>Signed:</strong> ${new Date(now).toLocaleString()}</p>
+            <p><strong>Token:</strong> ${token}</p>
+            <p><strong>Description:</strong> ${tokenInfo.description || "N/A"}</p>
+            <p><strong>Visit Form ID:</strong> ${tokenInfo.visit_form_id}</p>
+            <hr>
+            <h3>Signature Image:</h3>
+            <img src="${signatureForEmail}" alt="Signature" style="max-width: 100%; border: 1px solid #ccc; padding: 10px;" />
+          </div>
         `
 
-        // Send email (you'll need to implement your email service here)
-        console.log("Test signature email would be sent to:", testEmail)
-        console.log("Email body length:", emailBody.length)
-      } catch (emailError: any) {
-        // Don't fail signature submission if email fails
-        console.error("Failed to send test signature email:", emailError)
+        const emailText = `Test Signature Received\n\nSigner: ${finalSignerName}\nRole: ${tokenInfo.signer_role || "N/A"}\nSigned: ${new Date(now).toLocaleString()}\nToken: ${token}\nVisit Form ID: ${tokenInfo.visit_form_id}`
+
+        const msg = {
+          to: testEmail,
+          from: {
+            email: fromEmail,
+            name: "Foster Home Visit System",
+          },
+          subject: "Test Signature Received",
+          text: emailText,
+          html: emailHtml,
+        }
+
+        await sgMail.send(msg)
+        console.log("Test signature email sent to:", testEmail)
+      } else {
+        console.warn("SENDGRID_API_KEY not configured - skipping email notification")
       }
+    } catch (emailError: any) {
+      // Don't fail signature submission if email fails
+      console.error("Failed to send test signature email:", emailError)
     }
 
     return NextResponse.json({
