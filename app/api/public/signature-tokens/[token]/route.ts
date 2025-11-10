@@ -170,104 +170,104 @@ export async function POST(
       )
     }
 
-    // Get existing visit form data
-    const visitForm = await query(
-      `
-      SELECT 
-        visit_form_id,
-        signatures,
-        form_type,
-        visit_date
-      FROM visit_forms
-      WHERE visit_form_id = @param0
-        AND is_deleted = 0
-      `,
-      [tokenInfo.visit_form_id]
-    )
-
-    if (visitForm.length === 0) {
-      return NextResponse.json(
-        { error: "Visit form not found" },
-        { status: 404 }
-      )
-    }
-
-    const form = visitForm[0]
-
-    // Parse existing signatures
-    let signatures: any = {}
-    if (form.signatures) {
-      try {
-        signatures = typeof form.signatures === "string" 
-          ? JSON.parse(form.signatures) 
-          : form.signatures
-      } catch (e) {
-        console.error("Error parsing signatures:", e)
-        signatures = {}
-      }
-    }
-
-    // Update signatures based on signer type
     const finalSignerName = signerName || tokenInfo.signer_name || "Unknown"
     const now = new Date().toISOString()
 
-    if (tokenInfo.signer_type === "foster_parent_1") {
-      signatures.fosterParent1 = {
-        name: finalSignerName,
-        signature: signature,
-        date: now,
-      }
-    } else if (tokenInfo.signer_type === "foster_parent_2") {
-      signatures.fosterParent2 = {
-        name: finalSignerName,
-        signature: signature,
-        date: now,
-      }
-    } else if (tokenInfo.signer_type === "staff") {
-      signatures.staff = {
-        name: finalSignerName,
-        signature: signature,
-        date: now,
-        role: tokenInfo.signer_role || "Staff",
-      }
-    } else if (tokenInfo.signer_type === "supervisor") {
-      signatures.supervisor = {
-        name: finalSignerName,
-        signature: signature,
-        date: now,
-      }
-    } else {
-      // Generic signature field
-      signatures[tokenInfo.signer_type] = {
-        name: finalSignerName,
-        signature: signature,
-        date: now,
-      }
+    // Build signature data
+    const signatureData = {
+      name: finalSignerName,
+      signature: signature,
+      date: now,
+      role: tokenInfo.signer_role || null,
+      signerType: tokenInfo.signer_type,
     }
 
-    // Update visit form with signature
-    await query(
-      `
-      UPDATE visit_forms
-      SET 
-        signatures = @param1,
-        updated_at = GETUTCDATE()
-      WHERE visit_form_id = @param0
-      `,
-      [tokenInfo.visit_form_id, JSON.stringify(signatures)]
-    )
+    // If visit_form_id exists, update the visit form
+    if (tokenInfo.visit_form_id) {
+      const visitForm = await query(
+        `
+        SELECT 
+          visit_form_id,
+          signatures,
+          form_type,
+          visit_date
+        FROM visit_forms
+        WHERE visit_form_id = @param0
+          AND is_deleted = 0
+        `,
+        [tokenInfo.visit_form_id]
+      )
 
-    // Mark token as used
+      if (visitForm.length > 0) {
+        const form = visitForm[0]
+
+        // Parse existing signatures
+        let signatures: any = {}
+        if (form.signatures) {
+          try {
+            signatures = typeof form.signatures === "string" 
+              ? JSON.parse(form.signatures) 
+              : form.signatures
+          } catch (e) {
+            console.error("Error parsing signatures:", e)
+            signatures = {}
+          }
+        }
+
+        // Update signatures based on signer type
+        if (tokenInfo.signer_type === "foster_parent_1") {
+          signatures.fosterParent1 = signatureData
+        } else if (tokenInfo.signer_type === "foster_parent_2") {
+          signatures.fosterParent2 = signatureData
+        } else if (tokenInfo.signer_type === "staff") {
+          signatures.staff = signatureData
+        } else if (tokenInfo.signer_type === "supervisor") {
+          signatures.supervisor = signatureData
+        } else {
+          // Generic signature field
+          signatures[tokenInfo.signer_type] = signatureData
+        }
+
+        // Update visit form with signature
+        await query(
+          `
+          UPDATE visit_forms
+          SET 
+            signatures = @param1,
+            updated_at = GETUTCDATE()
+          WHERE visit_form_id = @param0
+          `,
+          [tokenInfo.visit_form_id, JSON.stringify(signatures)]
+        )
+      }
+    }
+    
+    // Store signature data in token record for reference (even if no visit form)
+    // This allows the signature to be retrieved later regardless of document type
+
+    // Mark token as used and store signature data in description for standalone signatures
+    const signatureMetadata = JSON.stringify({
+      signature: signatureData,
+      submittedAt: now,
+    })
+    
+    // For standalone signatures (no visit form), store in description
+    // For visit form signatures, just mark as used
+    const updateDescription = tokenInfo.visit_form_id 
+      ? tokenInfo.description || "Signature submitted"
+      : signatureMetadata
+    
     await query(
       `
       UPDATE signature_tokens
       SET 
         is_used = 1,
         used_at = GETUTCDATE(),
-        updated_at = GETUTCDATE()
+        updated_at = GETUTCDATE(),
+        description = @param1
       WHERE token = @param0
       `,
-      [token]
+      [token, updateDescription]
     )
 
     // Send email notification to test email (hardcoded for testing)
@@ -293,7 +293,7 @@ export async function POST(
             <p><strong>Signed:</strong> ${new Date(now).toLocaleString()}</p>
             <p><strong>Token:</strong> ${token}</p>
             <p><strong>Description:</strong> ${tokenInfo.description || "N/A"}</p>
-            <p><strong>Visit Form ID:</strong> ${tokenInfo.visit_form_id}</p>
+            ${tokenInfo.visit_form_id ? `<p><strong>Visit Form ID:</strong> ${tokenInfo.visit_form_id}</p>` : '<p><strong>Type:</strong> Standalone Test Signature</p>'}
             <hr>
             <h3>Signature Image:</h3>
             <img src="${signatureForEmail}" alt="Signature" style="max-width: 100%; border: 1px solid #ccc; padding: 10px;" />
@@ -326,7 +326,8 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Signature submitted successfully",
-      visitFormId: tokenInfo.visit_form_id,
+      visitFormId: tokenInfo.visit_form_id || null,
+      signatureData: signatureData,
     })
   } catch (error: any) {
     console.error("Error submitting signature:", error)

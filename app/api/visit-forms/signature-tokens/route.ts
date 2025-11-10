@@ -26,13 +26,6 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validation
-    if (!visitFormId) {
-      return NextResponse.json(
-        { error: "visitFormId is required" },
-        { status: 400 }
-      )
-    }
-
     if (!phoneNumber && !emailAddress) {
       return NextResponse.json(
         { error: "Either phoneNumber or emailAddress is required" },
@@ -47,22 +40,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify visit form exists
-    const visitForm = await query(
-      `
-      SELECT visit_form_id, form_type, visit_date
-      FROM visit_forms
-      WHERE visit_form_id = @param0
-        AND is_deleted = 0
-      `,
-      [visitFormId]
-    )
-
-    if (visitForm.length === 0) {
-      return NextResponse.json(
-        { error: "Visit form not found" },
-        { status: 404 }
+    // Verify visit form exists (if provided)
+    if (visitFormId) {
+      const visitForm = await query(
+        `
+        SELECT visit_form_id, form_type, visit_date
+        FROM visit_forms
+        WHERE visit_form_id = @param0
+          AND is_deleted = 0
+        `,
+        [visitFormId]
       )
+
+      if (visitForm.length === 0) {
+        return NextResponse.json(
+          { error: "Visit form not found" },
+          { status: 404 }
+        )
+      }
     }
 
     // Generate unique token
@@ -118,7 +113,7 @@ export async function POST(request: NextRequest) {
       token,
       signatureUrl,
       expiresAt: expiresAt.toISOString(),
-      visitFormId,
+      visitFormId: visitFormId || null,
     })
   } catch (error: any) {
     console.error("Error creating signature token:", error)

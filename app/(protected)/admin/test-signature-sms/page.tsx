@@ -31,66 +31,14 @@ export default function TestSignatureSMSPage() {
     setResult(null)
 
     try {
-      // Create a test visit form first (or use existing one)
-      // For testing, we'll create a minimal visit form
-      const visitFormResponse = await fetch("/api/visit-forms", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          appointmentId: "test-appointment",
-          formType: "test",
-          formVersion: "1.0",
-          status: "draft",
-          visitDate: new Date().toISOString().split("T")[0],
-          visitTime: new Date().toTimeString().slice(0, 5),
-          visitNumber: 1,
-          quarter: "",
-          visitVariant: 1,
-          visitInfo: { date: new Date().toISOString().split("T")[0] },
-          familyInfo: {},
-          attendees: {},
-          observations: {},
-          recommendations: {},
-          signatures: {},
-          homeEnvironment: {},
-          childInterviews: {},
-          parentInterviews: {},
-          complianceReview: {},
-          createdByUserId: "test-user",
-          createdByName: "Test User",
-          isAutoSave: false,
-        }),
-      })
-
-      let visitFormId
-      if (visitFormResponse.ok) {
-        const visitFormData = await visitFormResponse.json()
-        visitFormId = visitFormData.visitFormId
-      } else {
-        // If creation fails, try to get an existing test form
-        const existingResponse = await fetch("/api/visit-forms?status=draft&limit=1")
-        if (existingResponse.ok) {
-          const existingData = await existingResponse.json()
-          if (existingData.visitForms && existingData.visitForms.length > 0) {
-            visitFormId = existingData.visitForms[0].visit_form_id
-          } else {
-            throw new Error("Could not create or find a visit form for testing")
-          }
-        } else {
-          throw new Error("Could not create or find a visit form for testing")
-        }
-      }
-
-      // Create the signature token
+      // Create the signature token (no visit form required for testing)
       const tokenResponse = await fetch("/api/visit-forms/signature-tokens", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          visitFormId: visitFormId,
+          visitFormId: null, // No visit form required for testing
           signerName: formData.signerName,
           signerRole: "foster_parent",
           signerType: "foster_parent_1",
