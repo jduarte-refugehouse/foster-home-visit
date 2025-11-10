@@ -4,8 +4,8 @@
 
 The Enhanced Home Visit Form implements the updated operating requirements based on Chapter 749 Standards with RCC (Residential Child Care) Requirements and T3C (Trauma-Competent Care) Elements.
 
-**Version:** 3.2  
-**Last Updated:** November 5, 2025  
+**Version:** 3.3  
+**Last Updated:** November 8, 2025  
 **Based On:** `enhanced-monitoring-checklist.md`
 
 ---
@@ -43,8 +43,11 @@ The form includes 13 major compliance sections:
 
 #### Section 2A: Inspection Documentation (§749.2905)
 - **Fire Inspection**: Dates, expiration tracking, certificate numbers
+  - **Photo Capture**: Take photo of fire certificate directly from form using device camera
 - **Health Inspection**: Complete tracking with auto-calculated days until expiration
+  - **Photo Capture**: Take photo of health certificate directly from form using device camera
 - **Fire Extinguisher Inspections**: Multiple location tracking with tag and gauge verification
+  - **Photo Capture**: Take photo of fire extinguisher tag for each location
 - Visual indicators for expiration status (green = current, yellow = renewal soon, red = expired)
 
 #### Section 2B: General Health and Safety (§749.2907-3041)
@@ -164,6 +167,18 @@ Collects all required signatures:
 - Foster Parent 1 signature with date (required)
 - Foster Parent 2 signature with date (if applicable)
 - Supervisor signature with date (required)
+- **Tokenized Signature Links**: Send signature requests via email or SMS
+- **External Signature Collection**: Public signature page for foster parents to sign remotely
+- **Test Signature Support**: Test signature functionality with email notifications
+
+### 10. **File Attachments & Photo Capture**
+- **Files Section**: Upload and manage photos, screenshots, and documents
+- **Photo Capture**: Direct camera access for inspection documents
+  - Fire certificate photos
+  - Health certificate photos
+  - Fire extinguisher tag photos
+- **File Management**: View, download, and delete uploaded files
+- **Supported Formats**: Images, PDF, Word documents (max 10MB per file)
 
 ---
 
@@ -284,12 +299,15 @@ Monthly visits capture all necessary data to generate quarterly summaries:
 - Compliance issues identified early
 
 ### Future Enhancements
-- Auto-population of home information from database
-- Staff assignment and scheduling integration
-- Electronic signature capture
+- Auto-population of home information from database ✅ (Implemented)
+- Staff assignment and scheduling integration ✅ (Implemented)
+- Electronic signature capture ✅ (Implemented)
+- Photo capture for inspection documents ✅ (Implemented)
 - PDF generation for printing
-- Email delivery to foster parents
+- Email delivery to foster parents ✅ (Implemented)
 - Dashboard analytics for compliance tracking
+- Photo gallery organization
+- Offline photo capture with sync
 
 ---
 
@@ -369,6 +387,13 @@ For questions or issues with the Enhanced Home Visit Form:
 ---
 
 ## Version History
+
+### Version 3.3 (November 8, 2025)
+- **Photo Capture for Inspections**: Added camera capture for fire certificates, health certificates, and fire extinguisher tags
+- **Signature System Fixes**: Resolved signature submission errors and improved error handling
+- **Test Signature Emails**: Automatic email notifications for test signature submissions
+- **File Attachment System**: Enhanced file upload with photo capture integration
+- **Error Handling Improvements**: Better error messages and resilient error logging
 
 ### Version 3.2 (November 5, 2025)
 - **Compact Checklist Format**: Redesigned compliance sections to match paper checklist
