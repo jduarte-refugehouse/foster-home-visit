@@ -21,7 +21,6 @@ export default function SignaturePage() {
   const [tokenData, setTokenData] = useState<any>(null)
   const [signature, setSignature] = useState("")
   const [signerName, setSignerName] = useState("")
-  const [signedDate, setSignedDate] = useState(new Date().toISOString().split("T")[0])
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
@@ -32,7 +31,7 @@ export default function SignaturePage() {
 
   const fetchTokenData = async () => {
     try {
-      const response = await fetch(`/api/signature-tokens/${token}`)
+      const response = await fetch(`/api/public/signature-tokens/${token}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -41,21 +40,28 @@ export default function SignaturePage() {
         return
       }
 
-      if (data.token.used_at) {
-        setError("This signature link has already been used")
+      // Public route returns different structure
+      if (data.success && data.token) {
+        // Check expiration and usage from token data
+        if (data.token.expires_at && new Date(data.token.expires_at) < new Date()) {
+          setError("This signature link has expired")
+          setLoading(false)
+          return
+        }
+        
+        if (data.token.is_used || data.token.used_at) {
+          setError("This signature link has already been used")
+          setLoading(false)
+          return
+        }
+        
+        setTokenData(data.token)
+        setSignerName(data.signerName || data.token.signer_name || "")
+      } else {
+        setError(data.error || "Invalid signature link")
         setLoading(false)
         return
       }
-
-      const expiresAt = new Date(data.token.expires_at)
-      if (expiresAt < new Date()) {
-        setError("This signature link has expired")
-        setLoading(false)
-        return
-      }
-
-      setTokenData(data.token)
-      setSignerName(data.token.recipient_name || "")
     } catch (error) {
       console.error("Error fetching token data:", error)
       setError("Failed to load signature page")
@@ -79,7 +85,7 @@ export default function SignaturePage() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/signature-tokens/${token}`, {
+      const response = await fetch(`/api/public/signature-tokens/${token}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,7 +93,6 @@ export default function SignaturePage() {
         body: JSON.stringify({
           signature,
           signerName: signerName.trim(),
-          signedDate,
         }),
       })
 
@@ -171,7 +176,7 @@ export default function SignaturePage() {
             </Alert>
             <div className="text-sm text-muted-foreground">
               <p><strong>Signed by:</strong> {signerName}</p>
-              <p><strong>Date:</strong> {new Date(signedDate).toLocaleDateString()}</p>
+              <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
             </div>
           </CardContent>
         </Card>
@@ -198,7 +203,7 @@ export default function SignaturePage() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Signature Request</p>
                   <p className="text-sm text-muted-foreground">
-                    <strong>Requested for:</strong> {tokenData.recipient_name || tokenData.recipient_email}
+                    <strong>Requested for:</strong> {tokenData.signer_name || tokenData.recipient_name || "Unknown"}
                   </p>
                   {tokenData.description && (
                     <p className="text-sm text-muted-foreground mt-2">{tokenData.description}</p>
@@ -227,17 +232,6 @@ export default function SignaturePage() {
                   onChange={setSignature}
                 />
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="sign-date">Date *</Label>
-              <Input
-                id="sign-date"
-                type="date"
-                value={signedDate}
-                onChange={(e) => setSignedDate(e.target.value)}
-                className="mt-1"
-              />
             </div>
 
             <div className="flex gap-3">

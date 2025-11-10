@@ -82,7 +82,19 @@ export async function GET(
     // Return token info (without sensitive data)
     return NextResponse.json({
       success: true,
-      token: tokenInfo.token,
+      token: {
+        token: tokenInfo.token,
+        visit_form_id: tokenInfo.visit_form_id,
+        signer_name: tokenInfo.signer_name,
+        signer_role: tokenInfo.signer_role,
+        signer_type: tokenInfo.signer_type,
+        expires_at: tokenInfo.expires_at,
+        is_used: tokenInfo.is_used,
+        used_at: tokenInfo.used_at,
+        description: tokenInfo.description,
+        visit_date: tokenInfo.visit_date,
+        form_type: tokenInfo.form_type,
+      },
       signerName: tokenInfo.signer_name,
       signerRole: tokenInfo.signer_role,
       signerType: tokenInfo.signer_type,
@@ -271,57 +283,106 @@ export async function POST(
     )
 
     // Send email notification to test email (hardcoded for testing)
-    try {
-      const testEmail = "jduarte@refugehouse.org"
-      const apiKey = process.env.SENDGRID_API_KEY
-      const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
-      
-      if (apiKey) {
-        sgMail.setApiKey(apiKey)
-        
-        // Truncate signature if too large for email
-        let signatureForEmail = signature
-        if (signature.length > 50000) {
-          signatureForEmail = signature.substring(0, 50000) + "... (truncated)"
+    // Send email asynchronously without blocking signature submission
+    (async () => {
+      try {
+        const testEmail = "jduarte@refugehouse.org"
+        const apiKey = process.env.SENDGRID_API_KEY
+        const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
+
+        console.log("📧 [TEST] Starting email send process")
+        console.log("📧 [TEST] From email:", fromEmail)
+        console.log("📧 [TEST] To email:", testEmail)
+        console.log("📧 [TEST] API key configured:", !!apiKey)
+
+        if (!apiKey) {
+          console.warn("⚠️ [TEST] SendGrid API key not configured, skipping email")
+          return
         }
 
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Test Signature Received</h2>
-            <p><strong>Signer:</strong> ${finalSignerName}</p>
-            <p><strong>Role:</strong> ${tokenInfo.signer_role || "N/A"}</p>
-            <p><strong>Signed:</strong> ${new Date(now).toLocaleString()}</p>
-            <p><strong>Token:</strong> ${token}</p>
-            <p><strong>Description:</strong> ${tokenInfo.description || "N/A"}</p>
-            ${tokenInfo.visit_form_id ? `<p><strong>Visit Form ID:</strong> ${tokenInfo.visit_form_id}</p>` : '<p><strong>Type:</strong> Standalone Test Signature</p>'}
-            <hr>
-            <h3>Signature Image:</h3>
-            <img src="${signatureForEmail}" alt="Signature" style="max-width: 100%; border: 1px solid #ccc; padding: 10px;" />
-          </div>
-        `
+        sgMail.setApiKey(apiKey)
 
-        const emailText = `Test Signature Received\n\nSigner: ${finalSignerName}\nRole: ${tokenInfo.signer_role || "N/A"}\nSigned: ${new Date(now).toLocaleString()}\nToken: ${token}\nVisit Form ID: ${tokenInfo.visit_form_id}`
+        // Truncate signature if too long (base64 images can be very large)
+        // Also escape any special characters that might break the template
+        const signatureStr = String(signature || "")
+        const signaturePreview = signatureStr.length > 50000 
+          ? signatureStr.substring(0, 50000) + "... (truncated)" 
+          : signatureStr
+        
+        // Escape HTML and ensure safe string interpolation
+        const safeSignerName = String(finalSignerName || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+        const safeSignedDate = String(new Date(now).toLocaleString() || "").replace(/"/g, "&quot;")
+        const safeToken = String(token || "").replace(/"/g, "&quot;")
+        const safeRole = String(tokenInfo.signer_role || "N/A").replace(/"/g, "&quot;")
+        const safeDescription = String(tokenInfo.description || "N/A").replace(/"/g, "&quot;")
+        // For base64 data URLs, we need to be careful - just use it directly but ensure it's a string
+        const safeSignature = String(signaturePreview || "")
 
-        const msg = {
+        const subject = "Test Signature Received - " + safeSignerName
+        // Build HTML content using string concatenation to avoid template literal issues with large base64 strings
+        const htmlContent = 
+          '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
+          '<h2 style="color: #5E3989;">Test Signature Received</h2>' +
+          '<p>A test signature has been submitted through the signature link system.</p>' +
+          '<div style="margin: 20px 0;">' +
+          '<p><strong>Signer Name:</strong> ' + safeSignerName + '</p>' +
+          '<p><strong>Role:</strong> ' + safeRole + '</p>' +
+          '<p><strong>Signed Date:</strong> ' + safeSignedDate + '</p>' +
+          '<p><strong>Token:</strong> ' + safeToken + '</p>' +
+          '<p><strong>Description:</strong> ' + safeDescription + '</p>' +
+          (tokenInfo.visit_form_id ? '<p><strong>Visit Form ID:</strong> ' + String(tokenInfo.visit_form_id) + '</p>' : '<p><strong>Type:</strong> Standalone Test Signature</p>') +
+          '</div>' +
+          '<div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">' +
+          '<h3 style="margin-top: 0;">Signature Image:</h3>' +
+          '<img src="' + safeSignature + '" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />' +
+          '</div>' +
+          '<p style="color: #666; font-size: 12px; margin-top: 30px;">' +
+          'This is a test signature from the signature link testing system.' +
+          '</p>' +
+          '</div>'
+
+        const textContent = 
+          "Test Signature Received\n\n" +
+          "A test signature has been submitted through the signature link system.\n\n" +
+          "Signer Name: " + safeSignerName + "\n" +
+          "Role: " + safeRole + "\n" +
+          "Signed Date: " + safeSignedDate + "\n" +
+          "Token: " + safeToken + "\n" +
+          "Description: " + safeDescription + "\n" +
+          (tokenInfo.visit_form_id ? "Visit Form ID: " + String(tokenInfo.visit_form_id) + "\n" : "Type: Standalone Test Signature\n") +
+          "\nSignature Image: (see HTML version)\n\n" +
+          "This is a test signature from the signature link testing system."
+
+        console.log("📧 [TEST] Attempting to send email to:", testEmail)
+        console.log("📧 [TEST] Subject:", subject)
+        console.log("📧 [TEST] HTML content length:", htmlContent.length)
+        console.log("📧 [TEST] Text content length:", textContent.length)
+
+        const emailResult = await sgMail.send({
           to: testEmail,
           from: {
             email: fromEmail,
-            name: "Foster Home Visit System",
+            name: "Foster Home Visit System - Test",
           },
-          subject: "Test Signature Received",
-          text: emailText,
-          html: emailHtml,
-        }
+          subject: subject,
+          text: textContent,
+          html: htmlContent,
+        })
 
-        await sgMail.send(msg)
-        console.log("Test signature email sent to:", testEmail)
-      } else {
-        console.warn("SENDGRID_API_KEY not configured - skipping email notification")
+        console.log("✅ [TEST] Email sent successfully to:", testEmail)
+        console.log("✅ [TEST] SendGrid response status:", emailResult[0]?.statusCode)
+        console.log("✅ [TEST] SendGrid response headers:", JSON.stringify(emailResult[0]?.headers || {}))
+      } catch (emailError: any) {
+        console.error("❌ [TEST] Failed to send test signature email:", emailError)
+        console.error("❌ [TEST] Email error details:", {
+          message: emailError?.message,
+          code: emailError?.code,
+          response: emailError?.response?.body,
+          stack: emailError?.stack,
+        })
+        // Don't fail the signature submission if email fails
       }
-    } catch (emailError: any) {
-      // Don't fail signature submission if email fails
-      console.error("Failed to send test signature email:", emailError)
-    }
+    })()
 
     return NextResponse.json({
       success: true,
