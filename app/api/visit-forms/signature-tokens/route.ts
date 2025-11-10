@@ -68,10 +68,7 @@ export async function POST(request: NextRequest) {
     expiresAt.setHours(expiresAt.getHours() + (expiresInHours || 24))
 
     // Insert token into database
-    // Using existing schema columns (works with current database structure)
-    // Note: appointment_id is required in schema but can be a placeholder GUID for standalone signatures
-    const placeholderAppointmentId = '00000000-0000-0000-0000-000000000000'
-    
+    // Using actual schema: visit_form_id and appointment_id are nullable, signer_role and phone_number exist
     await query(
       `
       INSERT INTO signature_tokens (
@@ -83,6 +80,8 @@ export async function POST(request: NextRequest) {
         recipient_email,
         recipient_name,
         signer_name,
+        signer_role,
+        phone_number,
         description,
         expires_at,
         is_deleted,
@@ -91,18 +90,20 @@ export async function POST(request: NextRequest) {
         created_by_name
       )
       VALUES (
-        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, @param9, 0, GETUTCDATE(), 'system', 'System'
+        @param0, @param1, @param2, @param3, @param4, @param5, @param6, @param7, @param8, @param9, @param10, @param11, 0, GETUTCDATE(), 'system', 'System'
       )
       `,
       [
         token,
-        visitFormId || null,
-        placeholderAppointmentId, // appointment_id - required by schema
+        visitFormId || null, // visit_form_id - nullable in schema
+        null, // appointment_id - nullable in schema
         signerType || 'test', // signature_type
         `${signerType || 'test'}Signature`, // signature_key
         emailAddress || phoneNumber || 'test@example.com', // recipient_email - required by schema
         signerName || null, // recipient_name
         signerName || null, // signer_name
+        signerRole || null, // signer_role - exists in schema
+        phoneNumber || null, // phone_number - exists in schema
         description || null,
         expiresAt.toISOString(),
       ]

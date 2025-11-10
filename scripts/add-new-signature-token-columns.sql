@@ -1,24 +1,6 @@
--- Add new columns to signature_tokens table for enhanced signature functionality
--- These columns support the new public signature route system
-
--- Add signer_role column (for role-based signature tracking)
-IF NOT EXISTS (
-    SELECT 1 
-    FROM sys.columns 
-    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
-    AND name = 'signer_role'
-)
-BEGIN
-    ALTER TABLE [dbo].[signature_tokens]
-    ADD [signer_role] [nvarchar](100) NULL;
-    
-    PRINT 'Added signer_role column to signature_tokens table';
-END
-ELSE
-BEGIN
-    PRINT 'signer_role column already exists in signature_tokens table';
-END
-GO
+-- Add optional columns to signature_tokens table for enhanced signature functionality
+-- Based on actual database schema as of 11/10/2025
+-- Note: signer_role and phone_number already exist in the schema
 
 -- Add signer_type column (alias for signature_type, for consistency)
 IF NOT EXISTS (
@@ -41,25 +23,6 @@ END
 ELSE
 BEGIN
     PRINT 'signer_type column already exists in signature_tokens table';
-END
-GO
-
--- Add phone_number column
-IF NOT EXISTS (
-    SELECT 1 
-    FROM sys.columns 
-    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
-    AND name = 'phone_number'
-)
-BEGIN
-    ALTER TABLE [dbo].[signature_tokens]
-    ADD [phone_number] [nvarchar](20) NULL;
-    
-    PRINT 'Added phone_number column to signature_tokens table';
-END
-ELSE
-BEGIN
-    PRINT 'phone_number column already exists in signature_tokens table';
 END
 GO
 
@@ -134,46 +97,8 @@ BEGIN
 END
 GO
 
--- Make visit_form_id nullable (for standalone test signatures)
-IF EXISTS (
-    SELECT 1 
-    FROM sys.columns 
-    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
-    AND name = 'visit_form_id'
-    AND is_nullable = 0
-)
-BEGIN
-    ALTER TABLE [dbo].[signature_tokens]
-    ALTER COLUMN [visit_form_id] [uniqueidentifier] NULL;
-    
-    PRINT 'Made visit_form_id nullable in signature_tokens table';
-END
-ELSE
-BEGIN
-    PRINT 'visit_form_id is already nullable in signature_tokens table';
-END
-GO
-
--- Make appointment_id nullable (for standalone test signatures)
-IF EXISTS (
-    SELECT 1 
-    FROM sys.columns 
-    WHERE object_id = OBJECT_ID('dbo.signature_tokens') 
-    AND name = 'appointment_id'
-    AND is_nullable = 0
-)
-BEGIN
-    ALTER TABLE [dbo].[signature_tokens]
-    ALTER COLUMN [appointment_id] [uniqueidentifier] NULL;
-    
-    PRINT 'Made appointment_id nullable in signature_tokens table';
-END
-ELSE
-BEGIN
-    PRINT 'appointment_id is already nullable in signature_tokens table';
-END
-GO
-
 PRINT 'Migration completed successfully!';
+PRINT 'Note: signer_role and phone_number already exist in the schema';
+PRINT 'Note: visit_form_id and appointment_id are already nullable';
 GO
 
