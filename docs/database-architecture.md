@@ -18,7 +18,6 @@ This application uses a multi-database architecture with different access patter
 - Stores **current/active data only** (not historical archives)
 - Integration layer that connects to other systems
 - Contains tables for: `app_users`, `appointments`, `visit_forms`, `signature_tokens`, `continuum_entries`, etc.
-- Typically only contains data that is considered "current" (not historical archives)
 
 **Access Pattern**: 
 - Direct SQL queries via `lib/db.ts`
