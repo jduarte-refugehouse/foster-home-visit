@@ -531,7 +531,8 @@ export default function MobileAppointmentDetailPage() {
   const endTime = parseLocalDatetime(appointment.end_datetime)
   const hasStartedDrive = !!appointment.start_drive_timestamp
   const hasArrived = !!appointment.arrived_timestamp
-  const hasReturned = !!appointment.return_timestamp
+  const hasReturnStarted = !!appointment.return_timestamp
+  const hasReturnCompleted = !!appointment.return_mileage
   const visitInProgress = appointment.status === "in-progress"
   const visitCompleted = appointment.status === "completed"
   const showVisitContent = visitInProgress || visitCompleted
@@ -722,7 +723,7 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Post-Visit Phase: Leaving */}
-          {(visitCompleted || (hasArrived && !hasReturned && (appointment.status === "scheduled" || visitInProgress))) && (
+          {(visitCompleted || (hasArrived && !hasReturnStarted && (appointment.status === "scheduled" || visitInProgress))) && (
             <>
               {hasNextAppointment && nextAppointment && (
                 <Button
@@ -771,6 +772,74 @@ export default function MobileAppointmentDetailPage() {
                 {capturingLocation ? "Capturing Location..." : "Return to Office/Home"}
               </Button>
             </>
+          )}
+
+          {/* Return Travel In Progress: Show "Arrived at Home" button */}
+          {hasReturnStarted && !hasReturnCompleted && (
+            <Button
+              onClick={async () => {
+                try {
+                  setCapturingLocation(true)
+                  const location = await captureLocation("arrived")
+                  
+                  const headers: HeadersInit = {
+                    "Content-Type": "application/json",
+                  }
+                  
+                  let currentUser = user
+                  if (!currentUser && isLoaded) {
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                  }
+                  
+                  if (currentUser?.id) {
+                    headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
+                    headers["x-user-clerk-id"] = currentUser.id
+                    headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
+                  }
+
+                  const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({
+                      action: "return",
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    }),
+                  })
+
+                  if (response.ok) {
+                    const result = await response.json()
+                    toast({
+                      title: "Arrived at Home",
+                      description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
+                    })
+                    fetchAppointmentDetails()
+                  } else {
+                    const errorData = await response.json()
+                    toast({
+                      title: "Error",
+                      description: errorData.error || "Failed to log arrival at home",
+                      variant: "destructive",
+                    })
+                  }
+                } catch (error) {
+                  console.error("Error logging arrival at home:", error)
+                  toast({
+                    title: "Error",
+                    description: error instanceof Error ? error.message : "Failed to log arrival at home",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setCapturingLocation(false)
+                }
+              }}
+              disabled={capturingLocation}
+              className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              size="lg"
+            >
+              <CheckCircle2 className="h-5 w-5 mr-2" />
+              {capturingLocation ? "Capturing Location..." : "Arrived at Home"}
+            </Button>
           )}
 
           {/* Link to full form (for iPad/desktop) - Only show during visit */}
