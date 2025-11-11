@@ -27,9 +27,17 @@ export async function GET(request: NextRequest) {
 
     // Build query based on available parameters
     // Note: EntityCommunicationBridge uses FosterFacilityGUID (not FosterHomeGUID)
+    // EntityGUID should match SyncCurrentFosterFacility.PersonGUID
     // Use IsActive = 1 to filter active records (no is_deleted column in this table)
+    console.log(`🔍 [EntityCommunication] Looking up contact info:`, {
+      entityGuid,
+      entityName,
+      fosterFacilityGuid,
+    })
+
     let queryText = `
       SELECT TOP 1
+        EntityGUID,
         EntityFullName,
         PrimaryMobilePhone,
         PrimaryMobilePhoneE164,
@@ -42,19 +50,27 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     if (entityGuid) {
+      // EntityGUID should match SyncCurrentFosterFacility.PersonGUID
       queryText += ` AND EntityGUID = @param${paramIndex}`
       params.push(entityGuid)
       paramIndex++
+      console.log(`🔍 [EntityCommunication] Using EntityGUID match: ${entityGuid}`)
     } else if (entityName) {
       // Fuzzy match on name (case-insensitive, partial match)
       queryText += ` AND EntityFullName LIKE @param${paramIndex}`
       params.push(`%${entityName}%`)
       paramIndex++
+      console.log(`🔍 [EntityCommunication] Using name fuzzy match: ${entityName}`)
     }
 
     queryText += ` ORDER BY EntityFullName`
 
+    console.log(`🔍 [EntityCommunication] Query:`, queryText)
+    console.log(`🔍 [EntityCommunication] Params:`, params)
+
     const results = await query(queryText, params)
+    
+    console.log(`🔍 [EntityCommunication] Results:`, results.length, results.length > 0 ? results[0] : 'none')
 
     if (results.length === 0) {
       return NextResponse.json({

@@ -1893,30 +1893,43 @@ const SendSignatureLinkButton = ({
           fosterFacilityGuid: fosterFacilityGuid,
         })
         
+        // Prioritize entityGuid (PersonGUID from SyncCurrentFosterFacility)
+        // This should match EntityCommunicationBridge.EntityGUID
         if (entityGuid) {
           params.append("entityGuid", entityGuid)
+          console.log(`📞 [Signature] Looking up contact for entityGuid: ${entityGuid}, fosterFacilityGuid: ${fosterFacilityGuid}`)
         } else if (recipientName) {
           params.append("entityName", recipientName)
+          console.log(`📞 [Signature] Looking up contact for name: ${recipientName}, fosterFacilityGuid: ${fosterFacilityGuid}`)
+        } else {
+          console.warn(`📞 [Signature] No entityGuid or recipientName provided for lookup`)
         }
         
         const response = await fetch(`/api/entity-communication/lookup?${params.toString()}`)
         const data = await response.json()
         
+        console.log(`📞 [Signature] Lookup response:`, data)
+        
         if (data.success && data.found && data.data) {
           // Pre-populate name if we have it from the bridge (prefer bridge data)
           if (data.data.name) {
             setName(data.data.name)
+            console.log(`📞 [Signature] Pre-populated name: ${data.data.name}`)
           }
           
           // Pre-populate phone if we have it from the bridge (prefer bridge data)
           if (data.data.phone) {
             setPhone(formatPhoneNumber(data.data.phone))
+            console.log(`📞 [Signature] Pre-populated phone: ${data.data.phone}`)
           }
           
           // Pre-populate email if we have it from the bridge (prefer bridge data)
           if (data.data.email) {
             setEmail(data.data.email)
+            console.log(`📞 [Signature] Pre-populated email: ${data.data.email}`)
           }
+        } else {
+          console.log(`📞 [Signature] No contact info found in EntityCommunicationBridge`)
         }
       } catch (error) {
         console.error("Error fetching contact info:", error)
