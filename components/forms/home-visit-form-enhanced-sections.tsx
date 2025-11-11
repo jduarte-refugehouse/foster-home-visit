@@ -1568,20 +1568,18 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 </div>
                 
                 {/* Send Signature Link Button */}
-                {visitFormId && (
-                  <SendSignatureLinkButton
-                    visitFormId={visitFormId}
-                    signatureType={`parent${index + 1}`}
-                    signatureKey={`${sigKey}Signature`}
-                    recipientEmail={provider.email || ""}
-                    recipientPhone={provider.phone || ""}
-                    recipientName={displayName}
-                    visitDate={formData.visitInfo?.date}
-                    familyName={formData.fosterHome?.familyName}
-                    createdByUserId={user?.id}
-                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                  />
-                )}
+                <SendSignatureLinkButton
+                  visitFormId={visitFormId}
+                  signatureType={`parent${index + 1}`}
+                  signatureKey={`${sigKey}Signature`}
+                  recipientEmail={provider.email || ""}
+                  recipientPhone={provider.phone || ""}
+                  recipientName={displayName}
+                  visitDate={formData.visitInfo?.date}
+                  familyName={formData.fosterHome?.familyName}
+                  createdByUserId={user?.id}
+                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                />
               </CardContent>
             </Card>
             )
@@ -1634,20 +1632,18 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
               </div>
               
               {/* Send Signature Link Button */}
-              {visitFormId && (
-                <SendSignatureLinkButton
-                  visitFormId={visitFormId}
-                  signatureType="parent1"
-                  signatureKey="parent1Signature"
-                  recipientEmail=""
-                  recipientPhone=""
-                  recipientName={getSignatureValue("parent1") || "Foster Parent"}
-                  visitDate={formData.visitInfo?.date}
-                  familyName={formData.fosterHome?.familyName}
-                  createdByUserId={user?.id}
-                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                />
-              )}
+              <SendSignatureLinkButton
+                visitFormId={visitFormId}
+                signatureType="parent1"
+                signatureKey="parent1Signature"
+                recipientEmail=""
+                recipientPhone=""
+                recipientName={getSignatureValue("parent1") || "Foster Parent"}
+                visitDate={formData.visitInfo?.date}
+                familyName={formData.fosterHome?.familyName}
+                createdByUserId={user?.id}
+                createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+              />
             </CardContent>
           </Card>
         )}
@@ -1703,20 +1699,18 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
               </div>
               
               {/* Send Signature Link Button */}
-              {visitFormId && (
-                <SendSignatureLinkButton
-                  visitFormId={visitFormId}
-                  signatureType="staff"
-                  signatureKey="staffSignature"
-                  recipientEmail=""
-                  recipientPhone=""
-                  recipientName={staffName}
-                  visitDate={formData.visitInfo?.date}
-                  familyName={formData.fosterHome?.familyName}
-                  createdByUserId={user?.id}
-                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                />
-              )}
+              <SendSignatureLinkButton
+                visitFormId={visitFormId}
+                signatureType="staff"
+                signatureKey="staffSignature"
+                recipientEmail=""
+                recipientPhone=""
+                recipientName={staffName}
+                visitDate={formData.visitInfo?.date}
+                familyName={formData.fosterHome?.familyName}
+                createdByUserId={user?.id}
+                createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+              />
             </CardContent>
           </Card>
         )}
@@ -1791,6 +1785,16 @@ const SendSignatureLinkButton = ({
   }
 
   const handleSend = async () => {
+    // Check if visit form exists - if not, show helpful message
+    if (!visitFormId) {
+      toast({
+        title: "Form Not Saved",
+        description: "Please save the form first (click 'Save' button) before sending signature requests.",
+        variant: "destructive",
+      })
+      return
+    }
+
     // Validate based on delivery method
     if (deliveryMethod === "email") {
       if (!email.trim()) {
