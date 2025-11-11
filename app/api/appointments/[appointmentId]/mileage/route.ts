@@ -96,14 +96,38 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     // Check if appointment exists and verify access
     // If we have user info, verify they're assigned to this appointment
+    // Note: return_* columns may not exist in all databases, so we'll check for them conditionally
     const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, 
                                     arrived_latitude, arrived_longitude, arrived_timestamp,
-                                    return_latitude, return_longitude, return_timestamp, return_mileage,
                                     assigned_to_user_id 
                               FROM appointments 
                               WHERE appointment_id = @param0 AND is_deleted = 0`
     
     const existingAppointment = await query(appointmentQuery, [appointmentId])
+    
+    // Try to get return columns if they exist (they may not be in all databases)
+    let returnColumns: any = {}
+    try {
+      const returnQuery = `SELECT return_latitude, return_longitude, return_timestamp, return_mileage
+                           FROM appointments 
+                           WHERE appointment_id = @param0 AND is_deleted = 0`
+      const returnData = await query(returnQuery, [appointmentId])
+      if (returnData.length > 0) {
+        returnColumns = returnData[0]
+      }
+    } catch (returnError: any) {
+      // If return columns don't exist, that's okay - we'll handle it gracefully
+      console.log("⚠️ [MILEAGE] Return columns not found in database, will use NULL checks:", returnError.message)
+    }
+    
+    // Merge return columns into appointment data if they exist
+    const appointment = {
+      ...existingAppointment[0],
+      return_latitude: returnColumns.return_latitude || null,
+      return_longitude: returnColumns.return_longitude || null,
+      return_timestamp: returnColumns.return_timestamp || null,
+      return_mileage: returnColumns.return_mileage || null,
+    }
 
     if (existingAppointment.length === 0) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
@@ -390,15 +414,37 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         // Update appointment with return mileage and final location
-        await query(
-          `UPDATE appointments 
-           SET return_latitude = @param1,
-               return_longitude = @param2,
-               return_mileage = @param3,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, latitude, longitude, returnMileage],
-        )
+        // Try to update return columns, but handle gracefully if they don't exist
+        try {
+          await query(
+            `UPDATE appointments 
+             SET return_latitude = @param1,
+                 return_longitude = @param2,
+                 return_mileage = @param3,
+                 updated_at = GETUTCDATE()
+             WHERE appointment_id = @param0`,
+            [appointmentId, latitude, longitude, returnMileage],
+          )
+        } catch (updateError: any) {
+          // If return columns don't exist, log a warning but don't fail
+          if (updateError.message?.includes("Invalid column name") && 
+              (updateError.message.includes("return_latitude") || 
+               updateError.message.includes("return_longitude") || 
+               updateError.message.includes("return_mileage"))) {
+            console.warn("⚠️ [MILEAGE] Return travel columns not found in database. Please run migration script to add return_* columns.")
+            // Still return success with the calculated mileage
+            return NextResponse.json({
+              success: true,
+              message: "Return travel completed (mileage calculated, but return columns not available in database)",
+              returnMileage: returnMileage,
+              returnEstimatedTollCost: returnEstimatedToll,
+              returnCompleted: true,
+              timestamp: now.toISOString(),
+              warning: "Return travel columns not found in database",
+            })
+          }
+          throw updateError
+        }
 
         console.log("✅ [MILEAGE] Return travel completed:", {
           returnMileage: returnMileage.toFixed(2),
