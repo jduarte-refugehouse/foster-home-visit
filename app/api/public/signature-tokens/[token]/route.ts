@@ -142,6 +142,7 @@ export async function POST(
     // Validate token
     // All columns now exist in schema
     // Need token_id for UPDATE statement
+    // Also need signature_key to map to correct field, and created_by info for email notification
     const tokenData = await query(
       `
       SELECT 
@@ -151,9 +152,12 @@ export async function POST(
         st.signer_name,
         st.signer_role,
         st.signer_type,
+        st.signature_key,
         st.expires_at,
         st.is_used,
-        st.description
+        st.description,
+        st.created_by_user_id,
+        st.created_by_name
       FROM signature_tokens st
       WHERE st.token = @param0
         AND st.is_deleted = 0
@@ -230,18 +234,44 @@ export async function POST(
           }
         }
 
-        // Update signatures based on signer type
-        if (tokenInfo.signer_type === "foster_parent_1") {
-          signatures.fosterParent1 = signatureData
-        } else if (tokenInfo.signer_type === "foster_parent_2") {
-          signatures.fosterParent2 = signatureData
-        } else if (tokenInfo.signer_type === "staff") {
-          signatures.staff = signatureData
-        } else if (tokenInfo.signer_type === "supervisor") {
-          signatures.supervisor = signatureData
+        // Update signatures based on signature_key (e.g., "parent1Signature", "staffSignature")
+        // This is more reliable than signer_type since signature_key matches the form field names
+        if (tokenInfo.signature_key) {
+          // Use signature_key directly (e.g., "parent1Signature" -> signatures.parent1Signature)
+          signatures[tokenInfo.signature_key] = signature
+          
+          // Also update the name field if it exists (e.g., "parent1" -> signatures.parent1)
+          // Extract the base key (e.g., "parent1Signature" -> "parent1")
+          const baseKey = tokenInfo.signature_key.replace(/Signature$/, "")
+          if (baseKey !== tokenInfo.signature_key) {
+            signatures[baseKey] = finalSignerName
+          }
+          
+          // Update the date field (e.g., "parent1Date" -> signatures.parent1Date)
+          const dateKey = baseKey + "Date"
+          signatures[dateKey] = now.split('T')[0] // Just the date part (YYYY-MM-DD)
         } else {
-          // Generic signature field
-          signatures[tokenInfo.signer_type] = signatureData
+          // Fallback to signer_type if signature_key is not available
+          if (tokenInfo.signer_type === "foster_parent_1" || tokenInfo.signer_type === "parent1") {
+            signatures.parent1Signature = signature
+            signatures.parent1 = finalSignerName
+            signatures.parent1Date = now.split('T')[0]
+          } else if (tokenInfo.signer_type === "foster_parent_2" || tokenInfo.signer_type === "parent2") {
+            signatures.parent2Signature = signature
+            signatures.parent2 = finalSignerName
+            signatures.parent2Date = now.split('T')[0]
+          } else if (tokenInfo.signer_type === "staff") {
+            signatures.staffSignature = signature
+            signatures.staff = finalSignerName
+            signatures.staffDate = now.split('T')[0]
+          } else if (tokenInfo.signer_type === "supervisor") {
+            signatures.supervisorSignature = signature
+            signatures.supervisor = finalSignerName
+            signatures.supervisorDate = now.split('T')[0]
+          } else {
+            // Generic signature field
+            signatures[tokenInfo.signer_type] = signatureData
+          }
         }
 
         // Update visit form with signature
@@ -326,25 +356,77 @@ export async function POST(
       throw dbError // Re-throw to be caught by outer catch
     }
 
-    // Send email notification to test email (hardcoded for testing)
+    // Send email notification to the requester (person who requested the signature)
+    // Also send to test email for testing purposes
     // Send email asynchronously without blocking signature submission
     (async () => {
       try {
-        const testEmail = "jduarte@refugehouse.org"
         const apiKey = process.env.SENDGRID_API_KEY
         const fromEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@refugehouse.org"
+        const testEmail = "jduarte@refugehouse.org"
 
-        console.log("📧 [TEST] Starting email send process")
-        console.log("📧 [TEST] From email:", fromEmail)
-        console.log("📧 [TEST] To email:", testEmail)
-        console.log("📧 [TEST] API key configured:", !!apiKey)
+        console.log("📧 [SIGNATURE] Starting email notification process")
+        console.log("📧 [SIGNATURE] From email:", fromEmail)
+        console.log("📧 [SIGNATURE] API key configured:", !!apiKey)
 
         if (!apiKey) {
-          console.warn("⚠️ [TEST] SendGrid API key not configured, skipping email")
+          console.warn("⚠️ [SIGNATURE] SendGrid API key not configured, skipping email")
           return
         }
 
         sgMail.setApiKey(apiKey)
+
+        // Look up requester's email address
+        let requesterEmail: string | null = null
+        if (tokenInfo.created_by_user_id) {
+          try {
+            // Try to find user by clerk_user_id first (most common case)
+            const userByClerkId = await query(
+              `SELECT email FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`,
+              [tokenInfo.created_by_user_id]
+            )
+            
+            if (userByClerkId.length > 0) {
+              requesterEmail = userByClerkId[0].email
+            } else {
+              // Try to find by app_user id (if created_by_user_id is an app_user id)
+              const userById = await query(
+                `SELECT email FROM app_users WHERE id = @param0 AND is_active = 1`,
+                [tokenInfo.created_by_user_id]
+              )
+              
+              if (userById.length > 0) {
+                requesterEmail = userById[0].email
+              }
+            }
+            
+            console.log("📧 [SIGNATURE] Requester email lookup:", {
+              created_by_user_id: tokenInfo.created_by_user_id,
+              found: !!requesterEmail,
+              email: requesterEmail || "not found"
+            })
+          } catch (emailLookupError) {
+            console.error("❌ [SIGNATURE] Error looking up requester email:", emailLookupError)
+            // Continue with test email only if lookup fails
+          }
+        }
+
+        // Prepare email recipients
+        const emailRecipients: string[] = []
+        if (requesterEmail) {
+          emailRecipients.push(requesterEmail)
+        }
+        // Always include test email for testing
+        if (testEmail && !emailRecipients.includes(testEmail)) {
+          emailRecipients.push(testEmail)
+        }
+
+        if (emailRecipients.length === 0) {
+          console.warn("⚠️ [SIGNATURE] No email recipients found, skipping email")
+          return
+        }
+
+        console.log("📧 [SIGNATURE] Sending to recipients:", emailRecipients)
 
         // Truncate signature if too long (base64 images can be very large)
         // Also escape any special characters that might break the template
@@ -362,63 +444,68 @@ export async function POST(
         // For base64 data URLs, we need to be careful - just use it directly but ensure it's a string
         const safeSignature = String(signaturePreview || "")
 
-        const subject = "Test Signature Received - " + safeSignerName
+        const subject = "Signature Received - " + safeSignerName
+        const isTestSignature = !tokenInfo.visit_form_id
+        const emailTitle = isTestSignature ? "Test Signature Received" : "Signature Confirmation"
+        const emailIntro = isTestSignature 
+          ? "A test signature has been submitted through the signature link system."
+          : "A signature has been successfully submitted for the home visit form."
+        
         // Build HTML content using string concatenation to avoid template literal issues with large base64 strings
         const htmlContent = 
           '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
-          '<h2 style="color: #5E3989;">Test Signature Received</h2>' +
-          '<p>A test signature has been submitted through the signature link system.</p>' +
+          '<h2 style="color: #5E3989;">' + emailTitle + '</h2>' +
+          '<p>' + emailIntro + '</p>' +
           '<div style="margin: 20px 0;">' +
           '<p><strong>Signer Name:</strong> ' + safeSignerName + '</p>' +
           '<p><strong>Role:</strong> ' + safeRole + '</p>' +
           '<p><strong>Signed Date:</strong> ' + safeSignedDate + '</p>' +
-          '<p><strong>Token:</strong> ' + safeToken + '</p>' +
-          '<p><strong>Description:</strong> ' + safeDescription + '</p>' +
           (tokenInfo.visit_form_id ? '<p><strong>Visit Form ID:</strong> ' + String(tokenInfo.visit_form_id) + '</p>' : '<p><strong>Type:</strong> Standalone Test Signature</p>') +
           '</div>' +
           '<div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;">' +
           '<h3 style="margin-top: 0;">Signature Image:</h3>' +
           '<img src="' + safeSignature + '" alt="Signature" style="max-width: 100%; height: auto; border: 1px solid #ccc; background-color: white; padding: 10px;" />' +
           '</div>' +
-          '<p style="color: #666; font-size: 12px; margin-top: 30px;">' +
+          (!isTestSignature ? '<p style="color: #666; font-size: 12px; margin-top: 30px;">' +
+          'The signature has been automatically added to the visit form.' +
+          '</p>' : '<p style="color: #666; font-size: 12px; margin-top: 30px;">' +
           'This is a test signature from the signature link testing system.' +
-          '</p>' +
+          '</p>') +
           '</div>'
 
         const textContent = 
-          "Test Signature Received\n\n" +
-          "A test signature has been submitted through the signature link system.\n\n" +
+          emailTitle + "\n\n" +
+          emailIntro + "\n\n" +
           "Signer Name: " + safeSignerName + "\n" +
           "Role: " + safeRole + "\n" +
           "Signed Date: " + safeSignedDate + "\n" +
-          "Token: " + safeToken + "\n" +
-          "Description: " + safeDescription + "\n" +
           (tokenInfo.visit_form_id ? "Visit Form ID: " + String(tokenInfo.visit_form_id) + "\n" : "Type: Standalone Test Signature\n") +
           "\nSignature Image: (see HTML version)\n\n" +
-          "This is a test signature from the signature link testing system."
+          (!isTestSignature ? "The signature has been automatically added to the visit form.\n" : "This is a test signature from the signature link testing system.\n")
 
-        console.log("📧 [TEST] Attempting to send email to:", testEmail)
-        console.log("📧 [TEST] Subject:", subject)
-        console.log("📧 [TEST] HTML content length:", htmlContent.length)
-        console.log("📧 [TEST] Text content length:", textContent.length)
+        console.log("📧 [SIGNATURE] Attempting to send email to:", emailRecipients)
+        console.log("📧 [SIGNATURE] Subject:", subject)
+        console.log("📧 [SIGNATURE] HTML content length:", htmlContent.length)
+        console.log("📧 [SIGNATURE] Text content length:", textContent.length)
 
+        // Send to all recipients
         const emailResult = await sgMail.send({
-          to: testEmail,
+          to: emailRecipients,
           from: {
             email: fromEmail,
-            name: "Foster Home Visit System - Test",
+            name: "Foster Home Visit System",
           },
           subject: subject,
           text: textContent,
           html: htmlContent,
         })
 
-        console.log("✅ [TEST] Email sent successfully to:", testEmail)
-        console.log("✅ [TEST] SendGrid response status:", emailResult[0]?.statusCode)
-        console.log("✅ [TEST] SendGrid response headers:", JSON.stringify(emailResult[0]?.headers || {}))
+        console.log("✅ [SIGNATURE] Email sent successfully to:", emailRecipients)
+        console.log("✅ [SIGNATURE] SendGrid response status:", emailResult[0]?.statusCode)
+        console.log("✅ [SIGNATURE] SendGrid response headers:", JSON.stringify(emailResult[0]?.headers || {}))
       } catch (emailError: any) {
-        console.error("❌ [TEST] Failed to send test signature email:", emailError)
-        console.error("❌ [TEST] Email error details:", {
+        console.error("❌ [SIGNATURE] Failed to send signature confirmation email:", emailError)
+        console.error("❌ [SIGNATURE] Email error details:", {
           message: emailError?.message,
           code: emailError?.code,
           response: emailError?.response?.body,
