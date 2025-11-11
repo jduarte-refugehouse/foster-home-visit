@@ -40,6 +40,7 @@ interface EnhancedHomeVisitFormProps {
   existingFormData?: any
   onSave?: (formData: any, options?: { silent?: boolean }) => Promise<void>
   onSubmit?: (formData: any) => Promise<void>
+  onCompleteVisit?: () => Promise<void>
 }
 
 const EnhancedHomeVisitForm = ({ 
@@ -48,7 +49,8 @@ const EnhancedHomeVisitForm = ({
   prepopulationData,
   existingFormData,
   onSave,
-  onSubmit 
+  onSubmit,
+  onCompleteVisit
 }: EnhancedHomeVisitFormProps) => {
   // Enhanced state management with all new sections
   const [formData, setFormData] = useState({

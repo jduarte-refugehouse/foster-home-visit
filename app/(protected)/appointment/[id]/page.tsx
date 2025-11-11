@@ -1942,6 +1942,7 @@ export default function AppointmentDetailPage() {
               existingFormData={existingFormData}
               onSave={handleSaveForm}
               onSubmit={handleSubmitForm}
+              onCompleteVisit={handleVisitFormCompleted}
             />
           ) : appointment ? (
             <Card className="rounded-xl shadow-sm">
