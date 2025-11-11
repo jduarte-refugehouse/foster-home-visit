@@ -1590,8 +1590,14 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                     <Input
                       value={nameValue}
                       onChange={(e) => handleSignatureChange(sigKey, e.target.value)}
-                      placeholder={provider.name || "Type full name"}
+                      placeholder={providerName || "Type full name"}
                       className="text-sm"
+                      // Pre-populate with provider name if empty when field is focused
+                      onFocus={(e) => {
+                        if (!e.target.value && providerName) {
+                          handleSignatureChange(sigKey, providerName)
+                        }
+                      }}
                     />
                   </div>
 
