@@ -409,7 +409,7 @@ export default function MobileAppointmentDetailPage() {
         return
       }
 
-      setCapturingLocation(true)
+      // Don't set capturingLocation here - captureLocation does it internally
       const location = await captureLocation("arrived")
       
       const headers: HeadersInit = {
