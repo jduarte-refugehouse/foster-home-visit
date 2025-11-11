@@ -1399,6 +1399,19 @@ const EnhancedHomeVisitForm = ({
                   className="flex-shrink-0 font-semibold border-2 border-green-600 text-green-700 hover:bg-green-50 hover:border-green-700"
                   onClick={async () => {
                     console.log("✅ [FORM] Visit Completed button clicked")
+                    
+                    // Prompt for confirmation before completing visit
+                    const confirmed = window.confirm(
+                      "Are you sure you want to mark this visit as completed?\n\n" +
+                      "This will update the appointment status to 'completed'.\n" +
+                      "You can still edit and submit the form later if needed."
+                    )
+                    
+                    if (!confirmed) {
+                      console.log("✅ [FORM] Visit completion cancelled by user")
+                      return
+                    }
+                    
                     if (onCompleteVisit) {
                       try {
                         console.log("✅ [FORM] Calling onCompleteVisit callback...")
