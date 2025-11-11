@@ -1504,14 +1504,16 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
     onChange(`signatures.${key}`, value)
   }
 
-  // Auto-populate names if not already set, and ensure dates are set when signatures exist
+  // Auto-populate names from providers - always use provider names for clarity
   useEffect(() => {
-    // Pre-fill foster parent names
+    // Pre-fill foster parent names from providers (always update to match providers)
     providers.forEach((provider, index) => {
       if (provider.name) {
         const sigKey = `parent${index + 1}`
         const currentValue = signatures[sigKey]
-        if (!currentValue || currentValue === "") {
+        // Always pre-populate with provider name if it's different or empty
+        // This ensures the name field always shows the actual foster parent name
+        if (!currentValue || currentValue === "" || currentValue !== provider.name) {
           handleSignatureChange(sigKey, provider.name)
         }
       }
@@ -1528,7 +1530,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
     // Pre-fill staff name
     if (staffName) {
       const currentStaffValue = signatures.staff
-      if (!currentStaffValue || currentStaffValue === "") {
+      if (!currentStaffValue || currentStaffValue === "" || currentStaffValue !== staffName) {
         handleSignatureChange("staff", staffName)
       }
     }
@@ -1553,7 +1555,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
       handleSignatureChange("parent2Date", new Date().toISOString().split("T")[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providers.length, staffName, signatures]) // Run when providers, staffName, or signatures change
+  }, [providers, staffName]) // Run when providers array or staffName changes (not signatures to avoid loops)
 
   return (
     <div className="space-y-3">
@@ -1568,9 +1570,12 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
         {providers.length > 0 ? (
           providers.map((provider, index) => {
             const sigKey = `parent${index + 1}`
-            const displayName = provider.name || `Foster Parent ${index + 1}`
+            // Always use the actual provider name for display - this is critical for EntityCommunicationBridge lookup
+            const providerName = provider.name || ""
+            const displayName = providerName || `Foster Parent ${index + 1}`
             const isRequired = index === 0 // First parent is required
-            const nameValue = getSignatureValue(sigKey) || provider.name || ""
+            // Prefer provider name, then signature value, then empty
+            const nameValue = providerName || getSignatureValue(sigKey) || ""
             
             return (
               <Card key={`parent-${index}`}>
@@ -1623,20 +1628,20 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 </div>
                 
                 {/* Send Signature Link Button */}
-                  <SendSignatureLinkButton
-                    visitFormId={visitFormId}
-                    signatureType={`parent${index + 1}`}
-                    signatureKey={`${sigKey}Signature`}
+                <SendSignatureLinkButton
+                  visitFormId={visitFormId}
+                  signatureType={`parent${index + 1}`}
+                  signatureKey={`${sigKey}Signature`}
                   recipientEmail={provider.email || ""}
                   recipientPhone={provider.phone || ""}
-                    recipientName={displayName}
+                  recipientName={providerName || nameValue || displayName}
                   entityGuid={provider.guid}
                   fosterFacilityGuid={formData.fosterHome?.homeId}
-                    visitDate={formData.visitInfo?.date}
-                    familyName={formData.fosterHome?.familyName}
-                    createdByUserId={user?.id}
-                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                  />
+                  visitDate={formData.visitInfo?.date}
+                  familyName={formData.fosterHome?.familyName}
+                  createdByUserId={user?.id}
+                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                />
               </CardContent>
             </Card>
             )
