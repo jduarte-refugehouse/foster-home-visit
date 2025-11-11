@@ -1974,27 +1974,38 @@ const SendSignatureLinkButton = ({
 
   // Look up contact info from EntityCommunicationBridge when dialog opens
   useEffect(() => {
-    if (!open || !fosterFacilityGuid) return
+    if (!open) return
     
     // Fetch contact info from EntityCommunicationBridge
-    // This will pre-populate if found, even if we already have some data
+    // PRIMARY MATCH: EntityGUID (PersonGUID from SyncCurrentFosterFacility)
+    // This is the most reliable match since EntityGUID is enforced
+    // FosterFacilityGUID is NOT enforced, so it's optional (secondary filter)
     const fetchContactInfo = async () => {
+      // Need at least entityGuid or recipientName to perform lookup
+      if (!entityGuid && !recipientName) {
+        console.warn(`📞 [Signature] No entityGuid or recipientName provided for lookup`)
+        return
+      }
+      
       setLoadingContact(true)
       try {
-        const params = new URLSearchParams({
-          fosterFacilityGuid: fosterFacilityGuid,
-        })
+        const params = new URLSearchParams()
         
-        // Prioritize entityGuid (PersonGUID from SyncCurrentFosterFacility)
-        // This should match EntityCommunicationBridge.EntityGUID
+        // PRIMARY: entityGuid (PersonGUID from SyncCurrentFosterFacility)
+        // This should match EntityCommunicationBridge.EntityGUID (enforced field)
         if (entityGuid) {
           params.append("entityGuid", entityGuid)
-          console.log(`📞 [Signature] Looking up contact for entityGuid: ${entityGuid}, fosterFacilityGuid: ${fosterFacilityGuid}`)
+          console.log(`📞 [Signature] Looking up contact for entityGuid: ${entityGuid}${fosterFacilityGuid ? `, fosterFacilityGuid: ${fosterFacilityGuid}` : ' (no fosterFacilityGuid)'}`)
         } else if (recipientName) {
+          // Fallback: name-based fuzzy match
           params.append("entityName", recipientName)
-          console.log(`📞 [Signature] Looking up contact for name: ${recipientName}, fosterFacilityGuid: ${fosterFacilityGuid}`)
-        } else {
-          console.warn(`📞 [Signature] No entityGuid or recipientName provided for lookup`)
+          console.log(`📞 [Signature] Looking up contact for name: ${recipientName}${fosterFacilityGuid ? `, fosterFacilityGuid: ${fosterFacilityGuid}` : ' (no fosterFacilityGuid)'}`)
+        }
+        
+        // SECONDARY: fosterFacilityGuid is optional (not enforced in table)
+        // Only include if provided - helps narrow down results but not required
+        if (fosterFacilityGuid) {
+          params.append("fosterFacilityGuid", fosterFacilityGuid)
         }
         
         const response = await fetch(`/api/entity-communication/lookup?${params.toString()}`)
