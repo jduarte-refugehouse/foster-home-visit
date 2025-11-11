@@ -3,7 +3,10 @@
 -- Each leg represents a single travel segment from point A to point B
 -- Legs can be tied to appointments or be standalone/ad-hoc
 
-CREATE TABLE [dbo].[travel_legs] (
+-- Check if table exists before creating
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'travel_legs' AND schema_id = SCHEMA_ID('dbo'))
+BEGIN
+    CREATE TABLE [dbo].[travel_legs] (
     [leg_id] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     
     -- Staff tracking
@@ -65,7 +68,30 @@ CREATE TABLE [dbo].[travel_legs] (
         REFERENCES [appointments]([appointment_id]),
     CONSTRAINT [FK_travel_legs_appointments_to] FOREIGN KEY ([appointment_id_to]) 
         REFERENCES [appointments]([appointment_id])
-)
+    )
+    GO
+
+    -- Indexes for common queries
+    CREATE INDEX [IX_travel_legs_staff_date] ON [dbo].[travel_legs] ([staff_user_id], [start_timestamp], [is_deleted])
+    CREATE INDEX [IX_travel_legs_journey] ON [dbo].[travel_legs] ([journey_id], [leg_sequence])
+    CREATE INDEX [IX_travel_legs_appointments] ON [dbo].[travel_legs] ([appointment_id_from], [appointment_id_to])
+    CREATE INDEX [IX_travel_legs_status] ON [dbo].[travel_legs] ([leg_status], [is_deleted])
+    GO
+
+    -- Add comments
+    EXEC sp_addextendedproperty 
+        @name = N'MS_Description', 
+        @value = N'Flexible travel tracking system. Each leg represents a single travel segment from point A to point B. Supports ad-hoc travel, backdating, manual entry, and any travel scenario.', 
+        @level0type = N'SCHEMA', @level0name = N'dbo', 
+        @level1type = N'TABLE', @level1name = N'travel_legs'
+    GO
+
+    PRINT 'Table travel_legs created successfully.'
+END
+ELSE
+BEGIN
+    PRINT 'Table travel_legs already exists. Skipping creation.'
+END
 GO
 
 -- Indexes for common queries
