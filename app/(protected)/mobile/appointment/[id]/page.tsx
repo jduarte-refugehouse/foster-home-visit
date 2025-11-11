@@ -822,6 +822,93 @@ export default function MobileAppointmentDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Send Appointment Link Dialog */}
+      <Dialog open={showSendLinkDialog} onOpenChange={setShowSendLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Text Appointment Link</DialogTitle>
+            <DialogDescription>
+              Send yourself a text message with a link to this appointment so you can easily access the "Leave" button when you're ready.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-muted-foreground">
+              This will send an SMS to your phone number on file with a quick link to access this appointment.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowSendLinkDialog(false)
+              }}
+              disabled={sendingLink}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!appointmentId) return
+
+                try {
+                  setSendingLink(true)
+
+                  const headers: HeadersInit = {
+                    "Content-Type": "application/json",
+                  }
+                  if (user) {
+                    headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+                    headers["x-user-clerk-id"] = user.id
+                    headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                  }
+
+                  const response = await fetch(`/api/appointments/${appointmentId}/send-link`, {
+                    method: "POST",
+                    headers,
+                  })
+
+                  const data = await response.json()
+
+                  if (response.ok) {
+                    toast({
+                      title: "Link Sent",
+                      description: data.message || "Appointment link sent to your phone",
+                    })
+                    setShowSendLinkDialog(false)
+                  } else {
+                    if (data.error === "Phone number not found" || response.status === 400) {
+                      toast({
+                        title: "Phone Number Not Found",
+                        description: data.message || "No phone number on file. Please add your phone number to your profile.",
+                        variant: "destructive",
+                      })
+                    } else {
+                      toast({
+                        title: "Error",
+                        description: data.error || "Failed to send appointment link",
+                        variant: "destructive",
+                      })
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error sending appointment link:", error)
+                  toast({
+                    title: "Error",
+                    description: error instanceof Error ? error.message : "Failed to send appointment link",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setSendingLink(false)
+                }
+              }}
+              disabled={sendingLink}
+            >
+              {sendingLink ? "Sending..." : "Send Link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
