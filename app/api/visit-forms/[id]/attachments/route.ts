@@ -66,28 +66,62 @@ export async function POST(
     const attachmentId = randomUUID()
     const filePathReference = `attachment:${attachmentId}`
     
-    await query(
-      `INSERT INTO dbo.visit_form_attachments (
-        attachment_id, visit_form_id, file_name, file_path, file_size,
-        mime_type, attachment_type, description, file_data, created_at, created_by_user_id, created_by_name
-      ) VALUES (
-        @param0, @param1, @param2, @param3, @param4,
-        @param5, @param6, @param7, @param8, GETUTCDATE(), @param9, @param10
-      )`,
-      [
-        attachmentId,
-        formId,
-        file.name,
-        filePathReference, // Reference identifier instead of actual path
-        file.size,
-        file.type,
-        attachmentType,
-        description,
-        dataUrl, // Store actual base64 data URL in file_data column
-        createdByUserId,
-        createdByName,
-      ]
-    )
+    // Try to insert with file_data column, fall back if column doesn't exist
+    try {
+      await query(
+        `INSERT INTO dbo.visit_form_attachments (
+          attachment_id, visit_form_id, file_name, file_path, file_size,
+          mime_type, attachment_type, description, file_data, created_at, created_by_user_id, created_by_name
+        ) VALUES (
+          @param0, @param1, @param2, @param3, @param4,
+          @param5, @param6, @param7, @param8, GETUTCDATE(), @param9, @param10
+        )`,
+        [
+          attachmentId,
+          formId,
+          file.name,
+          filePathReference, // Reference identifier instead of actual path
+          file.size,
+          file.type,
+          attachmentType,
+          description,
+          dataUrl, // Store actual base64 data URL in file_data column
+          createdByUserId,
+          createdByName,
+        ]
+      )
+    } catch (insertError: any) {
+      // If file_data column doesn't exist, insert without it
+      // User will need to run the migration script
+      if (insertError?.message?.includes("Invalid column name 'file_data'")) {
+        console.warn("file_data column not found, inserting without it. Please run migration script.")
+        await query(
+          `INSERT INTO dbo.visit_form_attachments (
+            attachment_id, visit_form_id, file_name, file_path, file_size,
+            mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
+          ) VALUES (
+            @param0, @param1, @param2, @param3, @param4,
+            @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
+          )`,
+          [
+            attachmentId,
+            formId,
+            file.name,
+            filePathReference,
+            file.size,
+            file.type,
+            attachmentType,
+            description,
+            createdByUserId,
+            createdByName,
+          ]
+        )
+        // Note: File data will be lost without file_data column
+        console.warn("File uploaded but data not stored. Run scripts/add-file-data-to-attachments.sql to enable file storage.")
+      } else {
+        throw insertError
+      }
+    }
 
     return NextResponse.json({
       success: true,
