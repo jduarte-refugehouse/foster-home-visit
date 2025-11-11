@@ -362,15 +362,35 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
       if (isReturnStart) {
         // Starting return travel - save return start location and timestamp
-        await query(
-          `UPDATE appointments 
-           SET return_latitude = @param1,
-               return_longitude = @param2,
-               return_timestamp = @param3,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, latitude, longitude, now],
-        )
+        // Try to update return columns, but handle gracefully if they don't exist
+        try {
+          await query(
+            `UPDATE appointments 
+             SET return_latitude = @param1,
+                 return_longitude = @param2,
+                 return_timestamp = @param3,
+                 updated_at = GETUTCDATE()
+             WHERE appointment_id = @param0`,
+            [appointmentId, latitude, longitude, now],
+          )
+        } catch (updateError: any) {
+          // If return columns don't exist, log a warning but don't fail
+          if (updateError.message?.includes("Invalid column name") && 
+              (updateError.message.includes("return_latitude") || 
+               updateError.message.includes("return_longitude") || 
+               updateError.message.includes("return_timestamp"))) {
+            console.warn("⚠️ [MILEAGE] Return travel columns not found in database. Please run migration script to add return_* columns.")
+            // Still return success since the location was captured, just not stored
+            return NextResponse.json({
+              success: true,
+              message: "Return travel started (location captured, but return columns not available in database)",
+              returnStarted: true,
+              timestamp: now.toISOString(),
+              warning: "Return travel columns not found in database",
+            })
+          }
+          throw updateError
+        }
 
         console.log("🚗 [MILEAGE] Return travel started:", {
           appointmentId,
