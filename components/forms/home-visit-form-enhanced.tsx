@@ -2722,13 +2722,14 @@ const ComplianceSection = ({ title, section, formData, onChange, onNotesChange, 
       {(!hasApplicable || sectionData.applicable) && (
         <div className="border-t pt-2 mt-2">
           <Label htmlFor={`${section}-combined-notes`} className="text-sm font-medium">Section Notes (Optional)</Label>
-          <Textarea
+          <TextareaWithVoice
             id={`${section}-combined-notes`}
             value={sectionData.combinedNotes || ""}
             onChange={(e) => onNotesChange(`${section}.combinedNotes`, e.target.value)}
             placeholder="Additional observations for this section..."
             rows={2}
             className="mt-1 text-sm"
+            showVoiceButton={true}
           />
         </div>
       )}
@@ -2847,13 +2848,14 @@ const PackageComplianceSection = ({ formData, onChange, onComplianceChange, onNo
       {/* Section Notes */}
       <div className="border-t pt-2 mt-2">
         <Label htmlFor="package-compliance-notes" className="text-sm font-medium">Section Notes (Optional)</Label>
-        <Textarea
+        <TextareaWithVoice
           id="package-compliance-notes"
           value={packageData.combinedNotes || ""}
           onChange={(e) => onNotesChange("packageCompliance.combinedNotes", e.target.value)}
           placeholder="Additional observations for package-specific compliance..."
           rows={2}
           className="mt-1 text-sm"
+          showVoiceButton={true}
         />
       </div>
     </div>
@@ -3440,13 +3442,14 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
 
       <div className="border-t pt-6">
         <Label htmlFor="inspections-combined-notes">Combined Notes for Inspection Documentation</Label>
-        <Textarea
+        <TextareaWithVoice
           id="inspections-combined-notes"
           value={inspections.combinedNotes}
           onChange={(e) => onChange("inspections.combinedNotes", e.target.value)}
           placeholder="Any additional observations or context for inspections..."
           rows={4}
           className="mt-2"
+          showVoiceButton={true}
         />
       </div>
     </div>

@@ -313,7 +313,7 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
 
                     <div>
                       <Label htmlFor={`child-notes-${index}`}>Additional Notes</Label>
-                      <Textarea
+                      <TextareaWithVoice
                         id={`child-notes-${index}`}
                         value={child.notes}
                         onChange={(e) => {
@@ -322,6 +322,7 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                           onChange("fosterParentInterview.childrenDiscussed", newChildren)
                         }}
                         rows={2}
+                        showVoiceButton={true}
                       />
                     </div>
                   </div>
@@ -389,13 +390,14 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
 
       <div className="border-t pt-6">
         <Label htmlFor="foster-parent-combined-notes">Combined Notes for Foster Parent Interview</Label>
-        <Textarea
+        <TextareaWithVoice
           id="foster-parent-combined-notes"
           value={interview.combinedNotes}
           onChange={(e) => onChange("fosterParentInterview.combinedNotes", e.target.value)}
           placeholder="Any additional observations or context from the foster parent interview..."
           rows={4}
           className="mt-2"
+          showVoiceButton={true}
         />
       </div>
     </div>
@@ -796,80 +798,87 @@ export const ObservationsSection = ({ formData, onChange }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="environmental">Environmental Observations</Label>
-          <Textarea
+          <TextareaWithVoice
             id="environmental"
             value={observations.environmental}
             onChange={(e) => onChange("observations.environmental", e.target.value)}
             placeholder="Overall home environment, cleanliness, safety observations..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
 
         <div>
           <Label htmlFor="familyDynamics">Family Dynamics</Label>
-          <Textarea
+          <TextareaWithVoice
             id="familyDynamics"
             value={observations.familyDynamics}
             onChange={(e) => onChange("observations.familyDynamics", e.target.value)}
             placeholder="Interactions between family members, communication patterns..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
 
         <div>
           <Label htmlFor="childInteractions">Child Interactions</Label>
-          <Textarea
+          <TextareaWithVoice
             id="childInteractions"
             value={observations.childInteractions}
             onChange={(e) => onChange("observations.childInteractions", e.target.value)}
             placeholder="How children interact with each other and foster parents..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
 
         <div>
           <Label htmlFor="complianceConcerns">Compliance Concerns</Label>
-          <Textarea
+          <TextareaWithVoice
             id="complianceConcerns"
             value={observations.complianceConcerns}
             onChange={(e) => onChange("observations.complianceConcerns", e.target.value)}
             placeholder="Any compliance issues or areas requiring attention..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
 
         <div>
           <Label htmlFor="recommendations">Recommendations</Label>
-          <Textarea
+          <TextareaWithVoice
             id="recommendations"
             value={observations.recommendations}
             onChange={(e) => onChange("observations.recommendations", e.target.value)}
             placeholder="Suggestions for improvements or resources..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
 
         <div>
           <Label htmlFor="other">Other Observations</Label>
-          <Textarea
+          <TextareaWithVoice
             id="other"
             value={observations.other}
             onChange={(e) => onChange("observations.other", e.target.value)}
             placeholder="Any other relevant observations..."
             rows={4}
+            showVoiceButton={true}
           />
         </div>
       </div>
 
       <div className="border-t pt-6">
         <Label htmlFor="observations-combined-notes">Combined General Observations</Label>
-        <Textarea
+        <TextareaWithVoice
           id="observations-combined-notes"
           value={observations.combinedNotes}
           onChange={(e) => onChange("observations.combinedNotes", e.target.value)}
           placeholder="Summary of overall observations and impressions from the visit..."
           rows={4}
           className="mt-2"
+          showVoiceButton={true}
         />
       </div>
     </div>
@@ -905,7 +914,7 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Label htmlFor={`followup-issue-${index}`}>Previous Issue</Label>
-                  <Textarea
+                  <TextareaWithVoice
                     id={`followup-issue-${index}`}
                     value={item.previousIssue}
                     onChange={(e) => {
@@ -914,6 +923,7 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
                       onChange("followUpItems", newItems)
                     }}
                     rows={2}
+                    showVoiceButton={true}
                   />
                 </div>
 
@@ -940,7 +950,7 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
 
                 <div>
                   <Label htmlFor={`followup-resolution-${index}`}>Resolution Details</Label>
-                  <Textarea
+                  <TextareaWithVoice
                     id={`followup-resolution-${index}`}
                     value={item.resolutionDetails}
                     onChange={(e) => {
@@ -949,12 +959,13 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
                       onChange("followUpItems", newItems)
                     }}
                     rows={2}
+                    showVoiceButton={true}
                   />
                 </div>
 
                 <div className="md:col-span-2">
                   <Label htmlFor={`followup-notes-${index}`}>Additional Notes</Label>
-                  <Textarea
+                  <TextareaWithVoice
                     id={`followup-notes-${index}`}
                     value={item.notes}
                     onChange={(e) => {
@@ -963,6 +974,7 @@ export const FollowUpItemsSection = ({ formData, onChange, onAdd }) => {
                       onChange("followUpItems", newItems)
                     }}
                     rows={2}
+                    showVoiceButton={true}
                   />
                 </div>
               </div>
@@ -1238,7 +1250,7 @@ export const VisitSummarySection = ({ formData, onChange }) => {
             {[0, 1, 2].map((index) => (
               <div key={index}>
                 <Label htmlFor={`strength-${index}`}>{index + 1}. Strength</Label>
-                <Textarea
+                <TextareaWithVoice
                   id={`strength-${index}`}
                   value={summary.keyStrengths[index]}
                   onChange={(e) => {
@@ -1247,6 +1259,7 @@ export const VisitSummarySection = ({ formData, onChange }) => {
                     onChange("visitSummary.keyStrengths", newStrengths)
                   }}
                   rows={2}
+                  showVoiceButton={true}
                 />
               </div>
             ))}
@@ -1280,7 +1293,7 @@ export const VisitSummarySection = ({ formData, onChange }) => {
 
                     <div>
                       <Label htmlFor={`priority-desc-${index}`}>Description</Label>
-                      <Textarea
+                      <TextareaWithVoice
                         id={`priority-desc-${index}`}
                         value={summary.priorityAreas[index].description}
                         onChange={(e) => {
@@ -1289,12 +1302,13 @@ export const VisitSummarySection = ({ formData, onChange }) => {
                           onChange("visitSummary.priorityAreas", newAreas)
                         }}
                         rows={2}
+                        showVoiceButton={true}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor={`priority-action-${index}`}>Action Planned</Label>
-                      <Textarea
+                      <TextareaWithVoice
                         id={`priority-action-${index}`}
                         value={summary.priorityAreas[index].actionPlanned}
                         onChange={(e) => {
@@ -1303,6 +1317,7 @@ export const VisitSummarySection = ({ formData, onChange }) => {
                           onChange("visitSummary.priorityAreas", newAreas)
                         }}
                         rows={2}
+                        showVoiceButton={true}
                       />
                     </div>
                   </div>
@@ -1322,41 +1337,45 @@ export const VisitSummarySection = ({ formData, onChange }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="resources-training">Training Materials</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="resources-training"
                 value={summary.resourcesProvided.trainingMaterials}
                 onChange={(e) => onChange("visitSummary.resourcesProvided.trainingMaterials", e.target.value)}
                 rows={2}
+                showVoiceButton={true}
               />
             </div>
 
             <div>
               <Label htmlFor="resources-contact">Contact Information</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="resources-contact"
                 value={summary.resourcesProvided.contactInformation}
                 onChange={(e) => onChange("visitSummary.resourcesProvided.contactInformation", e.target.value)}
                 rows={2}
+                showVoiceButton={true}
               />
             </div>
 
             <div>
               <Label htmlFor="resources-templates">Templates/Forms</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="resources-templates"
                 value={summary.resourcesProvided.templatesForms}
                 onChange={(e) => onChange("visitSummary.resourcesProvided.templatesForms", e.target.value)}
                 rows={2}
+                showVoiceButton={true}
               />
             </div>
 
             <div>
               <Label htmlFor="resources-other">Other Resources</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="resources-other"
                 value={summary.resourcesProvided.other}
                 onChange={(e) => onChange("visitSummary.resourcesProvided.other", e.target.value)}
                 rows={2}
+                showVoiceButton={true}
               />
             </div>
           </div>
