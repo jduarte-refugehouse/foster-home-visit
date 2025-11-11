@@ -51,10 +51,11 @@ export async function GET(request: NextRequest) {
 
     if (entityGuid) {
       // EntityGUID should match SyncCurrentFosterFacility.PersonGUID
-      queryText += ` AND EntityGUID = @param${paramIndex}`
+      // Both are uniqueidentifier type, so direct comparison should work
+      queryText += ` AND EntityGUID = CAST(@param${paramIndex} AS uniqueidentifier)`
       params.push(entityGuid)
       paramIndex++
-      console.log(`🔍 [EntityCommunication] Using EntityGUID match: ${entityGuid}`)
+      console.log(`🔍 [EntityCommunication] Using EntityGUID match: ${entityGuid} (type: ${typeof entityGuid})`)
     } else if (entityName) {
       // Fuzzy match on name (case-insensitive, partial match)
       queryText += ` AND EntityFullName LIKE @param${paramIndex}`
