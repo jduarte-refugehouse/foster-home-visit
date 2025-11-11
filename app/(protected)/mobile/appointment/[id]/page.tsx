@@ -94,28 +94,28 @@ export default function MobileAppointmentDetailPage() {
     }
   }, [appointmentId, isMobile, router])
   
-  // Fetch travel leg when appointment is available (API handles auth automatically)
+  // Fetch travel leg when appointment and user are available
   useEffect(() => {
-    if (appointmentId) {
+    if (appointmentId && isLoaded && user?.id) {
       fetchCurrentTravelLeg()
     }
-  }, [appointmentId])
+  }, [appointmentId, isLoaded, user?.id])
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
-    if (!appointmentId) return
+    if (!appointmentId || !user?.id) return
 
     try {
       // Set Clerk auth headers for API authentication
-      const headers: HeadersInit = {}
-      
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
+      // User is guaranteed to be loaded at this point
+      const headers: HeadersInit = {
+        "x-user-clerk-id": user.id,
       }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
+      
+      if (user.emailAddresses?.[0]?.emailAddress) {
         headers["x-user-email"] = user.emailAddresses[0].emailAddress
       }
-      if (user?.firstName || user?.lastName) {
+      if (user.firstName || user.lastName) {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
@@ -303,21 +303,31 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
+      // Ensure user is loaded before proceeding
+      if (!isLoaded || !user?.id) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue. Refreshing page...",
+          variant: "destructive",
+        })
+        window.location.reload()
+        return
+      }
+
       const location = await captureLocation("start_drive")
 
       // Create new travel leg using leg-based system
       // Set Clerk auth headers for API authentication
+      // User is guaranteed to be loaded at this point
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+        "x-user-clerk-id": user.id,
       }
       
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-      }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
+      if (user.emailAddresses?.[0]?.emailAddress) {
         headers["x-user-email"] = user.emailAddresses[0].emailAddress
       }
-      if (user?.firstName || user?.lastName) {
+      if (user.firstName || user.lastName) {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
@@ -413,18 +423,28 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
+      // Ensure user is loaded before proceeding
+      if (!isLoaded || !user?.id) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue. Refreshing page...",
+          variant: "destructive",
+        })
+        window.location.reload()
+        return
+      }
+
       // Set Clerk auth headers for API authentication
+      // User is guaranteed to be loaded at this point
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+        "x-user-clerk-id": user.id,
       }
       
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-      }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
+      if (user.emailAddresses?.[0]?.emailAddress) {
         headers["x-user-email"] = user.emailAddresses[0].emailAddress
       }
-      if (user?.firstName || user?.lastName) {
+      if (user.firstName || user.lastName) {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
@@ -494,6 +514,17 @@ export default function MobileAppointmentDetailPage() {
 
   const handleDriveToNext = async () => {
     try {
+      // Ensure user is loaded before proceeding
+      if (!isLoaded || !user?.id) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue. Refreshing page...",
+          variant: "destructive",
+        })
+        window.location.reload()
+        return
+      }
+
       if (!nextAppointment) {
         toast({
           title: "Error",
@@ -508,17 +539,16 @@ export default function MobileAppointmentDetailPage() {
 
       // Create new travel leg for next appointment (using same journey)
       // Set Clerk auth headers for API authentication
+      // User is guaranteed to be loaded at this point
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+        "x-user-clerk-id": user.id,
       }
       
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-      }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
+      if (user.emailAddresses?.[0]?.emailAddress) {
         headers["x-user-email"] = user.emailAddresses[0].emailAddress
       }
-      if (user?.firstName || user?.lastName) {
+      if (user.firstName || user.lastName) {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
@@ -584,23 +614,42 @@ export default function MobileAppointmentDetailPage() {
 
   const handleLeavingAction = async (action: "next" | "return") => {
     try {
+      // Ensure user is loaded before proceeding
+      if (!isLoaded) {
+        toast({
+          title: "Loading",
+          description: "Please wait while we verify your authentication...",
+        })
+        return
+      }
+
+      if (!user?.id) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue. Refreshing page...",
+          variant: "destructive",
+        })
+        // Refresh the page to trigger Clerk auth
+        window.location.reload()
+        return
+      }
+
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
       const location = await captureLocation("arrived")
       
       // Set Clerk auth headers for API authentication
+      // User is guaranteed to be loaded at this point
       const headers: HeadersInit = {
         "Content-Type": "application/json",
+        "x-user-clerk-id": user.id,
       }
       
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-      }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
+      if (user.emailAddresses?.[0]?.emailAddress) {
         headers["x-user-email"] = user.emailAddresses[0].emailAddress
       }
-      if (user?.firstName || user?.lastName) {
+      if (user.firstName || user.lastName) {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
       
@@ -987,21 +1036,31 @@ export default function MobileAppointmentDetailPage() {
             <Button
               onClick={async () => {
                 try {
+                  // Ensure user is loaded before proceeding
+                  if (!isLoaded || !user?.id) {
+                    toast({
+                      title: "Authentication Required",
+                      description: "Please sign in to continue. Refreshing page...",
+                      variant: "destructive",
+                    })
+                    window.location.reload()
+                    return
+                  }
+
                   // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
 
                   // Set Clerk auth headers for API authentication
+                  // User is guaranteed to be loaded at this point
                   const headers: HeadersInit = {
                     "Content-Type": "application/json",
+                    "x-user-clerk-id": user.id,
                   }
                   
-                  if (user?.id) {
-                    headers["x-user-clerk-id"] = user.id
-                  }
-                  if (user?.emailAddresses?.[0]?.emailAddress) {
+                  if (user.emailAddresses?.[0]?.emailAddress) {
                     headers["x-user-email"] = user.emailAddresses[0].emailAddress
                   }
-                  if (user?.firstName || user?.lastName) {
+                  if (user.firstName || user.lastName) {
                     headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
                   }
 

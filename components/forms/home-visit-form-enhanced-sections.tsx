@@ -239,8 +239,8 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
       <div className="bg-refuge-purple text-white rounded-xl px-4 py-3">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Foster Parent Interview Summary
-        </h2>
+        Foster Parent Interview Summary
+      </h2>
         <p className="text-sm text-purple-100 mt-1">
           Document key discussion points from foster parent interview, including updates on each child and any support needs identified.
         </p>
@@ -279,7 +279,7 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {interview.childrenDiscussed.map((child, index) => (
+            {interview.childrenDiscussed.map((child, index) => (
                     <>
                       {/* Row 1: Child Name | Behaviors Noted | School Performance | Actions */}
                       <tr key={`${index}-row1`} className="border-b border-slate-200 hover:bg-slate-50">
@@ -288,18 +288,18 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                             <Label htmlFor={`child-name-${index}`} className="text-xs font-medium text-muted-foreground">
                               Child Name
                             </Label>
-                            <Input
-                              id={`child-name-${index}`}
+                      <Input
+                        id={`child-name-${index}`}
                               value={child.childName || ""}
-                              onChange={(e) => {
-                                const newChildren = [...interview.childrenDiscussed]
-                                newChildren[index].childName = e.target.value
-                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                              }}
+                        onChange={(e) => {
+                          const newChildren = [...interview.childrenDiscussed]
+                          newChildren[index].childName = e.target.value
+                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                        }}
                               placeholder="Child name"
                               className="text-sm"
-                            />
-                          </div>
+                      />
+                    </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
                           <div className="space-y-1">
@@ -308,18 +308,18 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                             </Label>
                             <TextareaWithVoice
                               id={`behaviors-${index}`}
-                              value={child.behaviorsNoted || ""}
+                        value={child.behaviorsNoted || ""}
                               onChange={(e) => {
-                                const newChildren = [...interview.childrenDiscussed]
+                          const newChildren = [...interview.childrenDiscussed]
                                 newChildren[index].behaviorsNoted = e.target.value
-                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                              }}
+                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                        }}
                               placeholder="Behavioral observations..."
                               rows={2}
                               className="text-sm min-w-[200px]"
                               showVoiceButton={true}
-                            />
-                          </div>
+                      />
+                    </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
                           <div className="space-y-1">
@@ -328,18 +328,18 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                             </Label>
                             <TextareaWithVoice
                               id={`school-${index}`}
-                              value={child.schoolPerformance || ""}
+                        value={child.schoolPerformance || ""}
                               onChange={(e) => {
-                                const newChildren = [...interview.childrenDiscussed]
+                          const newChildren = [...interview.childrenDiscussed]
                                 newChildren[index].schoolPerformance = e.target.value
-                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                              }}
+                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                        }}
                               placeholder="School updates..."
                               rows={2}
                               className="text-sm min-w-[200px]"
                               showVoiceButton={true}
-                            />
-                          </div>
+                      />
+                    </div>
                         </td>
                         <td className="p-3 text-center align-top" rowSpan={2}>
                           <Button
@@ -362,18 +362,18 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                             </Label>
                             <TextareaWithVoice
                               id={`medical-${index}`}
-                              value={child.medicalTherapy || ""}
+                        value={child.medicalTherapy || ""}
                               onChange={(e) => {
-                                const newChildren = [...interview.childrenDiscussed]
+                          const newChildren = [...interview.childrenDiscussed]
                                 newChildren[index].medicalTherapy = e.target.value
-                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                              }}
+                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                        }}
                               placeholder="Medical/therapy updates..."
                               rows={2}
                               className="text-sm min-w-[200px]"
                               showVoiceButton={true}
-                            />
-                          </div>
+                      />
+                    </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
                           <div className="space-y-1">
@@ -383,24 +383,24 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                             <TextareaWithVoice
                               id={`notes-${index}`}
                               value={child.notes || ""}
-                              onChange={(e) => {
-                                const newChildren = [...interview.childrenDiscussed]
-                                newChildren[index].notes = e.target.value
-                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                              }}
+                        onChange={(e) => {
+                          const newChildren = [...interview.childrenDiscussed]
+                          newChildren[index].notes = e.target.value
+                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                        }}
                               placeholder="Additional notes..."
-                              rows={2}
+                        rows={2}
                               className="text-sm min-w-[200px]"
                               showVoiceButton={true}
-                            />
-                          </div>
+                      />
+                    </div>
                         </td>
                       </tr>
                     </>
-                  ))}
+            ))}
                 </tbody>
               </table>
-            </div>
+          </div>
           )}
         </CardContent>
       </Card>
@@ -467,13 +467,13 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
         </CardHeader>
         <CardContent className="pt-6">
           <TextareaWithVoice
-            id="foster-parent-combined-notes"
+          id="foster-parent-combined-notes"
             value={interview.combinedNotes || ""}
-            onChange={(e) => onChange("fosterParentInterview.combinedNotes", e.target.value)}
-            placeholder="Any additional observations or context from the foster parent interview..."
-            rows={4}
+          onChange={(e) => onChange("fosterParentInterview.combinedNotes", e.target.value)}
+          placeholder="Any additional observations or context from the foster parent interview..."
+          rows={4}
             showVoiceButton={true}
-          />
+        />
         </CardContent>
       </Card>
     </div>
@@ -1631,57 +1631,57 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                       <Label htmlFor={`${sigKey}-name`} className="text-xs font-medium text-muted-foreground mb-1 block">
                         Name {isRequired && "*"}
                       </Label>
-                      <Input
+                    <Input
                         id={`${sigKey}-name`}
-                        value={nameValue}
-                        onChange={(e) => handleSignatureChange(sigKey, e.target.value)}
+                      value={nameValue}
+                      onChange={(e) => handleSignatureChange(sigKey, e.target.value)}
                         placeholder={providerName || "Type full name"}
-                        className="text-sm"
+                      className="text-sm"
                         // Pre-populate with provider name if empty when field is focused
                         onFocus={(e) => {
                           if (!e.target.value && providerName) {
                             handleSignatureChange(sigKey, providerName)
-                          }
-                        }}
-                      />
+                    }
+                  }}
+                />
                     </div>
                     <div className="sm:col-span-4">
                       <Label htmlFor={`${sigKey}-date`} className="text-xs font-medium text-muted-foreground mb-1 block">
                         Date {isRequired && "*"}
                       </Label>
-                      <Input
+                  <Input
                         id={`${sigKey}-date`}
-                        type="date"
-                        value={getSignatureValue(`${sigKey}Date`) || new Date().toISOString().split("T")[0]}
-                        onChange={(e) => {
-                          handleSignatureChange(`${sigKey}Date`, e.target.value)
-                        }}
-                        onBlur={(e) => {
-                          // Ensure date is saved even if user just clicked away without changing it
-                          const currentDate = getSignatureValue(`${sigKey}Date`)
-                          const signature = getSignatureValue(`${sigKey}Signature`)
-                          if (signature && (!currentDate || currentDate === "")) {
-                            handleSignatureChange(`${sigKey}Date`, new Date().toISOString().split("T")[0])
-                          }
-                        }}
-                        className="text-sm"
-                      />
-                    </div>
+                    type="date"
+                    value={getSignatureValue(`${sigKey}Date`) || new Date().toISOString().split("T")[0]}
+                    onChange={(e) => {
+                      handleSignatureChange(`${sigKey}Date`, e.target.value)
+                    }}
+                    onBlur={(e) => {
+                      // Ensure date is saved even if user just clicked away without changing it
+                      const currentDate = getSignatureValue(`${sigKey}Date`)
+                      const signature = getSignatureValue(`${sigKey}Signature`)
+                      if (signature && (!currentDate || currentDate === "")) {
+                        handleSignatureChange(`${sigKey}Date`, new Date().toISOString().split("T")[0])
+                      }
+                    }}
+                    className="text-sm"
+                  />
+                </div>
                     <div className="sm:col-span-3">
-                      <SendSignatureLinkButton
-                        visitFormId={visitFormId}
-                        signatureType={`parent${index + 1}`}
-                        signatureKey={`${sigKey}Signature`}
+                  <SendSignatureLinkButton
+                    visitFormId={visitFormId}
+                    signatureType={`parent${index + 1}`}
+                    signatureKey={`${sigKey}Signature`}
                         recipientEmail={provider.email || ""}
                         recipientPhone={provider.phone || ""}
                         recipientName={providerName || nameValue || displayName}
                         entityGuid={provider.guid}
                         fosterFacilityGuid={formData.fosterHome?.homeId}
-                        visitDate={formData.visitInfo?.date}
-                        familyName={formData.fosterHome?.familyName}
-                        createdByUserId={user?.id}
-                        createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                      />
+                    visitDate={formData.visitInfo?.date}
+                    familyName={formData.fosterHome?.familyName}
+                    createdByUserId={user?.id}
+                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                  />
                     </div>
                   </div>
 
@@ -1697,8 +1697,8 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                       }
                     }}
                   />
-                </CardContent>
-              </Card>
+              </CardContent>
+            </Card>
             )
           })
         ) : (
@@ -1714,34 +1714,34 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   <Label htmlFor="parent1-name" className="text-xs font-medium text-muted-foreground mb-1 block">
                     Name *
                   </Label>
-                  <Input
+                <Input
                     id="parent1-name"
-                    value={getSignatureValue("parent1")}
-                    onChange={(e) => handleSignatureChange("parent1", e.target.value)}
-                    placeholder="Type full name"
-                    className="text-sm"
-                  />
-                </div>
+                  value={getSignatureValue("parent1")}
+                  onChange={(e) => handleSignatureChange("parent1", e.target.value)}
+                  placeholder="Type full name"
+                  className="text-sm"
+                />
+              </div>
                 <div className="sm:col-span-4">
                   <Label htmlFor="parent1-date" className="text-xs font-medium text-muted-foreground mb-1 block">
                     Date *
                   </Label>
-                  <Input
+                <Input
                     id="parent1-date"
-                    type="date"
-                    value={getSignatureValue("parent1Date") || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => handleSignatureChange("parent1Date", e.target.value)}
-                    onBlur={(e) => {
-                      // Ensure date is saved even if user just clicked away without changing it
-                      const currentDate = getSignatureValue("parent1Date")
-                      const signature = getSignatureValue("parent1Signature")
-                      if (signature && (!currentDate || currentDate === "")) {
-                        handleSignatureChange("parent1Date", new Date().toISOString().split("T")[0])
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                </div>
+                  type="date"
+                  value={getSignatureValue("parent1Date") || new Date().toISOString().split("T")[0]}
+                  onChange={(e) => handleSignatureChange("parent1Date", e.target.value)}
+                  onBlur={(e) => {
+                    // Ensure date is saved even if user just clicked away without changing it
+                    const currentDate = getSignatureValue("parent1Date")
+                    const signature = getSignatureValue("parent1Signature")
+                    if (signature && (!currentDate || currentDate === "")) {
+                      handleSignatureChange("parent1Date", new Date().toISOString().split("T")[0])
+                    }
+                  }}
+                  className="text-sm"
+                />
+              </div>
                 <div className="sm:col-span-3">
                   <SendSignatureLinkButton
                     visitFormId={visitFormId}
@@ -1791,13 +1791,13 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   <Label htmlFor="staff-name" className="text-xs font-medium text-muted-foreground mb-1 block">
                     Name *
                   </Label>
-                  <Input
+                <Input
                     id="staff-name"
-                    value={getSignatureValue("staff") || staffName}
-                    onChange={(e) => handleSignatureChange("staff", e.target.value)}
-                    placeholder={staffName}
-                    className="text-sm"
-                  />
+                  value={getSignatureValue("staff") || staffName}
+                  onChange={(e) => handleSignatureChange("staff", e.target.value)}
+                  placeholder={staffName}
+                  className="text-sm"
+                />
                 </div>
                 <div className="sm:col-span-4">
                   <Label htmlFor="staff-date" className="text-xs font-medium text-muted-foreground mb-1 block">
