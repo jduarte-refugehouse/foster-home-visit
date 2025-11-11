@@ -1752,6 +1752,7 @@ const SendSignatureLinkButton = ({
   createdByName?: string
 }) => {
   const [open, setOpen] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [deliveryMethod, setDeliveryMethod] = useState<"email" | "sms">("email")
   const [name, setName] = useState(recipientName || "")
   const [email, setEmail] = useState(recipientEmail || "")
@@ -1784,7 +1785,7 @@ const SendSignatureLinkButton = ({
     return phoneStr.replace(/\D/g, "")
   }
 
-  const handleSend = async () => {
+  const handleSendClick = () => {
     // Check if visit form exists - if not, show helpful message
     if (!visitFormId) {
       toast({
@@ -1836,6 +1837,12 @@ const SendSignatureLinkButton = ({
       return
     }
 
+    // Show confirmation screen
+    setShowConfirmation(true)
+  }
+
+  const handleConfirmSend = async () => {
+
     setSending(true)
     try {
       const requestBody: any = {
@@ -1877,6 +1884,7 @@ const SendSignatureLinkButton = ({
         description: `A signature link has been sent to ${deliveryMethod === "email" ? email : phone}`,
       })
       setOpen(false)
+      setShowConfirmation(false)
       // Reset form
       setName(recipientName || "")
       setEmail(recipientEmail || "")
@@ -1893,8 +1901,16 @@ const SendSignatureLinkButton = ({
     }
   }
 
+  // Reset confirmation state when dialog opens/closes
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (!isOpen) {
+      setShowConfirmation(false)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="w-full">
           <Mail className="h-4 w-4 mr-2" />
@@ -1902,87 +1918,158 @@ const SendSignatureLinkButton = ({
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send Signature Link</DialogTitle>
-          <DialogDescription>
-            Send a secure link to {recipientName || "the signer"} to sign this document remotely.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 mt-4">
-          <Tabs value={deliveryMethod} onValueChange={(value) => setDeliveryMethod(value as "email" | "sms")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email
-              </TabsTrigger>
-              <TabsTrigger value="sms" className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                SMS
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="email" className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="name">Signer Name *</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Full name"
-                />
+        {!showConfirmation ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Send Signature Link</DialogTitle>
+              <DialogDescription>
+                Send a secure link to {recipientName || "the signer"} to sign this document remotely.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Tabs value={deliveryMethod} onValueChange={(value) => setDeliveryMethod(value as "email" | "sms")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </TabsTrigger>
+                  <TabsTrigger value="sms" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    SMS
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="email" className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="name">Signer Name *</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@example.com"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter the email address even if not in the system
+                    </p>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="sms" className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="name-sms">Signer Name *</Label>
+                    <Input
+                      id="name-sms"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={handlePhoneChange}
+                      placeholder="(555) 123-4567"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter the phone number even if not in the system
+                    </p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+              
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSendClick} disabled={sending}>
+                  Continue
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter the email address even if not in the system
-                </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Confirm Signature Request</DialogTitle>
+              <DialogDescription>
+                Please review the details before sending the signature request.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Alert>
+                <AlertDescription className="text-sm">
+                  <strong>You are about to send a signature request to:</strong>
+                </AlertDescription>
+              </Alert>
+              
+              <div className="space-y-3 p-4 bg-muted rounded-lg">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Signer Name</Label>
+                  <p className="font-medium">{name}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    {deliveryMethod === "email" ? "Email Address" : "Phone Number"}
+                  </Label>
+                  <p className="font-medium">{deliveryMethod === "email" ? email : phone}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Delivery Method</Label>
+                  <p className="font-medium">{deliveryMethod === "email" ? "Email" : "SMS"}</p>
+                </div>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="sms" className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="name-sms">Signer Name *</Label>
-                <Input
-                  id="name-sms"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Full name"
-                />
+
+              <Alert variant="destructive">
+                <AlertDescription className="text-sm">
+                  This will send a signature request {deliveryMethod === "email" ? "email" : "SMS text message"} to the recipient. 
+                  Make sure the contact information is correct before confirming.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex gap-2 justify-end pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowConfirmation(false)} 
+                  disabled={sending}
+                >
+                  Back
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setOpen(false)
+                    setShowConfirmation(false)
+                  }} 
+                  disabled={sending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleConfirmSend} 
+                  disabled={sending}
+                  className="bg-refuge-purple hover:bg-refuge-purple/90"
+                >
+                  {sending ? "Sending..." : "Confirm & Send"}
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(555) 123-4567"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter the phone number even if not in the system
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="flex gap-2 justify-end pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>
-              Cancel
-            </Button>
-            <Button onClick={handleSend} disabled={sending}>
-              {sending ? "Sending..." : "Send Link"}
-            </Button>
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )
