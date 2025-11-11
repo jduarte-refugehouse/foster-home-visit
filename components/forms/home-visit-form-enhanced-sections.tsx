@@ -1777,24 +1777,68 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
 
         {/* Staff Signature - Show after foster parents */}
         {staffName && (
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm">{staffName} Signature *</CardTitle>
+          <Card className="border-2 border-refuge-purple/20 shadow-sm">
+            <CardHeader className="bg-refuge-purple/5 py-2 px-4 border-b border-refuge-purple/10">
+              <CardTitle className="text-sm font-semibold">{staffName} Signature *</CardTitle>
               {staffRole && (
                 <p className="text-xs text-muted-foreground mt-1">{staffRole}</p>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label className="text-sm">Name *</Label>
-                <Input
-                  value={getSignatureValue("staff") || staffName}
-                  onChange={(e) => handleSignatureChange("staff", e.target.value)}
-                  placeholder={staffName}
-                  className="text-sm"
-                />
+            <CardContent className="p-4 space-y-3">
+              {/* Name, Date, and Send Link Button on same line */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                <div className="sm:col-span-5">
+                  <Label htmlFor="staff-name" className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Name *
+                  </Label>
+                  <Input
+                    id="staff-name"
+                    value={getSignatureValue("staff") || staffName}
+                    onChange={(e) => handleSignatureChange("staff", e.target.value)}
+                    placeholder={staffName}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-4">
+                  <Label htmlFor="staff-date" className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Date *
+                  </Label>
+                  <Input
+                    id="staff-date"
+                    type="date"
+                    value={getSignatureValue("staffDate") || new Date().toISOString().split("T")[0]}
+                    onChange={(e) => {
+                      handleSignatureChange("staffDate", e.target.value)
+                    }}
+                    onBlur={(e) => {
+                      // Ensure date is saved even if user just clicked away without changing it
+                      const currentDate = getSignatureValue("staffDate")
+                      const signature = getSignatureValue("staffSignature")
+                      if (signature && (!currentDate || currentDate === "")) {
+                        handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+                      }
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <SendSignatureLinkButton
+                    visitFormId={visitFormId}
+                    signatureType="staff"
+                    signatureKey="staffSignature"
+                    recipientEmail=""
+                    recipientPhone=""
+                    recipientName={staffName}
+                    fosterFacilityGuid={formData.fosterHome?.homeId}
+                    visitDate={formData.visitInfo?.date}
+                    familyName={formData.fosterHome?.familyName}
+                    createdByUserId={user?.id}
+                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                  />
+                </div>
               </div>
 
+              {/* Signature Pad */}
               <SignaturePad
                 label="Signature *"
                 value={getSignatureValue("staffSignature")}
