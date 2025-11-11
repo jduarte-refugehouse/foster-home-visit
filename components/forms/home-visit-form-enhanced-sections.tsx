@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase, Mail, Phone } from "lucide-react"
+import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase, Mail, Phone, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SignaturePad } from "@/components/ui/signature-pad"
 import { GuidedQuestionField } from "@/components/forms/guided-question-field"
@@ -200,142 +200,174 @@ export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange })
 }
 
 export const FosterParentInterviewSection = ({ formData, onChange }) => {
-  const interview = formData.fosterParentInterview
+  const interview = formData.fosterParentInterview || { childrenDiscussed: [], supportNeeds: {}, combinedNotes: "" }
+  
+  // Get placement children (not biological or adopted)
+  const placementChildren = formData.placements?.children || []
+  
+  // Initialize children discussed with placement children if empty
+  useEffect(() => {
+    if (placementChildren.length > 0 && (!interview.childrenDiscussed || interview.childrenDiscussed.length === 0)) {
+      const initialChildren = placementChildren.map(child => ({
+        childName: `${child.firstName || ""} ${child.lastName || ""}`.trim(),
+        childAge: child.age,
+        behaviorsNoted: "",
+        schoolPerformance: "",
+        medicalTherapy: "",
+        notes: "",
+      }))
+      onChange("fosterParentInterview.childrenDiscussed", initialChildren)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placementChildren.length]) // Only run when placement children are first loaded
 
   const addChild = () => {
     const newChildren = [
       ...interview.childrenDiscussed,
-      { childName: "", behaviorsNoted: "", schoolPerformance: "", medicalTherapy: "", notes: "" },
+      { childName: "", childAge: "", behaviorsNoted: "", schoolPerformance: "", medicalTherapy: "", notes: "" },
     ]
     onChange("fosterParentInterview.childrenDiscussed", newChildren)
   }
 
+  const removeChild = (index: number) => {
+    const newChildren = interview.childrenDiscussed.filter((_, i) => i !== index)
+    onChange("fosterParentInterview.childrenDiscussed", newChildren)
+  }
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-foreground">
-        <Users className="h-6 w-6 text-refuge-purple" />
-        Foster Parent Interview Summary
-      </h2>
+    <div className="space-y-4">
+      <div className="bg-refuge-purple text-white rounded-xl px-4 py-3">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Foster Parent Interview Summary
+        </h2>
+        <p className="text-sm text-purple-100 mt-1">
+          Document key discussion points from foster parent interview, including updates on each child and any support needs identified.
+        </p>
+      </div>
 
-      <Alert>
-        <AlertDescription>
-          Document key discussion points from foster parent interview, including updates on each child and any support
-          needs identified.
-        </AlertDescription>
-      </Alert>
-
-      {/* Children Discussed */}
+      {/* Children Discussed - Tabular Format */}
       <Card>
-        <CardHeader>
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg">
           <CardTitle className="text-lg flex items-center justify-between">
-            Children Discussed
-            <Button size="sm" variant="outline" onClick={addChild}>
+            <span>Children Discussed</span>
+            <Button size="sm" variant="secondary" onClick={addChild} className="bg-white text-refuge-purple hover:bg-purple-50">
               Add Child
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {interview.childrenDiscussed.map((child, index) => (
-              <Card key={index} className="border-2">
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`child-name-${index}`}>Child Name</Label>
-                      <Input
-                        id={`child-name-${index}`}
-                        value={child.childName}
-                        onChange={(e) => {
-                          const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].childName = e.target.value
-                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                        }}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`behaviors-${index}`}>Behaviors Noted</Label>
-                      <GuidedQuestionField
-                        fieldId={`behaviors-${index}`}
-                        fieldType="behaviors"
-                        value={child.behaviorsNoted || ""}
-                        onChange={(value) => {
-                          const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].behaviorsNoted = value
-                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                        }}
-                        label="Behaviors Noted"
-                        context={{
-                          childName: child.childName || "",
-                          childAge: undefined, // Could be added if available
-                          placementDuration: undefined, // Could be added if available
-                        }}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`school-${index}`}>School Performance</Label>
-                      <GuidedQuestionField
-                        fieldId={`school-${index}`}
-                        fieldType="school"
-                        value={child.schoolPerformance || ""}
-                        onChange={(value) => {
-                          const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].schoolPerformance = value
-                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                        }}
-                        label="School Performance"
-                        context={{
-                          childName: child.childName || "",
-                          childAge: undefined, // Could be added if available
-                        }}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`medical-${index}`}>Medical/Therapy</Label>
-                      <GuidedQuestionField
-                        fieldId={`medical-${index}`}
-                        fieldType="medical"
-                        value={child.medicalTherapy || ""}
-                        onChange={(value) => {
-                          const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].medicalTherapy = value
-                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                        }}
-                        label="Medical/Therapy"
-                        context={{
-                          childName: child.childName || "",
-                          childAge: undefined, // Could be added if available
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor={`child-notes-${index}`}>Additional Notes</Label>
-                      <TextareaWithVoice
-                        id={`child-notes-${index}`}
-                        value={child.notes}
-                        onChange={(e) => {
-                          const newChildren = [...interview.childrenDiscussed]
-                          newChildren[index].notes = e.target.value
-                          onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                        }}
-                        rows={2}
-                        showVoiceButton={true}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <CardContent className="p-0">
+          {interview.childrenDiscussed.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
+              <p>No children added yet. Click "Add Child" to add a child or they will be auto-populated from placement data.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 border-b-2 border-slate-300">
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Child Name</th>
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Behaviors Noted</th>
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">School Performance</th>
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Medical/Therapy</th>
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Notes</th>
+                    <th className="text-center p-3 text-sm font-semibold w-20">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {interview.childrenDiscussed.map((child, index) => (
+                    <tr key={index} className="border-b border-slate-200 hover:bg-slate-50">
+                      <td className="p-3 border-r border-slate-200">
+                        <Input
+                          value={child.childName || ""}
+                          onChange={(e) => {
+                            const newChildren = [...interview.childrenDiscussed]
+                            newChildren[index].childName = e.target.value
+                            onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                          }}
+                          placeholder="Child name"
+                          className="text-sm"
+                        />
+                      </td>
+                      <td className="p-3 border-r border-slate-200">
+                        <TextareaWithVoice
+                          value={child.behaviorsNoted || ""}
+                          onChange={(e) => {
+                            const newChildren = [...interview.childrenDiscussed]
+                            newChildren[index].behaviorsNoted = e.target.value
+                            onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                          }}
+                          placeholder="Behavioral observations..."
+                          rows={2}
+                          className="text-sm min-w-[200px]"
+                          showVoiceButton={true}
+                        />
+                      </td>
+                      <td className="p-3 border-r border-slate-200">
+                        <TextareaWithVoice
+                          value={child.schoolPerformance || ""}
+                          onChange={(e) => {
+                            const newChildren = [...interview.childrenDiscussed]
+                            newChildren[index].schoolPerformance = e.target.value
+                            onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                          }}
+                          placeholder="School updates..."
+                          rows={2}
+                          className="text-sm min-w-[200px]"
+                          showVoiceButton={true}
+                        />
+                      </td>
+                      <td className="p-3 border-r border-slate-200">
+                        <TextareaWithVoice
+                          value={child.medicalTherapy || ""}
+                          onChange={(e) => {
+                            const newChildren = [...interview.childrenDiscussed]
+                            newChildren[index].medicalTherapy = e.target.value
+                            onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                          }}
+                          placeholder="Medical/therapy updates..."
+                          rows={2}
+                          className="text-sm min-w-[200px]"
+                          showVoiceButton={true}
+                        />
+                      </td>
+                      <td className="p-3 border-r border-slate-200">
+                        <TextareaWithVoice
+                          value={child.notes || ""}
+                          onChange={(e) => {
+                            const newChildren = [...interview.childrenDiscussed]
+                            newChildren[index].notes = e.target.value
+                            onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                          }}
+                          placeholder="Additional notes..."
+                          rows={2}
+                          className="text-sm min-w-[200px]"
+                          showVoiceButton={true}
+                        />
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeChild(index)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Foster Parent Support Needs */}
       <Card>
-        <CardHeader>
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg">
           <CardTitle className="text-lg">Foster Parent Support Needs</CardTitle>
         </CardHeader>
         <CardContent>
@@ -388,18 +420,22 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
         </CardContent>
       </Card>
 
-      <div className="border-t pt-6">
-        <Label htmlFor="foster-parent-combined-notes">Combined Notes for Foster Parent Interview</Label>
-        <TextareaWithVoice
-          id="foster-parent-combined-notes"
-          value={interview.combinedNotes}
-          onChange={(e) => onChange("fosterParentInterview.combinedNotes", e.target.value)}
-          placeholder="Any additional observations or context from the foster parent interview..."
-          rows={4}
-          className="mt-2"
-          showVoiceButton={true}
-        />
-      </div>
+      {/* Combined Notes */}
+      <Card>
+        <CardHeader className="bg-refuge-purple text-white rounded-t-lg">
+          <CardTitle className="text-lg">Combined Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <TextareaWithVoice
+            id="foster-parent-combined-notes"
+            value={interview.combinedNotes || ""}
+            onChange={(e) => onChange("fosterParentInterview.combinedNotes", e.target.value)}
+            placeholder="Any additional observations or context from the foster parent interview..."
+            rows={4}
+            showVoiceButton={true}
+          />
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -1587,20 +1623,20 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 </div>
                 
                 {/* Send Signature Link Button */}
-                <SendSignatureLinkButton
-                  visitFormId={visitFormId}
-                  signatureType={`parent${index + 1}`}
-                  signatureKey={`${sigKey}Signature`}
+                  <SendSignatureLinkButton
+                    visitFormId={visitFormId}
+                    signatureType={`parent${index + 1}`}
+                    signatureKey={`${sigKey}Signature`}
                   recipientEmail={provider.email || ""}
                   recipientPhone={provider.phone || ""}
-                  recipientName={displayName}
+                    recipientName={displayName}
                   entityGuid={provider.guid}
                   fosterFacilityGuid={formData.fosterHome?.homeId}
-                  visitDate={formData.visitInfo?.date}
-                  familyName={formData.fosterHome?.familyName}
-                  createdByUserId={user?.id}
-                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                />
+                    visitDate={formData.visitInfo?.date}
+                    familyName={formData.fosterHome?.familyName}
+                    createdByUserId={user?.id}
+                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                  />
               </CardContent>
             </Card>
             )
@@ -1886,14 +1922,14 @@ const SendSignatureLinkButton = ({
 
     // Validate based on delivery method
     if (deliveryMethod === "email") {
-      if (!email.trim()) {
-        toast({
-          title: "Error",
-          description: "Please enter an email address",
-          variant: "destructive",
-        })
-        return
-      }
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      })
+      return
+    }
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email.trim())) {
@@ -1934,13 +1970,13 @@ const SendSignatureLinkButton = ({
     setSending(true)
     try {
       const requestBody: any = {
-        signatureType,
-        signatureKey,
+          signatureType,
+          signatureKey,
         recipientName: name.trim(),
-        visitDate,
-        familyName,
-        createdByUserId,
-        createdByName,
+          visitDate,
+          familyName,
+          createdByUserId,
+          createdByName,
       }
 
       if (deliveryMethod === "email") {
@@ -2008,18 +2044,18 @@ const SendSignatureLinkButton = ({
       <DialogContent className="sm:max-w-md">
         {!showConfirmation ? (
           <>
-            <DialogHeader>
-              <DialogTitle>Send Signature Link</DialogTitle>
-              <DialogDescription>
+        <DialogHeader>
+          <DialogTitle>Send Signature Link</DialogTitle>
+          <DialogDescription>
                 Send a secure link to {recipientName || "the signer"} to sign this document remotely.
                 {loadingContact && (
                   <span className="text-xs text-muted-foreground block mt-1">
                     Looking up contact information...
                   </span>
                 )}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-4">
               <Tabs value={deliveryMethod} onValueChange={(value) => setDeliveryMethod(value as "email" | "sms")}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="email" className="flex items-center gap-2">
@@ -2033,7 +2069,7 @@ const SendSignatureLinkButton = ({
                 </TabsList>
                 
                 <TabsContent value="email" className="space-y-4 mt-4">
-                  <div>
+          <div>
                     <Label htmlFor="name">Signer Name *</Label>
                     <Input
                       id="name"
@@ -2045,17 +2081,17 @@ const SendSignatureLinkButton = ({
                   </div>
                   <div>
                     <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@example.com"
-                    />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
+            />
                     <p className="text-xs text-muted-foreground mt-1">
                       Enter the email address even if not in the system
                     </p>
-                  </div>
+          </div>
                 </TabsContent>
                 
                 <TabsContent value="sms" className="space-y-4 mt-4">
@@ -2087,13 +2123,13 @@ const SendSignatureLinkButton = ({
               
               <div className="flex gap-2 justify-end pt-2">
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>
-                  Cancel
-                </Button>
+              Cancel
+            </Button>
                 <Button onClick={handleSendClick} disabled={sending}>
                   Continue
-                </Button>
-              </div>
-            </div>
+            </Button>
+          </div>
+        </div>
           </>
         ) : (
           <>
