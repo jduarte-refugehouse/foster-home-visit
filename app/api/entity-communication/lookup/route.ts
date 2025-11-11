@@ -26,13 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query based on available parameters
-    // Note: EntityCommunicationBridge uses FosterFacilityGUID (not FosterHomeGUID)
-    // EntityGUID should match SyncCurrentFosterFacility.PersonGUID
-    // Use IsActive = 1 to filter active records (no is_deleted column in this table)
+    // PRIMARY MATCH: EntityGUID (PersonGUID from SyncCurrentFosterFacility)
+    // This is the most reliable match since EntityGUID is enforced
+    // FosterFacilityGUID is NOT enforced, so we use it only as a secondary filter if provided
     console.log(`🔍 [EntityCommunication] Looking up contact info:`, {
       entityGuid,
       entityName,
       fosterFacilityGuid,
+      note: "EntityGUID is primary match (enforced), FosterFacilityGUID is secondary (not enforced)"
     })
 
     // Cast fosterFacilityGuid to uniqueidentifier to ensure proper type matching

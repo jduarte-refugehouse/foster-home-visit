@@ -41,38 +41,12 @@ WHERE
     AND ff.Relationship IN ('Provider', 'Primary Caregiver')
 ORDER BY ff.[Relation Name]
 
--- STEP 3: Check EntityCommunicationBridge for the Foster Facility
--- This tests if the FosterFacilityGUID matches
--- Replace 'YOUR_FOSTER_HOME_GUID' with the Guid from Step 1
--- ============================================
-PRINT '=== STEP 3: Check EntityCommunicationBridge by FosterFacilityGUID ==='
-SELECT 
-    ecb.CommunicationID,
-    ecb.EntityGUID,
-    ecb.EntityFullName,
-    ecb.FosterFacilityGUID,
-    ecb.FosterHomeName,
-    ecb.RelationshipType,
-    ecb.PrimaryMobilePhone,
-    ecb.PrimaryMobilePhoneE164,
-    ecb.EmailAddress,
-    ecb.IsActive,
-    h.Guid AS SyncActiveHomes_Guid,
-    h.HomeName AS SyncActiveHomes_HomeName
-FROM dbo.EntityCommunicationBridge ecb
-LEFT JOIN dbo.SyncActiveHomes h ON ecb.FosterFacilityGUID = h.Guid
-WHERE 
-    -- Replace with the Guid from Step 1
-    ecb.FosterFacilityGUID = 'YOUR_FOSTER_HOME_GUID'
-    AND ecb.IsActive = 1
-ORDER BY ecb.EntityFullName
-
--- STEP 4: Check EntityCommunicationBridge for a specific Person (Entity)
--- This tests if the EntityGUID matches the PersonGUID
+-- STEP 3: Check EntityCommunicationBridge by EntityGUID (PRIMARY MATCH)
+-- This is the PRIMARY and most reliable match since EntityGUID is enforced
 -- Replace 'YOUR_PERSON_GUID' with the PersonGUID from Step 2
--- Replace 'YOUR_FOSTER_HOME_GUID' with the Guid from Step 1
 -- ============================================
-PRINT '=== STEP 4: Check EntityCommunicationBridge by EntityGUID (Person) ==='
+PRINT '=== STEP 3: Check EntityCommunicationBridge by EntityGUID (PRIMARY MATCH) ==='
+PRINT 'NOTE: EntityGUID is the PRIMARY match (enforced field)'
 SELECT 
     ecb.CommunicationID,
     ecb.EntityGUID,
@@ -85,25 +59,63 @@ SELECT
     ecb.EmailAddress,
     ecb.IsActive,
     ff.PersonGUID AS SyncCurrentFosterFacility_PersonGUID,
-    ff.[Relation Name] AS SyncCurrentFosterFacility_Name
+    ff.[Relation Name] AS SyncCurrentFosterFacility_Name,
+    CASE 
+        WHEN ecb.EntityGUID = ff.PersonGUID THEN 'MATCH'
+        ELSE 'NO MATCH'
+    END AS EntityGUIDMatch
 FROM dbo.EntityCommunicationBridge ecb
 LEFT JOIN dbo.SyncCurrentFosterFacility ff ON ecb.EntityGUID = ff.PersonGUID
 WHERE 
     -- Replace with the PersonGUID from Step 2
     ecb.EntityGUID = 'YOUR_PERSON_GUID'
-    -- Replace with the Guid from Step 1
-    AND ecb.FosterFacilityGUID = 'YOUR_FOSTER_HOME_GUID'
     AND ecb.IsActive = 1
 ORDER BY ecb.EntityFullName
 
--- STEP 5: Combined lookup (what the API should find)
--- This is the exact query the API uses
--- Replace 'YOUR_FOSTER_HOME_GUID' with the Guid from Step 1
--- Replace 'YOUR_PERSON_GUID' with the PersonGUID from Step 2 (optional - can be NULL)
+-- STEP 4: Check EntityCommunicationBridge with FosterFacilityGUID as secondary filter
+-- This shows how FosterFacilityGUID can be used as an additional filter (but it's NOT enforced)
+-- Replace 'YOUR_PERSON_GUID' with the PersonGUID from Step 2
+-- Replace 'YOUR_FOSTER_HOME_GUID' with the Guid from Step 1 (optional - can be NULL)
 -- ============================================
-PRINT '=== STEP 5: Combined Lookup (API Query) ==='
-DECLARE @FosterFacilityGUID uniqueidentifier = 'YOUR_FOSTER_HOME_GUID'  -- Replace with actual GUID
-DECLARE @EntityGUID uniqueidentifier = 'YOUR_PERSON_GUID'  -- Replace with actual GUID or set to NULL
+PRINT '=== STEP 4: Check EntityCommunicationBridge with FosterFacilityGUID filter (SECONDARY) ==='
+PRINT 'NOTE: FosterFacilityGUID is NOT enforced, so it''s only used as a secondary filter'
+SELECT 
+    ecb.CommunicationID,
+    ecb.EntityGUID,
+    ecb.EntityFullName,
+    ecb.FosterFacilityGUID,
+    ecb.FosterHomeName,
+    ecb.RelationshipType,
+    ecb.PrimaryMobilePhone,
+    ecb.PrimaryMobilePhoneE164,
+    ecb.EmailAddress,
+    ecb.IsActive,
+    h.Guid AS SyncActiveHomes_Guid,
+    h.HomeName AS SyncActiveHomes_HomeName,
+    CASE 
+        WHEN ecb.FosterFacilityGUID = h.Guid THEN 'MATCH'
+        WHEN ecb.FosterFacilityGUID IS NULL THEN 'NULL (not enforced)'
+        ELSE 'NO MATCH'
+    END AS FosterFacilityGUIDMatch
+FROM dbo.EntityCommunicationBridge ecb
+LEFT JOIN dbo.SyncActiveHomes h ON ecb.FosterFacilityGUID = h.Guid
+WHERE 
+    -- Replace with the PersonGUID from Step 2 (PRIMARY match)
+    ecb.EntityGUID = 'YOUR_PERSON_GUID'
+    AND ecb.IsActive = 1
+    -- Replace with the Guid from Step 1 (SECONDARY filter - optional)
+    AND (ecb.FosterFacilityGUID IS NULL OR ecb.FosterFacilityGUID = 'YOUR_FOSTER_HOME_GUID')
+ORDER BY ecb.EntityFullName
+
+-- STEP 5: Combined lookup (what the API should find - CORRECTED)
+-- This is the exact query the API uses (PRIMARY match by EntityGUID)
+-- Replace 'YOUR_PERSON_GUID' with the PersonGUID from Step 2 (REQUIRED)
+-- Replace 'YOUR_FOSTER_HOME_GUID' with the Guid from Step 1 (OPTIONAL - secondary filter)
+-- ============================================
+PRINT '=== STEP 5: Combined Lookup (API Query - CORRECTED) ==='
+PRINT 'NOTE: EntityGUID is PRIMARY (required), FosterFacilityGUID is SECONDARY (optional)'
+DECLARE @EntityGUID uniqueidentifier = 'YOUR_PERSON_GUID'  -- Replace with actual GUID (REQUIRED)
+DECLARE @FosterFacilityGUID uniqueidentifier = 'YOUR_FOSTER_HOME_GUID'  -- Replace with actual GUID (OPTIONAL - can be NULL)
 
 SELECT TOP 1
     ecb.EntityGUID,
@@ -114,9 +126,11 @@ SELECT TOP 1
     ecb.FosterFacilityGUID,
     ecb.IsActive
 FROM dbo.EntityCommunicationBridge ecb
-WHERE ecb.FosterFacilityGUID = CAST(@FosterFacilityGUID AS uniqueidentifier)
-    AND ecb.IsActive = 1
-    AND (@EntityGUID IS NULL OR ecb.EntityGUID = CAST(@EntityGUID AS uniqueidentifier))
+WHERE ecb.IsActive = 1
+    -- PRIMARY MATCH: EntityGUID (enforced field)
+    AND ecb.EntityGUID = CAST(@EntityGUID AS uniqueidentifier)
+    -- SECONDARY FILTER: FosterFacilityGUID (not enforced, so optional)
+    AND (@FosterFacilityGUID IS NULL OR ecb.FosterFacilityGUID IS NULL OR ecb.FosterFacilityGUID = CAST(@FosterFacilityGUID AS uniqueidentifier))
 ORDER BY ecb.EntityFullName
 
 -- STEP 6: Verify GUID types match
