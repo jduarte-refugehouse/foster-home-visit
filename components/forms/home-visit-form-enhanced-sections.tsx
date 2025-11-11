@@ -12,11 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase } from "lucide-react"
+import { Brain, Users, TrendingUp, Heart, FileText, AlertTriangle, CheckCircle, Briefcase, Mail, Phone } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SignaturePad } from "@/components/ui/signature-pad"
 import { GuidedQuestionField } from "@/components/forms/guided-question-field"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 
 export const TraumaInformedCareSection = ({ formData, onChange, onNotesChange }) => {
@@ -1567,12 +1568,13 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 </div>
                 
                 {/* Send Signature Link Button */}
-                {visitFormId && provider.email && (
+                {visitFormId && (
                   <SendSignatureLinkButton
                     visitFormId={visitFormId}
                     signatureType={`parent${index + 1}`}
                     signatureKey={`${sigKey}Signature`}
-                    recipientEmail={provider.email}
+                    recipientEmail={provider.email || ""}
+                    recipientPhone={provider.phone || ""}
                     recipientName={displayName}
                     visitDate={formData.visitInfo?.date}
                     familyName={formData.fosterHome?.familyName}
@@ -1630,6 +1632,22 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   className="text-sm"
                 />
               </div>
+              
+              {/* Send Signature Link Button */}
+              {visitFormId && (
+                <SendSignatureLinkButton
+                  visitFormId={visitFormId}
+                  signatureType="parent1"
+                  signatureKey="parent1Signature"
+                  recipientEmail=""
+                  recipientPhone=""
+                  recipientName={getSignatureValue("parent1") || "Foster Parent"}
+                  visitDate={formData.visitInfo?.date}
+                  familyName={formData.fosterHome?.familyName}
+                  createdByUserId={user?.id}
+                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -1683,6 +1701,22 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   className="text-sm"
                 />
               </div>
+              
+              {/* Send Signature Link Button */}
+              {visitFormId && (
+                <SendSignatureLinkButton
+                  visitFormId={visitFormId}
+                  signatureType="staff"
+                  signatureKey="staffSignature"
+                  recipientEmail=""
+                  recipientPhone=""
+                  recipientName={staffName}
+                  visitDate={formData.visitInfo?.date}
+                  familyName={formData.fosterHome?.familyName}
+                  createdByUserId={user?.id}
+                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -1705,6 +1739,7 @@ const SendSignatureLinkButton = ({
   signatureType, 
   signatureKey, 
   recipientEmail, 
+  recipientPhone,
   recipientName,
   visitDate,
   familyName,
@@ -1714,7 +1749,8 @@ const SendSignatureLinkButton = ({
   visitFormId: string
   signatureType: string
   signatureKey: string
-  recipientEmail: string
+  recipientEmail?: string
+  recipientPhone?: string
   recipientName: string
   visitDate?: string
   familyName?: string
@@ -1722,15 +1758,75 @@ const SendSignatureLinkButton = ({
   createdByName?: string
 }) => {
   const [open, setOpen] = useState(false)
-  const [email, setEmail] = useState(recipientEmail)
+  const [deliveryMethod, setDeliveryMethod] = useState<"email" | "sms">("email")
+  const [name, setName] = useState(recipientName || "")
+  const [email, setEmail] = useState(recipientEmail || "")
+  const [phone, setPhone] = useState(recipientPhone || "")
   const [sending, setSending] = useState(false)
   const { toast } = useToast()
 
+  // Helper to format phone number (basic validation)
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, "")
+    // Format as (XXX) XXX-XXXX if 10 digits
+    if (digits.length <= 10) {
+      if (digits.length === 0) return ""
+      if (digits.length <= 3) return `(${digits}`
+      if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+    }
+    // If more than 10 digits, assume country code
+    return `+${digits.slice(0, -10)} (${digits.slice(-10, -7)}) ${digits.slice(-7, -4)}-${digits.slice(-4)}`
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value)
+    setPhone(formatted)
+  }
+
+  // Get just digits for API call
+  const getPhoneDigits = (phoneStr: string) => {
+    return phoneStr.replace(/\D/g, "")
+  }
+
   const handleSend = async () => {
-    if (!email.trim()) {
+    // Validate based on delivery method
+    if (deliveryMethod === "email") {
+      if (!email.trim()) {
+        toast({
+          title: "Error",
+          description: "Please enter an email address",
+          variant: "destructive",
+        })
+        return
+      }
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email.trim())) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
+    } else {
+      const phoneDigits = getPhoneDigits(phone)
+      if (!phoneDigits || phoneDigits.length < 10) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid phone number (at least 10 digits)",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
+    if (!name.trim()) {
       toast({
         title: "Error",
-        description: "Please enter an email address",
+        description: "Please enter the signer's name",
         variant: "destructive",
       })
       return
@@ -1738,21 +1834,32 @@ const SendSignatureLinkButton = ({
 
     setSending(true)
     try {
+      const requestBody: any = {
+        signatureType,
+        signatureKey,
+        recipientName: name.trim(),
+        visitDate,
+        familyName,
+        createdByUserId,
+        createdByName,
+      }
+
+      if (deliveryMethod === "email") {
+        requestBody.recipientEmail = email.trim()
+        requestBody.sendViaSMS = false
+      } else {
+        requestBody.recipientPhone = getPhoneDigits(phone)
+        requestBody.sendViaSMS = true
+        // Still need recipientEmail for the API (it's required in schema), use phone as fallback
+        requestBody.recipientEmail = getPhoneDigits(phone) + "@sms.refugehouse.org"
+      }
+
       const response = await fetch(`/api/visit-forms/${visitFormId}/signature-tokens`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          signatureType,
-          signatureKey,
-          recipientEmail: email.trim(),
-          recipientName,
-          visitDate,
-          familyName,
-          createdByUserId,
-          createdByName,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -1763,9 +1870,13 @@ const SendSignatureLinkButton = ({
 
       toast({
         title: "Signature Link Sent",
-        description: `A signature link has been sent to ${email}`,
+        description: `A signature link has been sent to ${deliveryMethod === "email" ? email : phone}`,
       })
       setOpen(false)
+      // Reset form
+      setName(recipientName || "")
+      setEmail(recipientEmail || "")
+      setPhone(recipientPhone || "")
     } catch (error: any) {
       console.error("Error sending signature link:", error)
       toast({
@@ -1783,29 +1894,84 @@ const SendSignatureLinkButton = ({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="w-full">
           <Mail className="h-4 w-4 mr-2" />
-          Send Signature Link via Email
+          Send Signature Link
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Send Signature Link</DialogTitle>
           <DialogDescription>
-            Send a secure link to {recipientName} to sign this document via email.
+            Send a secure link to {recipientName || "the signer"} to sign this document remotely.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-4">
-          <div>
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@example.com"
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+          <Tabs value={deliveryMethod} onValueChange={(value) => setDeliveryMethod(value as "email" | "sms")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="email" className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email
+              </TabsTrigger>
+              <TabsTrigger value="sms" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                SMS
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="email" className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="name">Signer Name *</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the email address even if not in the system
+                </p>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="sms" className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="name-sms">Signer Name *</Label>
+                <Input
+                  id="name-sms"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  placeholder="(555) 123-4567"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the phone number even if not in the system
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>
               Cancel
             </Button>
             <Button onClick={handleSend} disabled={sending}>
