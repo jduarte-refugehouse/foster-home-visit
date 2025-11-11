@@ -106,8 +106,23 @@ export default function MobileAppointmentDetailPage() {
     if (!appointmentId) return
 
     try {
+      // Set Clerk auth headers for API authentication
+      const headers: HeadersInit = {}
+      
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.firstName || user?.lastName) {
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
       // API will filter by authenticated user automatically
-      const response = await fetch(`/api/travel-legs?status=in_progress`)
+      const response = await fetch(`/api/travel-legs?status=in_progress`, {
+        headers,
+      })
       const data = await response.json()
 
       if (data.success && data.legs && data.legs.length > 0) {
@@ -398,12 +413,25 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
+      // Set Clerk auth headers for API authentication
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.firstName || user?.lastName) {
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
       // Complete the current travel leg
       const response = await fetch(`/api/travel-legs/${currentLegId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           end_latitude: location.latitude,
           end_longitude: location.longitude,
@@ -962,12 +990,25 @@ export default function MobileAppointmentDetailPage() {
                   // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
 
+                  // Set Clerk auth headers for API authentication
+                  const headers: HeadersInit = {
+                    "Content-Type": "application/json",
+                  }
+                  
+                  if (user?.id) {
+                    headers["x-user-clerk-id"] = user.id
+                  }
+                  if (user?.emailAddresses?.[0]?.emailAddress) {
+                    headers["x-user-email"] = user.emailAddresses[0].emailAddress
+                  }
+                  if (user?.firstName || user?.lastName) {
+                    headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                  }
+
                   // Complete the return travel leg
                   const response = await fetch(`/api/travel-legs/${currentLegId}`, {
                     method: "PATCH",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
+                    headers,
                     body: JSON.stringify({
                       end_latitude: location.latitude,
                       end_longitude: location.longitude,
