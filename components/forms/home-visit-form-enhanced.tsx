@@ -1388,6 +1388,29 @@ const EnhancedHomeVisitForm = ({
               >
                 Save
               </Button>
+              
+              {/* Visit Completed Button - allows completing visit without full form submission */}
+              {appointmentId && onCompleteVisit && (
+                <Button 
+                  variant="outline" 
+                  size="default" 
+                  className="flex-shrink-0 font-semibold border-2 border-green-600 text-green-700 hover:bg-green-50 hover:border-green-700"
+                  onClick={async () => {
+                    console.log("✅ [FORM] Visit Completed button clicked")
+                    if (onCompleteVisit) {
+                      try {
+                        console.log("✅ [FORM] Calling onCompleteVisit callback...")
+                        await onCompleteVisit()
+                        console.log("✅ [FORM] Visit marked as completed")
+                      } catch (error) {
+                        console.error("❌ [FORM] Error completing visit:", error)
+                      }
+                    }
+                  }}
+                >
+                  Visit Completed
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
