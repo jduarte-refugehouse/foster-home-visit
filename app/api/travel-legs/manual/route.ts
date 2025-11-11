@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 import { calculateDrivingDistance } from "@/lib/route-calculator"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -31,8 +32,26 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = getClerkUserIdFromRequest(request)
-    if (!auth.clerkUserId) {
+    // Try to get auth from headers first (desktop/tablet)
+    let auth = getClerkUserIdFromRequest(request)
+    
+    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    if (!auth.clerkUserId && !auth.email) {
+      try {
+        const user = await currentUser()
+        if (user) {
+          auth = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+        }
+      } catch (clerkError) {
+        console.error("🚗 [Travel Legs Manual] Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -56,8 +75,8 @@ export async function POST(request: NextRequest) {
       journey_id,
     } = body
 
-    // Use authenticated user ID from Clerk session
-    const staff_user_id = auth.clerkUserId
+    // Use authenticated user ID from Clerk session (prefer clerkUserId, fallback to email)
+    const staff_user_id = auth.clerkUserId || auth.email
 
     // Validate required fields
     if (!staff_user_id || !start_location_name || !end_location_name || !start_timestamp || !end_timestamp || !manual_notes) {
@@ -170,7 +189,7 @@ export async function POST(request: NextRequest) {
         is_backdated ? 1 : 0,
         travel_purpose || null,
         vehicle_type || null,
-        auth.clerkUserId,
+        auth.clerkUserId || auth.email,
       ]
     )
 

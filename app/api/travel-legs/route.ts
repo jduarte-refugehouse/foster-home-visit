@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -24,8 +25,41 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = getClerkUserIdFromRequest(request)
-    if (!auth.clerkUserId) {
+    // Debug: Log incoming headers
+    const receivedHeaders = {
+      "x-user-clerk-id": request.headers.get("x-user-clerk-id"),
+      "x-user-email": request.headers.get("x-user-email"),
+      "x-user-name": request.headers.get("x-user-name"),
+    }
+    console.log("🚗 [Travel Legs POST] Received headers:", receivedHeaders)
+
+    // Try to get auth from headers first (desktop/tablet)
+    let auth = getClerkUserIdFromRequest(request)
+    let authMethod = "headers"
+    console.log("🚗 [Travel Legs POST] Auth from headers:", { clerkUserId: auth.clerkUserId, email: auth.email })
+    
+    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    if (!auth.clerkUserId && !auth.email) {
+      try {
+        const user = await currentUser()
+        if (user) {
+          auth = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+          authMethod = "clerk_session"
+          console.log("🚗 [Travel Legs POST] Auth from Clerk session:", { clerkUserId: auth.clerkUserId, email: auth.email })
+        } else {
+          console.warn("🚗 [Travel Legs POST] currentUser() returned null")
+        }
+      } catch (clerkError) {
+        console.error("🚗 [Travel Legs POST] Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!auth.clerkUserId && !auth.email) {
+      console.error("🚗 [Travel Legs POST] Authentication failed - no clerkUserId or email")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -45,8 +79,8 @@ export async function POST(request: NextRequest) {
       is_final_leg,
     } = body
 
-    // Use authenticated user ID from Clerk session
-    const staff_user_id = auth.clerkUserId
+    // Use authenticated user ID from Clerk session (prefer clerkUserId, fallback to email)
+    const staff_user_id = auth.clerkUserId || auth.email
 
     // Validate required fields
     if (!staff_user_id || start_latitude === undefined || start_longitude === undefined || !start_timestamp) {
@@ -103,7 +137,7 @@ export async function POST(request: NextRequest) {
         travel_purpose || null,
         vehicle_type || null,
         is_final_leg || false,
-        auth.clerkUserId,
+        auth.clerkUserId || auth.email,
       ]
     )
 
@@ -139,8 +173,26 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = getClerkUserIdFromRequest(request)
-    if (!auth.clerkUserId) {
+    // Try to get auth from headers first (desktop/tablet)
+    let auth = getClerkUserIdFromRequest(request)
+    
+    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    if (!auth.clerkUserId && !auth.email) {
+      try {
+        const user = await currentUser()
+        if (user) {
+          auth = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+        }
+      } catch (clerkError) {
+        console.error("🚗 [Travel Legs GET] Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -150,7 +202,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
     // Allow filtering by specific staffUserId for admin purposes, but default to authenticated user
-    const staffUserId = searchParams.get("staffUserId") || auth.clerkUserId
+    const staffUserId = searchParams.get("staffUserId") || auth.clerkUserId || auth.email
 
     const conditions: string[] = []
     const params: any[] = []

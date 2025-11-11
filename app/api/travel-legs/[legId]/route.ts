@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 import { calculateDrivingDistance } from "@/lib/route-calculator"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -25,8 +26,33 @@ export async function PATCH(
   { params }: { params: { legId: string } }
 ) {
   try {
-    const auth = getClerkUserIdFromRequest(request)
-    if (!auth.clerkUserId) {
+    // Try to get auth from headers first (desktop/tablet)
+    let auth = getClerkUserIdFromRequest(request)
+    let authMethod = "headers"
+    console.log("🚗 [Travel Legs PATCH] Auth from headers:", { clerkUserId: auth.clerkUserId, email: auth.email })
+    
+    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    if (!auth.clerkUserId && !auth.email) {
+      try {
+        const user = await currentUser()
+        if (user) {
+          auth = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+          authMethod = "clerk_session"
+          console.log("🚗 [Travel Legs PATCH] Auth from Clerk session:", { clerkUserId: auth.clerkUserId, email: auth.email })
+        } else {
+          console.warn("🚗 [Travel Legs PATCH] currentUser() returned null")
+        }
+      } catch (clerkError) {
+        console.error("🚗 [Travel Legs PATCH] Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!auth.clerkUserId && !auth.email) {
+      console.error("🚗 [Travel Legs PATCH] Authentication failed - no clerkUserId or email")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -136,7 +162,7 @@ export async function PATCH(
         estimatedToll,
         durationMinutes,
         is_final_leg || false,
-        auth.clerkUserId,
+        auth.clerkUserId || auth.email,
       ]
     )
 
@@ -168,8 +194,26 @@ export async function DELETE(
   { params }: { params: { legId: string } }
 ) {
   try {
-    const auth = getClerkUserIdFromRequest(request)
-    if (!auth.clerkUserId) {
+    // Try to get auth from headers first (desktop/tablet)
+    let auth = getClerkUserIdFromRequest(request)
+    
+    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    if (!auth.clerkUserId && !auth.email) {
+      try {
+        const user = await currentUser()
+        if (user) {
+          auth = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+        }
+      } catch (clerkError) {
+        console.error("🚗 [Travel Legs DELETE] Error getting user from Clerk session:", clerkError)
+      }
+    }
+    
+    if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -181,7 +225,7 @@ export async function DELETE(
            updated_at = GETUTCDATE(),
            updated_by_user_id = @param1
        WHERE leg_id = @param0 AND is_deleted = 0`,
-      [legId, auth.clerkUserId]
+      [legId, auth.clerkUserId || auth.email]
     )
 
     return NextResponse.json({

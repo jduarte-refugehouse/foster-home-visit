@@ -331,6 +331,15 @@ export default function MobileAppointmentDetailPage() {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
+      // Debug: Log headers being sent
+      console.log("🚗 [Start Drive] Sending request with headers:", {
+        "x-user-clerk-id": headers["x-user-clerk-id"],
+        "x-user-email": headers["x-user-email"],
+        "x-user-name": headers["x-user-name"],
+        userLoaded: isLoaded,
+        userId: user.id,
+      })
+
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
         headers,
