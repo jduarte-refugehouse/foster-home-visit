@@ -49,15 +49,46 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
     if (!ctx) return
 
     const rect = canvas.getBoundingClientRect()
-      const img = new Image()
-      img.onload = () => {
+    const img = new Image()
+    img.onload = () => {
       // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      // Draw the signature
-        ctx.drawImage(img, 0, 0, rect.width, rect.height)
-        setIsEmpty(false)
+      
+      // Calculate aspect ratios to maintain proportions
+      const imgAspect = img.width / img.height
+      const canvasAspect = rect.width / rect.height
+      
+      let drawWidth = rect.width
+      let drawHeight = rect.height
+      let drawX = 0
+      let drawY = 0
+      
+      // Maintain aspect ratio (like object-fit: contain)
+      if (imgAspect > canvasAspect) {
+        // Image is wider - fit to width
+        drawHeight = rect.width / imgAspect
+        drawY = (rect.height - drawHeight) / 2
+      } else {
+        // Image is taller - fit to height
+        drawWidth = rect.height * imgAspect
+        drawX = (rect.width - drawWidth) / 2
       }
-      img.src = value
+      
+      // Scale for device pixel ratio
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      
+      // Draw the signature maintaining aspect ratio
+      ctx.drawImage(
+        img, 
+        drawX * scaleX, 
+        drawY * scaleY, 
+        drawWidth * scaleX, 
+        drawHeight * scaleY
+      )
+      setIsEmpty(false)
+    }
+    img.src = value
   }, [value])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
