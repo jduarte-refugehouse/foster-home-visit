@@ -455,12 +455,28 @@ export default function MobileAppointmentDetailPage() {
       }
     } catch (error) {
       console.error("Error starting travel to next visit:", error)
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to start travel to next visit"
+      if (error instanceof Error) {
+        if (error.message.includes("timeout")) {
+          errorMessage = "Location capture timed out. Please try again."
+        } else if (error.message.includes("permission") || error.message.includes("denied")) {
+          errorMessage = "Location permission denied. Please enable location access in your browser settings."
+        } else if (error.message.includes("not supported")) {
+          errorMessage = "Geolocation is not supported by your browser."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to start travel to next visit",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
+      // Ensure state is always reset
       setCapturingLocation(false)
     }
   }
