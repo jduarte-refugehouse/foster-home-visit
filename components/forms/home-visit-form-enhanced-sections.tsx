@@ -1594,6 +1594,8 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   recipientEmail={provider.email || ""}
                   recipientPhone={provider.phone || ""}
                   recipientName={displayName}
+                  entityGuid={provider.guid}
+                  fosterFacilityGuid={formData.fosterHome?.homeId}
                   visitDate={formData.visitInfo?.date}
                   familyName={formData.fosterHome?.familyName}
                   createdByUserId={user?.id}
@@ -1658,6 +1660,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 recipientEmail=""
                 recipientPhone=""
                 recipientName={getSignatureValue("parent1") || "Foster Parent"}
+                fosterFacilityGuid={formData.fosterHome?.homeId}
                 visitDate={formData.visitInfo?.date}
                 familyName={formData.fosterHome?.familyName}
                 createdByUserId={user?.id}
@@ -1725,6 +1728,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                 recipientEmail=""
                 recipientPhone=""
                 recipientName={staffName}
+                fosterFacilityGuid={formData.fosterHome?.homeId}
                 visitDate={formData.visitInfo?.date}
                 familyName={formData.fosterHome?.familyName}
                 createdByUserId={user?.id}
@@ -1754,6 +1758,8 @@ const SendSignatureLinkButton = ({
   recipientEmail, 
   recipientPhone,
   recipientName,
+  entityGuid,
+  fosterFacilityGuid,
   visitDate,
   familyName,
   createdByUserId,
@@ -1765,6 +1771,8 @@ const SendSignatureLinkButton = ({
   recipientEmail?: string
   recipientPhone?: string
   recipientName: string
+  entityGuid?: string
+  fosterFacilityGuid?: string
   visitDate?: string
   familyName?: string
   createdByUserId?: string
@@ -1777,6 +1785,7 @@ const SendSignatureLinkButton = ({
   const [email, setEmail] = useState(recipientEmail || "")
   const [phone, setPhone] = useState(recipientPhone || "")
   const [sending, setSending] = useState(false)
+  const [loadingContact, setLoadingContact] = useState(false)
   const { toast } = useToast()
 
   // Helper to format phone number (basic validation)
@@ -1803,6 +1812,59 @@ const SendSignatureLinkButton = ({
   const getPhoneDigits = (phoneStr: string) => {
     return phoneStr.replace(/\D/g, "")
   }
+
+  // Look up contact info from EntityCommunicationBridge when dialog opens
+  useEffect(() => {
+    if (!open || !fosterFacilityGuid) return
+    
+    // Only fetch if we don't already have both phone and email
+    // This prevents unnecessary API calls if data is already populated
+    if (phone && email) return
+    
+    // Fetch contact info from EntityCommunicationBridge
+    const fetchContactInfo = async () => {
+      setLoadingContact(true)
+      try {
+        const params = new URLSearchParams({
+          fosterFacilityGuid: fosterFacilityGuid,
+        })
+        
+        if (entityGuid) {
+          params.append("entityGuid", entityGuid)
+        } else if (recipientName) {
+          params.append("entityName", recipientName)
+        }
+        
+        const response = await fetch(`/api/entity-communication/lookup?${params.toString()}`)
+        const data = await response.json()
+        
+        if (data.success && data.found && data.data) {
+          // Pre-populate name if we have it from the bridge and current name is empty
+          if (data.data.name && (!name || name === recipientName)) {
+            setName(data.data.name)
+          }
+          
+          // Pre-populate phone if we have it and don't already have one
+          if (data.data.phone && !phone) {
+            setPhone(formatPhoneNumber(data.data.phone))
+          }
+          
+          // Pre-populate email if we have it and don't already have one
+          if (data.data.email && !email) {
+            setEmail(data.data.email)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error)
+        // Silently fail - user can still enter manually
+      } finally {
+        setLoadingContact(false)
+      }
+    }
+    
+    fetchContactInfo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, fosterFacilityGuid, entityGuid, recipientName])
 
   const handleSendClick = () => {
     // Check if visit form exists - if not, show helpful message
@@ -1943,6 +2005,11 @@ const SendSignatureLinkButton = ({
               <DialogTitle>Send Signature Link</DialogTitle>
               <DialogDescription>
                 Send a secure link to {recipientName || "the signer"} to sign this document remotely.
+                {loadingContact && (
+                  <span className="text-xs text-muted-foreground block mt-1">
+                    Looking up contact information...
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
