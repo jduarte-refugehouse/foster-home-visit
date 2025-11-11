@@ -82,12 +82,24 @@ export default function MobileAppointmentDetailPage() {
     //   router.replace(`/appointment/${appointmentId}`)
     //   return
     // }
-    if (appointmentId && user?.id) {
+    if (appointmentId) {
+      // Fetch appointment details immediately (doesn't require user ID)
       fetchAppointmentDetails()
       fetchNextAppointment()
+      
+      // Fetch travel leg only if user is available (optional)
+      if (user?.id) {
+        fetchCurrentTravelLeg()
+      }
+    }
+  }, [appointmentId, isMobile, router])
+  
+  // Separate effect to fetch travel leg when user becomes available
+  useEffect(() => {
+    if (appointmentId && user?.id) {
       fetchCurrentTravelLeg()
     }
-  }, [appointmentId, isMobile, router, user?.id])
+  }, [user?.id, appointmentId])
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
