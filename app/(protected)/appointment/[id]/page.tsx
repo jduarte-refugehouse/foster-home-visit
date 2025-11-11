@@ -39,7 +39,7 @@ import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
-import { logDriveStart, logDriveEnd, logVisitStart } from "@/lib/continuum-logger"
+import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@/lib/continuum-logger"
 
 interface Appointment {
   appointment_id: string
@@ -190,6 +190,7 @@ export default function AppointmentDetailPage() {
 
   const handleVisitFormCompleted = async () => {
     try {
+      // Update appointment status
       const response = await fetch(`/api/appointments/${appointmentId}`, {
         method: "PUT",
         headers: {
@@ -201,6 +202,47 @@ export default function AppointmentDetailPage() {
       })
 
       if (response.ok) {
+        // Log visit end to continuum (non-blocking - don't fail if this fails)
+        if (appointmentId && appointment) {
+          // Calculate duration if we have visit start time
+          let durationMinutes: number | undefined = undefined
+          if (appointment.arrived_timestamp) {
+            const startTime = new Date(appointment.arrived_timestamp).getTime()
+            const endTime = new Date().getTime()
+            durationMinutes = Math.round((endTime - startTime) / (1000 * 60))
+          }
+
+          logVisitEnd({
+            appointmentId: appointmentId,
+            staffUserId: user?.id || appointment.assigned_to_user_id || null,
+            staffName: user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}`.trim()
+              : appointment.assigned_to_name || "Unknown Staff",
+            homeGuid: homeGuid || (appointment.home_xref ? appointment.home_xref.toString() : null),
+            homeXref: appointment.home_xref ? parseInt(String(appointment.home_xref)) : undefined,
+            homeName: appointment.home_name || appointment.title || null,
+            durationMinutes: durationMinutes,
+            outcome: "Visit marked as completed",
+            contextNotes: "Visit completed via form completion button",
+            createdByUserId: user?.id || appointment.assigned_to_user_id || null,
+          }).then((result) => {
+            if (result.success) {
+              console.log("✅ [CONTINUUM] Visit end logged:", result.entryId)
+              // Refresh history tab to show the new entry
+              setHistoryRefreshKey((prev) => prev + 1)
+            } else {
+              console.warn("⚠️ [CONTINUUM] Failed to log visit end:", result.error)
+            }
+          }).catch((error) => {
+            console.error("❌ [CONTINUUM] Error logging visit end:", error)
+          })
+        } else {
+          console.warn("⚠️ [CONTINUUM] Missing required data for logging visit end:", {
+            appointmentId: !!appointmentId,
+            appointment: !!appointment,
+          })
+        }
+
         toast({
           title: "Success",
           description: "Visit completed and appointment updated",
@@ -210,6 +252,11 @@ export default function AppointmentDetailPage() {
       }
     } catch (error) {
       console.error("Error updating appointment status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to complete visit",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1966,7 +2013,7 @@ export default function AppointmentDetailPage() {
 
         {/* History Tab */}
         <TabsContent value="history" className="mt-0">
-          <VisitHistoryTab key={historyRefreshKey} appointmentId={appointmentId} />
+          <VisitHistoryTab key={`${appointmentId}-${historyRefreshKey}`} appointmentId={appointmentId} />
         </TabsContent>
 
         {/* Notes Tab */}
