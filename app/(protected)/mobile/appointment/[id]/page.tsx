@@ -65,6 +65,9 @@ export default function MobileAppointmentDetailPage() {
   const [leavingAction, setLeavingAction] = useState<"next" | "return" | null>(null)
   const [sendingLink, setSendingLink] = useState(false)
   const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
+  // Travel leg tracking state
+  const [currentLegId, setCurrentLegId] = useState<string | null>(null)
+  const [journeyId, setJourneyId] = useState<string | null>(null)
 
   // Debug logging
   useEffect(() => {
@@ -79,11 +82,39 @@ export default function MobileAppointmentDetailPage() {
     //   router.replace(`/appointment/${appointmentId}`)
     //   return
     // }
-    if (appointmentId) {
+    if (appointmentId && user?.id) {
       fetchAppointmentDetails()
       fetchNextAppointment()
+      fetchCurrentTravelLeg()
     }
-  }, [appointmentId, isMobile, router])
+  }, [appointmentId, isMobile, router, user?.id])
+
+  // Fetch current in-progress travel leg for this appointment
+  const fetchCurrentTravelLeg = async () => {
+    if (!user?.id || !appointmentId) return
+
+    try {
+      const response = await fetch(`/api/travel-legs?staffUserId=${user.id}&status=in_progress`)
+      const data = await response.json()
+
+      if (data.success && data.legs && data.legs.length > 0) {
+        // Find leg that ends at this appointment or starts from this appointment
+        const relevantLeg = data.legs.find(
+          (leg: any) =>
+            leg.appointment_id_to === appointmentId ||
+            leg.appointment_id_from === appointmentId
+        )
+
+        if (relevantLeg) {
+          setCurrentLegId(relevantLeg.leg_id)
+          setJourneyId(relevantLeg.journey_id)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching current travel leg:", error)
+      // Silently fail - this is not critical
+    }
+  }
 
   const fetchNextAppointment = async () => {
     try {
@@ -246,42 +277,36 @@ export default function MobileAppointmentDetailPage() {
     try {
       const location = await captureLocation("start_drive")
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-      
-      // Add auth headers - user should be available since page is protected
-      // Wait a moment for user to be available if not yet loaded
-      let currentUser = user
-      if (!currentUser && isLoaded) {
-        // User should exist but hook might not have it yet - wait briefly
-        await new Promise(resolve => setTimeout(resolve, 100))
-        // Re-check - but we can't re-call the hook, so just try with what we have
-      }
-      
-      if (currentUser?.id) {
-        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = currentUser.id
-        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
-      } else {
-        // If still no user, the API should still work if cookies are set
-        // Clerk cookies should be sent automatically with the request
-        console.warn("User object not available, relying on Clerk session cookies")
+      if (!user?.id) {
+        throw new Error("User not available")
       }
 
-      const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+      // Create new travel leg using leg-based system
+      const response = await fetch(`/api/travel-legs`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          action: "start_drive",
-          latitude: location.latitude,
-          longitude: location.longitude,
+          staff_user_id: user.id,
+          start_latitude: location.latitude,
+          start_longitude: location.longitude,
+          start_timestamp: new Date().toISOString(),
+          start_location_name: "Office", // Could be dynamic based on user's office location
+          start_location_type: "office",
+          appointment_id_to: appointmentId, // This leg ends at the current appointment
+          travel_purpose: `Travel to ${appointment?.home_name || appointment?.title || "appointment"}`,
+          journey_id: journeyId, // Use existing journey or create new one
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
+        // Store leg_id and journey_id for completing the leg later
+        setCurrentLegId(data.leg_id)
+        setJourneyId(data.journey_id)
+        
         toast({
           title: "Drive Started",
           description: "Starting location captured",
@@ -322,43 +347,63 @@ export default function MobileAppointmentDetailPage() {
     try {
       const location = await captureLocation("arrived")
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-      
-      // Add auth headers - user should be available since page is protected
-      let currentUser = user
-      if (!currentUser && isLoaded) {
-        // User should exist but hook might not have it yet - wait briefly
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-      
-      if (currentUser?.id) {
-        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = currentUser.id
-        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
-      } else {
-        // If still no user, the API should still work if cookies are set
-        console.warn("User object not available, relying on Clerk session cookies")
+      if (!currentLegId) {
+        // If no current leg, we might need to create one or use the old system as fallback
+        console.warn("No current leg ID found, falling back to appointment-based tracking")
+        // Fallback to old system for backward compatibility
+        const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "arrived",
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }),
+        })
+        const data = await response.json()
+        if (response.ok) {
+          toast({
+            title: "Arrived",
+            description: data.mileage
+              ? `Arrival location captured. Distance: ${data.mileage.toFixed(2)} miles`
+              : "Arrival location captured",
+          })
+          fetchAppointmentDetails()
+          return
+        } else {
+          throw new Error(data.error || data.details || "Failed to record arrival")
+        }
       }
 
-      const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
-        method: "POST",
-        headers,
+      // Complete the current travel leg
+      const response = await fetch(`/api/travel-legs/${currentLegId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          action: "arrived",
-          latitude: location.latitude,
-          longitude: location.longitude,
+          end_latitude: location.latitude,
+          end_longitude: location.longitude,
+          end_timestamp: new Date().toISOString(),
+          end_location_name: appointment?.home_name || appointment?.title || "Appointment Location",
+          end_location_address: appointment?.location_address || null,
+          end_location_type: "appointment",
+          appointment_id_to: appointmentId,
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
+        // Clear current leg since it's now completed
+        setCurrentLegId(null)
+        
         toast({
           title: "Arrived",
-          description: data.mileage
-            ? `Arrival location captured. Distance: ${data.mileage.toFixed(2)} miles`
+          description: data.calculated_mileage
+            ? `Arrival location captured. Distance: ${data.calculated_mileage.toFixed(2)} miles`
             : "Arrival location captured",
         })
         fetchAppointmentDetails()
@@ -409,35 +454,39 @@ export default function MobileAppointmentDetailPage() {
         return
       }
 
-      // Don't set capturingLocation here - captureLocation does it internally
-      const location = await captureLocation("arrived")
-      
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-      
-      let currentUser = user
-      if (!currentUser && isLoaded) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-      
-      if (currentUser?.id) {
-        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = currentUser.id
-        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
+      if (!user?.id) {
+        throw new Error("User not available")
       }
 
-      const response = await fetch(`/api/appointments/${nextAppointment.appointmentId}/mileage`, {
+      // Don't set capturingLocation here - captureLocation does it internally
+      const location = await captureLocation("arrived")
+
+      // Create new travel leg for next appointment (using same journey)
+      const response = await fetch(`/api/travel-legs`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          action: "start_drive",
-          latitude: location.latitude,
-          longitude: location.longitude,
+          staff_user_id: user.id,
+          start_latitude: location.latitude,
+          start_longitude: location.longitude,
+          start_timestamp: new Date().toISOString(),
+          start_location_name: appointment?.home_name || appointment?.title || "Current Location",
+          start_location_type: "appointment",
+          appointment_id_from: appointmentId, // Starting from current appointment
+          appointment_id_to: nextAppointment.appointmentId, // Ending at next appointment
+          travel_purpose: `Travel to ${nextAppointment.title || nextAppointment.homeName || "next appointment"}`,
+          journey_id: journeyId, // Continue same journey
         }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
+        // Store new leg_id for completing later
+        setCurrentLegId(data.leg_id)
+        
         toast({
           title: "Travel Started",
           description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
@@ -446,12 +495,7 @@ export default function MobileAppointmentDetailPage() {
         // Refresh next appointment info
         fetchNextAppointment()
       } else {
-        const errorData = await response.json()
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to start travel to next visit",
-          variant: "destructive",
-        })
+        throw new Error(data.error || data.details || "Failed to start travel to next visit")
       }
     } catch (error) {
       console.error("Error starting travel to next visit:", error)
@@ -486,36 +530,39 @@ export default function MobileAppointmentDetailPage() {
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
+      if (!user?.id) {
+        throw new Error("User not available")
+      }
+
       const location = await captureLocation("arrived")
       
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-      
-      let currentUser = user
-      if (!currentUser && isLoaded) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-      
-      if (currentUser?.id) {
-        headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
-        headers["x-user-clerk-id"] = currentUser.id
-        headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
-      }
-      
       if (action === "next" && nextAppointment) {
-        // Update next appointment's start_drive location
-        const response = await fetch(`/api/appointments/${nextAppointment.appointmentId}/mileage`, {
+        // Create new travel leg for next appointment (using same journey)
+        const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers,
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
-            action: "start_drive",
-            latitude: location.latitude,
-            longitude: location.longitude,
+            staff_user_id: user.id,
+            start_latitude: location.latitude,
+            start_longitude: location.longitude,
+            start_timestamp: new Date().toISOString(),
+            start_location_name: appointment?.home_name || appointment?.title || "Current Location",
+            start_location_type: "appointment",
+            appointment_id_from: appointmentId,
+            appointment_id_to: nextAppointment.appointmentId,
+            travel_purpose: `Travel to ${nextAppointment.title || nextAppointment.homeName || "next appointment"}`,
+            journey_id: journeyId, // Continue same journey
           }),
         })
 
+        const data = await response.json()
+
         if (response.ok) {
+          // Store new leg_id for completing later
+          setCurrentLegId(data.leg_id)
+          
           toast({
             title: "Travel Started",
             description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
@@ -523,59 +570,43 @@ export default function MobileAppointmentDetailPage() {
           setShowLeavingDialog(false)
           fetchAppointmentDetails()
         } else {
-          const errorData = await response.json()
-          toast({
-            title: "Error",
-            description: errorData.error || "Failed to start travel to next visit",
-            variant: "destructive",
-          })
+          throw new Error(data.error || data.details || "Failed to start travel to next visit")
         }
       } else {
-        // Return travel - start return trip (first click starts the timer)
-        const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
+        // Return travel - create new leg for return trip
+        const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers,
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
-            action: "return",
-            latitude: location.latitude,
-            longitude: location.longitude,
+            staff_user_id: user.id,
+            start_latitude: location.latitude,
+            start_longitude: location.longitude,
+            start_timestamp: new Date().toISOString(),
+            start_location_name: appointment?.home_name || appointment?.title || "Current Location",
+            start_location_type: "appointment",
+            appointment_id_from: appointmentId,
+            travel_purpose: "Return to office/home",
+            journey_id: journeyId, // Continue same journey
+            is_final_leg: true, // This is the final leg of the journey
           }),
         })
 
+        const data = await response.json()
+
         if (response.ok) {
-          const result = await response.json()
-          if (result.returnStarted) {
-            // Return trip started - show success and refresh to show "Arrived at Home" button
-            toast({
-              title: "Return Travel Started",
-              description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
-            })
-            setShowLeavingDialog(false)
-            fetchAppointmentDetails()
-          } else if (result.returnCompleted) {
-            // Return trip completed
-            toast({
-              title: "Return Travel Completed",
-              description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
-            })
-            setShowLeavingDialog(false)
-            fetchAppointmentDetails()
-          } else {
-            // Legacy response format
-            toast({
-              title: "Return Travel Logged",
-              description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
-            })
-            setShowLeavingDialog(false)
-            fetchAppointmentDetails()
-          }
-        } else {
-          const errorData = await response.json()
+          // Store leg_id for completing when they arrive at home
+          setCurrentLegId(data.leg_id)
+          
           toast({
-            title: "Error",
-            description: errorData.error || "Failed to start return travel",
-            variant: "destructive",
+            title: "Return Travel Started",
+            description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
           })
+          setShowLeavingDialog(false)
+          fetchAppointmentDetails()
+        } else {
+          throw new Error(data.error || data.details || "Failed to start return travel")
         }
       }
     } catch (error) {
@@ -890,52 +921,42 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Return Travel In Progress: Show "Arrived at Home" button */}
-          {hasReturnStarted && !hasReturnCompleted && (
+          {hasReturnStarted && !hasReturnCompleted && currentLegId && (
             <Button
               onClick={async () => {
                 try {
                   // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
-                  
-                  const headers: HeadersInit = {
-                    "Content-Type": "application/json",
-                  }
-                  
-                  let currentUser = user
-                  if (!currentUser && isLoaded) {
-                    await new Promise(resolve => setTimeout(resolve, 100))
-                  }
-                  
-                  if (currentUser?.id) {
-                    headers["x-user-email"] = currentUser.emailAddresses[0]?.emailAddress || ""
-                    headers["x-user-clerk-id"] = currentUser.id
-                    headers["x-user-name"] = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
-                  }
 
-                  const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
-                    method: "POST",
-                    headers,
+                  // Complete the return travel leg
+                  const response = await fetch(`/api/travel-legs/${currentLegId}`, {
+                    method: "PATCH",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
                     body: JSON.stringify({
-                      action: "return",
-                      latitude: location.latitude,
-                      longitude: location.longitude,
+                      end_latitude: location.latitude,
+                      end_longitude: location.longitude,
+                      end_timestamp: new Date().toISOString(),
+                      end_location_name: "Office/Home",
+                      end_location_type: "office",
+                      is_final_leg: true,
                     }),
                   })
 
+                  const data = await response.json()
+
                   if (response.ok) {
-                    const result = await response.json()
+                    // Clear current leg since it's now completed
+                    setCurrentLegId(null)
+                    
                     toast({
                       title: "Arrived at Home",
-                      description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
+                      description: `Return travel completed. Distance: ${data.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
                     })
                     fetchAppointmentDetails()
                   } else {
-                    const errorData = await response.json()
-                    toast({
-                      title: "Error",
-                      description: errorData.error || "Failed to log arrival at home",
-                      variant: "destructive",
-                    })
+                    throw new Error(data.error || data.details || "Failed to log arrival at home")
                   }
                 } catch (error) {
                   console.error("Error logging arrival at home:", error)

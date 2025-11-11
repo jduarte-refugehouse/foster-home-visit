@@ -73,16 +73,16 @@ export async function POST(request: NextRequest) {
         staff_user_id, journey_id, leg_sequence,
         start_latitude, start_longitude, start_timestamp,
         start_location_name, start_location_address, start_location_type,
-        appointment_id_from, travel_purpose, vehicle_type,
-        leg_status, created_by_user_id
+        appointment_id_from, appointment_id_to, travel_purpose, vehicle_type,
+        is_final_leg, leg_status, created_by_user_id
       )
       OUTPUT INSERTED.leg_id, INSERTED.created_at
       VALUES (
         @param0, @param1, @param2,
         @param3, @param4, @param5,
         @param6, @param7, @param8,
-        @param9, @param10, @param11,
-        'in_progress', @param12
+        @param9, @param10, @param11, @param12,
+        @param13, 'in_progress', @param14
       )`,
       [
         staff_user_id,
@@ -95,8 +95,10 @@ export async function POST(request: NextRequest) {
         start_location_address || null,
         start_location_type || null,
         appointment_id_from || null,
+        appointment_id_to || null,
         travel_purpose || null,
         vehicle_type || null,
+        is_final_leg || false,
         auth.clerkUserId,
       ]
     )
