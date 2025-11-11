@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      staff_user_id,
       start_location_name,
       start_address,
       start_latitude,
@@ -57,10 +56,13 @@ export async function POST(request: NextRequest) {
       journey_id,
     } = body
 
+    // Use authenticated user ID from Clerk session
+    const staff_user_id = auth.clerkUserId
+
     // Validate required fields
     if (!staff_user_id || !start_location_name || !end_location_name || !start_timestamp || !end_timestamp || !manual_notes) {
       return NextResponse.json(
-        { error: "Missing required fields: staff_user_id, start_location_name, end_location_name, start_timestamp, end_timestamp, manual_notes" },
+        { error: "Missing required fields: start_location_name, end_location_name, start_timestamp, end_timestamp, manual_notes" },
         { status: 400 }
       )
     }

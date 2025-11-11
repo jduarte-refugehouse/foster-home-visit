@@ -289,18 +289,14 @@ export default function MobileAppointmentDetailPage() {
     try {
       const location = await captureLocation("start_drive")
 
-      if (!user?.id) {
-        throw new Error("User not available")
-      }
-
       // Create new travel leg using leg-based system
+      // API will get user ID from Clerk session automatically
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          staff_user_id: user.id,
           start_latitude: location.latitude,
           start_longitude: location.longitude,
           start_timestamp: new Date().toISOString(),
@@ -466,21 +462,17 @@ export default function MobileAppointmentDetailPage() {
         return
       }
 
-      if (!user?.id) {
-        throw new Error("User not available")
-      }
-
       // Don't set capturingLocation here - captureLocation does it internally
       const location = await captureLocation("arrived")
 
       // Create new travel leg for next appointment (using same journey)
+      // API will get user ID from Clerk session automatically
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          staff_user_id: user.id,
           start_latitude: location.latitude,
           start_longitude: location.longitude,
           start_timestamp: new Date().toISOString(),
@@ -542,21 +534,17 @@ export default function MobileAppointmentDetailPage() {
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
-      if (!user?.id) {
-        throw new Error("User not available")
-      }
-
       const location = await captureLocation("arrived")
       
       if (action === "next" && nextAppointment) {
         // Create new travel leg for next appointment (using same journey)
+        // API will get user ID from Clerk session automatically
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            staff_user_id: user.id,
             start_latitude: location.latitude,
             start_longitude: location.longitude,
             start_timestamp: new Date().toISOString(),
@@ -586,13 +574,13 @@ export default function MobileAppointmentDetailPage() {
         }
       } else {
         // Return travel - create new leg for return trip
+        // API will get user ID from Clerk session automatically
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            staff_user_id: user.id,
             start_latitude: location.latitude,
             start_longitude: location.longitude,
             start_timestamp: new Date().toISOString(),
