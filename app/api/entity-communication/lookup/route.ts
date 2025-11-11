@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     // Build query based on available parameters
     // Note: EntityCommunicationBridge uses FosterFacilityGUID (not FosterHomeGUID)
+    // Use IsActive = 1 to filter active records (no is_deleted column in this table)
     let queryText = `
       SELECT TOP 1
         EntityFullName,
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         EmailAddress
       FROM dbo.EntityCommunicationBridge
       WHERE FosterFacilityGUID = @param0
-        AND is_deleted = 0
+        AND IsActive = 1
     `
     const params: any[] = [fosterFacilityGuid]
     let paramIndex = 1
