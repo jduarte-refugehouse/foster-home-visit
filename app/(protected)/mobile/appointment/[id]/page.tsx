@@ -450,7 +450,7 @@ export default function MobileAppointmentDetailPage() {
           })
         }
       } else {
-        // Return travel - calculate return mileage for current appointment
+        // Return travel - start return trip (first click starts the timer)
         const response = await fetch(`/api/appointments/${appointmentId}/mileage`, {
           method: "POST",
           headers,
@@ -463,17 +463,36 @@ export default function MobileAppointmentDetailPage() {
 
         if (response.ok) {
           const result = await response.json()
-          toast({
-            title: "Return Travel Logged",
-            description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
-          })
-          setShowLeavingDialog(false)
-          fetchAppointmentDetails()
+          if (result.returnStarted) {
+            // Return trip started - show success and refresh to show "Arrived at Home" button
+            toast({
+              title: "Return Travel Started",
+              description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
+            })
+            setShowLeavingDialog(false)
+            fetchAppointmentDetails()
+          } else if (result.returnCompleted) {
+            // Return trip completed
+            toast({
+              title: "Return Travel Completed",
+              description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
+            })
+            setShowLeavingDialog(false)
+            fetchAppointmentDetails()
+          } else {
+            // Legacy response format
+            toast({
+              title: "Return Travel Logged",
+              description: `Return travel completed. Distance: ${result.returnMileage?.toFixed(2) || "0.00"} miles.`,
+            })
+            setShowLeavingDialog(false)
+            fetchAppointmentDetails()
+          }
         } else {
           const errorData = await response.json()
           toast({
             title: "Error",
-            description: errorData.error || "Failed to log return travel",
+            description: errorData.error || "Failed to start return travel",
             variant: "destructive",
           })
         }
