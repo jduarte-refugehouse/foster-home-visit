@@ -186,15 +186,22 @@ export default function MobileAppointmentDetailPage() {
   const captureLocation = (action: "start_drive" | "arrived") => {
     return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
       if (!navigator.geolocation) {
+        setCapturingLocation(false)
         reject(new Error("Geolocation is not supported by your browser"))
         return
       }
 
       setCapturingLocation(true)
+      console.log(`📍 [LOCATION] Starting location capture for: ${action}`)
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCapturingLocation(false)
+          console.log(`✅ [LOCATION] Location captured:`, {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          })
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -202,11 +209,33 @@ export default function MobileAppointmentDetailPage() {
         },
         (error) => {
           setCapturingLocation(false)
-          reject(error)
+          console.error(`❌ [LOCATION] Location capture failed:`, {
+            code: error.code,
+            message: error.message,
+            action,
+          })
+          
+          // Provide more descriptive error messages
+          let errorMessage = error.message
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location permission denied. Please enable location access in your browser settings."
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable. Please check your device's location settings."
+              break
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out. Please try again."
+              break
+            default:
+              errorMessage = error.message || "Failed to capture location"
+          }
+          
+          reject(new Error(errorMessage))
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000, // Increased timeout to 15 seconds
           maximumAge: 0,
         },
       )
@@ -403,7 +432,7 @@ export default function MobileAppointmentDetailPage() {
   const handleLeavingAction = async (action: "next" | "return") => {
     try {
       setLeavingAction(action)
-      setCapturingLocation(true)
+      // Don't set capturingLocation here - captureLocation does it internally
 
       const location = await captureLocation("arrived")
       
@@ -499,9 +528,24 @@ export default function MobileAppointmentDetailPage() {
       }
     } catch (error) {
       console.error("Error handling leaving action:", error)
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = "Failed to process leaving action"
+      if (error instanceof Error) {
+        if (error.message.includes("timeout")) {
+          errorMessage = "Location capture timed out. Please try again."
+        } else if (error.message.includes("permission") || error.message.includes("denied")) {
+          errorMessage = "Location permission denied. Please enable location access in your browser settings."
+        } else if (error.message.includes("not supported")) {
+          errorMessage = "Geolocation is not supported by your browser."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process leaving action",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -798,7 +842,7 @@ export default function MobileAppointmentDetailPage() {
             <Button
               onClick={async () => {
                 try {
-                  setCapturingLocation(true)
+                  // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
                   
                   const headers: HeadersInit = {
@@ -843,9 +887,24 @@ export default function MobileAppointmentDetailPage() {
                   }
                 } catch (error) {
                   console.error("Error logging arrival at home:", error)
+                  
+                  // Provide more specific error messages based on error type
+                  let errorMessage = "Failed to log arrival at home"
+                  if (error instanceof Error) {
+                    if (error.message.includes("timeout")) {
+                      errorMessage = "Location capture timed out. Please try again."
+                    } else if (error.message.includes("permission") || error.message.includes("denied")) {
+                      errorMessage = "Location permission denied. Please enable location access in your browser settings."
+                    } else if (error.message.includes("not supported")) {
+                      errorMessage = "Geolocation is not supported by your browser."
+                    } else {
+                      errorMessage = error.message
+                    }
+                  }
+                  
                   toast({
                     title: "Error",
-                    description: error instanceof Error ? error.message : "Failed to log arrival at home",
+                    description: errorMessage,
                     variant: "destructive",
                   })
                 } finally {
