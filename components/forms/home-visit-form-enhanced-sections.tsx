@@ -1813,15 +1813,22 @@ const SendSignatureLinkButton = ({
     return phoneStr.replace(/\D/g, "")
   }
 
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (open) {
+      // Reset to initial values when dialog opens
+      setName(recipientName || "")
+      setEmail(recipientEmail || "")
+      setPhone(recipientPhone || "")
+    }
+  }, [open, recipientName, recipientEmail, recipientPhone])
+
   // Look up contact info from EntityCommunicationBridge when dialog opens
   useEffect(() => {
     if (!open || !fosterFacilityGuid) return
     
-    // Only fetch if we don't already have both phone and email
-    // This prevents unnecessary API calls if data is already populated
-    if (phone && email) return
-    
     // Fetch contact info from EntityCommunicationBridge
+    // This will pre-populate if found, even if we already have some data
     const fetchContactInfo = async () => {
       setLoadingContact(true)
       try {
@@ -1839,18 +1846,18 @@ const SendSignatureLinkButton = ({
         const data = await response.json()
         
         if (data.success && data.found && data.data) {
-          // Pre-populate name if we have it from the bridge and current name is empty
-          if (data.data.name && (!name || name === recipientName)) {
+          // Pre-populate name if we have it from the bridge (prefer bridge data)
+          if (data.data.name) {
             setName(data.data.name)
           }
           
-          // Pre-populate phone if we have it and don't already have one
-          if (data.data.phone && !phone) {
+          // Pre-populate phone if we have it from the bridge (prefer bridge data)
+          if (data.data.phone) {
             setPhone(formatPhoneNumber(data.data.phone))
           }
           
-          // Pre-populate email if we have it and don't already have one
-          if (data.data.email && !email) {
+          // Pre-populate email if we have it from the bridge (prefer bridge data)
+          if (data.data.email) {
             setEmail(data.data.email)
           }
         }
