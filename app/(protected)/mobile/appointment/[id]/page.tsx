@@ -63,6 +63,8 @@ export default function MobileAppointmentDetailPage() {
   const [nextAppointment, setNextAppointment] = useState<{ appointmentId: string; title: string; startDateTime: string; locationAddress?: string; homeName?: string } | null>(null)
   const [hasNextAppointment, setHasNextAppointment] = useState<boolean>(false)
   const [leavingAction, setLeavingAction] = useState<"next" | "return" | null>(null)
+  const [sendingLink, setSendingLink] = useState(false)
+  const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
 
   // Debug logging
   useEffect(() => {
@@ -682,23 +684,15 @@ export default function MobileAppointmentDetailPage() {
               )}
 
               {hasArrived && appointment.status === "scheduled" && (
-                <Button
-                  onClick={async () => {
-                    const response = await fetch(`/api/appointments/${appointmentId}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ status: "in-progress" }),
-                    })
-                    if (response.ok) {
-                      toast({ title: "Visit Started", description: "Visit status updated" })
-                      fetchAppointmentDetails()
-                    }
-                  }}
-                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white"
-                  size="lg"
-                >
-                  Start Visit
-                </Button>
+                <div className="w-full p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 text-sm text-amber-800 dark:text-amber-200">
+                      <p className="font-medium mb-1">Start Visit on Tablet/iPad</p>
+                      <p className="text-xs">Please use a tablet or larger device to start the visit and access the full visit form.</p>
+                    </div>
+                  </div>
+                </div>
               )}
             </>
           )}
@@ -715,6 +709,9 @@ export default function MobileAppointmentDetailPage() {
                 if (response.ok) {
                   toast({ title: "Visit Ended", description: "Visit marked as completed" })
                   fetchAppointmentDetails()
+                  
+                  // Automatically prompt to text appointment link for easy access to "Leave" button
+                  setShowSendLinkDialog(true)
                 }
               }}
               className="w-full bg-red-600 hover:bg-red-700 text-white"
