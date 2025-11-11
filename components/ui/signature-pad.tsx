@@ -40,7 +40,10 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
 
   // Load existing signature when value changes
   useEffect(() => {
-    if (!value) return
+    if (!value) {
+      setIsEmpty(true)
+      return
+    }
     
     const canvas = canvasRef.current
     if (!canvas) return
@@ -54,10 +57,11 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
       // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
-      // If disabled (read-only display), maintain aspect ratio
-      // If enabled (capture mode), fill canvas (original behavior for mobile capture)
+      // For capture: always fill canvas (original behavior - works correctly on mobile)
+      // For display: maintain aspect ratio only when disabled (read-only)
+      // When enabled, we still fill canvas so user can continue drawing/editing
       if (disabled) {
-        // Display mode: maintain aspect ratio to prevent distortion
+        // Read-only display mode: maintain aspect ratio to prevent distortion
         const imgAspect = img.width / img.height
         const canvasAspect = rect.width / rect.height
         
@@ -90,7 +94,8 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
           drawHeight * scaleY
         )
       } else {
-        // Capture mode: fill canvas (original behavior - works correctly on mobile)
+        // Capture/Edit mode: fill canvas (original behavior - works correctly on mobile)
+        // This preserves the mobile capture experience
         ctx.drawImage(img, 0, 0, rect.width, rect.height)
       }
       setIsEmpty(false)
