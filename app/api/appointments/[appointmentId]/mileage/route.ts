@@ -96,13 +96,12 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     // Check if appointment exists and verify access
     // If we have user info, verify they're assigned to this appointment
-    const appointmentQuery = clerkUserId || email
-      ? `SELECT appointment_id, start_drive_latitude, start_drive_longitude, assigned_to_user_id 
-         FROM appointments 
-         WHERE appointment_id = @param0 AND is_deleted = 0`
-      : `SELECT appointment_id, start_drive_latitude, start_drive_longitude, assigned_to_user_id 
-         FROM appointments 
-         WHERE appointment_id = @param0 AND is_deleted = 0`
+    const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, 
+                                    arrived_latitude, arrived_longitude, arrived_timestamp,
+                                    return_latitude, return_longitude, return_timestamp, return_mileage,
+                                    assigned_to_user_id 
+                              FROM appointments 
+                              WHERE appointment_id = @param0 AND is_deleted = 0`
     
     const existingAppointment = await query(appointmentQuery, [appointmentId])
 
