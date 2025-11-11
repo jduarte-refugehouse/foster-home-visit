@@ -54,42 +54,49 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
       // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
-      // Calculate aspect ratios to maintain proportions
-      const imgAspect = img.width / img.height
-      const canvasAspect = rect.width / rect.height
-      
-      let drawWidth = rect.width
-      let drawHeight = rect.height
-      let drawX = 0
-      let drawY = 0
-      
-      // Maintain aspect ratio (like object-fit: contain)
-      if (imgAspect > canvasAspect) {
-        // Image is wider - fit to width
-        drawHeight = rect.width / imgAspect
-        drawY = (rect.height - drawHeight) / 2
+      // If disabled (read-only display), maintain aspect ratio
+      // If enabled (capture mode), fill canvas (original behavior for mobile capture)
+      if (disabled) {
+        // Display mode: maintain aspect ratio to prevent distortion
+        const imgAspect = img.width / img.height
+        const canvasAspect = rect.width / rect.height
+        
+        let drawWidth = rect.width
+        let drawHeight = rect.height
+        let drawX = 0
+        let drawY = 0
+        
+        // Maintain aspect ratio (like object-fit: contain)
+        if (imgAspect > canvasAspect) {
+          // Image is wider - fit to width
+          drawHeight = rect.width / imgAspect
+          drawY = (rect.height - drawHeight) / 2
+        } else {
+          // Image is taller - fit to height
+          drawWidth = rect.height * imgAspect
+          drawX = (rect.width - drawWidth) / 2
+        }
+        
+        // Scale for device pixel ratio
+        const scaleX = canvas.width / rect.width
+        const scaleY = canvas.height / rect.height
+        
+        // Draw the signature maintaining aspect ratio
+        ctx.drawImage(
+          img, 
+          drawX * scaleX, 
+          drawY * scaleY, 
+          drawWidth * scaleX, 
+          drawHeight * scaleY
+        )
       } else {
-        // Image is taller - fit to height
-        drawWidth = rect.height * imgAspect
-        drawX = (rect.width - drawWidth) / 2
+        // Capture mode: fill canvas (original behavior - works correctly on mobile)
+        ctx.drawImage(img, 0, 0, rect.width, rect.height)
       }
-      
-      // Scale for device pixel ratio
-      const scaleX = canvas.width / rect.width
-      const scaleY = canvas.height / rect.height
-      
-      // Draw the signature maintaining aspect ratio
-      ctx.drawImage(
-        img, 
-        drawX * scaleX, 
-        drawY * scaleY, 
-        drawWidth * scaleX, 
-        drawHeight * scaleY
-      )
       setIsEmpty(false)
     }
     img.src = value
-  }, [value])
+  }, [value, disabled])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (disabled) return
