@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
       fosterFacilityGuid,
     })
 
+    // Cast fosterFacilityGuid to uniqueidentifier to ensure proper type matching
+    // EntityCommunicationBridge.FosterFacilityGUID should match SyncActiveHomes.Guid
     let queryText = `
       SELECT TOP 1
         EntityGUID,
@@ -43,7 +45,7 @@ export async function GET(request: NextRequest) {
         PrimaryMobilePhoneE164,
         EmailAddress
       FROM dbo.EntityCommunicationBridge
-      WHERE FosterFacilityGUID = @param0
+      WHERE FosterFacilityGUID = CAST(@param0 AS uniqueidentifier)
         AND IsActive = 1
     `
     const params: any[] = [fosterFacilityGuid]
