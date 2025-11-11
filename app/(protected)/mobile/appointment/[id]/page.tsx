@@ -291,12 +291,24 @@ export default function MobileAppointmentDetailPage() {
       const location = await captureLocation("start_drive")
 
       // Create new travel leg using leg-based system
-      // API will get user ID from Clerk session automatically
+      // Set Clerk auth headers for API authentication
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.firstName || user?.lastName) {
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           start_latitude: location.latitude,
           start_longitude: location.longitude,
@@ -467,12 +479,24 @@ export default function MobileAppointmentDetailPage() {
       const location = await captureLocation("arrived")
 
       // Create new travel leg for next appointment (using same journey)
-      // API will get user ID from Clerk session automatically
+      // Set Clerk auth headers for API authentication
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.firstName || user?.lastName) {
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           start_latitude: location.latitude,
           start_longitude: location.longitude,
@@ -537,14 +561,26 @@ export default function MobileAppointmentDetailPage() {
 
       const location = await captureLocation("arrived")
       
+      // Set Clerk auth headers for API authentication
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.firstName || user?.lastName) {
+        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      }
+      
       if (action === "next" && nextAppointment) {
         // Create new travel leg for next appointment (using same journey)
-        // API will get user ID from Clerk session automatically
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             start_latitude: location.latitude,
             start_longitude: location.longitude,
@@ -575,12 +611,9 @@ export default function MobileAppointmentDetailPage() {
         }
       } else {
         // Return travel - create new leg for return trip
-        // API will get user ID from Clerk session automatically
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             start_latitude: location.latitude,
             start_longitude: location.longitude,
