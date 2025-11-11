@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
-import { calculateDrivingDistance } from "@/lib/route-calculator" // You'll need to extract this function
+import { calculateDrivingDistance } from "@/lib/route-calculator"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
