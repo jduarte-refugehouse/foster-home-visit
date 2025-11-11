@@ -103,10 +103,11 @@ export default function MobileAppointmentDetailPage() {
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
-    if (!user?.id || !appointmentId) return
+    if (!appointmentId) return
 
     try {
-      const response = await fetch(`/api/travel-legs?staffUserId=${user.id}&status=in_progress`)
+      // API will filter by authenticated user automatically
+      const response = await fetch(`/api/travel-legs?status=in_progress`)
       const data = await response.json()
 
       if (data.success && data.legs && data.legs.length > 0) {

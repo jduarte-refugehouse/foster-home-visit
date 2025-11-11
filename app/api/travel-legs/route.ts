@@ -139,12 +139,18 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = getClerkUserIdFromRequest(request)
+    if (!auth.clerkUserId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const staffUserId = searchParams.get("staffUserId")
     const date = searchParams.get("date")
     const journeyId = searchParams.get("journeyId")
     const status = searchParams.get("status")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
+    // Allow filtering by specific staffUserId for admin purposes, but default to authenticated user
+    const staffUserId = searchParams.get("staffUserId") || auth.clerkUserId
 
     const conditions: string[] = []
     const params: any[] = []
@@ -154,11 +160,10 @@ export async function GET(request: NextRequest) {
       conditions.push("is_deleted = 0")
     }
 
-    if (staffUserId) {
-      conditions.push(`staff_user_id = @param${paramIndex}`)
-      params.push(staffUserId)
-      paramIndex++
-    }
+    // Always filter by staff_user_id (defaults to authenticated user)
+    conditions.push(`staff_user_id = @param${paramIndex}`)
+    params.push(staffUserId)
+    paramIndex++
 
     if (date) {
       // Filter by date (any leg that starts on this date)
@@ -200,9 +205,9 @@ export async function GET(request: NextRequest) {
       params
     )
 
-    // Calculate totals if filtering by staff and date
+    // Calculate totals if filtering by date
     let totals = null
-    if (staffUserId && date) {
+    if (date) {
       const totalResult = await query(
         `SELECT 
           COUNT(*) as total_legs,
