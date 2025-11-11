@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { writeFile, mkdir } from "fs/promises"
-import { join } from "path"
 import { randomUUID } from "crypto"
-import { existsSync } from "fs"
 
 export const dynamic = "force-dynamic"
 
@@ -37,25 +34,16 @@ export async function POST(
       )
     }
 
-    // Generate unique filename
-    const fileExtension = file.name.split(".").pop() || ""
-    const fileName = `${randomUUID()}.${fileExtension}`
-    
-    // Determine upload directory (use public/uploads for now, or configure storage)
-    const uploadDir = join(process.cwd(), "public", "uploads", "visit-forms", formId)
-    
-    // Create directory if it doesn't exist
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    const filePath = join(uploadDir, fileName)
-    const relativePath = `/uploads/visit-forms/${formId}/${fileName}`
-
-    // Save file to disk
+    // Convert file to base64 data URL for storage in database
+    // This works in Vercel serverless environment where filesystem is read-only
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    const base64 = buffer.toString("base64")
+    const dataUrl = `data:${file.type};base64,${base64}`
+    
+    // Store as data URL in file_path column
+    // Format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+    const relativePath = dataUrl
 
     // Get appointment_id from visit form
     const formDataQuery = await query(
@@ -73,24 +61,29 @@ export async function POST(
     const appointmentId = formDataQuery[0].appointment_id
 
     // Insert attachment record
+    // Store base64 data URL in file_data column (nvarchar(max)) for Vercel compatibility
+    // file_path stores a reference identifier
     const attachmentId = randomUUID()
+    const filePathReference = `attachment:${attachmentId}`
+    
     await query(
       `INSERT INTO dbo.visit_form_attachments (
         attachment_id, visit_form_id, file_name, file_path, file_size,
-        mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
+        mime_type, attachment_type, description, file_data, created_at, created_by_user_id, created_by_name
       ) VALUES (
         @param0, @param1, @param2, @param3, @param4,
-        @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
+        @param5, @param6, @param7, @param8, GETUTCDATE(), @param9, @param10
       )`,
       [
         attachmentId,
         formId,
         file.name,
-        relativePath,
+        filePathReference, // Reference identifier instead of actual path
         file.size,
         file.type,
         attachmentType,
         description,
+        dataUrl, // Store actual base64 data URL in file_data column
         createdByUserId,
         createdByName,
       ]
@@ -129,15 +122,38 @@ export async function GET(
   try {
     const formId = params.id
 
-    const attachments = await query(
-      `SELECT 
-        attachment_id, file_name, file_path, file_size, mime_type,
-        attachment_type, description, created_at, created_by_name
-      FROM dbo.visit_form_attachments
-      WHERE visit_form_id = @param0 AND is_deleted = 0
-      ORDER BY created_at DESC`,
-      [formId]
-    )
+    // Get attachments with file_data (base64 data URL)
+    // Handle case where file_data column might not exist yet
+    let attachments
+    try {
+      attachments = await query(
+        `SELECT 
+          attachment_id, file_name, file_path, file_size, mime_type,
+          attachment_type, description, file_data, created_at, created_by_name
+        FROM dbo.visit_form_attachments
+        WHERE visit_form_id = @param0 AND is_deleted = 0
+        ORDER BY created_at DESC`,
+        [formId]
+      )
+    } catch (error: any) {
+      // If file_data column doesn't exist, fall back to query without it
+      if (error?.message?.includes("Invalid column name 'file_data'")) {
+        console.warn("file_data column not found, using fallback query")
+        attachments = await query(
+          `SELECT 
+            attachment_id, file_name, file_path, file_size, mime_type,
+            attachment_type, description, created_at, created_by_name
+          FROM dbo.visit_form_attachments
+          WHERE visit_form_id = @param0 AND is_deleted = 0
+          ORDER BY created_at DESC`,
+          [formId]
+        )
+        // Add null file_data for backward compatibility
+        attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+      } else {
+        throw error
+      }
+    }
 
     return NextResponse.json({
       success: true,
