@@ -961,8 +961,8 @@ const EnhancedHomeVisitForm = ({
     { id: "bedrooms", title: "Section 4: Bedrooms", icon: Home, group: "compliance" },
     { id: "education", title: "Section 5: Education", icon: GraduationCap, group: "compliance" },
     { id: "indoor-space", title: "Section 6: Indoor Space", icon: Home, group: "compliance" },
-    { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList, group: "compliance" },
-    { id: "trauma-care", title: "Trauma-Informed Care & Training", icon: Brain, group: "compliance" },
+    // HIDDEN FOR V1: { id: "documentation", title: "Section 7: Documentation", icon: ClipboardList, group: "compliance" },
+    // HIDDEN FOR V1: { id: "trauma-care", title: "Trauma-Informed Care & Training", icon: Brain, group: "compliance" },
     { id: "outdoor-space", title: "Section 10: Outdoor Space", icon: Home, optional: true, group: "compliance" },
     { id: "vehicles", title: "Section 11: Vehicles", icon: Car, optional: true, group: "compliance" },
     { id: "swimming", title: "Section 12: Swimming", icon: Droplets, optional: true, group: "compliance" },
@@ -971,24 +971,25 @@ const EnhancedHomeVisitForm = ({
 
   const t3cReadinessSections = [
     { id: "package-compliance", title: "Section 14: Package-Specific Compliance", icon: Shield, optional: true, group: "t3c" },
-    { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true, group: "t3c" },
+    // HIDDEN FOR V1: { id: "quality-enhancement", title: "Quality Enhancement", icon: TrendingUp, optional: true, group: "t3c" },
   ]
 
   const quarterlyReviewSections = [
-    { id: "quarterly-review", title: "Quarterly Review Items", icon: ClipboardList, required: true, group: "quarterly", frequency: "quarterly" },
+    // HIDDEN FOR V1: { id: "quarterly-review", title: "Quarterly Review Items", icon: ClipboardList, required: true, group: "quarterly", frequency: "quarterly" },
   ]
 
   const standardSections = [
     { id: "foster-parent-interview", title: "Foster Parent Interview", icon: Users, required: true, group: "standard" },
     { id: "observations", title: "Observations", icon: FileText, required: true, group: "standard" },
     { id: "follow-up", title: "Follow-Up Items", icon: CheckCircle, required: true, group: "standard" },
-    { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true, group: "standard" },
+    // HIDDEN FOR V1: { id: "corrective-actions", title: "Corrective Actions", icon: AlertTriangle, optional: true, group: "standard" },
     { id: "visit-summary", title: "Visit Summary", icon: Briefcase, required: true, group: "standard" },
-    { id: "files", title: "Files", icon: FileText, required: false, group: "standard" },
+    // HIDDEN FOR V1: Files tab removed - functionality available in appointment detail page Files tab
+    // HIDDEN FOR V1: { id: "files", title: "Files", icon: FileText, required: false, group: "standard" },
     { id: "signatures", title: "Signatures", icon: FileText, required: true, group: "standard" },
   ]
 
-  // Combine all sections for rendering
+  // Combine all sections for rendering (excluding hidden sections)
   const sections = [
     ...monthlyComplianceSections,
     ...t3cReadinessSections,

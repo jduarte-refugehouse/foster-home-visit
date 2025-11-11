@@ -777,14 +777,14 @@ function generateCompleteReportHTML(
         ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true) : ""}
         ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills", true, true) : ""}
         ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space", true, true) : ""}
-        ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation", true, true) : ""}
+        <!-- HIDDEN FOR V1: ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation", true, true) : ""} -->
         ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false, false) : ""}
-        ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""}
+        <!-- HIDDEN FOR V1: ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""} -->
         ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false, false) : ""}
         ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false, false) : ""}
         ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false, false) : ""}
         ${formData.complianceReview.packageCompliance ? formatPackageComplianceSection(formData.complianceReview.packageCompliance) : ""}
-        ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""}
+        <!-- HIDDEN FOR V1: ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""} -->
       </div>
       ` : formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare ? `
       <!-- Compliance Review (from formData root - legacy format) -->
@@ -797,14 +797,14 @@ function generateCompleteReportHTML(
         ${formData.bedrooms ? formatComplianceSection(formData.bedrooms, "4. Bedrooms and Belongings") : ""}
         ${formData.education ? formatComplianceSection(formData.education, "5. Education & Life Skills") : ""}
         ${formData.indoorSpace ? formatComplianceSection(formData.indoorSpace, "6. Indoor Space") : ""}
-        ${formData.documentation ? formatComplianceSection(formData.documentation, "7. Documentation") : ""}
+        <!-- HIDDEN FOR V1: ${formData.documentation ? formatComplianceSection(formData.documentation, "7. Documentation") : ""} -->
         ${formData.outdoorSpaceCompliance || formData.outdoorSpace ? formatComplianceSection(formData.outdoorSpaceCompliance || formData.outdoorSpace, "8. Outdoor Space", false) : ""}
-        ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""}
+        <!-- HIDDEN FOR V1: ${formData.traumaInformedCare ? formatTraumaInformedCare(formData.traumaInformedCare) : ""} -->
         ${formData.vehicles ? formatComplianceSection(formData.vehicles, "9. Vehicles", false) : ""}
         ${formData.swimming ? formatComplianceSection(formData.swimming, "10. Swimming Areas", false) : ""}
         ${formData.infants ? formatComplianceSection(formData.infants, "11. Infants", false) : ""}
         ${formData.packageCompliance ? formatPackageComplianceSection(formData.packageCompliance) : ""}
-        ${formData.qualityEnhancement ? formatQualityEnhancement(formData.qualityEnhancement) : ""}
+        <!-- HIDDEN FOR V1: ${formData.qualityEnhancement ? formatQualityEnhancement(formData.qualityEnhancement) : ""} -->
       </div>
       ` : ""}
 
@@ -836,8 +836,8 @@ function generateCompleteReportHTML(
       </div>
       ` : ""}
 
-      <!-- Corrective Actions -->
-      ${formData.observations?.correctiveActions && formData.observations.correctiveActions.length > 0 ? `
+      <!-- HIDDEN FOR V1: Corrective Actions -->
+      <!-- ${formData.observations?.correctiveActions && formData.observations.correctiveActions.length > 0 ? `
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Corrective Actions Required</h2>
         <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
@@ -846,7 +846,7 @@ function generateCompleteReportHTML(
           </ul>
         </div>
       </div>
-      ` : ""}
+      ` : ""} -->
 
       <!-- Visit Summary -->
       ${formData.recommendations?.visitSummary ? `
@@ -1221,17 +1221,17 @@ function generateCompleteReportText(
       }
     }
     
-    // Quality Enhancement
-    if (formData.complianceReview.qualityEnhancement) {
-      content += `Quality Enhancement:\n`
-      if (formData.complianceReview.qualityEnhancement.activities && Array.isArray(formData.complianceReview.qualityEnhancement.activities)) {
-        content += `  Activities: ${formData.complianceReview.qualityEnhancement.activities.join(", ")}\n`
-      }
-      if (formData.complianceReview.qualityEnhancement.notes) {
-        content += `  Notes: ${formData.complianceReview.qualityEnhancement.notes}\n`
-      }
-      content += `\n`
-    }
+    // HIDDEN FOR V1: Quality Enhancement
+    // if (formData.complianceReview.qualityEnhancement) {
+    //   content += `Quality Enhancement:\n`
+    //   if (formData.complianceReview.qualityEnhancement.activities && Array.isArray(formData.complianceReview.qualityEnhancement.activities)) {
+    //     content += `  Activities: ${formData.complianceReview.qualityEnhancement.activities.join(", ")}\n`
+    //   }
+    //   if (formData.complianceReview.qualityEnhancement.notes) {
+    //     content += `  Notes: ${formData.complianceReview.qualityEnhancement.notes}\n`
+    //   }
+    //   content += `\n`
+    // }
   }
 
   if (formData.childInterviews?.placements && formData.childInterviews.placements.length > 0) {
@@ -1258,13 +1258,14 @@ function generateCompleteReportText(
     content += `\n`
   }
 
-  if (formData.observations?.correctiveActions && formData.observations.correctiveActions.length > 0) {
-    content += `CORRECTIVE ACTIONS REQUIRED\n`
-    formData.observations.correctiveActions.forEach((action: any) => {
-      content += `  - ${typeof action === 'string' ? action : action.description || action}\n`
-    })
-    content += `\n`
-  }
+  // HIDDEN FOR V1: Corrective Actions
+  // if (formData.observations?.correctiveActions && formData.observations.correctiveActions.length > 0) {
+  //   content += `CORRECTIVE ACTIONS REQUIRED\n`
+  //   formData.observations.correctiveActions.forEach((action: any) => {
+  //     content += `  - ${typeof action === 'string' ? action : action.description || action}\n`
+  //   })
+  //   content += `\n`
+  // }
 
   if (formData.recommendations?.visitSummary) {
     content += `VISIT SUMMARY\n`
