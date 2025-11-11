@@ -266,7 +266,7 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-100 border-b-2 border-slate-300">
-                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Child Name</th>
+                    <th className="text-left p-3 text-sm font-semibold border-r border-slate-300 w-48">Child Name</th>
                     <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">Behaviors Noted</th>
                     <th className="text-left p-3 text-sm font-semibold border-r border-slate-300">School Performance</th>
                     <th className="text-center p-3 text-sm font-semibold w-20">Actions</th>
@@ -284,44 +284,62 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                       {/* Row 1: Child Name | Behaviors Noted | School Performance | Actions */}
                       <tr key={`${index}-row1`} className="border-b border-slate-200 hover:bg-slate-50">
                         <td className="p-3 border-r border-slate-200 align-top" rowSpan={2}>
-                          <Input
-                            value={child.childName || ""}
-                            onChange={(e) => {
-                              const newChildren = [...interview.childrenDiscussed]
-                              newChildren[index].childName = e.target.value
-                              onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                            }}
-                            placeholder="Child name"
-                            className="text-sm"
-                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={`child-name-${index}`} className="text-xs font-medium text-muted-foreground">
+                              Child Name
+                            </Label>
+                            <Input
+                              id={`child-name-${index}`}
+                              value={child.childName || ""}
+                              onChange={(e) => {
+                                const newChildren = [...interview.childrenDiscussed]
+                                newChildren[index].childName = e.target.value
+                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                              }}
+                              placeholder="Child name"
+                              className="text-sm"
+                            />
+                          </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
-                          <TextareaWithVoice
-                            value={child.behaviorsNoted || ""}
-                            onChange={(e) => {
-                              const newChildren = [...interview.childrenDiscussed]
-                              newChildren[index].behaviorsNoted = e.target.value
-                              onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                            }}
-                            placeholder="Behavioral observations..."
-                            rows={2}
-                            className="text-sm min-w-[200px]"
-                            showVoiceButton={true}
-                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={`behaviors-${index}`} className="text-xs font-medium text-muted-foreground">
+                              Behaviors Noted
+                            </Label>
+                            <TextareaWithVoice
+                              id={`behaviors-${index}`}
+                              value={child.behaviorsNoted || ""}
+                              onChange={(e) => {
+                                const newChildren = [...interview.childrenDiscussed]
+                                newChildren[index].behaviorsNoted = e.target.value
+                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                              }}
+                              placeholder="Behavioral observations..."
+                              rows={2}
+                              className="text-sm min-w-[200px]"
+                              showVoiceButton={true}
+                            />
+                          </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
-                          <TextareaWithVoice
-                            value={child.schoolPerformance || ""}
-                            onChange={(e) => {
-                              const newChildren = [...interview.childrenDiscussed]
-                              newChildren[index].schoolPerformance = e.target.value
-                              onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                            }}
-                            placeholder="School updates..."
-                            rows={2}
-                            className="text-sm min-w-[200px]"
-                            showVoiceButton={true}
-                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={`school-${index}`} className="text-xs font-medium text-muted-foreground">
+                              School Performance
+                            </Label>
+                            <TextareaWithVoice
+                              id={`school-${index}`}
+                              value={child.schoolPerformance || ""}
+                              onChange={(e) => {
+                                const newChildren = [...interview.childrenDiscussed]
+                                newChildren[index].schoolPerformance = e.target.value
+                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                              }}
+                              placeholder="School updates..."
+                              rows={2}
+                              className="text-sm min-w-[200px]"
+                              showVoiceButton={true}
+                            />
+                          </div>
                         </td>
                         <td className="p-3 text-center align-top" rowSpan={2}>
                           <Button
@@ -338,32 +356,44 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
                       {/* Row 2: (empty) | Medical/Therapy | Notes | (empty) */}
                       <tr key={`${index}-row2`} className="border-b border-slate-200 hover:bg-slate-50">
                         <td className="p-3 border-r border-slate-200">
-                          <TextareaWithVoice
-                            value={child.medicalTherapy || ""}
-                            onChange={(e) => {
-                              const newChildren = [...interview.childrenDiscussed]
-                              newChildren[index].medicalTherapy = e.target.value
-                              onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                            }}
-                            placeholder="Medical/therapy updates..."
-                            rows={2}
-                            className="text-sm min-w-[200px]"
-                            showVoiceButton={true}
-                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={`medical-${index}`} className="text-xs font-medium text-muted-foreground">
+                              Medical/Therapy
+                            </Label>
+                            <TextareaWithVoice
+                              id={`medical-${index}`}
+                              value={child.medicalTherapy || ""}
+                              onChange={(e) => {
+                                const newChildren = [...interview.childrenDiscussed]
+                                newChildren[index].medicalTherapy = e.target.value
+                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                              }}
+                              placeholder="Medical/therapy updates..."
+                              rows={2}
+                              className="text-sm min-w-[200px]"
+                              showVoiceButton={true}
+                            />
+                          </div>
                         </td>
                         <td className="p-3 border-r border-slate-200">
-                          <TextareaWithVoice
-                            value={child.notes || ""}
-                            onChange={(e) => {
-                              const newChildren = [...interview.childrenDiscussed]
-                              newChildren[index].notes = e.target.value
-                              onChange("fosterParentInterview.childrenDiscussed", newChildren)
-                            }}
-                            placeholder="Additional notes..."
-                            rows={2}
-                            className="text-sm min-w-[200px]"
-                            showVoiceButton={true}
-                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={`notes-${index}`} className="text-xs font-medium text-muted-foreground">
+                              Notes
+                            </Label>
+                            <TextareaWithVoice
+                              id={`notes-${index}`}
+                              value={child.notes || ""}
+                              onChange={(e) => {
+                                const newChildren = [...interview.childrenDiscussed]
+                                newChildren[index].notes = e.target.value
+                                onChange("fosterParentInterview.childrenDiscussed", newChildren)
+                              }}
+                              placeholder="Additional notes..."
+                              rows={2}
+                              className="text-sm min-w-[200px]"
+                              showVoiceButton={true}
+                            />
+                          </div>
                         </td>
                       </tr>
                     </>
