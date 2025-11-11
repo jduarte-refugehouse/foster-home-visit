@@ -94,12 +94,12 @@ export default function MobileAppointmentDetailPage() {
     }
   }, [appointmentId, isMobile, router])
   
-  // Separate effect to fetch travel leg when user becomes available
+  // Fetch travel leg when appointment is available (API handles auth automatically)
   useEffect(() => {
-    if (appointmentId && user?.id) {
+    if (appointmentId) {
       fetchCurrentTravelLeg()
     }
-  }, [user?.id, appointmentId])
+  }, [appointmentId])
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
