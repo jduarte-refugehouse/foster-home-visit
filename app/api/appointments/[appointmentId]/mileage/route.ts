@@ -9,9 +9,9 @@ export const runtime = "nodejs"
  * POST - Capture location and calculate mileage
  * 
  * Body: {
- *   action: "start_drive" | "arrived" | "calculate"
- *   latitude?: number (required for start_drive and arrived)
- *   longitude?: number (required for start_drive and arrived)
+ *   action: "start_drive" | "arrived" | "calculate" | "return"
+ *   latitude?: number (required for start_drive, arrived, and return)
+ *   longitude?: number (required for start_drive, arrived, and return)
  * }
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
@@ -69,15 +69,15 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       )
     }
 
-    if (action !== "start_drive" && action !== "arrived" && action !== "calculate") {
+    if (action !== "start_drive" && action !== "arrived" && action !== "calculate" && action !== "return") {
       return NextResponse.json(
-        { error: "Invalid action. Must be 'start_drive', 'arrived', or 'calculate'" },
+        { error: "Invalid action. Must be 'start_drive', 'arrived', 'calculate', or 'return'" },
         { status: 400 },
       )
     }
 
-    // For start_drive and arrived, latitude and longitude are required
-    if ((action === "start_drive" || action === "arrived") && (!latitude || !longitude)) {
+    // For start_drive, arrived, and return, latitude and longitude are required
+    if ((action === "start_drive" || action === "arrived" || action === "return") && (!latitude || !longitude)) {
       return NextResponse.json(
         { error: "Missing required fields: latitude and longitude are required for this action" },
         { status: 400 },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     }
 
     // Validate coordinates (only if provided)
-    if ((action === "start_drive" || action === "arrived") && (latitude !== undefined && longitude !== undefined)) {
+    if ((action === "start_drive" || action === "arrived" || action === "return") && (latitude !== undefined && longitude !== undefined)) {
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
         return NextResponse.json(
           { error: "Invalid coordinates" },
