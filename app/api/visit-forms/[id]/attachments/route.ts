@@ -95,27 +95,27 @@ export async function POST(
       // User will need to run the migration script
       if (insertError?.message?.includes("Invalid column name 'file_data'")) {
         console.warn("file_data column not found, inserting without it. Please run migration script.")
-        await query(
-          `INSERT INTO dbo.visit_form_attachments (
-            attachment_id, visit_form_id, file_name, file_path, file_size,
-            mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
-          ) VALUES (
-            @param0, @param1, @param2, @param3, @param4,
-            @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
-          )`,
-          [
-            attachmentId,
-            formId,
-            file.name,
+    await query(
+      `INSERT INTO dbo.visit_form_attachments (
+        attachment_id, visit_form_id, file_name, file_path, file_size,
+        mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
+      ) VALUES (
+        @param0, @param1, @param2, @param3, @param4,
+        @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
+      )`,
+      [
+        attachmentId,
+        formId,
+        file.name,
             filePathReference,
-            file.size,
-            file.type,
-            attachmentType,
-            description,
-            createdByUserId,
-            createdByName,
-          ]
-        )
+        file.size,
+        file.type,
+        attachmentType,
+        description,
+        createdByUserId,
+        createdByName,
+      ]
+    )
         // Note: File data will be lost without file_data column
         console.warn("File uploaded but data not stored. Run scripts/add-file-data-to-attachments.sql to enable file storage.")
       } else {
@@ -174,14 +174,14 @@ export async function GET(
       if (error?.message?.includes("Invalid column name 'file_data'")) {
         console.warn("file_data column not found, using fallback query")
         attachments = await query(
-          `SELECT 
-            attachment_id, file_name, file_path, file_size, mime_type,
-            attachment_type, description, created_at, created_by_name
-          FROM dbo.visit_form_attachments
-          WHERE visit_form_id = @param0 AND is_deleted = 0
-          ORDER BY created_at DESC`,
-          [formId]
-        )
+      `SELECT 
+        attachment_id, file_name, file_path, file_size, mime_type,
+        attachment_type, description, created_at, created_by_name
+      FROM dbo.visit_form_attachments
+      WHERE visit_form_id = @param0 AND is_deleted = 0
+      ORDER BY created_at DESC`,
+      [formId]
+    )
         // Add null file_data for backward compatibility
         attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
       } else {

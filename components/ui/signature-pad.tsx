@@ -52,8 +52,8 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
     if (!ctx) return
 
     const rect = canvas.getBoundingClientRect()
-    const img = new Image()
-    img.onload = () => {
+      const img = new Image()
+      img.onload = () => {
       // Clear canvas first
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
@@ -98,9 +98,9 @@ export function SignaturePad({ value, onChange, label, disabled = false }: Signa
         // This preserves the mobile capture experience
         ctx.drawImage(img, 0, 0, rect.width, rect.height)
       }
-      setIsEmpty(false)
-    }
-    img.src = value
+        setIsEmpty(false)
+      }
+      img.src = value
   }, [value, disabled])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
