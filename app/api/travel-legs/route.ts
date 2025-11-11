@@ -39,9 +39,11 @@ export async function POST(request: NextRequest) {
       start_location_address,
       start_location_type,
       appointment_id_from,
+      appointment_id_to,
       journey_id,
       travel_purpose,
       vehicle_type,
+      is_final_leg,
     } = body
 
     // Validate required fields
