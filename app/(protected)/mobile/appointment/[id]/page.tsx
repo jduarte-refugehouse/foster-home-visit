@@ -334,6 +334,25 @@ export default function MobileAppointmentDetailPage() {
     }
   }
 
+  // Helper function to handle API responses and redirect on authentication errors
+  const handleApiResponse = async (response: Response, errorContext: string): Promise<any> => {
+    if (response.status === 401) {
+      // Authentication required - redirect to sign-in
+      const currentPath = window.location.pathname + window.location.search
+      const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(currentPath)}`
+      console.log(`🔐 [${errorContext}] Authentication required, redirecting to sign-in`)
+      router.push(signInUrl)
+      throw new Error("Authentication required")
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || errorData.details || `API error: ${response.status}`)
+    }
+    
+    return response.json()
+  }
+
   const captureLocation = (action: "start_drive" | "arrived") => {
     return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -444,15 +463,11 @@ export default function MobileAppointmentDetailPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await handleApiResponse(response, "Start Drive")
       
-      console.log("🚗 [Start Drive] API Response:", {
-        ok: response.ok,
-        status: response.status,
-        data: data
-      })
+      console.log("🚗 [Start Drive] API Response:", data)
 
-      if (response.ok && data.success) {
+      if (data.success) {
         // Store leg_id and journey_id for completing the leg later
         setCurrentLegId(data.leg_id)
         setJourneyId(data.journey_id)
@@ -470,9 +485,6 @@ export default function MobileAppointmentDetailPage() {
         fetchAppointmentDetails()
         // Also refresh current travel leg to ensure state is in sync
         fetchCurrentTravelLeg()
-      } else {
-        console.error("❌ [Start Drive] API Error:", data)
-        throw new Error(data.error || data.details || "Failed to start drive")
       }
     } catch (error) {
       console.error("Error starting drive:", error)
@@ -588,22 +600,18 @@ export default function MobileAppointmentDetailPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await handleApiResponse(response, "Arrived")
 
-      if (response.ok) {
-        // Clear current leg since it's now completed
-        setCurrentLegId(null)
-        
-        toast({
-          title: "Arrived",
-          description: data.calculated_mileage
-            ? `Arrival location captured. Distance: ${data.calculated_mileage.toFixed(2)} miles`
-            : "Arrival location captured",
-        })
-        fetchAppointmentDetails()
-      } else {
-        throw new Error(data.error || data.details || "Failed to record arrival")
-      }
+      // Clear current leg since it's now completed
+      setCurrentLegId(null)
+      
+      toast({
+        title: "Arrived",
+        description: data.calculated_mileage
+          ? `Arrival location captured. Distance: ${data.calculated_mileage.toFixed(2)} miles`
+          : "Arrival location captured",
+      })
+      fetchAppointmentDetails()
     } catch (error) {
       console.error("Error recording arrival:", error)
       
@@ -705,22 +713,18 @@ export default function MobileAppointmentDetailPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await handleApiResponse(response, "Drive To Next")
 
-      if (response.ok) {
-        // Store new leg_id for completing later
-        setCurrentLegId(data.leg_id)
-        
-        toast({
-          title: "Travel Started",
-          description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
-        })
-        fetchAppointmentDetails()
-        // Refresh next appointment info
-        fetchNextAppointment()
-      } else {
-        throw new Error(data.error || data.details || "Failed to start travel to next visit")
-      }
+      // Store new leg_id for completing later
+      setCurrentLegId(data.leg_id)
+      
+      toast({
+        title: "Travel Started",
+        description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
+      })
+      fetchAppointmentDetails()
+      // Refresh next appointment info
+      fetchNextAppointment()
     } catch (error) {
       console.error("Error starting travel to next visit:", error)
       
@@ -804,21 +808,17 @@ export default function MobileAppointmentDetailPage() {
           }),
         })
 
-        const data = await response.json()
+        const data = await handleApiResponse(response, "Leaving - Next")
 
-        if (response.ok) {
-          // Store new leg_id for completing later
-          setCurrentLegId(data.leg_id)
-          
-          toast({
-            title: "Travel Started",
-            description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
-          })
-          setShowLeavingDialog(false)
-          fetchAppointmentDetails()
-        } else {
-          throw new Error(data.error || data.details || "Failed to start travel to next visit")
-        }
+        // Store new leg_id for completing later
+        setCurrentLegId(data.leg_id)
+        
+        toast({
+          title: "Travel Started",
+          description: `Travel to next visit started. Location captured for ${nextAppointment.title || "next appointment"}.`,
+        })
+        setShowLeavingDialog(false)
+        fetchAppointmentDetails()
       } else {
         // Return travel - create new leg for return trip
         const response = await fetch(`/api/travel-legs`, {
@@ -838,21 +838,17 @@ export default function MobileAppointmentDetailPage() {
           }),
         })
 
-        const data = await response.json()
+        const data = await handleApiResponse(response, "Leaving - Return")
 
-        if (response.ok) {
-          // Store leg_id for completing when they arrive at home
-          setCurrentLegId(data.leg_id)
-          
-          toast({
-            title: "Return Travel Started",
-            description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
-          })
-          setShowLeavingDialog(false)
-          fetchAppointmentDetails()
-        } else {
-          throw new Error(data.error || data.details || "Failed to start return travel")
-        }
+        // Store leg_id for completing when they arrive at home
+        setCurrentLegId(data.leg_id)
+        
+        toast({
+          title: "Return Travel Started",
+          description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
+        })
+        setShowLeavingDialog(false)
+        fetchAppointmentDetails()
       }
     } catch (error) {
       console.error("Error handling leaving action:", error)
@@ -1210,20 +1206,16 @@ export default function MobileAppointmentDetailPage() {
                     }),
                   })
 
-                  const data = await response.json()
+                  const data = await handleApiResponse(response, "Arrived at Home")
 
-                  if (response.ok) {
-                    // Clear current leg since it's now completed
-                    setCurrentLegId(null)
-                    
-                    toast({
-                      title: "Arrived at Home",
-                      description: `Return travel completed. Distance: ${data.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
-                    })
-                    fetchAppointmentDetails()
-                  } else {
-                    throw new Error(data.error || data.details || "Failed to log arrival at home")
-                  }
+                  // Clear current leg since it's now completed
+                  setCurrentLegId(null)
+                  
+                  toast({
+                    title: "Arrived at Home",
+                    description: `Return travel completed. Distance: ${data.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
+                  })
+                  fetchAppointmentDetails()
                 } catch (error) {
                   console.error("Error logging arrival at home:", error)
                   
