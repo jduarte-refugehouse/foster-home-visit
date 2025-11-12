@@ -53,57 +53,32 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
+    // Check for token-based authentication (for tokenized requests)
+    const authToken = body.auth_token || request.headers.get("x-auth-token")
+    
     if (!authInfo.clerkUserId && !authInfo.email) {
-      // ROBUST: Since this is called from a protected route, the user IS authenticated.
-      // We can't always see the session cookie on mobile, but we can trust the route protection.
-      // Try to get user from appointment context - this is the most reliable method.
-      
-      const appointmentId = body.appointment_id_from || body.appointment_id_to
-      if (appointmentId) {
+      if (authToken) {
+        // Token-based authentication - look up user from token
         try {
-          console.log("🔍 [Travel Legs POST] Getting user from appointment context:", appointmentId)
-          const appointmentResult = await query(
-            `SELECT assigned_to_user_id, assigned_to_name 
-             FROM appointments 
-             WHERE appointment_id = @param0 AND is_deleted = 0`,
-            [appointmentId]
-          )
-          
-          if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
-            // Use appointment's assigned user - this is safe because user must be authenticated to access the appointment
-            authInfo = {
-              clerkUserId: appointmentResult[0].assigned_to_user_id,
-              email: null,
-              name: appointmentResult[0].assigned_to_name || null,
-            }
-            authMethod = "appointment_context"
-            console.log("✅ [Travel Legs POST] Auth from appointment context:", { 
-              clerkUserId: authInfo.clerkUserId,
-              appointmentId 
-            })
-          } else {
-            console.warn("⚠️ [Travel Legs POST] Appointment not found or has no assigned user:", appointmentId)
-          }
-        } catch (dbError) {
-          console.error("🚗 [Travel Legs POST] Error getting user from appointment:", dbError)
+          // TODO: Implement token lookup to get user ID
+          // For now, this is a placeholder
+          console.log("🔍 [Travel Legs POST] Token-based auth detected, but token lookup not yet implemented")
+          return NextResponse.json({ 
+            error: "Token authentication not yet implemented",
+            details: "Token-based authentication is planned but not yet available"
+          }, { status: 501 })
+        } catch (tokenError) {
+          console.error("🚗 [Travel Legs POST] Error with token auth:", tokenError)
+          return NextResponse.json({ 
+            error: "Invalid authentication token"
+          }, { status: 401 })
         }
-      }
-      
-      // If we still don't have a user ID, check for session cookie as a last resort
-      if (!authInfo.clerkUserId && !authInfo.email) {
-        const sessionCookie = request.cookies.get("__session")?.value
-        if (sessionCookie) {
-          console.log("🔍 [Travel Legs POST] Session cookie found but no appointment context - user is authenticated but can't determine ID")
-        } else {
-          console.warn("⚠️ [Travel Legs POST] No session cookie visible (may be mobile-specific)")
-        }
-        
-        // Since route is protected, user IS authenticated, but we can't determine their ID
-        // This should only happen if appointment_id is missing or appointment has no assigned user
-        console.error("🚗 [Travel Legs POST] Cannot determine user ID - appointment context failed")
+      } else {
+        // No headers and no token - require authentication
+        console.error("🚗 [Travel Legs POST] No authentication found - missing headers and token")
         return NextResponse.json({ 
           error: "Authentication required",
-          details: "Unable to determine authenticated user. Please ensure the appointment has an assigned user and try again.",
+          details: "Missing authentication headers (x-user-clerk-id or x-user-email). Please ensure you are signed in and try again.",
           mobileAuthIssue: true,
           suggestion: "If this persists, try refreshing the page"
         }, { status: 401 })
@@ -222,61 +197,43 @@ export async function GET(request: NextRequest) {
     // Try to get auth from headers first (desktop/tablet)
     let authInfo = getClerkUserIdFromRequest(request)
     
-    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!authInfo.clerkUserId && !authInfo.email) {
-      try {
-        const user = await currentUser()
-        if (user) {
-          authInfo = {
-            clerkUserId: user.id,
-            email: user.emailAddresses[0]?.emailAddress || null,
-            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-          }
-        }
-      } catch (clerkError) {
-        console.error("🚗 [Travel Legs GET] Error getting user from Clerk session:", clerkError)
-      }
-    }
+    // NO CLERK USAGE AFTER AUTHENTICATION
+    // User must be identified from originally authenticated session (headers) or token
     
     const { searchParams } = new URL(request.url)
     const date = searchParams.get("date")
     const journeyId = searchParams.get("journeyId")
     const status = searchParams.get("status")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
-    const appointmentId = searchParams.get("appointmentId") // Allow querying by appointment
-    // Allow filtering by specific staffUserId for admin purposes, but default to authenticated user
-    let staffUserId = searchParams.get("staffUserId") || authInfo.clerkUserId || authInfo.email
+    const appointmentId = searchParams.get("appointmentId") // Allow querying by appointment (for filtering, not auth)
+    const authToken = searchParams.get("auth_token") || request.headers.get("x-auth-token")
     
-    // ROBUST: If no user ID but we have appointment_id, use appointment context to get user
-    // This is safe because user must be authenticated to access the appointment
-    if (!staffUserId && appointmentId) {
-      try {
-        console.log("🔍 [Travel Legs GET] Getting user from appointment context:", appointmentId)
-        const appointmentResult = await query(
-          `SELECT assigned_to_user_id 
-           FROM appointments 
-           WHERE appointment_id = @param0 AND is_deleted = 0`,
-          [appointmentId]
-        )
-        
-        if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
-          staffUserId = appointmentResult[0].assigned_to_user_id
-          console.log("✅ [Travel Legs GET] Using appointment context for user:", staffUserId)
-        }
-      } catch (dbError) {
-        console.error("🚗 [Travel Legs GET] Error getting user from appointment:", dbError)
-      }
+    // Get user ID from authenticated session (headers) or token
+    let staffUserId: string | null = null
+    
+    if (authToken) {
+      // Token-based authentication
+      // TODO: Implement token lookup to get user ID
+      console.log("🔍 [Travel Legs GET] Token-based auth detected, but token lookup not yet implemented")
+      return NextResponse.json({ 
+        error: "Token authentication not yet implemented"
+      }, { status: 501 })
+    } else {
+      // Use authenticated session (headers)
+      staffUserId = searchParams.get("staffUserId") || authInfo.clerkUserId || authInfo.email
     }
     
-    // If we still don't have a user ID and no appointment_id, we can't proceed
-    // (unless this is an admin query with explicit staffUserId)
-    if (!staffUserId && !appointmentId && !searchParams.get("staffUserId")) {
-      console.error("🚗 [Travel Legs GET] Cannot determine user ID and no appointment context")
+    // Require user ID from authenticated session or token
+    if (!staffUserId) {
+      console.error("🚗 [Travel Legs GET] Cannot determine user ID - missing authentication")
       return NextResponse.json({ 
         error: "Authentication required",
-        details: "Unable to determine authenticated user. Please provide appointmentId or ensure you are signed in."
+        details: "Missing authentication headers (x-user-clerk-id or x-user-email). Please ensure you are signed in."
       }, { status: 401 })
     }
+    
+    // Note: appointmentId is used for FILTERING results, not for authentication
+    // It allows finding legs related to a specific appointment
 
     const conditions: string[] = []
     const params: any[] = []
