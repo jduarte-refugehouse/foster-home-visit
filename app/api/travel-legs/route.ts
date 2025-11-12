@@ -38,57 +38,45 @@ export async function POST(request: NextRequest) {
     let authMethod = "headers"
     console.log("🚗 [Travel Legs POST] Auth from headers:", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
     
-    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
+    // TEMPORARY: For mobile - since this is called from a protected route, 
+    // we can be more lenient with authentication (similar to mileage API)
+    // The route is protected, so user must be authenticated to reach the button
+    // On mobile, headers may not be sent, but the user IS authenticated
+    
     if (!authInfo.clerkUserId && !authInfo.email) {
-      try {
-        // Try to get session token from cookie and verify it with Clerk API
-        const sessionToken = request.cookies.get("__session")?.value
-        if (sessionToken) {
-          console.log("🚗 [Travel Legs POST] Found __session cookie, attempting to verify with Clerk API")
-          
-          try {
-            // Use Clerk's Backend API to verify the session token
-            // First, try to get the session ID from the token
-            // Clerk's session token contains the session ID, we can use it to get the user
-            const sessions = await clerkClient.sessions.getSessionList({
-              limit: 1,
-            })
-            
-            // If we have a session token, we need to verify it differently
-            // Let's try using Clerk's verifyToken method if available
-            // Actually, the best approach is to use the session token to get the user
-            // But Clerk's API doesn't directly support this without middleware
-            
-            // Alternative: Try to decode the session token (it's a JWT)
-            // But this requires the Clerk secret key which we might not have access to
-            
-            // Best approach: Since the route is protected, the user IS authenticated
-            // We just need to get their ID. Let's check if we can use the session token
-            // to look up the user in our database by matching active sessions
-            
-            // For now, let's log that we have the session but can't extract user ID
-            console.warn("🚗 [Travel Legs POST] Session cookie found but cannot extract user ID without middleware")
-            console.warn("🚗 [Travel Legs POST] This is a known limitation - headers should be sent from client")
-          } catch (clerkApiError) {
-            console.error("🚗 [Travel Legs POST] Error verifying session with Clerk API:", clerkApiError)
-          }
-        } else {
-          console.warn("🚗 [Travel Legs POST] No __session cookie found")
+      const sessionCookie = request.cookies.get("__session")?.value
+      if (sessionCookie) {
+        console.warn("⚠️ [Travel Legs POST] No headers but __session cookie exists - user is authenticated but we can't extract ID")
+        console.warn("⚠️ [Travel Legs POST] This is a mobile-specific issue - allowing request to proceed (protected route)")
+        // Since route is protected, user must be authenticated
+        // We'll need to handle this differently - for now, we'll need to get user ID from somewhere
+        // But we can't proceed without a staff_user_id for the database insert
+        
+        // TEMPORARY FIX: Use a placeholder that indicates mobile auth issue
+        // This will allow the request to proceed, but we need to fix the client-side to send headers
+        authInfo = {
+          clerkUserId: "MOBILE_AUTH_REQUIRED", // Placeholder - will need to be fixed
+          email: null,
+          name: null,
         }
-      } catch (clerkError) {
-        console.error("🚗 [Travel Legs POST] Error getting user from Clerk session:", clerkError)
+        authMethod = "mobile_session_placeholder"
+      } else {
+        console.error("🚗 [Travel Legs POST] No headers and no session cookie - this should not happen on a protected route")
+        return NextResponse.json({ 
+          error: "Authentication required",
+          details: "Unable to determine authenticated user. Please refresh the page and try again."
+        }, { status: 401 })
       }
     }
     
-    // If we still don't have auth after trying headers and currentUser(), 
-    // the user is still authenticated (protected route), but we can't get their ID
-    // This should not happen, but if it does, we need to fail gracefully
-    if (!authInfo.clerkUserId && !authInfo.email) {
-      console.error("🚗 [Travel Legs POST] Authentication failed - no clerkUserId or email")
-      console.error("🚗 [Travel Legs POST] This should not happen on a protected route - user is authenticated but we can't get their ID")
+    // If we have a placeholder, we can't proceed with database insert
+    // This is a temporary measure until client-side headers are fixed
+    if (authInfo.clerkUserId === "MOBILE_AUTH_REQUIRED") {
+      console.error("🚗 [Travel Legs POST] Mobile auth issue - cannot proceed without user ID")
       return NextResponse.json({ 
         error: "Authentication required",
-        details: "Unable to determine authenticated user. Please refresh the page and try again."
+        details: "Unable to verify your identity on mobile. Please ensure you are signed in and try again. If the problem persists, try refreshing the page.",
+        mobileAuthIssue: true
       }, { status: 401 })
     }
     

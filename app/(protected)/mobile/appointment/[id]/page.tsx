@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useAuth } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +53,7 @@ export default function MobileAppointmentDetailPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { user, isLoaded } = useUser()
+  const { userId: authUserId, getToken } = useAuth()
   const { isMobile } = useDeviceType()
   const appointmentId = params.id as string
 
@@ -72,17 +73,19 @@ export default function MobileAppointmentDetailPage() {
   const [currentLegId, setCurrentLegId] = useState<string | null>(null)
   const [journeyId, setJourneyId] = useState<string | null>(null)
 
-  // Keep user ref updated whenever user object changes
+  // Keep user ref updated whenever user object or auth changes
   useEffect(() => {
-    if (user?.id) {
+    // Prefer user object (has more info), but fall back to authUserId if user object isn't available
+    const userId = user?.id || authUserId
+    if (userId) {
       userRef.current = {
-        id: user.id,
-        email: user.emailAddresses[0]?.emailAddress || null,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+        id: userId,
+        email: user?.emailAddresses?.[0]?.emailAddress || null,
+        name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || null : null,
       }
-      console.log("✅ [Mobile Appointment] User ref updated:", userRef.current)
+      console.log("✅ [Mobile Appointment] User ref updated:", userRef.current, "from:", { userObject: !!user?.id, authUserId: !!authUserId })
     }
-  }, [user?.id, user?.emailAddresses, user?.firstName, user?.lastName])
+  }, [user?.id, user?.emailAddresses, user?.firstName, user?.lastName, authUserId])
 
   // Debug logging
   useEffect(() => {
@@ -657,8 +660,8 @@ export default function MobileAppointmentDetailPage() {
         "Content-Type": "application/json",
       }
       
-      // Use ref first (most reliable), then fall back to user object
-      const userId = userRef.current.id || user?.id
+      // Use ref first (most reliable), then fall back to user object, then authUserId
+      const userId = userRef.current.id || user?.id || authUserId
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
       
@@ -667,6 +670,7 @@ export default function MobileAppointmentDetailPage() {
         refEmail: userRef.current.email,
         userObjectId: user?.id,
         userObjectEmail: user?.emailAddresses?.[0]?.emailAddress,
+        authUserId: authUserId,
         finalUserId: userId,
         finalEmail: userEmail,
         isLoaded,
@@ -674,7 +678,7 @@ export default function MobileAppointmentDetailPage() {
       })
       
       if (!userId) {
-        console.error("❌ [handleLeavingAction] No user ID available after waiting - ref:", userRef.current, "user:", { id: user?.id, email: user?.emailAddresses?.[0]?.emailAddress })
+        console.error("❌ [handleLeavingAction] No user ID available after waiting - ref:", userRef.current, "user:", { id: user?.id, email: user?.emailAddresses?.[0]?.emailAddress }, "authUserId:", authUserId)
         toast({
           title: "Authentication Error",
           description: "Unable to verify your identity. Please refresh the page and try again.",
