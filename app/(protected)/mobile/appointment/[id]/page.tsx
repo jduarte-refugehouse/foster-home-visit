@@ -77,7 +77,7 @@ export default function MobileAppointmentDetailPage() {
   useEffect(() => {
     // Prefer user object (has more info), but fall back to authUserId if user object isn't available
     const userId = user?.id || authUserId
-    if (userId) {
+    if (userId && userId !== userRef.current.id) {
       userRef.current = {
         id: userId,
         email: user?.emailAddresses?.[0]?.emailAddress || null,
@@ -86,6 +86,18 @@ export default function MobileAppointmentDetailPage() {
       console.log("✅ [Mobile Appointment] User ref updated:", userRef.current, "from:", { userObject: !!user?.id, authUserId: !!authUserId })
     }
   }, [user?.id, user?.emailAddresses, user?.firstName, user?.lastName, authUserId])
+  
+  // Also update ref immediately when authUserId becomes available (mobile-specific)
+  useEffect(() => {
+    if (authUserId && !userRef.current.id) {
+      userRef.current = {
+        id: authUserId,
+        email: null,
+        name: null,
+      }
+      console.log("✅ [Mobile Appointment] User ref updated from authUserId:", authUserId)
+    }
+  }, [authUserId])
 
   // Debug logging
   useEffect(() => {
