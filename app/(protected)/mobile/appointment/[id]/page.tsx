@@ -596,6 +596,7 @@ export default function MobileAppointmentDetailPage() {
         finalUserId: userId,
       })
       
+      // Set headers if available (desktop/tablet), but API will use appointment context on mobile
       if (userId) {
         headers["x-user-clerk-id"] = userId
         if (userEmail) {
@@ -610,7 +611,8 @@ export default function MobileAppointmentDetailPage() {
           "x-user-name": headers["x-user-name"],
         })
       } else {
-        console.error("❌ [handleDriveToNext] No user ID available from any source!")
+        // No headers available - API will use appointment context to determine user
+        console.log("ℹ️ [handleDriveToNext] No user ID in headers - API will use appointment context for authentication")
       }
 
       const response = await fetch(`/api/travel-legs`, {
