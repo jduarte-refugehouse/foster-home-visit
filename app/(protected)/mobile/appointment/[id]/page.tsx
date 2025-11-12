@@ -630,13 +630,29 @@ export default function MobileAppointmentDetailPage() {
 
   const handleLeavingAction = async (action: "next" | "return") => {
     try {
+      // Wait for user to be loaded before proceeding
+      if (!isLoaded) {
+        toast({
+          title: "Loading",
+          description: "Please wait while we verify your authentication...",
+          variant: "default",
+        })
+        return
+      }
+
+      // Wait for user ID to be available (up to 3 seconds)
+      let attempts = 0
+      while ((!userRef.current.id && !user?.id) && attempts < 30) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
+
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
       const location = await captureLocation("arrived")
       
-      // Set Clerk auth headers - use ref to ensure we always have the latest user info
-      // even if the user object isn't available in this context
+      // Set Clerk auth headers - use ref first (most reliable), then fall back to user object
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
@@ -646,18 +662,41 @@ export default function MobileAppointmentDetailPage() {
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
       
-      if (userId) {
-        headers["x-user-clerk-id"] = userId
-        if (userEmail) {
-          headers["x-user-email"] = userEmail
-        }
-        if (userName) {
-          headers["x-user-name"] = userName
-        }
-        console.log("🚗 [handleLeavingAction] Sending headers from ref/user:", { userId, userEmail, userName })
-      } else {
-        console.warn("⚠️ [handleLeavingAction] No user ID available, API will use session cookies")
+      console.log("🚗 [handleLeavingAction] User info check:", {
+        refId: userRef.current.id,
+        refEmail: userRef.current.email,
+        userObjectId: user?.id,
+        userObjectEmail: user?.emailAddresses?.[0]?.emailAddress,
+        finalUserId: userId,
+        finalEmail: userEmail,
+        isLoaded,
+        attempts,
+      })
+      
+      if (!userId) {
+        console.error("❌ [handleLeavingAction] No user ID available after waiting - ref:", userRef.current, "user:", { id: user?.id, email: user?.emailAddresses?.[0]?.emailAddress })
+        toast({
+          title: "Authentication Error",
+          description: "Unable to verify your identity. Please refresh the page and try again.",
+          variant: "destructive",
+        })
+        return
       }
+
+      // Always set headers if we have a user ID
+      headers["x-user-clerk-id"] = userId
+      if (userEmail) {
+        headers["x-user-email"] = userEmail
+      }
+      if (userName) {
+        headers["x-user-name"] = userName
+      }
+      
+      console.log("✅ [handleLeavingAction] Sending headers:", { 
+        "x-user-clerk-id": headers["x-user-clerk-id"],
+        "x-user-email": headers["x-user-email"],
+        "x-user-name": headers["x-user-name"]
+      })
       
       if (action === "next" && nextAppointment) {
         // Create new travel leg for next appointment (using same journey)
