@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
 import { calculateDrivingDistance } from "@/lib/route-calculator"
-import { currentUser } from "@clerk/nextjs/server"
+import { currentUser, auth } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -27,31 +27,46 @@ export async function PATCH(
 ) {
   try {
     // Try to get auth from headers first (desktop/tablet)
-    let auth = getClerkUserIdFromRequest(request)
+    let authInfo = getClerkUserIdFromRequest(request)
     let authMethod = "headers"
-    console.log("🚗 [Travel Legs PATCH] Auth from headers:", { clerkUserId: auth.clerkUserId, email: auth.email })
+    console.log("🚗 [Travel Legs PATCH] Auth from headers:", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
     
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        const user = await currentUser()
+        // Try currentUser() first (most reliable)
+        let user = await currentUser()
         if (user) {
-          auth = {
+          authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
           }
-          authMethod = "clerk_session"
-          console.log("🚗 [Travel Legs PATCH] Auth from Clerk session:", { clerkUserId: auth.clerkUserId, email: auth.email })
+          authMethod = "clerk_session_currentUser"
+          console.log("🚗 [Travel Legs PATCH] Auth from Clerk currentUser():", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
         } else {
-          console.warn("🚗 [Travel Legs PATCH] currentUser() returned null")
+          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
+          console.warn("🚗 [Travel Legs PATCH] currentUser() returned null, trying auth()...")
+          const authData = await auth()
+          if (authData.userId) {
+            // We have a userId but not full user object, use what we have
+            authInfo = {
+              clerkUserId: authData.userId,
+              email: null, // auth() doesn't provide email directly
+              name: null,
+            }
+            authMethod = "clerk_session_auth"
+            console.log("🚗 [Travel Legs PATCH] Auth from Clerk auth():", { clerkUserId: authInfo.clerkUserId })
+          } else {
+            console.warn("🚗 [Travel Legs PATCH] Both currentUser() and auth() returned null")
+          }
         }
       } catch (clerkError) {
         console.error("🚗 [Travel Legs PATCH] Error getting user from Clerk session:", clerkError)
       }
     }
     
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       console.error("🚗 [Travel Legs PATCH] Authentication failed - no clerkUserId or email")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
@@ -162,7 +177,7 @@ export async function PATCH(
         estimatedToll,
         durationMinutes,
         is_final_leg || false,
-        auth.clerkUserId || auth.email,
+        authInfo.clerkUserId || authInfo.email,
       ]
     )
 
@@ -195,17 +210,28 @@ export async function DELETE(
 ) {
   try {
     // Try to get auth from headers first (desktop/tablet)
-    let auth = getClerkUserIdFromRequest(request)
+    let authInfo = getClerkUserIdFromRequest(request)
     
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        const user = await currentUser()
+        // Try currentUser() first (most reliable)
+        let user = await currentUser()
         if (user) {
-          auth = {
+          authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+        } else {
+          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
+          const authData = await auth()
+          if (authData.userId) {
+            authInfo = {
+              clerkUserId: authData.userId,
+              email: null,
+              name: null,
+            }
           }
         }
       } catch (clerkError) {
@@ -213,7 +239,7 @@ export async function DELETE(
       }
     }
     
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -225,7 +251,7 @@ export async function DELETE(
            updated_at = GETUTCDATE(),
            updated_by_user_id = @param1
        WHERE leg_id = @param0 AND is_deleted = 0`,
-      [legId, auth.clerkUserId || auth.email]
+      [legId, authInfo.clerkUserId || authInfo.email]
     )
 
     return NextResponse.json({

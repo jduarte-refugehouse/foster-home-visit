@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
-import { currentUser } from "@clerk/nextjs/server"
+import { currentUser, auth } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -34,31 +34,46 @@ export async function POST(request: NextRequest) {
     console.log("🚗 [Travel Legs POST] Received headers:", receivedHeaders)
 
     // Try to get auth from headers first (desktop/tablet)
-    let auth = getClerkUserIdFromRequest(request)
+    let authInfo = getClerkUserIdFromRequest(request)
     let authMethod = "headers"
-    console.log("🚗 [Travel Legs POST] Auth from headers:", { clerkUserId: auth.clerkUserId, email: auth.email })
+    console.log("🚗 [Travel Legs POST] Auth from headers:", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
     
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        const user = await currentUser()
+        // Try currentUser() first (most reliable)
+        let user = await currentUser()
         if (user) {
-          auth = {
+          authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
           }
-          authMethod = "clerk_session"
-          console.log("🚗 [Travel Legs POST] Auth from Clerk session:", { clerkUserId: auth.clerkUserId, email: auth.email })
+          authMethod = "clerk_session_currentUser"
+          console.log("🚗 [Travel Legs POST] Auth from Clerk currentUser():", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
         } else {
-          console.warn("🚗 [Travel Legs POST] currentUser() returned null")
+          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
+          console.warn("🚗 [Travel Legs POST] currentUser() returned null, trying auth()...")
+          const authData = await auth()
+          if (authData.userId) {
+            // We have a userId but not full user object, use what we have
+            authInfo = {
+              clerkUserId: authData.userId,
+              email: null, // auth() doesn't provide email directly
+              name: null,
+            }
+            authMethod = "clerk_session_auth"
+            console.log("🚗 [Travel Legs POST] Auth from Clerk auth():", { clerkUserId: authInfo.clerkUserId })
+          } else {
+            console.warn("🚗 [Travel Legs POST] Both currentUser() and auth() returned null")
+          }
         }
       } catch (clerkError) {
         console.error("🚗 [Travel Legs POST] Error getting user from Clerk session:", clerkError)
       }
     }
     
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       console.error("🚗 [Travel Legs POST] Authentication failed - no clerkUserId or email")
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
@@ -80,7 +95,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Use authenticated user ID from Clerk session (prefer clerkUserId, fallback to email)
-    const staff_user_id = auth.clerkUserId || auth.email
+    const staff_user_id = authInfo.clerkUserId || authInfo.email
 
     // Validate required fields
     if (!staff_user_id || start_latitude === undefined || start_longitude === undefined || !start_timestamp) {
@@ -137,7 +152,7 @@ export async function POST(request: NextRequest) {
         travel_purpose || null,
         vehicle_type || null,
         is_final_leg || false,
-        auth.clerkUserId || auth.email,
+        authInfo.clerkUserId || authInfo.email,
       ]
     )
 
@@ -174,17 +189,28 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Try to get auth from headers first (desktop/tablet)
-    let auth = getClerkUserIdFromRequest(request)
+    let authInfo = getClerkUserIdFromRequest(request)
     
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        const user = await currentUser()
+        // Try currentUser() first (most reliable)
+        let user = await currentUser()
         if (user) {
-          auth = {
+          authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+        } else {
+          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
+          const authData = await auth()
+          if (authData.userId) {
+            authInfo = {
+              clerkUserId: authData.userId,
+              email: null,
+              name: null,
+            }
           }
         }
       } catch (clerkError) {
@@ -192,7 +218,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    if (!auth.clerkUserId && !auth.email) {
+    if (!authInfo.clerkUserId && !authInfo.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
@@ -202,7 +228,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
     // Allow filtering by specific staffUserId for admin purposes, but default to authenticated user
-    const staffUserId = searchParams.get("staffUserId") || auth.clerkUserId || auth.email
+    const staffUserId = searchParams.get("staffUserId") || authInfo.clerkUserId || authInfo.email
 
     const conditions: string[] = []
     const params: any[] = []
