@@ -44,40 +44,41 @@ export async function POST(request: NextRequest) {
     // On mobile, headers may not be sent, but the user IS authenticated
     
     if (!authInfo.clerkUserId && !authInfo.email) {
-      const sessionCookie = request.cookies.get("__session")?.value
-      if (sessionCookie) {
-        console.warn("⚠️ [Travel Legs POST] No headers but __session cookie exists - user is authenticated but we can't extract ID")
-        console.warn("⚠️ [Travel Legs POST] This is a mobile-specific issue - allowing request to proceed (protected route)")
-        // Since route is protected, user must be authenticated
-        // We'll need to handle this differently - for now, we'll need to get user ID from somewhere
-        // But we can't proceed without a staff_user_id for the database insert
-        
-        // TEMPORARY FIX: Use a placeholder that indicates mobile auth issue
-        // This will allow the request to proceed, but we need to fix the client-side to send headers
-        authInfo = {
-          clerkUserId: "MOBILE_AUTH_REQUIRED", // Placeholder - will need to be fixed
-          email: null,
-          name: null,
+      // Try to get user from session cookie using currentUser() (requires middleware, but might work)
+      try {
+        const user = await currentUser()
+        if (user) {
+          authInfo = {
+            clerkUserId: user.id,
+            email: user.emailAddresses[0]?.emailAddress || null,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          }
+          authMethod = "clerk_session"
+          console.log("✅ [Travel Legs POST] Auth from Clerk currentUser():", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
         }
-        authMethod = "mobile_session_placeholder"
-      } else {
-        console.error("🚗 [Travel Legs POST] No headers and no session cookie - this should not happen on a protected route")
+      } catch (clerkError) {
+        // currentUser() might fail without middleware, but that's okay
+        console.warn("⚠️ [Travel Legs POST] currentUser() failed (expected on mobile without middleware):", clerkError instanceof Error ? clerkError.message : "Unknown error")
+      }
+      
+      // If we still don't have auth, check for session cookie
+      if (!authInfo.clerkUserId && !authInfo.email) {
+        const sessionCookie = request.cookies.get("__session")?.value
+        if (sessionCookie) {
+          console.warn("⚠️ [Travel Legs POST] No headers but __session cookie exists - user is authenticated but we can't extract ID")
+          console.warn("⚠️ [Travel Legs POST] This is a mobile-specific issue - session cookie present but can't decode without middleware")
+        } else {
+          console.error("🚗 [Travel Legs POST] No headers and no session cookie - this should not happen on a protected route")
+        }
+        
+        // Since route is protected, user must be authenticated
+        // But we can't proceed without a staff_user_id for the database insert
         return NextResponse.json({ 
           error: "Authentication required",
-          details: "Unable to determine authenticated user. Please refresh the page and try again."
+          details: "Unable to determine authenticated user. Please ensure you are signed in and try again. If the problem persists, try refreshing the page.",
+          mobileAuthIssue: true
         }, { status: 401 })
       }
-    }
-    
-    // If we have a placeholder, we can't proceed with database insert
-    // This is a temporary measure until client-side headers are fixed
-    if (authInfo.clerkUserId === "MOBILE_AUTH_REQUIRED") {
-      console.error("🚗 [Travel Legs POST] Mobile auth issue - cannot proceed without user ID")
-      return NextResponse.json({ 
-        error: "Authentication required",
-        details: "Unable to verify your identity on mobile. Please ensure you are signed in and try again. If the problem persists, try refreshing the page.",
-        mobileAuthIssue: true
-      }, { status: 401 })
     }
     
     const body = await request.json()
