@@ -86,37 +86,36 @@ export default function MobileAppointmentDetailPage() {
       // Fetch appointment details immediately (doesn't require user ID)
       fetchAppointmentDetails()
       fetchNextAppointment()
-      
-      // Fetch travel leg only if user is available (optional)
-      if (user?.id) {
-        fetchCurrentTravelLeg()
-      }
+      // Note: fetchCurrentTravelLeg is called in a separate useEffect below
     }
   }, [appointmentId, isMobile, router])
   
-  // Fetch travel leg when appointment and user are available
+  // Fetch travel leg when appointment is available
+  // Don't wait for user to be loaded - API will use session cookies
   useEffect(() => {
-    if (appointmentId && isLoaded && user?.id) {
+    if (appointmentId) {
       fetchCurrentTravelLeg()
     }
-  }, [appointmentId, isLoaded, user?.id])
+  }, [appointmentId])
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
-    if (!appointmentId || !user?.id) return
+    if (!appointmentId) return
 
     try {
-      // Set Clerk auth headers for API authentication
-      // User is guaranteed to be loaded at this point
-      const headers: HeadersInit = {
-        "x-user-clerk-id": user.id,
-      }
+      // Set Clerk auth headers if available, but API will fall back to session cookies
+      const headers: HeadersInit = {}
       
-      if (user.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user.firstName || user.lastName) {
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Include headers if user is loaded, but don't block if not
+      // API will use Clerk session cookies as fallback
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+        if (user.emailAddresses?.[0]?.emailAddress) {
+          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+        }
+        if (user.firstName || user.lastName) {
+          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        }
       }
 
       // API will filter by authenticated user automatically
@@ -303,41 +302,33 @@ export default function MobileAppointmentDetailPage() {
 
   const handleStartDrive = async () => {
     try {
-      // Ensure user is loaded before proceeding
-      if (!isLoaded || !user?.id) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue. Refreshing page...",
-          variant: "destructive",
-        })
-        window.location.reload()
-        return
-      }
-
       const location = await captureLocation("start_drive")
 
       // Create new travel leg using leg-based system
-      // Set Clerk auth headers for API authentication
-      // User is guaranteed to be loaded at this point
+      // Set Clerk auth headers if available, but API will fall back to session cookies
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-clerk-id": user.id,
       }
       
-      if (user.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user.firstName || user.lastName) {
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Include headers if user is loaded, but don't block if not
+      // API will use Clerk session cookies as fallback
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+        if (user.emailAddresses?.[0]?.emailAddress) {
+          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+        }
+        if (user.firstName || user.lastName) {
+          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        }
       }
 
       // Debug: Log headers being sent
       console.log("🚗 [Start Drive] Sending request with headers:", {
-        "x-user-clerk-id": headers["x-user-clerk-id"],
-        "x-user-email": headers["x-user-email"],
-        "x-user-name": headers["x-user-name"],
+        "x-user-clerk-id": headers["x-user-clerk-id"] || "will use session cookie",
+        "x-user-email": headers["x-user-email"] || "will use session cookie",
+        "x-user-name": headers["x-user-name"] || "will use session cookie",
         userLoaded: isLoaded,
-        userId: user.id,
+        userId: user?.id || "will use session cookie",
       })
 
       const response = await fetch(`/api/travel-legs`, {
@@ -432,29 +423,21 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
-      // Ensure user is loaded before proceeding
-      if (!isLoaded || !user?.id) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue. Refreshing page...",
-          variant: "destructive",
-        })
-        window.location.reload()
-        return
-      }
-
-      // Set Clerk auth headers for API authentication
-      // User is guaranteed to be loaded at this point
+      // Set Clerk auth headers if available, but API will fall back to session cookies
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-clerk-id": user.id,
       }
       
-      if (user.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user.firstName || user.lastName) {
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Include headers if user is loaded, but don't block if not
+      // API will use Clerk session cookies as fallback
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+        if (user.emailAddresses?.[0]?.emailAddress) {
+          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+        }
+        if (user.firstName || user.lastName) {
+          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        }
       }
 
       // Complete the current travel leg
@@ -523,17 +506,6 @@ export default function MobileAppointmentDetailPage() {
 
   const handleDriveToNext = async () => {
     try {
-      // Ensure user is loaded before proceeding
-      if (!isLoaded || !user?.id) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue. Refreshing page...",
-          variant: "destructive",
-        })
-        window.location.reload()
-        return
-      }
-
       if (!nextAppointment) {
         toast({
           title: "Error",
@@ -547,18 +519,21 @@ export default function MobileAppointmentDetailPage() {
       const location = await captureLocation("arrived")
 
       // Create new travel leg for next appointment (using same journey)
-      // Set Clerk auth headers for API authentication
-      // User is guaranteed to be loaded at this point
+      // Set Clerk auth headers if available, but API will fall back to session cookies
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-clerk-id": user.id,
       }
       
-      if (user.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user.firstName || user.lastName) {
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Include headers if user is loaded, but don't block if not
+      // API will use Clerk session cookies as fallback
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+        if (user.emailAddresses?.[0]?.emailAddress) {
+          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+        }
+        if (user.firstName || user.lastName) {
+          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        }
       }
 
       const response = await fetch(`/api/travel-legs`, {
@@ -623,43 +598,26 @@ export default function MobileAppointmentDetailPage() {
 
   const handleLeavingAction = async (action: "next" | "return") => {
     try {
-      // Ensure user is loaded before proceeding
-      if (!isLoaded) {
-        toast({
-          title: "Loading",
-          description: "Please wait while we verify your authentication...",
-        })
-        return
-      }
-
-      if (!user?.id) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue. Refreshing page...",
-          variant: "destructive",
-        })
-        // Refresh the page to trigger Clerk auth
-        window.location.reload()
-        return
-      }
-
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
       const location = await captureLocation("arrived")
       
-      // Set Clerk auth headers for API authentication
-      // User is guaranteed to be loaded at this point
+      // Set Clerk auth headers if available, but API will fall back to session cookies
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "x-user-clerk-id": user.id,
       }
       
-      if (user.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user.firstName || user.lastName) {
-        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+      // Include headers if user is loaded, but don't block if not
+      // API will use Clerk session cookies as fallback
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+        if (user.emailAddresses?.[0]?.emailAddress) {
+          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+        }
+        if (user.firstName || user.lastName) {
+          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        }
       }
       
       if (action === "next" && nextAppointment) {
@@ -1045,32 +1003,24 @@ export default function MobileAppointmentDetailPage() {
             <Button
               onClick={async () => {
                 try {
-                  // Ensure user is loaded before proceeding
-                  if (!isLoaded || !user?.id) {
-                    toast({
-                      title: "Authentication Required",
-                      description: "Please sign in to continue. Refreshing page...",
-                      variant: "destructive",
-                    })
-                    window.location.reload()
-                    return
-                  }
-
                   // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
 
-                  // Set Clerk auth headers for API authentication
-                  // User is guaranteed to be loaded at this point
+                  // Set Clerk auth headers if available, but API will fall back to session cookies
                   const headers: HeadersInit = {
                     "Content-Type": "application/json",
-                    "x-user-clerk-id": user.id,
                   }
                   
-                  if (user.emailAddresses?.[0]?.emailAddress) {
-                    headers["x-user-email"] = user.emailAddresses[0].emailAddress
-                  }
-                  if (user.firstName || user.lastName) {
-                    headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                  // Include headers if user is loaded, but don't block if not
+                  // API will use Clerk session cookies as fallback
+                  if (user?.id) {
+                    headers["x-user-clerk-id"] = user.id
+                    if (user.emailAddresses?.[0]?.emailAddress) {
+                      headers["x-user-email"] = user.emailAddresses[0].emailAddress
+                    }
+                    if (user.firstName || user.lastName) {
+                      headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                    }
                   }
 
                   // Complete the return travel leg
