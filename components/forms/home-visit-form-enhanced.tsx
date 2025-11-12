@@ -1677,7 +1677,7 @@ const VisitInfoSection = ({ formData, onChange, appointmentData, prepopulationDa
           </div>
 
           <div>
-            <Label htmlFor="supervisor">Supervisor *</Label>
+            <Label htmlFor="supervisor">Case Manager *</Label>
             <Input
               id="supervisor"
               value={formData.visitInfo.supervisor || caseManager}

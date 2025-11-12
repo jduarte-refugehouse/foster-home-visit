@@ -655,7 +655,7 @@ function generateCompleteReportHTML(
             <p style="margin: 5px 0;"><strong>Conducted By:</strong> ${formData.visitInfo?.conductedBy || "N/A"}</p>
             <p style="margin: 5px 0;"><strong>Staff Title:</strong> ${formData.visitInfo?.staffTitle || "N/A"}</p>
             <p style="margin: 5px 0;"><strong>License Number:</strong> ${formData.visitInfo?.licenseNumber || "N/A"}</p>
-            <p style="margin: 5px 0;"><strong>Supervisor:</strong> ${formData.visitInfo?.supervisor || "N/A"}</p>
+            <p style="margin: 5px 0;"><strong>Case Manager:</strong> ${formData.visitInfo?.supervisor || "N/A"}</p>
           </div>
           <div>
             <p style="margin: 5px 0;"><strong>Visit Type:</strong> ${formData.visitInfo?.visitType || "N/A"}</p>
