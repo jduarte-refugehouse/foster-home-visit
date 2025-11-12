@@ -41,9 +41,19 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     // Check for travel legs for this appointment
     let hasInProgressLeg = false
     let hasCompletedLeg = false
+    let legMileage: number | null = null
+    let legStartTimestamp: string | null = null
+    let legEndTimestamp: string | null = null
+    let legStartLat: number | null = null
+    let legStartLng: number | null = null
+    let legEndLat: number | null = null
+    let legEndLng: number | null = null
+    
     try {
       const travelLegs = await query(
-        `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from
+        `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from,
+                calculated_mileage, start_timestamp, end_timestamp,
+                start_latitude, start_longitude, end_latitude, end_longitude
          FROM travel_legs
          WHERE (appointment_id_to = @param0 OR appointment_id_from = @param0)
            AND is_deleted = 0
@@ -54,7 +64,18 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
       if (travelLegs.length > 0) {
         hasInProgressLeg = travelLegs.some((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_to === appointmentId)
         hasCompletedLeg = travelLegs.some((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
-        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}`)
+        
+        // Get the most recent completed leg for this appointment
+        const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
+        if (completedLeg) {
+          legMileage = completedLeg.calculated_mileage || null
+          legStartLat = completedLeg.start_latitude || null
+          legStartLng = completedLeg.start_longitude || null
+          legEndLat = completedLeg.end_latitude || null
+          legEndLng = completedLeg.end_longitude || null
+        }
+        
+        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, mileage=${legMileage}`)
       }
     } catch (legError) {
       // Don't fail if travel_legs table doesn't exist or query fails
@@ -74,6 +95,15 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
       const pad = (n: number) => n.toString().padStart(2, '0')
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
+    
+    // Format travel leg timestamps if we have them
+    if (travelLegs && travelLegs.length > 0) {
+      const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
+      if (completedLeg) {
+        legStartTimestamp = completedLeg.start_timestamp ? formatLocalDatetime(completedLeg.start_timestamp) : null
+        legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -88,6 +118,15 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         // Add travel leg flags for button state
         has_in_progress_leg: hasInProgressLeg,
         has_completed_leg: hasCompletedLeg,
+        // Add travel leg mileage data (use leg mileage if available, otherwise use appointment mileage)
+        calculated_mileage: legMileage !== null ? legMileage : (appointment.calculated_mileage || null),
+        // Add travel leg timestamps (use leg timestamps if available, otherwise use appointment timestamps)
+        start_drive_timestamp: legStartTimestamp || appointment.start_drive_timestamp || null,
+        arrived_timestamp: legEndTimestamp || appointment.arrived_timestamp || null,
+        start_drive_latitude: legStartLat || appointment.start_drive_latitude || null,
+        start_drive_longitude: legStartLng || appointment.start_drive_longitude || null,
+        arrived_latitude: legEndLat || appointment.arrived_latitude || null,
+        arrived_longitude: legEndLng || appointment.arrived_longitude || null,
       },
       timestamp: new Date().toISOString(),
     })

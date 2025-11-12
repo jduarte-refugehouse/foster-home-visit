@@ -919,8 +919,8 @@ export default function MobileAppointmentDetailPage() {
   const endTime = parseLocalDatetime(appointment.end_datetime)
   // Check for in-progress travel leg OR legacy appointment timestamp
   // New leg-based system uses currentLegId, old system used appointment.start_drive_timestamp
-  const hasStartedDrive = !!currentLegId || !!appointment.start_drive_timestamp
-  const hasArrived = !!appointment.arrived_timestamp
+  const hasStartedDrive = !!currentLegId || !!appointment.start_drive_timestamp || !!appointment.has_in_progress_leg
+  const hasArrived = !!appointment.arrived_timestamp || !!appointment.has_completed_leg
   const hasReturnStarted = !!appointment.return_timestamp
   const hasReturnCompleted = !!appointment.return_mileage
   const visitInProgress = appointment.status === "in-progress"
@@ -1054,7 +1054,7 @@ export default function MobileAppointmentDetailPage() {
                 <Button
                   onClick={handleStartDrive}
                   disabled={capturingLocation}
-                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
                   size="lg"
                 >
                   <Play className="h-5 w-5 mr-2" />
@@ -1066,7 +1066,7 @@ export default function MobileAppointmentDetailPage() {
                 <Button
                   onClick={handleArrived}
                   disabled={capturingLocation}
-                  className="w-full bg-refuge-purple hover:bg-refuge-purple-dark text-white disabled:opacity-50"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
                   size="lg"
                 >
                   <CheckCircle2 className="h-5 w-5 mr-2" />

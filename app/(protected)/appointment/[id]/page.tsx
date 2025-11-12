@@ -721,6 +721,7 @@ export default function AppointmentDetailPage() {
           })
           setShowLeavingDialog(false)
           fetchAppointmentDetails()
+          setHistoryRefreshKey((prev) => prev + 1)
         } else {
           const errorData = await response.json()
           toast({
@@ -1466,7 +1467,7 @@ export default function AppointmentDetailPage() {
                   size="sm"
                   onClick={handleStartDrive}
                   disabled={capturingLocation}
-                  className="h-8 px-3 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-8 px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Navigation className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Start Drive"}
@@ -1476,7 +1477,7 @@ export default function AppointmentDetailPage() {
                   size="sm"
                   onClick={handleArrived}
                   disabled={capturingLocation}
-                  className="h-8 px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                  className="h-8 px-3 text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
                 >
                   <MapPinIcon className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Arrived"}
@@ -1708,7 +1709,7 @@ export default function AppointmentDetailPage() {
           </Card>
 
           {/* Mileage Tracking */}
-          {appointment && (appointment.start_drive_timestamp || appointment.arrived_timestamp || (appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined)) && (
+          {appointment && (appointment.start_drive_timestamp || appointment.arrived_timestamp || appointment.has_in_progress_leg || appointment.has_completed_leg || (appointment.calculated_mileage !== null && appointment.calculated_mileage !== undefined)) && (
             <Card className="rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
