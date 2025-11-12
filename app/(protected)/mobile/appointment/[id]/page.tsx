@@ -350,14 +350,7 @@ export default function MobileAppointmentDetailPage() {
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
       
-      console.log("🚗 [Start Drive] User ID sources:", {
-        refId: userRef.current.id,
-        userObjectId: user?.id,
-        authUserId: authUserId,
-        finalUserId: userId,
-        isLoaded,
-      })
-      
+      // Set headers if available (desktop/tablet), but API will use appointment context on mobile
       if (userId) {
         headers["x-user-clerk-id"] = userId
         if (userEmail) {
@@ -372,7 +365,9 @@ export default function MobileAppointmentDetailPage() {
           "x-user-name": headers["x-user-name"],
         })
       } else {
-        console.error("❌ [Start Drive] No user ID available from any source!")
+        // No headers available - API will use appointment context to determine user
+        // This is normal on mobile where Clerk hooks may not be fully loaded
+        console.log("ℹ️ [Start Drive] No user ID in headers - API will use appointment context for authentication")
       }
 
       const response = await fetch(`/api/travel-legs`, {
@@ -485,6 +480,7 @@ export default function MobileAppointmentDetailPage() {
         finalUserId: userId,
       })
       
+      // Set headers if available (desktop/tablet), but API will use appointment context on mobile
       if (userId) {
         headers["x-user-clerk-id"] = userId
         if (userEmail) {
@@ -499,7 +495,8 @@ export default function MobileAppointmentDetailPage() {
           "x-user-name": headers["x-user-name"],
         })
       } else {
-        console.error("❌ [handleArrived] No user ID available from any source!")
+        // No headers available - API will use leg context to determine user
+        console.log("ℹ️ [handleArrived] No user ID in headers - API will use leg context for authentication")
       }
 
       // Complete the current travel leg
