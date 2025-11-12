@@ -73,35 +73,74 @@ export default function MobileAppointmentDetailPage() {
   const [currentLegId, setCurrentLegId] = useState<string | null>(null)
   const [journeyId, setJourneyId] = useState<string | null>(null)
 
-  // Keep user ref updated whenever user object or auth changes
+  // SECURE: Get user ID from session cookie via API (server-side, secure)
+  // This is the ONLY use of Clerk APIs after authentication - just to get the user ID
+  // After this, we store it and never use Clerk APIs again
   useEffect(() => {
-    // Prefer user object (has more info), but fall back to authUserId if user object isn't available
-    const userId = user?.id || authUserId
-    if (userId && userId !== userRef.current.id) {
-      userRef.current = {
-        id: userId,
-        email: user?.emailAddresses?.[0]?.emailAddress || null,
-        name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || null : null,
+    const fetchSessionUser = async () => {
+      // Check sessionStorage first (persists across page refreshes within same session)
+      const storedUser = sessionStorage.getItem("session_user")
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.clerkUserId) {
+            userRef.current = {
+              id: parsed.clerkUserId,
+              email: parsed.email || null,
+              name: parsed.name || null,
+            }
+            console.log("✅ [Mobile Appointment] User loaded from sessionStorage:", userRef.current)
+            return
+          }
+        } catch (e) {
+          // Invalid stored data, fetch fresh
+        }
       }
-      console.log("✅ [Mobile Appointment] User ref updated:", userRef.current, "from:", { userObject: !!user?.id, authUserId: !!authUserId })
-    }
-  }, [user?.id, user?.emailAddresses, user?.firstName, user?.lastName, authUserId])
-  
-  // Also update ref immediately when authUserId becomes available (mobile-specific)
-  useEffect(() => {
-    if (authUserId && !userRef.current.id) {
-      userRef.current = {
-        id: authUserId,
-        email: null,
-        name: null,
+
+      // Fetch from API (reads from Clerk session cookie server-side)
+      try {
+        const response = await fetch("/api/auth/get-session-user", {
+          method: "GET",
+          credentials: 'include', // Ensure session cookies are sent
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.clerkUserId) {
+            userRef.current = {
+              id: data.clerkUserId,
+              email: data.email || null,
+              name: data.name || null,
+            }
+            // Store in sessionStorage for future use (cleared on browser close)
+            sessionStorage.setItem("session_user", JSON.stringify({
+              clerkUserId: data.clerkUserId,
+              email: data.email,
+              name: data.name,
+            }))
+            console.log("✅ [Mobile Appointment] User loaded from session API:", userRef.current)
+          }
+        } else {
+          console.error("❌ [Mobile Appointment] Failed to get session user:", response.status)
+        }
+      } catch (error) {
+        console.error("❌ [Mobile Appointment] Error fetching session user:", error)
       }
-      console.log("✅ [Mobile Appointment] User ref updated from authUserId:", authUserId)
     }
-  }, [authUserId])
+
+    // Fetch user ID from session (only once, on mount)
+    fetchSessionUser()
+  }, []) // Empty deps - only run once on mount
 
   // Debug logging
   useEffect(() => {
-    console.log("Mobile Appointment Page - Auth State:", { isLoaded, hasUser: !!user, userId: user?.id })
+    console.log("Mobile Appointment Page - Auth State:", { 
+      isLoaded, 
+      hasUser: !!user, 
+      userId: user?.id,
+      userRefId: userRef.current.id,
+      sessionStorageUser: sessionStorage.getItem("session_user") ? "present" : "missing"
+    })
   }, [isLoaded, user])
 
   useEffect(() => {
