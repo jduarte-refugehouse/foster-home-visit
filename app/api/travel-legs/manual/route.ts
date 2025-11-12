@@ -133,7 +133,9 @@ export async function POST(request: NextRequest) {
       journey_id,
     } = body
 
-    // Use authenticated user ID from Clerk session (prefer clerkUserId, fallback to email)
+    // Use authenticated user ID from originally authenticated Clerk session
+    // This comes from headers (x-user-clerk-id or x-user-email) set by client-side after Clerk authentication
+    // Prefer clerkUserId (Clerk user ID), fallback to email
     const staff_user_id = auth.clerkUserId || auth.email
 
     // Validate required fields

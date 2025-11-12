@@ -30,61 +30,28 @@ export async function PATCH(
     let authMethod = "headers"
     console.log("🚗 [Travel Legs PATCH] Auth from headers:", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
     
-    // ROBUST AUTHENTICATION: Since this is called from a protected route,
-    // the user IS authenticated. We need to be flexible about how we get their ID.
-    // NO MIDDLEWARE - we can't use clerkMiddleware() as it breaks everything.
+    // NO CLERK USAGE AFTER AUTHENTICATION
+    // User must be identified from originally authenticated session (headers) or token
+    
+    // Check for token-based authentication
+    const authToken = request.headers.get("x-auth-token")
     
     if (!authInfo.clerkUserId && !authInfo.email) {
-      // Check for session cookie - if it exists, user IS authenticated
-      const sessionCookie = request.cookies.get("__session")?.value
-      const hasSession = !!sessionCookie
-      
-      if (hasSession) {
-        console.log("🔍 [Travel Legs PATCH] Session cookie found - user is authenticated")
-        
-        // Try to get user from existing leg's staff_user_id
-        // This is safe because user must be authenticated to access the leg
-        const { legId } = params
-        try {
-          const legResult = await query(
-            `SELECT staff_user_id, staff_name 
-             FROM travel_legs 
-             WHERE leg_id = @param0 AND is_deleted = 0`,
-            [legId]
-          )
-          
-          if (legResult.length > 0 && legResult[0].staff_user_id) {
-            authInfo = {
-              clerkUserId: legResult[0].staff_user_id,
-              email: null,
-              name: legResult[0].staff_name || null,
-            }
-            authMethod = "leg_context"
-            console.log("✅ [Travel Legs PATCH] Auth from leg context:", { 
-              clerkUserId: authInfo.clerkUserId,
-              legId 
-            })
-          }
-        } catch (dbError) {
-          console.error("🚗 [Travel Legs PATCH] Error getting user from leg:", dbError)
-        }
-      }
-      
-      if (!authInfo.clerkUserId && !authInfo.email) {
-        if (hasSession) {
-          console.error("🚗 [Travel Legs PATCH] Session exists but cannot determine user ID")
-          return NextResponse.json({ 
-            error: "Authentication required",
-            details: "Unable to determine authenticated user. Please try refreshing the page.",
-            mobileAuthIssue: true
-          }, { status: 401 })
-        } else {
-          console.error("🚗 [Travel Legs PATCH] No headers, no session cookie - this should not happen on a protected route")
-          return NextResponse.json({ 
-            error: "Authentication required",
-            details: "No authentication found. Please sign in and try again.",
-          }, { status: 401 })
-        }
+      if (authToken) {
+        // Token-based authentication - look up user from token
+        // TODO: Implement token lookup to get user ID
+        console.log("🔍 [Travel Legs PATCH] Token-based auth detected, but token lookup not yet implemented")
+        return NextResponse.json({ 
+          error: "Token authentication not yet implemented"
+        }, { status: 501 })
+      } else {
+        // No headers and no token - require authentication
+        console.error("🚗 [Travel Legs PATCH] No authentication found - missing headers and token")
+        return NextResponse.json({ 
+          error: "Authentication required",
+          details: "Missing authentication headers (x-user-clerk-id or x-user-email). Please ensure you are signed in.",
+          mobileAuthIssue: true
+        }, { status: 401 })
       }
     }
 
