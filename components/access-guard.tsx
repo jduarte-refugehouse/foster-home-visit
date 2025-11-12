@@ -104,7 +104,7 @@ export function AccessGuard({ children }: AccessGuardProps) {
               <div className="text-sm text-amber-800 dark:text-amber-200">
                 <p className="font-semibold mb-1">External users require an invitation</p>
                 <p>
-                  Your account ({user.emailAddresses[0]?.emailAddress}) does not have access to this platform.
+                  Your account ({user?.emailAddresses?.[0]?.emailAddress || "unknown"}) does not have access to this platform.
                   Please contact an administrator to request access.
                 </p>
               </div>
