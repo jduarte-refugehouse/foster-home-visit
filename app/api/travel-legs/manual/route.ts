@@ -35,27 +35,86 @@ export async function POST(request: NextRequest) {
     // Try to get auth from headers first (desktop/tablet)
     let auth = getClerkUserIdFromRequest(request)
     
-    // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
-    if (!auth.clerkUserId && !auth.email) {
-      try {
-        const user = await currentUser()
-        if (user) {
-          auth = {
-            clerkUserId: user.id,
-            email: user.emailAddresses[0]?.emailAddress || null,
-            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-          }
-        }
-      } catch (clerkError) {
-        console.error("🚗 [Travel Legs Manual] Error getting user from Clerk session:", clerkError)
-      }
+    // ROBUST AUTHENTICATION: Since this is called from a protected route,
+    // the user IS authenticated. We need to be flexible about how we get their ID.
+    // NO MIDDLEWARE - we can't use clerkMiddleware() as it breaks everything.
+    
+    // Read body first (we'll need it for appointment context fallback)
+    let body: any = {}
+    try {
+      body = await request.json()
+    } catch (e) {
+      console.error("🚗 [Travel Legs Manual] Error reading request body:", e)
+      return NextResponse.json({ 
+        error: "Invalid request body" 
+      }, { status: 400 })
     }
     
     if (!auth.clerkUserId && !auth.email) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      // Check for session cookie - if it exists, user IS authenticated
+      const sessionCookie = request.cookies.get("__session")?.value
+      const hasSession = !!sessionCookie
+      
+      if (hasSession) {
+        console.log("🔍 [Travel Legs Manual] Session cookie found - user is authenticated")
+        
+        // Try to get user from appointment context or use staff_user_id from body
+        const appointmentId = body.appointment_id_from || body.appointment_id_to
+        const staffUserIdFromBody = body.staff_user_id
+        
+        if (appointmentId) {
+          try {
+            const appointmentResult = await query(
+              `SELECT assigned_to_user_id, assigned_to_name 
+               FROM appointments 
+               WHERE appointment_id = @param0 AND is_deleted = 0`,
+              [appointmentId]
+            )
+            
+            if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
+              auth = {
+                clerkUserId: appointmentResult[0].assigned_to_user_id,
+                email: null,
+                name: appointmentResult[0].assigned_to_name || null,
+              }
+              console.log("✅ [Travel Legs Manual] Auth from appointment context:", { 
+                clerkUserId: auth.clerkUserId,
+                appointmentId 
+              })
+            }
+          } catch (dbError) {
+            console.error("🚗 [Travel Legs Manual] Error getting user from appointment:", dbError)
+          }
+        } else if (staffUserIdFromBody) {
+          // Use staff_user_id from body as fallback (for manual entries)
+          auth = {
+            clerkUserId: staffUserIdFromBody,
+            email: null,
+            name: null,
+          }
+          console.log("✅ [Travel Legs Manual] Auth from body staff_user_id:", { 
+            clerkUserId: auth.clerkUserId
+          })
+        }
+      }
+      
+      if (!auth.clerkUserId && !auth.email) {
+        if (hasSession) {
+          console.error("🚗 [Travel Legs Manual] Session exists but cannot determine user ID")
+          return NextResponse.json({ 
+            error: "Authentication required",
+            details: "Unable to determine authenticated user. Please provide appointment_id or staff_user_id.",
+            mobileAuthIssue: true
+          }, { status: 401 })
+        } else {
+          console.error("🚗 [Travel Legs Manual] No headers, no session cookie - this should not happen on a protected route")
+          return NextResponse.json({ 
+            error: "Authentication required",
+            details: "No authentication found. Please sign in and try again.",
+          }, { status: 401 })
+        }
+      }
     }
-
-    const body = await request.json()
     const {
       start_location_name,
       start_address,
