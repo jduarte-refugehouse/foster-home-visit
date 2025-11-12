@@ -138,8 +138,8 @@ export async function POST(request: NextRequest) {
 
     const subject = `Foster Home Visit Report - ${familyName} - ${visitDate}`
 
-    const htmlContent = generateCompleteReportHTML(formData, appointmentId, visitDate, visitTime, familyName)
-    const textContent = generateCompleteReportText(formData, appointmentId, visitDate, visitTime, familyName)
+    const htmlContent = generateCompleteReportHTML(formData, appointmentId, visitDate, visitTime, familyName, appointment)
+    const textContent = generateCompleteReportText(formData, appointmentId, visitDate, visitTime, familyName, appointment)
 
     // Determine recipient based on recipientType
     let toEmail: string
@@ -217,6 +217,7 @@ function generateCompleteReportHTML(
   visitDate: string,
   visitTime: string,
   familyName: string,
+  appointment?: any,
 ): string {
   // Helper to format signature field with image (handles flat structure: parent1, parent1Signature, parent1Date)
   const formatSignatureField = (label: string, name: string, signature: string, date: string) => {
@@ -972,25 +973,33 @@ function generateCompleteReportHTML(
               )
             }
             
-            // Supervisor signature (flat structure: supervisor, supervisorSignature, supervisorDate)
-            const supervisorName = formData.signatures?.supervisor || ""
-            const supervisorSig = formData.signatures?.supervisorSignature || ""
-            const supervisorDate = formData.signatures?.supervisorDate || ""
+            // Case Manager signature (flat structure: caseManager, caseManagerSignature, caseManagerDate)
+            const caseManagerName = formData.signatures?.caseManager || formData.visitInfo?.supervisor || appointment.CaseManager || ""
+            const caseManagerSig = formData.signatures?.caseManagerSignature || ""
+            const caseManagerDate = formData.signatures?.caseManagerDate || ""
             
-            console.log("📋 [REPORT] Supervisor signature data:", {
-              name: supervisorName,
-              hasSignature: !!supervisorSig,
-              date: supervisorDate,
-              allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('supervisor')) : []
+            console.log("📋 [REPORT] Case Manager signature data:", {
+              name: caseManagerName,
+              hasSignature: !!caseManagerSig,
+              date: caseManagerDate,
+              allKeys: formData.signatures ? Object.keys(formData.signatures).filter(k => k.toLowerCase().includes('casemanager')) : []
             })
             
-            if (supervisorName || supervisorSig) {
+            if (caseManagerName || caseManagerSig) {
               signatureHtml += formatSignatureField(
-                "Supervisor",
-                supervisorName,
-                supervisorSig,
-                supervisorDate
+                "Case Manager",
+                caseManagerName,
+                caseManagerSig,
+                caseManagerDate
               )
+              
+              // If case manager signature is missing, add a signature link
+              if (!caseManagerSig && caseManagerEmail && appointmentId) {
+                // Generate signature link URL (will need to create token when sending email)
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "https://foster-home-visit.vercel.app"
+                const signatureLinkNote = `<p style="margin: 5px 0; color: #5E3989; font-weight: bold;">📝 Signature link will be sent separately to ${caseManagerEmail}</p>`
+                signatureHtml += signatureLinkNote
+              }
             }
             
             return signatureHtml
@@ -1014,6 +1023,7 @@ function generateCompleteReportText(
   visitDate: string,
   visitTime: string,
   familyName: string,
+  appointment?: any,
 ): string {
   let content = `FOSTER HOME VISIT REPORT\n\n`
   content += `Appointment ID: ${appointmentId}\n`
@@ -1363,14 +1373,17 @@ function generateCompleteReportText(
       content += `\n`
     }
     
-    // Supervisor signature (flat structure: supervisor, supervisorSignature, supervisorDate)
-    const supervisorName = formData.signatures.supervisor || ""
-    const supervisorSig = formData.signatures.supervisorSignature || ""
-    const supervisorDate = formData.signatures.supervisorDate || ""
-    if (supervisorName || supervisorSig) {
-      content += `${supervisorName || "Supervisor"}:`
-      if (supervisorDate) content += ` (Date: ${supervisorDate})`
-      if (supervisorSig) content += ` [Signature: ${supervisorSig.length > 100 ? 'Image data present' : supervisorSig}]`
+    // Case Manager signature (flat structure: caseManager, caseManagerSignature, caseManagerDate)
+    const caseManagerName = formData.signatures.caseManager || formData.visitInfo?.supervisor || appointment.CaseManager || ""
+    const caseManagerSig = formData.signatures.caseManagerSignature || ""
+    const caseManagerDate = formData.signatures.caseManagerDate || ""
+    if (caseManagerName || caseManagerSig) {
+      content += `${caseManagerName || "Case Manager"}:`
+      if (caseManagerDate) content += ` (Date: ${caseManagerDate})`
+      if (caseManagerSig) content += ` [Signature: ${caseManagerSig.length > 100 ? 'Image data present' : caseManagerSig}]`
+      if (!caseManagerSig && caseManagerEmail) {
+        content += ` [Signature link will be sent separately to ${caseManagerEmail}]`
+      }
       content += `\n`
     }
     

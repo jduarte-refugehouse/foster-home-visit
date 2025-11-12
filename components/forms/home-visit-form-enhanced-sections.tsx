@@ -1527,9 +1527,14 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
   // Get foster parents from household data
   const providers = formData.household?.providers || []
   
-  // Get staff conducting the visit
-  const staffName = appointmentData?.appointment?.assigned_to_name || ""
-  const staffRole = appointmentData?.appointment?.assigned_to_role || "Staff"
+  // Get staff conducting the visit (home liaison)
+  // Handle both wrapped structure { appointment: {...} } and direct structure
+  const appointment = appointmentData?.appointment || appointmentData
+  const staffName = appointment?.assigned_to_name || formData.visitInfo?.conductedBy || ""
+  const staffRole = appointment?.assigned_to_role || formData.visitInfo?.staffTitle || "Home Visit Liaison"
+  
+  // Get case manager from visit info or appointment
+  const caseManagerName = formData.visitInfo?.supervisor || appointment?.CaseManager || ""
   
   // Get visit form ID
   const visitFormId = existingFormData?.visit_form_id || null
@@ -1567,7 +1572,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
       }
     })
 
-    // Pre-fill staff name
+    // Pre-fill staff name (home liaison) - always populate if available
     if (staffName) {
       const currentStaffValue = signatures.staff
       if (!currentStaffValue || currentStaffValue === "" || currentStaffValue !== staffName) {
@@ -1580,6 +1585,21 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
     const staffDate = signatures.staffDate
     if (staffSignature && (!staffDate || staffDate === "")) {
       handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+    }
+    
+    // Pre-fill case manager name
+    if (caseManagerName) {
+      const currentCaseManagerValue = signatures.caseManager
+      if (!currentCaseManagerValue || currentCaseManagerValue === "" || currentCaseManagerValue !== caseManagerName) {
+        handleSignatureChange("caseManager", caseManagerName)
+      }
+    }
+    
+    // Ensure case manager date is set if signature exists but date doesn't
+    const caseManagerSignature = signatures.caseManagerSignature
+    const caseManagerDate = signatures.caseManagerDate
+    if (caseManagerSignature && (!caseManagerDate || caseManagerDate === "")) {
+      handleSignatureChange("caseManagerDate", new Date().toISOString().split("T")[0])
     }
     
     // Check fallback parent1/parent2 signatures
@@ -1595,7 +1615,7 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
       handleSignatureChange("parent2Date", new Date().toISOString().split("T")[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providers, staffName]) // Run when providers array or staffName changes (not signatures to avoid loops)
+  }, [providers, staffName, caseManagerName]) // Run when providers array, staffName, or caseManagerName changes (not signatures to avoid loops)
 
   return (
     <div className="space-y-4">
@@ -1775,88 +1795,40 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
           </Card>
         )}
 
-        {/* Staff Signature - Show after foster parents */}
-        {staffName && (
-          <Card className="border-2 border-refuge-purple/20 shadow-sm">
-            <CardHeader className="bg-refuge-purple/5 py-2 px-4 border-b border-refuge-purple/10">
-              <CardTitle className="text-sm font-semibold">{staffName} Signature *</CardTitle>
-              {staffRole && (
-                <p className="text-xs text-muted-foreground mt-1">{staffRole}</p>
-              )}
-            </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              {/* Name, Date, and Send Link Button on same line */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                <div className="sm:col-span-5">
-                  <Label htmlFor="staff-name" className="text-xs font-medium text-muted-foreground mb-1 block">
-                    Name *
-                  </Label>
+        {/* Staff Signature (Home Visit Liaison) - Always show */}
+        <Card className="border-2 border-refuge-purple/20 shadow-sm">
+          <CardHeader className="bg-refuge-purple/5 py-2 px-4 border-b border-refuge-purple/10">
+            <CardTitle className="text-sm font-semibold">Home Visit Liaison Signature *</CardTitle>
+            {staffRole && (
+              <p className="text-xs text-muted-foreground mt-1">{staffRole}</p>
+            )}
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            {/* Name, Date, and Send Link Button on same line */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+              <div className="sm:col-span-5">
+                <Label htmlFor="staff-name" className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Name *
+                </Label>
                 <Input
-                    id="staff-name"
+                  id="staff-name"
                   value={getSignatureValue("staff") || staffName}
                   onChange={(e) => handleSignatureChange("staff", e.target.value)}
-                  placeholder={staffName}
+                  placeholder={staffName || "Home Visit Liaison"}
                   className="text-sm"
                 />
-                </div>
-                <div className="sm:col-span-4">
-                  <Label htmlFor="staff-date" className="text-xs font-medium text-muted-foreground mb-1 block">
-                    Date *
-                  </Label>
-                  <Input
-                    id="staff-date"
-                    type="date"
-                    value={getSignatureValue("staffDate") || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => {
-                      handleSignatureChange("staffDate", e.target.value)
-                    }}
-                    onBlur={(e) => {
-                      // Ensure date is saved even if user just clicked away without changing it
-                      const currentDate = getSignatureValue("staffDate")
-                      const signature = getSignatureValue("staffSignature")
-                      if (signature && (!currentDate || currentDate === "")) {
-                        handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-3">
-                  <SendSignatureLinkButton
-                    visitFormId={visitFormId}
-                    signatureType="staff"
-                    signatureKey="staffSignature"
-                    recipientEmail=""
-                    recipientPhone=""
-                    recipientName={staffName}
-                    fosterFacilityGuid={formData.fosterHome?.homeId}
-                    visitDate={formData.visitInfo?.date}
-                    familyName={formData.fosterHome?.familyName}
-                    createdByUserId={user?.id}
-                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
-                  />
-                </div>
               </div>
-
-              {/* Signature Pad */}
-              <SignaturePad
-                label="Signature *"
-                value={getSignatureValue("staffSignature")}
-                onChange={(sig) => {
-                  handleSignatureChange("staffSignature", sig)
-                  // Auto-set date if signature is captured and date is not set
-                  if (sig && !getSignatureValue("staffDate")) {
-                    handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
-                  }
-                }}
-              />
-
-              <div>
-                <Label className="text-sm">Date *</Label>
+              <div className="sm:col-span-4">
+                <Label htmlFor="staff-date" className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Date *
+                </Label>
                 <Input
+                  id="staff-date"
                   type="date"
                   value={getSignatureValue("staffDate") || new Date().toISOString().split("T")[0]}
-                  onChange={(e) => handleSignatureChange("staffDate", e.target.value)}
+                  onChange={(e) => {
+                    handleSignatureChange("staffDate", e.target.value)
+                  }}
                   onBlur={(e) => {
                     // Ensure date is saved even if user just clicked away without changing it
                     const currentDate = getSignatureValue("staffDate")
@@ -1868,20 +1840,111 @@ export const SignaturesSection = ({ formData, onChange, appointmentData, appoint
                   className="text-sm"
                 />
               </div>
-              
-              {/* Send Signature Link Button */}
-              <SendSignatureLinkButton
-                visitFormId={visitFormId}
-                signatureType="staff"
-                signatureKey="staffSignature"
-                recipientEmail=""
-                recipientPhone=""
-                recipientName={staffName}
-                fosterFacilityGuid={formData.fosterHome?.homeId}
-                visitDate={formData.visitInfo?.date}
-                familyName={formData.fosterHome?.familyName}
-                createdByUserId={user?.id}
-                createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+              <div className="sm:col-span-3">
+                <SendSignatureLinkButton
+                  visitFormId={visitFormId}
+                  signatureType="staff"
+                  signatureKey="staffSignature"
+                  recipientEmail=""
+                  recipientPhone=""
+                  recipientName={staffName || "Home Visit Liaison"}
+                  fosterFacilityGuid={formData.fosterHome?.homeId}
+                  visitDate={formData.visitInfo?.date}
+                  familyName={formData.fosterHome?.familyName}
+                  createdByUserId={user?.id}
+                  createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                />
+              </div>
+            </div>
+
+            {/* Signature Pad */}
+            <SignaturePad
+              label="Signature *"
+              value={getSignatureValue("staffSignature")}
+              onChange={(sig) => {
+                handleSignatureChange("staffSignature", sig)
+                // Auto-set date if signature is captured and date is not set
+                if (sig && !getSignatureValue("staffDate")) {
+                  handleSignatureChange("staffDate", new Date().toISOString().split("T")[0])
+                }
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Case Manager Signature - Show after staff signature */}
+        {caseManagerName && (
+          <Card className="border-2 border-refuge-purple/20 shadow-sm">
+            <CardHeader className="bg-refuge-purple/5 py-2 px-4 border-b border-refuge-purple/10">
+              <CardTitle className="text-sm font-semibold">Case Manager Signature</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Case Manager</p>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
+              {/* Name, Date, and Send Link Button on same line */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                <div className="sm:col-span-5">
+                  <Label htmlFor="case-manager-name" className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Name
+                  </Label>
+                  <Input
+                    id="case-manager-name"
+                    value={getSignatureValue("caseManager") || caseManagerName}
+                    onChange={(e) => handleSignatureChange("caseManager", e.target.value)}
+                    placeholder={caseManagerName || "Case Manager"}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-4">
+                  <Label htmlFor="case-manager-date" className="text-xs font-medium text-muted-foreground mb-1 block">
+                    Date
+                  </Label>
+                  <Input
+                    id="case-manager-date"
+                    type="date"
+                    value={getSignatureValue("caseManagerDate") || new Date().toISOString().split("T")[0]}
+                    onChange={(e) => {
+                      handleSignatureChange("caseManagerDate", e.target.value)
+                    }}
+                    onBlur={(e) => {
+                      // Ensure date is saved even if user just clicked away without changing it
+                      const currentDate = getSignatureValue("caseManagerDate")
+                      const signature = getSignatureValue("caseManagerSignature")
+                      if (signature && (!currentDate || currentDate === "")) {
+                        handleSignatureChange("caseManagerDate", new Date().toISOString().split("T")[0])
+                      }
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <SendSignatureLinkButton
+                    visitFormId={visitFormId}
+                    signatureType="caseManager"
+                    signatureKey="caseManagerSignature"
+                    recipientEmail={appointment?.CaseManagerEmail || ""}
+                    recipientPhone=""
+                    recipientName={caseManagerName}
+                    entityGuid={null}
+                    fosterFacilityGuid={formData.fosterHome?.homeId}
+                    visitDate={formData.visitInfo?.date}
+                    familyName={formData.fosterHome?.familyName}
+                    createdByUserId={user?.id}
+                    createdByName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
+                  />
+                </div>
+              </div>
+
+              {/* Signature Pad */}
+              <SignaturePad
+                label="Signature"
+                value={getSignatureValue("caseManagerSignature")}
+                onChange={(sig) => {
+                  handleSignatureChange("caseManagerSignature", sig)
+                  // Auto-set date if signature is captured and date is not set
+                  if (sig && !getSignatureValue("caseManagerDate")) {
+                    handleSignatureChange("caseManagerDate", new Date().toISOString().split("T")[0])
+                  }
+                }}
               />
             </CardContent>
           </Card>

@@ -77,7 +77,8 @@ export default function VisitFormPage() {
 
       const appointmentData = await appointmentResponse.json()
       console.log("📋 [FORM] Appointment data received:", appointmentData)
-      setAppointmentData(appointmentData.appointment)
+      // Wrap appointment in same structure as appointment detail page expects
+      setAppointmentData({ appointment: appointmentData.appointment || appointmentData })
 
       // 2. Check if a visit form already exists for this appointment
       console.log("🔍 [FORM] Checking for existing visit form...")
@@ -528,86 +529,8 @@ export default function VisitFormPage() {
 
   return (
     <div>
-      <div className="fixed top-4 right-4 z-50">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              Debug Data
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-            <DialogHeader>
-              <DialogTitle>Database Debug Information</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">Appointment ID:</h3>
-                <p className="font-mono text-sm bg-gray-100 p-2 rounded">{appointmentId}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold">Last API Attempt:</h3>
-                <p className="font-mono text-sm bg-gray-100 p-2 rounded">{debugData.lastAttempt}</p>
-              </div>
-
-              {debugData.error && (
-                <div>
-                  <h3 className="font-semibold text-red-600">API Error:</h3>
-                  <pre className="font-mono text-sm bg-red-50 p-2 rounded overflow-auto">
-                    {JSON.stringify(debugData.error, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {debugData.apiResponse && (
-                <div>
-                  <h3 className="font-semibold text-green-600">API Response:</h3>
-                  <pre className="font-mono text-sm bg-green-50 p-2 rounded overflow-auto">
-                    {JSON.stringify(debugData.apiResponse, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {appointmentData && (
-                <div>
-                  <h3 className="font-semibold text-blue-600">Appointment Data:</h3>
-                  <pre className="font-mono text-sm bg-blue-50 p-2 rounded overflow-auto">
-                    {JSON.stringify(appointmentData, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {prepopulationData && (
-                <div>
-                  <h3 className="font-semibold text-green-600">Pre-population Data:</h3>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">{prepopulationData.home?.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div>
-                        <Badge variant="outline">{prepopulationData.household?.providers?.length || 0} Providers</Badge>
-                        <Badge variant="outline" className="ml-2">{prepopulationData.placements?.length || 0} Children</Badge>
-                        <Badge variant="outline" className="ml-2">
-                          {prepopulationData.previousVisit ? 'Previous Visit Found' : 'First Visit'}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <pre className="font-mono text-xs bg-green-50 p-2 rounded overflow-auto max-h-96">
-                    {JSON.stringify(prepopulationData, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              <Button onClick={fetchFormData} className="w-full bg-transparent" variant="outline">
-                Retry Loading Data
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
+      {/* Debug dialog removed - no longer needed in production */}
+      
       {/* Enhanced Home Visit Form - Version 3.1 */}
       <EnhancedHomeVisitForm
         appointmentId={appointmentId}
