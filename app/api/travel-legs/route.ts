@@ -100,8 +100,13 @@ export async function POST(request: NextRequest) {
       is_final_leg,
     } = body
 
-    // Use authenticated user ID from Clerk session (prefer clerkUserId, fallback to email)
+    // Use authenticated user ID from originally authenticated Clerk session
+    // This comes from headers (x-user-clerk-id or x-user-email) set by client-side after Clerk authentication
+    // Prefer clerkUserId (Clerk user ID), fallback to email
     const staff_user_id = authInfo.clerkUserId || authInfo.email
+    
+    // Note: appointment_id_from and appointment_id_to are used to LINK the leg to appointments
+    // They are NOT used to determine the user - user comes from authenticated session (headers) or token
 
     // Validate required fields
     if (!staff_user_id || start_latitude === undefined || start_longitude === undefined || !start_timestamp) {
