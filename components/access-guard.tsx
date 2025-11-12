@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useUser, useRouter } from "@clerk/nextjs"
+import { useRouter as useNextRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Shield } from "lucide-react"
 
@@ -11,9 +12,11 @@ interface AccessGuardProps {
 
 export function AccessGuard({ children }: AccessGuardProps) {
   const { user, isLoaded } = useUser()
+  const router = useNextRouter()
   const [accessChecked, setAccessChecked] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -48,9 +51,23 @@ export function AccessGuard({ children }: AccessGuardProps) {
 
         if (response.ok && data.success) {
           setHasAccess(true)
+          setIsAuthenticated(true)
           setAccessChecked(true)
+        } else if (response.status === 401) {
+          // Not authenticated - redirect to Clerk sign-in
+          setIsAuthenticated(false)
+          setHasAccess(false)
+          setAccessChecked(true)
+          
+          // Get current path to redirect back after sign-in
+          const currentPath = window.location.pathname + window.location.search
+          const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(currentPath)}`
+          
+          console.log("🔐 [AccessGuard] Not authenticated, redirecting to sign-in:", signInUrl)
+          router.push(signInUrl)
         } else {
-          // Access denied or not authenticated
+          // Access denied (403) - user is authenticated but doesn't have access
+          setIsAuthenticated(true)
           setHasAccess(false)
           setAccessChecked(true)
         }
