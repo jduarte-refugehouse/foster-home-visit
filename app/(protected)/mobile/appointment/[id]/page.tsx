@@ -158,19 +158,37 @@ export default function MobileAppointmentDetailPage() {
         credentials: 'include',
       })
       const data = await response.json()
+      
+      console.log("🔍 [fetchCurrentTravelLeg] Response:", {
+        success: data.success,
+        legsCount: data.legs?.length || 0,
+        legs: data.legs
+      })
 
       if (data.success && data.legs && data.legs.length > 0) {
-        // Find leg that ends at this appointment or starts from this appointment
+        // Find leg that ends at this appointment (in-progress leg to this appointment)
+        // or starts from this appointment (completed leg from this appointment)
         const relevantLeg = data.legs.find(
           (leg: any) =>
-            leg.appointment_id_to === appointmentId ||
+            (leg.appointment_id_to === appointmentId && leg.leg_status === 'in_progress') ||
             leg.appointment_id_from === appointmentId
         )
 
         if (relevantLeg) {
+          console.log("✅ [fetchCurrentTravelLeg] Found relevant leg:", {
+            leg_id: relevantLeg.leg_id,
+            journey_id: relevantLeg.journey_id,
+            status: relevantLeg.leg_status,
+            appointment_id_to: relevantLeg.appointment_id_to,
+            appointment_id_from: relevantLeg.appointment_id_from
+          })
           setCurrentLegId(relevantLeg.leg_id)
           setJourneyId(relevantLeg.journey_id)
+        } else {
+          console.log("ℹ️ [fetchCurrentTravelLeg] No relevant leg found for appointment:", appointmentId)
         }
+      } else {
+        console.log("ℹ️ [fetchCurrentTravelLeg] No in-progress legs found")
       }
     } catch (error) {
       console.error("Error fetching current travel leg:", error)
