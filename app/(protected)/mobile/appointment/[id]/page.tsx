@@ -701,25 +701,27 @@ export default function MobileAppointmentDetailPage() {
       }
 
       // Always set headers if we have a user ID
-      headers["x-user-clerk-id"] = userId
-      if (userEmail) {
-        headers["x-user-email"] = userEmail
-      }
-      if (userName) {
-        headers["x-user-name"] = userName
+      // CRITICAL: Set headers as a new object to ensure they're not mutated
+      const finalHeaders: HeadersInit = {
+        "Content-Type": "application/json",
+        "x-user-clerk-id": userId,
       }
       
-      console.log("✅ [handleLeavingAction] Sending headers:", { 
-        "x-user-clerk-id": headers["x-user-clerk-id"],
-        "x-user-email": headers["x-user-email"],
-        "x-user-name": headers["x-user-name"]
-      })
+      if (userEmail) {
+        finalHeaders["x-user-email"] = userEmail
+      }
+      if (userName) {
+        finalHeaders["x-user-name"] = userName
+      }
+      
+      console.log("✅ [handleLeavingAction] Final headers before fetch:", finalHeaders)
+      console.log("✅ [handleLeavingAction] Headers object type:", typeof finalHeaders, "keys:", Object.keys(finalHeaders))
       
       if (action === "next" && nextAppointment) {
         // Create new travel leg for next appointment (using same journey)
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers,
+          headers: finalHeaders,
           credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
@@ -753,7 +755,7 @@ export default function MobileAppointmentDetailPage() {
         // Return travel - create new leg for return trip
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers,
+          headers: finalHeaders,
           credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
