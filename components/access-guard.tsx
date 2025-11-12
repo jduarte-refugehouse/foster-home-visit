@@ -18,22 +18,16 @@ export function AccessGuard({ children }: AccessGuardProps) {
   useEffect(() => {
     if (!isLoaded) return
 
-    // If user is not signed in, Clerk will handle redirect
-    if (!user) {
-      setChecking(false)
-      return
-    }
-
-    // Check access
-    // Use session cookies instead of headers - API will read from session
-    // This works better on mobile where headers might not be sent
+    // Check access via API - this works even if useUser() hook doesn't work on mobile
+    // API will use session cookies to determine authentication
+    // This allows authentication to work the same way as browser, then avoids Clerk hooks
     const checkAccess = async () => {
       try {
         const headers: HeadersInit = {
           "Content-Type": "application/json",
         }
 
-        // Set headers if available (desktop), but API will use session cookies as fallback
+        // Set headers if available (desktop), but API will use session cookies as fallback (mobile)
         if (user?.emailAddresses?.[0]?.emailAddress) {
           headers["x-user-email"] = user.emailAddresses[0].emailAddress
         }
@@ -56,20 +50,22 @@ export function AccessGuard({ children }: AccessGuardProps) {
           setHasAccess(true)
           setAccessChecked(true)
         } else {
-          // Access denied
+          // Access denied or not authenticated
           setHasAccess(false)
           setAccessChecked(true)
         }
       } catch (error) {
         console.error("Error checking access:", error)
-        // On error, allow access for now (fail open) - but log the error
-        setHasAccess(true)
+        // On error, deny access (fail closed for security)
+        setHasAccess(false)
         setAccessChecked(true)
       } finally {
         setChecking(false)
       }
     }
 
+    // Always check access via API, even if user object is null
+    // This allows mobile to authenticate via session cookies even if hooks don't work
     checkAccess()
   }, [user, isLoaded])
 
@@ -85,10 +81,9 @@ export function AccessGuard({ children }: AccessGuardProps) {
     )
   }
 
-  // If user is not signed in, Clerk will handle redirect - just render children
-  if (!user) {
-    return <>{children}</>
-  }
+  // If access check completed and user has access, render children
+  // Note: We don't check user object here because on mobile, useUser() might not work
+  // The API check above verifies authentication via session cookies
 
   // If access denied, show error page
   if (accessChecked && !hasAccess) {
