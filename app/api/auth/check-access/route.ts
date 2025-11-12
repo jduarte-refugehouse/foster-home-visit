@@ -11,21 +11,46 @@ import { requireClerkAuth } from "@/lib/clerk-auth-helper"
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get Clerk user info from headers
-    let clerkUserId: string
-    let email: string | null
-    let name: string | null
+    // Get Clerk user info from headers OR session cookies
+    // This allows mobile to work where headers might not be sent
+    let clerkUserId: string | null = null
+    let email: string | null = null
+    let name: string | null = null
 
+    // Try headers first (desktop/tablet)
     try {
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
       email = auth.email
       name = auth.name
     } catch (authError) {
+      // Headers not available - try session cookie (mobile)
+      // Import currentUser to read from session cookie
+      const { currentUser } = await import("@clerk/nextjs/server")
+      try {
+        const user = await currentUser()
+        if (user) {
+          clerkUserId = user.id
+          email = user.emailAddresses[0]?.emailAddress || null
+          name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || null
+        }
+      } catch (sessionError) {
+        // No session either - user is not authenticated
+        return NextResponse.json(
+          {
+            error: "Unauthorized",
+            details: "Not authenticated. Please sign in.",
+          },
+          { status: 401 },
+        )
+      }
+    }
+
+    if (!clerkUserId || !email) {
       return NextResponse.json(
         {
           error: "Unauthorized",
-          details: authError instanceof Error ? authError.message : "Missing authentication headers",
+          details: "Unable to determine authenticated user.",
         },
         { status: 401 },
       )

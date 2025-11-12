@@ -25,25 +25,29 @@ export function AccessGuard({ children }: AccessGuardProps) {
     }
 
     // Check access
+    // Use session cookies instead of headers - API will read from session
+    // This works better on mobile where headers might not be sent
     const checkAccess = async () => {
       try {
         const headers: HeadersInit = {
           "Content-Type": "application/json",
         }
 
-        if (user.emailAddresses[0]?.emailAddress) {
+        // Set headers if available (desktop), but API will use session cookies as fallback
+        if (user?.emailAddresses?.[0]?.emailAddress) {
           headers["x-user-email"] = user.emailAddresses[0].emailAddress
         }
-        if (user.id) {
+        if (user?.id) {
           headers["x-user-clerk-id"] = user.id
         }
-        if (user.firstName || user.lastName) {
+        if (user?.firstName || user?.lastName) {
           headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
         }
 
         const response = await fetch("/api/auth/check-access", {
           method: "GET",
           headers,
+          credentials: 'include', // Ensure session cookies are sent (critical for mobile)
         })
 
         const data = await response.json()
