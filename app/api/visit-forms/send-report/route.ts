@@ -993,11 +993,10 @@ function generateCompleteReportHTML(
                 caseManagerDate
               )
               
-              // If case manager signature is missing, add a signature link
-              if (!caseManagerSig && caseManagerEmail && appointmentId) {
-                // Generate signature link URL (will need to create token when sending email)
-                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "https://foster-home-visit.vercel.app"
-                const signatureLinkNote = `<p style="margin: 5px 0; color: #5E3989; font-weight: bold;">📝 Signature link will be sent separately to ${caseManagerEmail}</p>`
+              // If case manager signature is missing, add a signature link note
+              if (!caseManagerSig && appointment?.CaseManagerEmail && appointmentId) {
+                // Note: Signature link will be sent separately via the signature token system
+                const signatureLinkNote = `<p style="margin: 5px 0; color: #5E3989; font-weight: bold;">📝 Signature link will be sent separately to ${appointment.CaseManagerEmail}</p>`
                 signatureHtml += signatureLinkNote
               }
             }
@@ -1381,8 +1380,8 @@ function generateCompleteReportText(
       content += `${caseManagerName || "Case Manager"}:`
       if (caseManagerDate) content += ` (Date: ${caseManagerDate})`
       if (caseManagerSig) content += ` [Signature: ${caseManagerSig.length > 100 ? 'Image data present' : caseManagerSig}]`
-      if (!caseManagerSig && caseManagerEmail) {
-        content += ` [Signature link will be sent separately to ${caseManagerEmail}]`
+      if (!caseManagerSig && appointment?.CaseManagerEmail) {
+        content += ` [Signature link will be sent separately to ${appointment.CaseManagerEmail}]`
       }
       content += `\n`
     }
