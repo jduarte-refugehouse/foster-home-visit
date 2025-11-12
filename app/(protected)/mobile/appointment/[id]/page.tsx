@@ -387,18 +387,33 @@ export default function MobileAppointmentDetailPage() {
       })
 
       const data = await response.json()
+      
+      console.log("🚗 [Start Drive] API Response:", {
+        ok: response.ok,
+        status: response.status,
+        data: data
+      })
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         // Store leg_id and journey_id for completing the leg later
         setCurrentLegId(data.leg_id)
         setJourneyId(data.journey_id)
+        
+        console.log("✅ [Start Drive] Leg created successfully:", {
+          leg_id: data.leg_id,
+          journey_id: data.journey_id
+        })
         
         toast({
           title: "Drive Started",
           description: "Starting location captured",
         })
+        // Refresh appointment details to update UI
         fetchAppointmentDetails()
+        // Also refresh current travel leg to ensure state is in sync
+        fetchCurrentTravelLeg()
       } else {
+        console.error("❌ [Start Drive] API Error:", data)
         throw new Error(data.error || data.details || "Failed to start drive")
       }
     } catch (error) {
@@ -847,7 +862,9 @@ export default function MobileAppointmentDetailPage() {
 
   const startTime = parseLocalDatetime(appointment.start_datetime)
   const endTime = parseLocalDatetime(appointment.end_datetime)
-  const hasStartedDrive = !!appointment.start_drive_timestamp
+  // Check for in-progress travel leg OR legacy appointment timestamp
+  // New leg-based system uses currentLegId, old system used appointment.start_drive_timestamp
+  const hasStartedDrive = !!currentLegId || !!appointment.start_drive_timestamp
   const hasArrived = !!appointment.arrived_timestamp
   const hasReturnStarted = !!appointment.return_timestamp
   const hasReturnCompleted = !!appointment.return_mileage
