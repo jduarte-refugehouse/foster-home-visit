@@ -119,8 +119,10 @@ export default function MobileAppointmentDetailPage() {
       }
 
       // API will filter by authenticated user automatically
+      // Include credentials to ensure Clerk cookies are sent (critical for mobile)
       const response = await fetch(`/api/travel-legs?status=in_progress`, {
         headers,
+        credentials: 'include',
       })
       const data = await response.json()
 
@@ -334,6 +336,7 @@ export default function MobileAppointmentDetailPage() {
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
         headers,
+        credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
         body: JSON.stringify({
           start_latitude: location.latitude,
           start_longitude: location.longitude,
@@ -444,6 +447,7 @@ export default function MobileAppointmentDetailPage() {
       const response = await fetch(`/api/travel-legs/${currentLegId}`, {
         method: "PATCH",
         headers,
+        credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
         body: JSON.stringify({
           end_latitude: location.latitude,
           end_longitude: location.longitude,
@@ -539,6 +543,7 @@ export default function MobileAppointmentDetailPage() {
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
         headers,
+        credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
         body: JSON.stringify({
           start_latitude: location.latitude,
           start_longitude: location.longitude,
@@ -625,6 +630,7 @@ export default function MobileAppointmentDetailPage() {
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
           headers,
+          credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
             start_longitude: location.longitude,
@@ -658,6 +664,7 @@ export default function MobileAppointmentDetailPage() {
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
           headers,
+          credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
             start_longitude: location.longitude,
@@ -1027,6 +1034,7 @@ export default function MobileAppointmentDetailPage() {
                   const response = await fetch(`/api/travel-legs/${currentLegId}`, {
                     method: "PATCH",
                     headers,
+                    credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
                     body: JSON.stringify({
                       end_latitude: location.latitude,
                       end_longitude: location.longitude,

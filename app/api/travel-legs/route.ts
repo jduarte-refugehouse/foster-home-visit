@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
-import { currentUser, auth } from "@clerk/nextjs/server"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -41,31 +41,26 @@ export async function POST(request: NextRequest) {
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
     if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        // Try currentUser() first (most reliable)
-        let user = await currentUser()
+        // Try currentUser() - this reads from Clerk session cookies
+        const user = await currentUser()
         if (user) {
           authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
           }
-          authMethod = "clerk_session_currentUser"
+          authMethod = "clerk_session"
           console.log("🚗 [Travel Legs POST] Auth from Clerk currentUser():", { clerkUserId: authInfo.clerkUserId, email: authInfo.email })
         } else {
-          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
-          console.warn("🚗 [Travel Legs POST] currentUser() returned null, trying auth()...")
-          const authData = await auth()
-          if (authData.userId) {
-            // We have a userId but not full user object, use what we have
-            authInfo = {
-              clerkUserId: authData.userId,
-              email: null, // auth() doesn't provide email directly
-              name: null,
-            }
-            authMethod = "clerk_session_auth"
-            console.log("🚗 [Travel Legs POST] Auth from Clerk auth():", { clerkUserId: authInfo.clerkUserId })
+          // If currentUser() returns null, check if we can get session from cookies
+          // Clerk stores session in __session cookie
+          const sessionCookie = request.cookies.get("__session")?.value
+          if (sessionCookie) {
+            console.warn("🚗 [Travel Legs POST] currentUser() returned null but __session cookie exists - Clerk session may not be fully initialized")
+            // Since route is protected, user must be authenticated
+            // But we can't proceed without a user ID
           } else {
-            console.warn("🚗 [Travel Legs POST] Both currentUser() and auth() returned null")
+            console.warn("🚗 [Travel Legs POST] currentUser() returned null and no __session cookie found")
           }
         }
       } catch (clerkError) {
@@ -194,23 +189,12 @@ export async function GET(request: NextRequest) {
     // Fallback to Clerk session if headers not available (mobile - cookies are sent automatically)
     if (!authInfo.clerkUserId && !authInfo.email) {
       try {
-        // Try currentUser() first (most reliable)
-        let user = await currentUser()
+        const user = await currentUser()
         if (user) {
           authInfo = {
             clerkUserId: user.id,
             email: user.emailAddresses[0]?.emailAddress || null,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-          }
-        } else {
-          // Fallback to auth() if currentUser() returns null (sometimes more reliable on mobile)
-          const authData = await auth()
-          if (authData.userId) {
-            authInfo = {
-              clerkUserId: authData.userId,
-              email: null,
-              name: null,
-            }
           }
         }
       } catch (clerkError) {
