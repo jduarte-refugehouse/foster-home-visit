@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,6 +56,9 @@ export default function MobileAppointmentDetailPage() {
   const { isMobile } = useDeviceType()
   const appointmentId = params.id as string
 
+  // Store user info in refs so they're always available, even in dialogs
+  const userRef = useRef<{ id: string | null; email: string | null; name: string | null }>({ id: null, email: null, name: null })
+
   const [appointment, setAppointment] = useState<Appointment | null>(null)
   const [loading, setLoading] = useState(true)
   const [capturingLocation, setCapturingLocation] = useState(false)
@@ -68,6 +71,18 @@ export default function MobileAppointmentDetailPage() {
   // Travel leg tracking state
   const [currentLegId, setCurrentLegId] = useState<string | null>(null)
   const [journeyId, setJourneyId] = useState<string | null>(null)
+
+  // Keep user ref updated whenever user object changes
+  useEffect(() => {
+    if (user?.id) {
+      userRef.current = {
+        id: user.id,
+        email: user.emailAddresses[0]?.emailAddress || null,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      }
+      console.log("✅ [Mobile Appointment] User ref updated:", userRef.current)
+    }
+  }, [user?.id, user?.emailAddresses, user?.firstName, user?.lastName])
 
   // Debug logging
   useEffect(() => {
@@ -106,15 +121,18 @@ export default function MobileAppointmentDetailPage() {
       // Set Clerk auth headers if available, but API will fall back to session cookies
       const headers: HeadersInit = {}
       
-      // Include headers if user is loaded, but don't block if not
-      // API will use Clerk session cookies as fallback
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-        if (user.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      // Use ref first (most reliable), then fall back to user object
+      const userId = userRef.current.id || user?.id
+      const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+      const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
         }
-        if (user.firstName || user.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (userName) {
+          headers["x-user-name"] = userName
         }
       }
 
@@ -312,15 +330,18 @@ export default function MobileAppointmentDetailPage() {
         "Content-Type": "application/json",
       }
       
-      // Include headers if user is loaded, but don't block if not
-      // API will use Clerk session cookies as fallback
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-        if (user.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      // Use ref first (most reliable), then fall back to user object
+      const userId = userRef.current.id || user?.id
+      const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+      const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
         }
-        if (user.firstName || user.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (userName) {
+          headers["x-user-name"] = userName
         }
       }
 
@@ -330,7 +351,7 @@ export default function MobileAppointmentDetailPage() {
         "x-user-email": headers["x-user-email"] || "will use session cookie",
         "x-user-name": headers["x-user-name"] || "will use session cookie",
         userLoaded: isLoaded,
-        userId: user?.id || "will use session cookie",
+        userId: userId || "will use session cookie",
       })
 
       const response = await fetch(`/api/travel-legs`, {
@@ -426,20 +447,23 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
-      // Set Clerk auth headers if available, but API will fall back to session cookies
+      // Set Clerk auth headers - use ref to ensure we always have the latest user info
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
       
-      // Include headers if user is loaded, but don't block if not
-      // API will use Clerk session cookies as fallback
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-        if (user.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      // Use ref first (most reliable), then fall back to user object
+      const userId = userRef.current.id || user?.id
+      const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+      const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
         }
-        if (user.firstName || user.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (userName) {
+          headers["x-user-name"] = userName
         }
       }
 
@@ -523,20 +547,23 @@ export default function MobileAppointmentDetailPage() {
       const location = await captureLocation("arrived")
 
       // Create new travel leg for next appointment (using same journey)
-      // Set Clerk auth headers if available, but API will fall back to session cookies
+      // Set Clerk auth headers - use ref to ensure we always have the latest user info
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
       
-      // Include headers if user is loaded, but don't block if not
-      // API will use Clerk session cookies as fallback
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-        if (user.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      // Use ref first (most reliable), then fall back to user object
+      const userId = userRef.current.id || user?.id
+      const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+      const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
         }
-        if (user.firstName || user.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (userName) {
+          headers["x-user-name"] = userName
         }
       }
 
@@ -608,21 +635,28 @@ export default function MobileAppointmentDetailPage() {
 
       const location = await captureLocation("arrived")
       
-      // Set Clerk auth headers if available, but API will fall back to session cookies
+      // Set Clerk auth headers - use ref to ensure we always have the latest user info
+      // even if the user object isn't available in this context
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
       
-      // Include headers if user is loaded, but don't block if not
-      // API will use Clerk session cookies as fallback
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
-        if (user.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      // Use ref first (most reliable), then fall back to user object
+      const userId = userRef.current.id || user?.id
+      const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+      const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
         }
-        if (user.firstName || user.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (userName) {
+          headers["x-user-name"] = userName
         }
+        console.log("🚗 [handleLeavingAction] Sending headers from ref/user:", { userId, userEmail, userName })
+      } else {
+        console.warn("⚠️ [handleLeavingAction] No user ID available, API will use session cookies")
       }
       
       if (action === "next" && nextAppointment) {
@@ -1013,20 +1047,23 @@ export default function MobileAppointmentDetailPage() {
                   // Don't set capturingLocation here - captureLocation does it internally
                   const location = await captureLocation("arrived")
 
-                  // Set Clerk auth headers if available, but API will fall back to session cookies
+                  // Set Clerk auth headers - use ref to ensure we always have the latest user info
                   const headers: HeadersInit = {
                     "Content-Type": "application/json",
                   }
                   
-                  // Include headers if user is loaded, but don't block if not
-                  // API will use Clerk session cookies as fallback
-                  if (user?.id) {
-                    headers["x-user-clerk-id"] = user.id
-                    if (user.emailAddresses?.[0]?.emailAddress) {
-                      headers["x-user-email"] = user.emailAddresses[0].emailAddress
+                  // Use ref first (most reliable), then fall back to user object
+                  const userId = userRef.current.id || user?.id
+                  const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
+                  const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+                  
+                  if (userId) {
+                    headers["x-user-clerk-id"] = userId
+                    if (userEmail) {
+                      headers["x-user-email"] = userEmail
                     }
-                    if (user.firstName || user.lastName) {
-                      headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                    if (userName) {
+                      headers["x-user-name"] = userName
                     }
                   }
 

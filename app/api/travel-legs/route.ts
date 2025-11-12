@@ -68,51 +68,19 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Read body once (needed for both auth fallback and main logic)
-    const body = await request.json()
-    
-    // TEMPORARY: Allow request to proceed even without explicit auth (like mileage API)
-    // The route is protected, so user must be authenticated to reach the button
-    // If we still don't have auth, try to get user from appointment context as fallback
+    // If we still don't have auth after trying headers and currentUser(), 
+    // the user is still authenticated (protected route), but we can't get their ID
+    // This should not happen, but if it does, we need to fail gracefully
     if (!authInfo.clerkUserId && !authInfo.email) {
-      const appointmentIdTo = body.appointment_id_to || body.appointment_id_from
-      
-      // Try to get user from appointment if we have an appointment ID
-      if (appointmentIdTo) {
-        try {
-          const appointmentResult = await query(
-            `SELECT assigned_to_user_id, assigned_to_name 
-             FROM appointments 
-             WHERE appointment_id = @param0`,
-            [appointmentIdTo]
-          )
-          
-          if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
-            // Use the appointment's assigned user as fallback
-            authInfo = {
-              clerkUserId: appointmentResult[0].assigned_to_user_id,
-              email: null,
-              name: appointmentResult[0].assigned_to_name || null,
-            }
-            authMethod = "appointment_fallback"
-            console.warn("🚗 [Travel Legs POST] Using appointment assigned user as fallback:", { clerkUserId: authInfo.clerkUserId })
-          }
-        } catch (dbError) {
-          console.error("🚗 [Travel Legs POST] Error getting user from appointment:", dbError)
-        }
-      }
-      
-      // If we still don't have auth, log warning but allow request (protected route)
-      if (!authInfo.clerkUserId && !authInfo.email) {
-        console.warn("⚠️ [Travel Legs POST] No explicit auth found, but allowing request (protected route)")
-        // Still need a user ID - this is a problem, but let's see if we can proceed
-        // The database insert will fail if staff_user_id is null, so we need to handle this
-        return NextResponse.json({ 
-          error: "Authentication required - unable to determine user identity",
-          details: "Please ensure you are signed in and try again"
-        }, { status: 401 })
-      }
+      console.error("🚗 [Travel Legs POST] Authentication failed - no clerkUserId or email")
+      console.error("🚗 [Travel Legs POST] This should not happen on a protected route - user is authenticated but we can't get their ID")
+      return NextResponse.json({ 
+        error: "Authentication required",
+        details: "Unable to determine authenticated user. Please refresh the page and try again."
+      }, { status: 401 })
     }
+    
+    const body = await request.json()
     const {
       start_latitude,
       start_longitude,
