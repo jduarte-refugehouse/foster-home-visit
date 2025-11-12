@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useUser, useRouter } from "@clerk/nextjs"
-import { useRouter as useNextRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Shield } from "lucide-react"
 
@@ -12,7 +12,7 @@ interface AccessGuardProps {
 
 export function AccessGuard({ children }: AccessGuardProps) {
   const { user, isLoaded } = useUser()
-  const router = useNextRouter()
+  const router = useRouter()
   const [accessChecked, setAccessChecked] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
   const [checking, setChecking] = useState(true)
