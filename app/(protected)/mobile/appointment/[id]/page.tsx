@@ -683,7 +683,7 @@ export default function MobileAppointmentDetailPage() {
         // Create new travel leg for next appointment (using same journey)
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers: finalHeaders,
+          headers,
           credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
@@ -717,7 +717,7 @@ export default function MobileAppointmentDetailPage() {
         // Return travel - create new leg for return trip
         const response = await fetch(`/api/travel-legs`, {
           method: "POST",
-          headers: finalHeaders,
+          headers,
           credentials: 'include', // Ensure Clerk cookies are sent (critical for mobile)
           body: JSON.stringify({
             start_latitude: location.latitude,
