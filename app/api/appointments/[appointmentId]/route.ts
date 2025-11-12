@@ -38,6 +38,20 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     const appointment = appointments[0]
     console.log(`✅ [API] Retrieved appointment: ${appointment.title}`)
 
+    // Format datetime as local time string (no timezone conversion)
+    // SQL Server DATETIME2 has no timezone, so we return as local time string
+    const formatLocalDatetime = (dt: any): string => {
+      if (!dt) return ""
+      // If it's already a string in format YYYY-MM-DDTHH:mm:ss, return as-is
+      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
+        return dt.split('.')[0].split('Z')[0] // Remove milliseconds and Z if present
+      }
+      // If it's a Date object or SQL datetime, format as local time
+      const date = new Date(dt)
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    }
+
     // Check for travel legs for this appointment
     let hasInProgressLeg = false
     let hasCompletedLeg = false
@@ -73,6 +87,9 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
           legStartLng = completedLeg.start_longitude || null
           legEndLat = completedLeg.end_latitude || null
           legEndLng = completedLeg.end_longitude || null
+          // Format timestamps while we have access to completedLeg
+          legStartTimestamp = completedLeg.start_timestamp ? formatLocalDatetime(completedLeg.start_timestamp) : null
+          legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
         }
         
         console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, mileage=${legMileage}`)
@@ -80,29 +97,6 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     } catch (legError) {
       // Don't fail if travel_legs table doesn't exist or query fails
       console.log("⚠️ [API] Could not check travel legs (non-fatal):", legError)
-    }
-
-    // Format datetime as local time string (no timezone conversion)
-    // SQL Server DATETIME2 has no timezone, so we return as local time string
-    const formatLocalDatetime = (dt: any): string => {
-      if (!dt) return ""
-      // If it's already a string in format YYYY-MM-DDTHH:mm:ss, return as-is
-      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) {
-        return dt.split('.')[0].split('Z')[0] // Remove milliseconds and Z if present
-      }
-      // If it's a Date object or SQL datetime, format as local time
-      const date = new Date(dt)
-      const pad = (n: number) => n.toString().padStart(2, '0')
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-    }
-    
-    // Format travel leg timestamps if we have them
-    if (travelLegs && travelLegs.length > 0) {
-      const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
-      if (completedLeg) {
-        legStartTimestamp = completedLeg.start_timestamp ? formatLocalDatetime(completedLeg.start_timestamp) : null
-        legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
-      }
     }
 
     return NextResponse.json({
