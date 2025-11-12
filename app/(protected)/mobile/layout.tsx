@@ -3,10 +3,12 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useDeviceType } from "@/hooks/use-device-type"
+import { AccessGuard } from "@/components/access-guard"
 
 /**
  * Mobile Layout - Detects device type and provides mobile-optimized experience
  * This layout wraps all mobile routes and ensures proper device detection
+ * Also includes AccessGuard to ensure routes are actually protected
  */
 export default function MobileLayout({
   children,
@@ -25,6 +27,10 @@ export default function MobileLayout({
   //   }
   // }, [isMobile, pathname, router])
 
-  return <>{children}</>
+  return (
+    <AccessGuard>
+      {children}
+    </AccessGuard>
+  )
 }
 
