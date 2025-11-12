@@ -645,77 +645,39 @@ export default function MobileAppointmentDetailPage() {
 
   const handleLeavingAction = async (action: "next" | "return") => {
     try {
-      // Wait for user to be loaded before proceeding
-      if (!isLoaded) {
-        toast({
-          title: "Loading",
-          description: "Please wait while we verify your authentication...",
-          variant: "default",
-        })
-        return
-      }
-
-      // Wait for user ID to be available (up to 3 seconds)
-      // Check userRef, user object, AND authUserId
-      let attempts = 0
-      while ((!userRef.current.id && !user?.id && !authUserId) && attempts < 30) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        attempts++
-      }
-
       setLeavingAction(action)
       // Don't set capturingLocation here - captureLocation does it internally
 
       const location = await captureLocation("arrived")
       
-      // Set Clerk auth headers - use ref first (most reliable), then fall back to user object
+      // Set Clerk auth headers - simplified approach like original working version
+      // Use userRef first (most reliable on mobile), then user object, then authUserId
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
       
-      // Use ref first (most reliable), then fall back to user object, then authUserId
+      // Try multiple sources for user ID (mobile-friendly)
       const userId = userRef.current.id || user?.id || authUserId
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
       
-      console.log("🚗 [handleLeavingAction] User info check:", {
-        refId: userRef.current.id,
-        refEmail: userRef.current.email,
-        userObjectId: user?.id,
-        userObjectEmail: user?.emailAddresses?.[0]?.emailAddress,
-        authUserId: authUserId,
-        finalUserId: userId,
-        finalEmail: userEmail,
-        isLoaded,
-        attempts,
-      })
-      
-      if (!userId) {
-        console.error("❌ [handleLeavingAction] No user ID available after waiting - ref:", userRef.current, "user:", { id: user?.id, email: user?.emailAddresses?.[0]?.emailAddress }, "authUserId:", authUserId)
-        toast({
-          title: "Authentication Error",
-          description: "Unable to verify your identity. Please refresh the page and try again.",
-          variant: "destructive",
+      // Include headers if we have a user ID (don't block if not - API will use session cookies)
+      if (userId) {
+        headers["x-user-clerk-id"] = userId
+        if (userEmail) {
+          headers["x-user-email"] = userEmail
+        }
+        if (userName) {
+          headers["x-user-name"] = userName
+        }
+        console.log("✅ [handleLeavingAction] Sending headers:", { 
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-email": headers["x-user-email"],
+          "x-user-name": headers["x-user-name"]
         })
-        return
+      } else {
+        console.warn("⚠️ [handleLeavingAction] No user ID available, API will use session cookies")
       }
-
-      // Always set headers if we have a user ID
-      // CRITICAL: Set headers as a new object to ensure they're not mutated
-      const finalHeaders: HeadersInit = {
-        "Content-Type": "application/json",
-        "x-user-clerk-id": userId,
-      }
-      
-      if (userEmail) {
-        finalHeaders["x-user-email"] = userEmail
-      }
-      if (userName) {
-        finalHeaders["x-user-name"] = userName
-      }
-      
-      console.log("✅ [handleLeavingAction] Final headers before fetch:", finalHeaders)
-      console.log("✅ [handleLeavingAction] Headers object type:", typeof finalHeaders, "keys:", Object.keys(finalHeaders))
       
       if (action === "next" && nextAppointment) {
         // Create new travel leg for next appointment (using same journey)
