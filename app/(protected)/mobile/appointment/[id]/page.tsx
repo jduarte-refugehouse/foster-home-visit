@@ -656,8 +656,9 @@ export default function MobileAppointmentDetailPage() {
       }
 
       // Wait for user ID to be available (up to 3 seconds)
+      // Check userRef, user object, AND authUserId
       let attempts = 0
-      while ((!userRef.current.id && !user?.id) && attempts < 30) {
+      while ((!userRef.current.id && !user?.id && !authUserId) && attempts < 30) {
         await new Promise(resolve => setTimeout(resolve, 100))
         attempts++
       }
