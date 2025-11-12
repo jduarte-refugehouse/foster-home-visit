@@ -345,10 +345,18 @@ export default function MobileAppointmentDetailPage() {
         "Content-Type": "application/json",
       }
       
-      // Use ref first (most reliable), then fall back to user object
-      const userId = userRef.current.id || user?.id
+      // Use ref first (most reliable), then fall back to user object, then authUserId
+      const userId = userRef.current.id || user?.id || authUserId
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      console.log("🚗 [Start Drive] User ID sources:", {
+        refId: userRef.current.id,
+        userObjectId: user?.id,
+        authUserId: authUserId,
+        finalUserId: userId,
+        isLoaded,
+      })
       
       if (userId) {
         headers["x-user-clerk-id"] = userId
@@ -358,16 +366,14 @@ export default function MobileAppointmentDetailPage() {
         if (userName) {
           headers["x-user-name"] = userName
         }
+        console.log("✅ [Start Drive] Headers set:", {
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-email": headers["x-user-email"],
+          "x-user-name": headers["x-user-name"],
+        })
+      } else {
+        console.error("❌ [Start Drive] No user ID available from any source!")
       }
-
-      // Debug: Log headers being sent
-      console.log("🚗 [Start Drive] Sending request with headers:", {
-        "x-user-clerk-id": headers["x-user-clerk-id"] || "will use session cookie",
-        "x-user-email": headers["x-user-email"] || "will use session cookie",
-        "x-user-name": headers["x-user-name"] || "will use session cookie",
-        userLoaded: isLoaded,
-        userId: userId || "will use session cookie",
-      })
 
       const response = await fetch(`/api/travel-legs`, {
         method: "POST",
@@ -467,10 +473,17 @@ export default function MobileAppointmentDetailPage() {
         "Content-Type": "application/json",
       }
       
-      // Use ref first (most reliable), then fall back to user object
-      const userId = userRef.current.id || user?.id
+      // Use ref first (most reliable), then fall back to user object, then authUserId
+      const userId = userRef.current.id || user?.id || authUserId
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      console.log("🚗 [handleArrived] User ID sources:", {
+        refId: userRef.current.id,
+        userObjectId: user?.id,
+        authUserId: authUserId,
+        finalUserId: userId,
+      })
       
       if (userId) {
         headers["x-user-clerk-id"] = userId
@@ -480,6 +493,13 @@ export default function MobileAppointmentDetailPage() {
         if (userName) {
           headers["x-user-name"] = userName
         }
+        console.log("✅ [handleArrived] Headers set:", {
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-email": headers["x-user-email"],
+          "x-user-name": headers["x-user-name"],
+        })
+      } else {
+        console.error("❌ [handleArrived] No user ID available from any source!")
       }
 
       // Complete the current travel leg
@@ -567,10 +587,17 @@ export default function MobileAppointmentDetailPage() {
         "Content-Type": "application/json",
       }
       
-      // Use ref first (most reliable), then fall back to user object
-      const userId = userRef.current.id || user?.id
+      // Use ref first (most reliable), then fall back to user object, then authUserId
+      const userId = userRef.current.id || user?.id || authUserId
       const userEmail = userRef.current.email || user?.emailAddresses?.[0]?.emailAddress
       const userName = userRef.current.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      
+      console.log("🚗 [handleDriveToNext] User ID sources:", {
+        refId: userRef.current.id,
+        userObjectId: user?.id,
+        authUserId: authUserId,
+        finalUserId: userId,
+      })
       
       if (userId) {
         headers["x-user-clerk-id"] = userId
@@ -580,6 +607,13 @@ export default function MobileAppointmentDetailPage() {
         if (userName) {
           headers["x-user-name"] = userName
         }
+        console.log("✅ [handleDriveToNext] Headers set:", {
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-email": headers["x-user-email"],
+          "x-user-name": headers["x-user-name"],
+        })
+      } else {
+        console.error("❌ [handleDriveToNext] No user ID available from any source!")
       }
 
       const response = await fetch(`/api/travel-legs`, {
