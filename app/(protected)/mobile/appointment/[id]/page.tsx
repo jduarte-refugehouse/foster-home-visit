@@ -151,9 +151,10 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
-      // API will filter by authenticated user automatically
+      // API will filter by authenticated user automatically, or use appointment context
       // Include credentials to ensure Clerk cookies are sent (critical for mobile)
-      const response = await fetch(`/api/travel-legs?status=in_progress`, {
+      // Also pass appointmentId so API can use appointment context if user ID not available
+      const response = await fetch(`/api/travel-legs?status=in_progress&appointmentId=${appointmentId}`, {
         headers,
         credentials: 'include',
       })

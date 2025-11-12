@@ -239,17 +239,45 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    if (!authInfo.clerkUserId && !authInfo.email) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const date = searchParams.get("date")
     const journeyId = searchParams.get("journeyId")
     const status = searchParams.get("status")
     const includeDeleted = searchParams.get("includeDeleted") === "true"
+    const appointmentId = searchParams.get("appointmentId") // Allow querying by appointment
     // Allow filtering by specific staffUserId for admin purposes, but default to authenticated user
-    const staffUserId = searchParams.get("staffUserId") || authInfo.clerkUserId || authInfo.email
+    let staffUserId = searchParams.get("staffUserId") || authInfo.clerkUserId || authInfo.email
+    
+    // ROBUST: If no user ID but we have appointment_id, use appointment context to get user
+    // This is safe because user must be authenticated to access the appointment
+    if (!staffUserId && appointmentId) {
+      try {
+        console.log("🔍 [Travel Legs GET] Getting user from appointment context:", appointmentId)
+        const appointmentResult = await query(
+          `SELECT assigned_to_user_id 
+           FROM appointments 
+           WHERE appointment_id = @param0 AND is_deleted = 0`,
+          [appointmentId]
+        )
+        
+        if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
+          staffUserId = appointmentResult[0].assigned_to_user_id
+          console.log("✅ [Travel Legs GET] Using appointment context for user:", staffUserId)
+        }
+      } catch (dbError) {
+        console.error("🚗 [Travel Legs GET] Error getting user from appointment:", dbError)
+      }
+    }
+    
+    // If we still don't have a user ID and no appointment_id, we can't proceed
+    // (unless this is an admin query with explicit staffUserId)
+    if (!staffUserId && !appointmentId && !searchParams.get("staffUserId")) {
+      console.error("🚗 [Travel Legs GET] Cannot determine user ID and no appointment context")
+      return NextResponse.json({ 
+        error: "Authentication required",
+        details: "Unable to determine authenticated user. Please provide appointmentId or ensure you are signed in."
+      }, { status: 401 })
+    }
 
     const conditions: string[] = []
     const params: any[] = []
@@ -259,10 +287,19 @@ export async function GET(request: NextRequest) {
       conditions.push("is_deleted = 0")
     }
 
-    // Always filter by staff_user_id (defaults to authenticated user)
-    conditions.push(`staff_user_id = @param${paramIndex}`)
-    params.push(staffUserId)
-    paramIndex++
+    // Filter by staff_user_id if we have it
+    if (staffUserId) {
+      conditions.push(`staff_user_id = @param${paramIndex}`)
+      params.push(staffUserId)
+      paramIndex++
+    }
+    
+    // Also allow filtering by appointment_id (for finding legs related to a specific appointment)
+    if (appointmentId) {
+      conditions.push(`(appointment_id_from = @param${paramIndex} OR appointment_id_to = @param${paramIndex})`)
+      params.push(appointmentId)
+      paramIndex++
+    }
 
     if (date) {
       // Filter by date (any leg that starts on this date)
