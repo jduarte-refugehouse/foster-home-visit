@@ -38,6 +38,29 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     const appointment = appointments[0]
     console.log(`✅ [API] Retrieved appointment: ${appointment.title}`)
 
+    // Check for travel legs for this appointment
+    let hasInProgressLeg = false
+    let hasCompletedLeg = false
+    try {
+      const travelLegs = await query(
+        `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from
+         FROM travel_legs
+         WHERE (appointment_id_to = @param0 OR appointment_id_from = @param0)
+           AND is_deleted = 0
+         ORDER BY start_timestamp DESC`,
+        [appointmentId]
+      )
+
+      if (travelLegs.length > 0) {
+        hasInProgressLeg = travelLegs.some((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_to === appointmentId)
+        hasCompletedLeg = travelLegs.some((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
+        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}`)
+      }
+    } catch (legError) {
+      // Don't fail if travel_legs table doesn't exist or query fails
+      console.log("⚠️ [API] Could not check travel legs (non-fatal):", legError)
+    }
+
     // Format datetime as local time string (no timezone conversion)
     // SQL Server DATETIME2 has no timezone, so we return as local time string
     const formatLocalDatetime = (dt: any): string => {
@@ -62,6 +85,9 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         end_datetime: formatLocalDatetime(appointment.end_datetime),
         created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
         updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
+        // Add travel leg flags for button state
+        has_in_progress_leg: hasInProgressLeg,
+        has_completed_leg: hasCompletedLeg,
       },
       timestamp: new Date().toISOString(),
     })

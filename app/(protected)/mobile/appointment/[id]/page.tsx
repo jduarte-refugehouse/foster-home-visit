@@ -482,9 +482,9 @@ export default function MobileAppointmentDetailPage() {
           description: "Starting location captured",
         })
         // Refresh appointment details to update UI
-        fetchAppointmentDetails()
+        await fetchAppointmentDetails()
         // Also refresh current travel leg to ensure state is in sync
-        fetchCurrentTravelLeg()
+        await fetchCurrentTravelLeg()
       }
     } catch (error) {
       console.error("Error starting drive:", error)
@@ -611,7 +611,8 @@ export default function MobileAppointmentDetailPage() {
           ? `Arrival location captured. Distance: ${data.calculated_mileage.toFixed(2)} miles`
           : "Arrival location captured",
       })
-      fetchAppointmentDetails()
+      await fetchAppointmentDetails()
+      await fetchCurrentTravelLeg()
     } catch (error) {
       console.error("Error recording arrival:", error)
       

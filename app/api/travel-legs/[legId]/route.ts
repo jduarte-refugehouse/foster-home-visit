@@ -130,6 +130,14 @@ export async function PATCH(
       console.error("❌ [TRAVEL] Error calculating duration:", durationError)
     }
 
+    // Get leg details for continuum logging
+    const legDetails = await query(
+      `SELECT appointment_id_to, appointment_id_from, start_timestamp, staff_user_id, staff_name
+       FROM travel_legs
+       WHERE leg_id = @param0`,
+      [legId]
+    )
+
     // Update leg
     await query(
       `UPDATE travel_legs
@@ -164,6 +172,59 @@ export async function PATCH(
         authInfo.clerkUserId || authInfo.email,
       ]
     )
+
+    // Log continuum entry for drive_end if this leg is tied to an appointment
+    const finalAppointmentId = appointment_id_to || legDetails[0]?.appointment_id_to
+    if (finalAppointmentId) {
+      try {
+        // Fetch appointment details for continuum entry
+        const appointmentData = await query(
+          `SELECT home_name, home_xref, home_guid, assigned_to_name
+           FROM appointments
+           WHERE appointment_id = @param0 AND is_deleted = 0`,
+          [finalAppointmentId]
+        )
+
+        if (appointmentData.length > 0) {
+          const apt = appointmentData[0]
+          // Log drive_end continuum entry
+          await query(
+            `INSERT INTO continuum_entries (
+              appointment_id, activity_type, activity_status, timestamp,
+              staff_user_id, staff_name, home_guid, home_xref, home_name,
+              location_latitude, location_longitude, location_address,
+              activity_description, duration_minutes, created_by_user_id, metadata
+            )
+            VALUES (
+              @param0, 'drive_end', 'complete', @param1,
+              @param2, @param3, @param4, @param5, @param6,
+              @param7, @param8, @param9,
+              @param10, @param11, @param12, @param13
+            )`,
+            [
+              finalAppointmentId,
+              end_timestamp,
+              legDetails[0]?.staff_user_id || authInfo.clerkUserId || authInfo.email,
+              legDetails[0]?.staff_name || authInfo.name || null,
+              apt.home_guid || null,
+              apt.home_xref || null,
+              apt.home_name || null,
+              end_latitude,
+              end_longitude,
+              end_location_address || end_location_name || null,
+              `Arrived at ${apt.home_name || 'appointment location'}`,
+              durationMinutes,
+              authInfo.clerkUserId || authInfo.email,
+              JSON.stringify({ leg_id: legId, mileage: calculatedMileage }),
+            ]
+          )
+          console.log(`✅ [TRAVEL] Logged drive_end continuum entry for appointment ${finalAppointmentId}`)
+        }
+      } catch (continuumError) {
+        // Don't fail the leg completion if continuum logging fails
+        console.error("⚠️ [TRAVEL] Failed to log continuum entry (non-fatal):", continuumError)
+      }
+    }
 
     return NextResponse.json({
       success: true,

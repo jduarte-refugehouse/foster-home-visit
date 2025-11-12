@@ -78,6 +78,9 @@ interface Appointment {
   return_longitude?: number
   return_timestamp?: string
   return_mileage?: number | null
+  // Travel leg flags (from new leg-based system)
+  has_in_progress_leg?: boolean
+  has_completed_leg?: boolean
 }
 
 export default function AppointmentDetailPage() {
@@ -1457,7 +1460,8 @@ export default function AppointmentDetailPage() {
           {/* Mileage Tracking Buttons */}
           {appointment && (appointment.status === "scheduled" || appointment.status === "in_progress") ? (
             <>
-              {!appointment.start_drive_timestamp ? (
+              {/* Check both old system (appointment fields) and new system (travel legs) */}
+              {!appointment.start_drive_timestamp && !appointment.has_in_progress_leg && !appointment.has_completed_leg ? (
                 <Button 
                   size="sm"
                   onClick={handleStartDrive}
@@ -1467,7 +1471,7 @@ export default function AppointmentDetailPage() {
                   <Navigation className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Start Drive"}
                 </Button>
-              ) : !appointment.arrived_timestamp ? (
+              ) : (appointment.start_drive_timestamp || appointment.has_in_progress_leg) && !appointment.arrived_timestamp && !appointment.has_completed_leg ? (
                 <Button 
                   size="sm"
                   onClick={handleArrived}
@@ -1477,7 +1481,7 @@ export default function AppointmentDetailPage() {
                   <MapPinIcon className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Arrived"}
                 </Button>
-              ) : appointment.arrived_timestamp && !appointment.return_timestamp && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
+              ) : (appointment.arrived_timestamp || appointment.has_completed_leg) && !appointment.return_timestamp && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
                 <Button 
                   size="sm"
                   onClick={handleLeaving}

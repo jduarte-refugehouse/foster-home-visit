@@ -167,6 +167,57 @@ export async function POST(request: NextRequest) {
       ]
     )
 
+    // Log continuum entry for drive_start if this leg is tied to an appointment
+    if (appointment_id_to) {
+      try {
+        // Fetch appointment details for continuum entry
+        const appointmentData = await query(
+          `SELECT home_name, home_xref, home_guid, assigned_to_name
+           FROM appointments
+           WHERE appointment_id = @param0 AND is_deleted = 0`,
+          [appointment_id_to]
+        )
+
+        if (appointmentData.length > 0) {
+          const apt = appointmentData[0]
+          // Log drive_start continuum entry
+          await query(
+            `INSERT INTO continuum_entries (
+              appointment_id, activity_type, activity_status, timestamp,
+              staff_user_id, staff_name, home_guid, home_xref, home_name,
+              location_latitude, location_longitude, location_address,
+              activity_description, created_by_user_id, metadata
+            )
+            VALUES (
+              @param0, 'drive_start', 'active', @param1,
+              @param2, @param3, @param4, @param5, @param6,
+              @param7, @param8, @param9,
+              @param10, @param11, @param12
+            )`,
+            [
+              appointment_id_to,
+              start_timestamp,
+              staff_user_id,
+              authInfo.name || null,
+              apt.home_guid || null,
+              apt.home_xref || null,
+              apt.home_name || null,
+              start_latitude,
+              start_longitude,
+              start_location_address || start_location_name || null,
+              travel_purpose || `Travel to ${apt.home_name || 'appointment'}`,
+              authInfo.clerkUserId || authInfo.email,
+              JSON.stringify({ leg_id: result[0].leg_id, journey_id: finalJourneyId }),
+            ]
+          )
+          console.log(`✅ [TRAVEL] Logged drive_start continuum entry for appointment ${appointment_id_to}`)
+        }
+      } catch (continuumError) {
+        // Don't fail the leg creation if continuum logging fails
+        console.error("⚠️ [TRAVEL] Failed to log continuum entry (non-fatal):", continuumError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       leg_id: result[0].leg_id,
