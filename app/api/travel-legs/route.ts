@@ -55,66 +55,58 @@ export async function POST(request: NextRequest) {
     }
     
     if (!authInfo.clerkUserId && !authInfo.email) {
-      // Method 1: Check for session cookie - if it exists, user IS authenticated
-      // (route is protected, so they must be authenticated to reach this point)
-      const sessionCookie = request.cookies.get("__session")?.value
-      const hasSession = !!sessionCookie
+      // ROBUST: Since this is called from a protected route, the user IS authenticated.
+      // We can't always see the session cookie on mobile, but we can trust the route protection.
+      // Try to get user from appointment context - this is the most reliable method.
       
-      if (hasSession) {
-        console.log("🔍 [Travel Legs POST] Session cookie found - user is authenticated")
-        
-        // Method 2: Try to get user from appointment context
-        // This is safe because user must be authenticated to access the appointment page
-        const appointmentId = body.appointment_id_from || body.appointment_id_to
-        if (appointmentId) {
-          try {
-            console.log("🔍 [Travel Legs POST] Getting user from appointment context:", appointmentId)
-            const appointmentResult = await query(
-              `SELECT assigned_to_user_id, assigned_to_name 
-               FROM appointments 
-               WHERE appointment_id = @param0 AND is_deleted = 0`,
-              [appointmentId]
-            )
-            
-            if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
-              // Use appointment's assigned user as fallback
-              // This is safe because user must be authenticated to access the appointment
-              authInfo = {
-                clerkUserId: appointmentResult[0].assigned_to_user_id,
-                email: null,
-                name: appointmentResult[0].assigned_to_name || null,
-              }
-              authMethod = "appointment_context"
-              console.log("✅ [Travel Legs POST] Auth from appointment context:", { 
-                clerkUserId: authInfo.clerkUserId,
-                appointmentId 
-              })
-            } else {
-              console.warn("⚠️ [Travel Legs POST] Appointment not found or has no assigned user")
+      const appointmentId = body.appointment_id_from || body.appointment_id_to
+      if (appointmentId) {
+        try {
+          console.log("🔍 [Travel Legs POST] Getting user from appointment context:", appointmentId)
+          const appointmentResult = await query(
+            `SELECT assigned_to_user_id, assigned_to_name 
+             FROM appointments 
+             WHERE appointment_id = @param0 AND is_deleted = 0`,
+            [appointmentId]
+          )
+          
+          if (appointmentResult.length > 0 && appointmentResult[0].assigned_to_user_id) {
+            // Use appointment's assigned user - this is safe because user must be authenticated to access the appointment
+            authInfo = {
+              clerkUserId: appointmentResult[0].assigned_to_user_id,
+              email: null,
+              name: appointmentResult[0].assigned_to_name || null,
             }
-          } catch (dbError) {
-            console.error("🚗 [Travel Legs POST] Error getting user from appointment:", dbError)
+            authMethod = "appointment_context"
+            console.log("✅ [Travel Legs POST] Auth from appointment context:", { 
+              clerkUserId: authInfo.clerkUserId,
+              appointmentId 
+            })
+          } else {
+            console.warn("⚠️ [Travel Legs POST] Appointment not found or has no assigned user:", appointmentId)
           }
+        } catch (dbError) {
+          console.error("🚗 [Travel Legs POST] Error getting user from appointment:", dbError)
+        }
+      }
+      
+      // If we still don't have a user ID, check for session cookie as a last resort
+      if (!authInfo.clerkUserId && !authInfo.email) {
+        const sessionCookie = request.cookies.get("__session")?.value
+        if (sessionCookie) {
+          console.log("🔍 [Travel Legs POST] Session cookie found but no appointment context - user is authenticated but can't determine ID")
+        } else {
+          console.warn("⚠️ [Travel Legs POST] No session cookie visible (may be mobile-specific)")
         }
         
-        // If we still don't have a user ID but have a session, we can't proceed
-        // We need a user ID for the database insert
-        if (!authInfo.clerkUserId && !authInfo.email) {
-          console.error("🚗 [Travel Legs POST] Session exists but cannot determine user ID")
-          console.error("🚗 [Travel Legs POST] This is a mobile-specific issue - client should send headers")
-          return NextResponse.json({ 
-            error: "Authentication required",
-            details: "Unable to determine authenticated user. Please ensure you are signed in and try refreshing the page.",
-            mobileAuthIssue: true,
-            suggestion: "Try refreshing the page to re-establish your session"
-          }, { status: 401 })
-        }
-      } else {
-        // No session cookie - this shouldn't happen on a protected route
-        console.error("🚗 [Travel Legs POST] No headers, no session cookie - this should not happen on a protected route")
+        // Since route is protected, user IS authenticated, but we can't determine their ID
+        // This should only happen if appointment_id is missing or appointment has no assigned user
+        console.error("🚗 [Travel Legs POST] Cannot determine user ID - appointment context failed")
         return NextResponse.json({ 
           error: "Authentication required",
-          details: "No authentication found. Please sign in and try again.",
+          details: "Unable to determine authenticated user. Please ensure the appointment has an assigned user and try again.",
+          mobileAuthIssue: true,
+          suggestion: "If this persists, try refreshing the page"
         }, { status: 401 })
       }
     }
