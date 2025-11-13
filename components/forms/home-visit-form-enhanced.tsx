@@ -1199,8 +1199,8 @@ const EnhancedHomeVisitForm = ({
           <CardHeader className="py-2 px-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold">Monthly Home Visit - {formData.visitInfo.quarter}</CardTitle>
-                <p className="text-xs text-white/90">Visit #{formData.visitInfo.visitNumberThisQuarter} of Quarter</p>
+                <CardTitle className="text-lg font-bold">Monthly Home Visit{formData.visitInfo.quarter ? ` - ${formData.visitInfo.quarter}` : ""}</CardTitle>
+                <p className="text-xs text-white/90">{formData.visitInfo.visitNumberThisQuarter ? `Visit #${formData.visitInfo.visitNumberThisQuarter} of Quarter` : "Home Visit Form"}</p>
               </div>
               <div className="text-right flex items-center gap-2">
                 {saveStatus === "saving" && (

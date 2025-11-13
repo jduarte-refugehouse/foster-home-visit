@@ -521,6 +521,95 @@ export default function VisitFormPage() {
     }
   }
 
+  const handleVisitFormCompleted = async () => {
+    if (!appointmentId) {
+      toast({
+        title: "Error",
+        description: "Appointment ID is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Update appointment status
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "completed",
+        }),
+      })
+
+      if (response.ok) {
+        // Log visit end to continuum (non-blocking)
+        if (appointmentId && appointmentData?.appointment) {
+          const appointment = appointmentData.appointment
+          // Calculate duration if we have visit start time
+          let durationMinutes: number | undefined = undefined
+          if (appointment.arrived_timestamp) {
+            const startTime = new Date(appointment.arrived_timestamp).getTime()
+            const endTime = new Date().getTime()
+            durationMinutes = Math.round((endTime - startTime) / (1000 * 60))
+          }
+
+          logVisitEnd({
+            appointmentId: appointmentId,
+            staffUserId: user?.id || appointment.assigned_to_user_id || null,
+            staffName: user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}`.trim()
+              : appointment.assigned_to_name || "Unknown Staff",
+            homeGuid: appointment.home_xref ? appointment.home_xref.toString() : null,
+            homeXref: appointment.home_xref ? parseInt(String(appointment.home_xref)) : undefined,
+            homeName: appointment.home_name || appointment.title || null,
+            durationMinutes: durationMinutes,
+            outcome: "Visit marked as completed",
+            contextNotes: "Visit completed via form completion button",
+            createdByUserId: user?.id || appointment.assigned_to_user_id || null,
+          }).then((result) => {
+            if (result.success) {
+              console.log("✅ [CONTINUUM] Visit end logged:", result.entryId)
+            } else {
+              console.warn("⚠️ [CONTINUUM] Failed to log visit end:", result.error)
+            }
+          }).catch((error) => {
+            console.error("❌ [CONTINUUM] Error logging visit end:", error)
+          })
+        }
+
+        toast({
+          title: "Success",
+          description: "Visit completed and appointment updated",
+        })
+        
+        // Refresh appointment data
+        if (appointmentId) {
+          const appointmentResponse = await fetch(`/api/appointments/${appointmentId}`)
+          if (appointmentResponse.ok) {
+            const appointmentData = await appointmentResponse.json()
+            setAppointmentData({ appointment: appointmentData.appointment || appointmentData })
+          }
+        }
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to complete visit",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating appointment status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to complete visit",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -545,6 +634,7 @@ export default function VisitFormPage() {
           await handleSave(formData)
         }}
         onSubmit={handleSubmit}
+        onCompleteVisit={handleVisitFormCompleted}
       />
     </div>
   )
