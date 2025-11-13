@@ -212,33 +212,65 @@ export async function GET(
     // Handle case where file_data column might not exist yet
     let attachments
     try {
-      if (includeData) {
-        // Include file_data when specifically requested (e.g., for displaying thumbnails)
-        attachments = await query(
-          `SELECT 
-            attachment_id, file_name, file_path, file_size, mime_type,
-            attachment_type, description, file_data, created_at, created_by_name
-          FROM dbo.visit_form_attachments
-          WHERE visit_form_id = @param0 AND is_deleted = 0
-          ORDER BY created_at DESC`,
-          [formId]
-        )
-        console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments with file_data`)
-      } else {
-        // Default: exclude file_data to avoid large response sizes
-        attachments = await query(
-          `SELECT 
-            attachment_id, file_name, file_path, file_size, mime_type,
-            attachment_type, description, created_at, created_by_name
-          FROM dbo.visit_form_attachments
-          WHERE visit_form_id = @param0 AND is_deleted = 0
-          ORDER BY created_at DESC`,
-          [formId]
-        )
-        console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments (without file_data)`)
-        
-        // Add null file_data for consistency
-        attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+      // Try query with is_deleted first, fall back if column doesn't exist
+      try {
+        if (includeData) {
+          // Include file_data when specifically requested (e.g., for displaying thumbnails)
+          attachments = await query(
+            `SELECT 
+              attachment_id, file_name, file_path, file_size, mime_type,
+              attachment_type, description, file_data, created_at, created_by_name
+            FROM dbo.visit_form_attachments
+            WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+            ORDER BY created_at DESC`,
+            [formId]
+          )
+          console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments with file_data`)
+        } else {
+          // Default: exclude file_data to avoid large response sizes
+          attachments = await query(
+            `SELECT 
+              attachment_id, file_name, file_path, file_size, mime_type,
+              attachment_type, description, created_at, created_by_name
+            FROM dbo.visit_form_attachments
+            WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+            ORDER BY created_at DESC`,
+            [formId]
+          )
+          console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments (without file_data)`)
+          
+          // Add null file_data for consistency
+          attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+        }
+      } catch (queryError: any) {
+        // If is_deleted column doesn't exist, query without it
+        if (queryError?.message?.includes("Invalid column name 'is_deleted'")) {
+          console.warn("⚠️ [ATTACHMENTS] is_deleted column not found, querying without it")
+          if (includeData) {
+            attachments = await query(
+              `SELECT 
+                attachment_id, file_name, file_path, file_size, mime_type,
+                attachment_type, description, file_data, created_at, created_by_name
+              FROM dbo.visit_form_attachments
+              WHERE visit_form_id = @param0
+              ORDER BY created_at DESC`,
+              [formId]
+            )
+          } else {
+            attachments = await query(
+              `SELECT 
+                attachment_id, file_name, file_path, file_size, mime_type,
+                attachment_type, description, created_at, created_by_name
+              FROM dbo.visit_form_attachments
+              WHERE visit_form_id = @param0
+              ORDER BY created_at DESC`,
+              [formId]
+            )
+            attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+          }
+        } else {
+          throw queryError
+        }
       }
     } catch (error: any) {
       console.error(`❌ [ATTACHMENTS] Query error:`, error)
