@@ -50,6 +50,7 @@
     "embla-carousel-react": "latest",
     "https": "latest",
     "input-otp": "latest",
+    "jspdf": "^3.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.454.0",
     "mssql": "latest",

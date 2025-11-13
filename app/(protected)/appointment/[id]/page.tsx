@@ -29,7 +29,9 @@ import {
   Navigation,
   MapPin as MapPinIcon,
   Trash2,
-  Send
+  Send,
+  Image,
+  X
 } from "lucide-react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -117,6 +119,8 @@ export default function AppointmentDetailPage() {
   const [nextAppointment, setNextAppointment] = useState<{ appointmentId: string; title: string; startDateTime: string; locationAddress?: string; homeName?: string } | null>(null)
   const [hasNextAppointment, setHasNextAppointment] = useState<boolean>(false)
   const [leavingAction, setLeavingAction] = useState<"next" | "return" | null>(null)
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -125,6 +129,12 @@ export default function AppointmentDetailPage() {
       fetchMileageRate()
     }
   }, [appointmentId])
+
+  useEffect(() => {
+    if (activeTab === "attachments" && existingFormData?.visit_form_id) {
+      fetchAttachments()
+    }
+  }, [activeTab, existingFormData?.visit_form_id])
 
   const fetchMileageRate = async () => {
     try {
@@ -184,11 +194,79 @@ export default function AppointmentDetailPage() {
         const data = await response.json()
         if (data.visitForms && data.visitForms.length > 0) {
           setVisitFormStatus(data.visitForms[0].status)
+          setExistingFormData(data.visitForms[0])
         }
       }
     } catch (error) {
       console.error("Error fetching visit form status:", error)
     }
+  }
+
+  const fetchAttachments = async () => {
+    const visitFormId = existingFormData?.visit_form_id
+    if (!visitFormId) return
+
+    setLoadingAttachments(true)
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`)
+      const data = await response.json()
+
+      if (data.success) {
+        setAttachments(data.attachments || [])
+      }
+    } catch (error) {
+      console.error("Error fetching attachments:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load attachments",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingAttachments(false)
+    }
+  }
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    const visitFormId = existingFormData?.visit_form_id
+    if (!visitFormId) return
+    if (!confirm("Are you sure you want to delete this file?")) return
+
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete file")
+      }
+
+      toast({
+        title: "File Deleted",
+        description: "File has been successfully deleted",
+      })
+
+      await fetchAttachments()
+    } catch (error: any) {
+      console.error("Error deleting file:", error)
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete file",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType?.startsWith("image/")) return Image
+    return FileText
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
   const handleVisitFormCompleted = async () => {
@@ -2050,11 +2128,81 @@ export default function AppointmentDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="text-center text-muted-foreground py-8">
-                <Paperclip className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                <p>Documents, photos, and attachments will appear here.</p>
-                <p className="text-sm mt-2">Feature coming soon.</p>
-              </div>
+              {!existingFormData?.visit_form_id ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Paperclip className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                  <p>No visit form found for this appointment.</p>
+                  <p className="text-sm mt-2">Create a visit form to upload files.</p>
+                </div>
+              ) : loadingAttachments ? (
+                <div className="text-center py-8 text-muted-foreground">Loading files...</div>
+              ) : attachments.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Paperclip className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                  <p>No files uploaded yet.</p>
+                  <p className="text-sm mt-2">Files uploaded in the visit form will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {attachments.map((attachment) => {
+                    const FileIcon = getFileIcon(attachment.mime_type)
+                    return (
+                      <div
+                        key={attachment.attachment_id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          {attachment.file_data && attachment.mime_type?.startsWith("image/") ? (
+                            <img
+                              src={attachment.file_data}
+                              alt={attachment.description || attachment.file_name}
+                              className="w-16 h-16 object-cover rounded border flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(attachment.file_data, "_blank")}
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-muted rounded border flex items-center justify-center flex-shrink-0">
+                              <FileIcon className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{attachment.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(attachment.file_size || 0)} • {new Date(attachment.created_at).toLocaleDateString()}
+                            </p>
+                            {attachment.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{attachment.description}</p>
+                            )}
+                            {attachment.attachment_type && (
+                              <Badge variant="outline" className="mt-1 text-xs">
+                                {attachment.attachment_type.replace(/_/g, " ")}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {attachment.file_data && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(attachment.file_data, "_blank")}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteAttachment(attachment.attachment_id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

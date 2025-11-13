@@ -6,7 +6,7 @@ import {
   Calendar, Home, Users, FileText, CheckCircle, Shield, Heart, Briefcase, 
   AlertTriangle, BookOpen, Activity, Car, Droplets, Baby, Flame, Stethoscope,
   GraduationCap, ClipboardList, Brain, TrendingUp, ArrowLeft, ExternalLink,
-  Info, ChevronDown, ChevronUp, Clock, History, Upload
+  Info, ChevronDown, ChevronUp, Clock, History, Upload, Image, X, FileDown
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import jsPDF from "jspdf"
 import {
   FosterParentInterviewSection,
   QualityEnhancementSection,
@@ -3038,12 +3040,49 @@ const ConditionalComplianceSection = ({ title, section, formData, onChange, onNo
 const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingFormData }) => {
   const inspections = formData.inspections
   const { user } = useUser()
+  const { toast } = useToast()
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
+  const [attachments, setAttachments] = useState<Record<string, any[]>>({
+    fire_certificate: [],
+    health_certificate: [],
+    fire_extinguisher_tag: []
+  })
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
   const fireCertRef = useRef<HTMLInputElement>(null)
   const healthCertRef = useRef<HTMLInputElement>(null)
   const extinguisherTagRefs = useRef<Record<number, HTMLInputElement>>({})
 
   const visitFormId = existingFormData?.visit_form_id || null
+
+  // Fetch attachments by type
+  useEffect(() => {
+    if (visitFormId) {
+      fetchAttachmentsByType()
+    }
+  }, [visitFormId])
+
+  const fetchAttachmentsByType = async () => {
+    if (!visitFormId) return
+    
+    setLoadingAttachments(true)
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`)
+      const data = await response.json()
+
+      if (data.success) {
+        const allAttachments = data.attachments || []
+        setAttachments({
+          fire_certificate: allAttachments.filter((a: any) => a.attachment_type === "fire_certificate"),
+          health_certificate: allAttachments.filter((a: any) => a.attachment_type === "health_certificate"),
+          fire_extinguisher_tag: allAttachments.filter((a: any) => a.attachment_type === "fire_extinguisher_tag")
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching attachments:", error)
+    } finally {
+      setLoadingAttachments(false)
+    }
+  }
 
   const handleFileUpload = async (file: File, attachmentType: string, description: string) => {
     if (!visitFormId || !file) return
@@ -3070,16 +3109,157 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
         throw new Error(data.error || "Failed to upload file")
       }
 
-      // Show success message (you might want to use toast here)
-      alert(`${description} uploaded successfully`)
+      toast({
+        title: "Photo Uploaded",
+        description: `${description} uploaded successfully`,
+      })
+
+      // Refresh attachments
+      await fetchAttachmentsByType()
     } catch (error: any) {
       console.error("Error uploading file:", error)
-      alert(`Failed to upload ${description}: ${error.message}`)
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      })
     } finally {
       setUploading(prev => {
         const newState = { ...prev }
         delete newState[key]
         return newState
+      })
+    }
+  }
+
+  const handleDeleteAttachment = async (attachmentId: string, attachmentType: string) => {
+    if (!visitFormId) return
+    if (!confirm("Are you sure you want to delete this photo?")) return
+
+    try {
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete file")
+      }
+
+      toast({
+        title: "Photo Deleted",
+        description: "Photo has been successfully deleted",
+      })
+
+      // Refresh attachments
+      await fetchAttachmentsByType()
+    } catch (error: any) {
+      console.error("Error deleting file:", error)
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete file",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const createPDFFromImages = async (images: any[], title: string) => {
+    if (images.length === 0) {
+      toast({
+        title: "No Images",
+        description: "No images available to create PDF",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 10
+      const maxWidth = pageWidth - 2 * margin
+      const maxHeight = pageHeight - 2 * margin - 20 // Leave space for title
+
+      // Add title on first page
+      pdf.setFontSize(16)
+      pdf.text(title, margin, margin + 10)
+
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i]
+        if (!image.file_data) continue
+
+        // Add new page for each image after the first
+        if (i > 0) {
+          pdf.addPage()
+          pdf.setFontSize(16)
+          pdf.text(title, margin, margin + 10)
+        }
+
+        try {
+          // Convert base64 data URL to image
+          const img = new Image()
+          img.src = image.file_data
+
+          await new Promise((resolve, reject) => {
+            img.onload = () => {
+              // Calculate dimensions to fit page while maintaining aspect ratio
+              let imgWidth = img.width
+              let imgHeight = img.height
+              const aspectRatio = imgWidth / imgHeight
+
+              let finalWidth = maxWidth
+              let finalHeight = maxWidth / aspectRatio
+
+              if (finalHeight > maxHeight) {
+                finalHeight = maxHeight
+                finalWidth = maxHeight * aspectRatio
+              }
+
+              // Center image on page
+              const x = (pageWidth - finalWidth) / 2
+              const y = margin + 20 + (maxHeight - finalHeight) / 2
+
+              pdf.addImage(image.file_data, "JPEG", x, y, finalWidth, finalHeight)
+
+              // Add description if available
+              if (image.description) {
+                pdf.setFontSize(10)
+                pdf.text(image.description, margin, pageHeight - margin)
+              }
+
+              resolve(null)
+            }
+            img.onerror = reject
+          })
+        } catch (error) {
+          console.error(`Error adding image ${i + 1} to PDF:`, error)
+          // Continue with next image
+        }
+      }
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split("T")[0]
+      const filename = `${title.replace(/\s+/g, "_")}_${timestamp}.pdf`
+
+      pdf.save(filename)
+
+      toast({
+        title: "PDF Created",
+        description: `PDF with ${images.length} image(s) has been downloaded`,
+      })
+    } catch (error: any) {
+      console.error("Error creating PDF:", error)
+      toast({
+        title: "PDF Creation Failed",
+        description: error.message || "Failed to create PDF",
+        variant: "destructive",
       })
     }
   }
@@ -3222,6 +3402,52 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                     ? "Uploading..." 
                     : "Take Photo of Fire Certificate"}
                 </Button>
+                
+                {/* Fire Certificate Image Previews */}
+                {attachments.fire_certificate.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-muted-foreground">Captured Photos ({attachments.fire_certificate.length})</Label>
+                      {attachments.fire_certificate.length > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => createPDFFromImages(attachments.fire_certificate, "Fire Certificate")}
+                          className="h-7 text-xs"
+                        >
+                          <FileDown className="h-3 w-3 mr-1" />
+                          Create PDF
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {attachments.fire_certificate.map((attachment) => (
+                        <div key={attachment.attachment_id} className="relative group">
+                          {attachment.file_data ? (
+                            <img
+                              src={attachment.file_data}
+                              alt={attachment.description || "Fire Certificate"}
+                              className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(attachment.file_data, "_blank")}
+                            />
+                          ) : (
+                            <div className="w-full h-24 bg-muted rounded border flex items-center justify-center">
+                              <Image className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteAttachment(attachment.attachment_id, "fire_certificate")}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-3">
@@ -3326,6 +3552,52 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                     ? "Uploading..." 
                     : "Take Photo of Health Certificate"}
                 </Button>
+                
+                {/* Health Certificate Image Previews */}
+                {attachments.health_certificate.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-muted-foreground">Captured Photos ({attachments.health_certificate.length})</Label>
+                      {attachments.health_certificate.length > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => createPDFFromImages(attachments.health_certificate, "Health Certificate")}
+                          className="h-7 text-xs"
+                        >
+                          <FileDown className="h-3 w-3 mr-1" />
+                          Create PDF
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {attachments.health_certificate.map((attachment) => (
+                        <div key={attachment.attachment_id} className="relative group">
+                          {attachment.file_data ? (
+                            <img
+                              src={attachment.file_data}
+                              alt={attachment.description || "Health Certificate"}
+                              className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => window.open(attachment.file_data, "_blank")}
+                            />
+                          ) : (
+                            <div className="w-full h-24 bg-muted rounded border flex items-center justify-center">
+                              <Image className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteAttachment(attachment.attachment_id, "health_certificate")}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-3">
@@ -3442,6 +3714,57 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                           ? "Uploading..." 
                           : "Photo Tag"}
                       </Button>
+                      
+                      {/* Fire Extinguisher Tag Image Previews */}
+                      {(() => {
+                        const locationAttachments = attachments.fire_extinguisher_tag.filter((a: any) => 
+                          a.description?.includes(extinguisher.location || `Location ${index + 1}`)
+                        )
+                        return locationAttachments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-muted-foreground">{locationAttachments.length} photo(s)</span>
+                              {locationAttachments.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => createPDFFromImages(locationAttachments, `Fire Extinguisher - ${extinguisher.location || `Location ${index + 1}`}`)}
+                                  className="h-6 text-xs px-2"
+                                >
+                                  <FileDown className="h-3 w-3 mr-1" />
+                                  PDF
+                                </Button>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {locationAttachments.map((attachment) => (
+                                <div key={attachment.attachment_id} className="relative group">
+                                  {attachment.file_data ? (
+                                    <img
+                                      src={attachment.file_data}
+                                      alt={attachment.description || "Fire Extinguisher Tag"}
+                                      className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                      onClick={() => window.open(attachment.file_data, "_blank")}
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-16 bg-muted rounded border flex items-center justify-center">
+                                      <Image className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-0 right-0 h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleDeleteAttachment(attachment.attachment_id, "fire_extinguisher_tag")}
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     <div className="flex items-center space-x-2">
