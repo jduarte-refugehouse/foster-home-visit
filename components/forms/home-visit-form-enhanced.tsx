@@ -3429,7 +3429,23 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                               src={attachment.file_data}
                               alt={attachment.description || "Fire Certificate"}
                               className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => window.open(attachment.file_data, "_blank")}
+                              onClick={() => {
+                                if (attachment.file_data) {
+                                  // Create a new window with the image data URL
+                                  const newWindow = window.open()
+                                  if (newWindow) {
+                                    newWindow.document.write(`<img src="${attachment.file_data}" style="max-width: 100%; height: auto;" />`)
+                                  } else {
+                                    // Fallback: try direct open
+                                    window.open(attachment.file_data, "_blank")
+                                  }
+                                }
+                              }}
+                              onError={(e) => {
+                                console.error("Image load error:", e)
+                                // Fallback to placeholder if image fails to load
+                                e.currentTarget.style.display = "none"
+                              }}
                             />
                           ) : (
                             <div className="w-full h-24 bg-muted rounded border flex items-center justify-center">
@@ -3579,7 +3595,23 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                               src={attachment.file_data}
                               alt={attachment.description || "Health Certificate"}
                               className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => window.open(attachment.file_data, "_blank")}
+                              onClick={() => {
+                                if (attachment.file_data) {
+                                  // Create a new window with the image data URL
+                                  const newWindow = window.open()
+                                  if (newWindow) {
+                                    newWindow.document.write(`<img src="${attachment.file_data}" style="max-width: 100%; height: auto;" />`)
+                                  } else {
+                                    // Fallback: try direct open
+                                    window.open(attachment.file_data, "_blank")
+                                  }
+                                }
+                              }}
+                              onError={(e) => {
+                                console.error("Image load error:", e)
+                                // Fallback to placeholder if image fails to load
+                                e.currentTarget.style.display = "none"
+                              }}
                             />
                           ) : (
                             <div className="w-full h-24 bg-muted rounded border flex items-center justify-center">
@@ -3745,7 +3777,23 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
                                       src={attachment.file_data}
                                       alt={attachment.description || "Fire Extinguisher Tag"}
                                       className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                                      onClick={() => window.open(attachment.file_data, "_blank")}
+                                      onClick={() => {
+                                        if (attachment.file_data) {
+                                          // Create a new window with the image data URL
+                                          const newWindow = window.open()
+                                          if (newWindow) {
+                                            newWindow.document.write(`<img src="${attachment.file_data}" style="max-width: 100%; height: auto;" />`)
+                                          } else {
+                                            // Fallback: try direct open
+                                            window.open(attachment.file_data, "_blank")
+                                          }
+                                        }
+                                      }}
+                                      onError={(e) => {
+                                        console.error("Image load error:", e)
+                                        // Fallback to placeholder if image fails to load
+                                        e.currentTarget.style.display = "none"
+                                      }}
                                     />
                                   ) : (
                                     <div className="w-16 h-16 bg-muted rounded border flex items-center justify-center">
