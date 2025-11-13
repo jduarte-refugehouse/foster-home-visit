@@ -38,12 +38,31 @@ export async function POST(
     // This works in Vercel serverless environment where filesystem is read-only
     console.log(`📸 [ATTACHMENTS] Processing file upload: ${file.name}, size: ${file.size} bytes, type: ${file.type}`)
     
+    // Note: iOS devices may capture HEIC format, but browsers typically convert to JPEG
+    // when using the camera API. The file.type will reflect what the browser provides.
+    if (file.type === "" || !file.type.startsWith("image/")) {
+      console.warn(`⚠️ [ATTACHMENTS] Unexpected file type: ${file.type || "unknown"}. File name: ${file.name}`)
+    }
+    
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64 = buffer.toString("base64")
-    const dataUrl = `data:${file.type};base64,${base64}`
     
-    console.log(`📸 [ATTACHMENTS] Base64 conversion complete. Data URL length: ${dataUrl.length} characters`)
+    // Normalize MIME type - if browser didn't detect it, try to infer from file extension
+    let mimeType = file.type
+    if (!mimeType || mimeType === "") {
+      const extension = file.name.split('.').pop()?.toLowerCase()
+      if (extension === 'heic' || extension === 'heif') {
+        mimeType = 'image/heic'
+        console.warn(`⚠️ [ATTACHMENTS] HEIC file detected, but browser may have converted it. Storing as: ${mimeType}`)
+      } else {
+        mimeType = 'image/jpeg' // Default fallback
+      }
+    }
+    
+    const dataUrl = `data:${mimeType};base64,${base64}`
+    
+    console.log(`📸 [ATTACHMENTS] Base64 conversion complete. MIME type: ${mimeType}, Data URL length: ${dataUrl.length} characters`)
     
     // Store as data URL in file_path column
     // Format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
@@ -91,7 +110,7 @@ export async function POST(
           file.name,
           filePathReference, // Reference identifier instead of actual path
           file.size,
-          file.type,
+          mimeType, // Use normalized MIME type
           attachmentType,
           description,
           dataUrl, // Store actual base64 data URL in file_data column
@@ -124,7 +143,7 @@ export async function POST(
               file.name,
               filePathReference,
               file.size,
-              file.type,
+              mimeType, // Use normalized MIME type
               attachmentType,
               description,
               createdByUserId,
