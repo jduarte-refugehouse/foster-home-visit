@@ -3066,7 +3066,8 @@ const InspectionSection = ({ formData, onChange, onAddExtinguisher, existingForm
     
     setLoadingAttachments(true)
     try {
-      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments`)
+      // Include file_data for thumbnail display
+      const response = await fetch(`/api/visit-forms/${visitFormId}/attachments?includeData=true`)
       const data = await response.json()
 
       if (data.success) {

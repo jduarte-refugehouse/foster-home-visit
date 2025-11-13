@@ -183,28 +183,44 @@ export async function GET(
 ) {
   try {
     const formId = params.id
-    console.log(`📸 [ATTACHMENTS] Fetching attachments for form: ${formId}`)
+    const { searchParams } = new URL(request.url)
+    const includeData = searchParams.get("includeData") === "true"
+    
+    console.log(`📸 [ATTACHMENTS] Fetching attachments for form: ${formId}, includeData: ${includeData}`)
 
-    // Get attachments with file_data (base64 data URL)
+    // Get attachments - optionally include file_data based on query parameter
+    // Excluding file_data by default to avoid large response sizes
     // Handle case where file_data column might not exist yet
     let attachments
     try {
-      attachments = await query(
-        `SELECT 
-          attachment_id, file_name, file_path, file_size, mime_type,
-          attachment_type, description, file_data, created_at, created_by_name
-        FROM dbo.visit_form_attachments
-        WHERE visit_form_id = @param0 AND is_deleted = 0
-        ORDER BY created_at DESC`,
-        [formId]
-      )
-      console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments`)
-      
-      // Log file_data sizes for debugging
-      attachments.forEach((att: any, index: number) => {
-        const dataSize = att.file_data ? att.file_data.length : 0
-        console.log(`📸 [ATTACHMENTS] Attachment ${index + 1}: ${att.file_name}, file_data size: ${dataSize} chars`)
-      })
+      if (includeData) {
+        // Include file_data when specifically requested (e.g., for displaying thumbnails)
+        attachments = await query(
+          `SELECT 
+            attachment_id, file_name, file_path, file_size, mime_type,
+            attachment_type, description, file_data, created_at, created_by_name
+          FROM dbo.visit_form_attachments
+          WHERE visit_form_id = @param0 AND is_deleted = 0
+          ORDER BY created_at DESC`,
+          [formId]
+        )
+        console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments with file_data`)
+      } else {
+        // Default: exclude file_data to avoid large response sizes
+        attachments = await query(
+          `SELECT 
+            attachment_id, file_name, file_path, file_size, mime_type,
+            attachment_type, description, created_at, created_by_name
+          FROM dbo.visit_form_attachments
+          WHERE visit_form_id = @param0 AND is_deleted = 0
+          ORDER BY created_at DESC`,
+          [formId]
+        )
+        console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments (without file_data)`)
+        
+        // Add null file_data for consistency
+        attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+      }
     } catch (error: any) {
       console.error(`❌ [ATTACHMENTS] Query error:`, error)
       console.error(`❌ [ATTACHMENTS] Error message:`, error?.message)
