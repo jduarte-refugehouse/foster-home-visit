@@ -4,8 +4,8 @@
 
 The Enhanced Home Visit Form implements the updated operating requirements based on Chapter 749 Standards with RCC (Residential Child Care) Requirements and T3C (Trauma-Competent Care) Elements.
 
-**Version:** 3.3  
-**Last Updated:** November 8, 2025  
+**Version:** 3.4  
+**Last Updated:** November 11, 2025  
 **Based On:** `enhanced-monitoring-checklist.md`
 
 ---
@@ -163,13 +163,17 @@ Comprehensive visit summary includes:
 
 ### 9. **Enhanced Signatures Section**
 Collects all required signatures:
-- Visitor signature with date
-- Foster Parent 1 signature with date (required)
-- Foster Parent 2 signature with date (if applicable)
-- Supervisor signature with date (required)
+- **Home Visit Liaison Signature** (required) - Always visible, pre-populated from appointment data
+- **Foster Parent Signatures** - One required, second optional if applicable
+  - Pre-populated from household provider data
+  - Supports EntityCommunicationBridge lookup for contact info
+- **Case Manager Signature** (optional) - Appears when case manager name is available
+  - Pre-populated from visit info supervisor field or appointment CaseManager
+  - Signature link can be sent via email
 - **Tokenized Signature Links**: Send signature requests via email or SMS
 - **External Signature Collection**: Public signature page for foster parents to sign remotely
 - **Test Signature Support**: Test signature functionality with email notifications
+- **Compact Layout**: Name, Date, and Send Link button on same line for each signature
 
 ### 10. **File Attachments & Photo Capture**
 - **Files Section**: Upload and manage photos, screenshots, and documents
@@ -322,6 +326,7 @@ Monthly visits capture all necessary data to generate quarterly summaries:
 - `docs/enhanced-monitoring-checklist.md`: Original requirement specifications
 - `docs/daily-activity-summary-2025-11-05.md`: Detailed changelog for version 3.2
 - `docs/daily-activity-summary-2025-11-08.md`: Detailed changelog for version 3.3
+- `docs/daily-activity-summary-2025-11-11.md`: Detailed changelog for version 3.4
 
 ### Key Technologies
 - React hooks for state management
@@ -391,6 +396,16 @@ For questions or issues with the Enhanced Home Visit Form:
 ---
 
 ## Version History
+
+### Version 3.4 (November 11, 2025)
+- **Travel Leg System Integration**: Fully integrated leg-based travel tracking with continuum logging
+- **Case Manager Signature**: Added case manager signature section with remote signature link capability
+- **Signature Pre-population**: Fixed home liaison and case manager signature pre-population logic
+- **Visit Completed Button**: Added functionality to visit-form page (accessed via "Start Visit")
+- **UI Improvements**: Header always visible with fallback text, debug badge removed
+- **Button Color Coding**: Start drive = green, Arrived/Stop = red for visual clarity
+- **Label Updates**: Changed "Supervisor" to "Case Manager" throughout application
+- **API Fixes**: Resolved appointment API scoping errors, fixed travel leg mileage display
 
 ### Version 3.3 (November 8, 2025)
 - **Photo Capture for Inspections**: Added camera capture for fire certificates, health certificates, and fire extinguisher tags
