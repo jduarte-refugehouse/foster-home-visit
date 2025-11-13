@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { useToast } from "@/hooks/use-toast"
@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { logVisitEnd } from "@/lib/continuum-logger"
 
 export default function VisitFormPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const appointmentId = searchParams.get("appointmentId")
   const { toast } = useToast()
   const { user } = useUser()
