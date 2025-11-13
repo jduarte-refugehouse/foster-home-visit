@@ -202,72 +202,41 @@ export async function GET(
 ) {
   try {
     const formId = params.id
-    const { searchParams } = new URL(request.url)
-    const includeData = searchParams.get("includeData") === "true"
     
-    console.log(`📸 [ATTACHMENTS] Fetching attachments for form: ${formId}, includeData: ${includeData}`)
+    console.log(`📸 [ATTACHMENTS] Fetching attachments for form: ${formId}`)
 
-    // Get attachments - optionally include file_data based on query parameter
-    // Excluding file_data by default to avoid large response sizes
+    // Get attachments - always include file_data for images so they can be displayed
     // Handle case where file_data column might not exist yet
     let attachments
     try {
       // Try query with is_deleted first, fall back if column doesn't exist
       try {
-        if (includeData) {
-          // Include file_data when specifically requested (e.g., for displaying thumbnails)
+        // Always include file_data - needed for displaying images inline
+        attachments = await query(
+          `SELECT 
+            attachment_id, file_name, file_path, file_size, mime_type,
+            attachment_type, description, file_data, created_at, created_by_name
+          FROM dbo.visit_form_attachments
+          WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+          ORDER BY created_at DESC`,
+          [formId]
+        )
+        console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments with file_data`)
+      } catch (queryError: any) {
+        // If is_deleted column doesn't exist, query without it
+        if (queryError?.message?.includes("Invalid column name 'is_deleted'")) {
+          console.warn("⚠️ [ATTACHMENTS] is_deleted column not found, querying without it")
+          // Always include file_data for images
           attachments = await query(
             `SELECT 
               attachment_id, file_name, file_path, file_size, mime_type,
               attachment_type, description, file_data, created_at, created_by_name
             FROM dbo.visit_form_attachments
-            WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+            WHERE visit_form_id = @param0
             ORDER BY created_at DESC`,
             [formId]
           )
-          console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments with file_data`)
-        } else {
-          // Default: exclude file_data to avoid large response sizes
-          attachments = await query(
-            `SELECT 
-              attachment_id, file_name, file_path, file_size, mime_type,
-              attachment_type, description, created_at, created_by_name
-            FROM dbo.visit_form_attachments
-            WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
-            ORDER BY created_at DESC`,
-            [formId]
-          )
-          console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments (without file_data)`)
-          
-          // Add null file_data for consistency
-          attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
-        }
-      } catch (queryError: any) {
-        // If is_deleted column doesn't exist, query without it
-        if (queryError?.message?.includes("Invalid column name 'is_deleted'")) {
-          console.warn("⚠️ [ATTACHMENTS] is_deleted column not found, querying without it")
-          if (includeData) {
-            attachments = await query(
-              `SELECT 
-                attachment_id, file_name, file_path, file_size, mime_type,
-                attachment_type, description, file_data, created_at, created_by_name
-              FROM dbo.visit_form_attachments
-              WHERE visit_form_id = @param0
-              ORDER BY created_at DESC`,
-              [formId]
-            )
-          } else {
-            attachments = await query(
-              `SELECT 
-                attachment_id, file_name, file_path, file_size, mime_type,
-                attachment_type, description, created_at, created_by_name
-              FROM dbo.visit_form_attachments
-              WHERE visit_form_id = @param0
-              ORDER BY created_at DESC`,
-              [formId]
-            )
-            attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
-          }
+          console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments (without is_deleted check)`)
         } else {
           throw queryError
         }
