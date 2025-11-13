@@ -461,7 +461,34 @@ export default function AppointmentDetailPage() {
         },
         (error) => {
           setCapturingLocation(false)
-          reject(error)
+          
+          // Provide more descriptive error messages with iOS-specific guidance
+          let errorMessage = error.message
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              if (isIOS) {
+                errorMessage = "Location permission denied. Go to Settings → Privacy & Security → Location Services → Safari Websites, then allow location access for this site."
+              } else {
+                errorMessage = "Location permission denied. Please enable location access in your browser settings."
+              }
+              break
+            case error.POSITION_UNAVAILABLE:
+              if (isIOS) {
+                errorMessage = "Location unavailable. Check: Settings → Privacy & Security → Location Services is ON, you're outside or near a window, and Wi-Fi/Cellular is ON."
+              } else {
+                errorMessage = "Location information is unavailable. Please check your device's location settings."
+              }
+              break
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out. Make sure you're outside or near a window for GPS signal, then try again."
+              break
+            default:
+              errorMessage = error.message || "Failed to capture location"
+          }
+          
+          reject(new Error(errorMessage))
         },
         {
           enableHighAccuracy: true,
