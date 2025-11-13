@@ -36,22 +36,28 @@ export async function POST(
 
     // Convert file to base64 data URL for storage in database
     // This works in Vercel serverless environment where filesystem is read-only
+    console.log(`📸 [ATTACHMENTS] Processing file upload: ${file.name}, size: ${file.size} bytes, type: ${file.type}`)
+    
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64 = buffer.toString("base64")
     const dataUrl = `data:${file.type};base64,${base64}`
+    
+    console.log(`📸 [ATTACHMENTS] Base64 conversion complete. Data URL length: ${dataUrl.length} characters`)
     
     // Store as data URL in file_path column
     // Format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
     const relativePath = dataUrl
 
     // Get appointment_id from visit form
+    console.log(`📸 [ATTACHMENTS] Looking up visit form: ${formId}`)
     const formDataQuery = await query(
       "SELECT appointment_id FROM dbo.visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
       [formId]
     )
 
     if (formDataQuery.length === 0) {
+      console.error(`❌ [ATTACHMENTS] Visit form not found: ${formId}`)
       return NextResponse.json(
         { success: false, error: "Visit form not found" },
         { status: 404 }
@@ -59,12 +65,15 @@ export async function POST(
     }
 
     const appointmentId = formDataQuery[0].appointment_id
+    console.log(`📸 [ATTACHMENTS] Found appointment: ${appointmentId}`)
 
     // Insert attachment record
     // Store base64 data URL in file_data column (nvarchar(max)) for Vercel compatibility
     // file_path stores a reference identifier
     const attachmentId = randomUUID()
     const filePathReference = `attachment:${attachmentId}`
+    
+    console.log(`📸 [ATTACHMENTS] Attempting to insert attachment: ${attachmentId}`)
     
     // Try to insert with file_data column, fall back if column doesn't exist
     try {
@@ -90,35 +99,48 @@ export async function POST(
           createdByName,
         ]
       )
+      console.log(`✅ [ATTACHMENTS] Successfully inserted attachment: ${attachmentId}`)
     } catch (insertError: any) {
+      console.error(`❌ [ATTACHMENTS] Insert error:`, insertError)
+      console.error(`❌ [ATTACHMENTS] Error message:`, insertError?.message)
+      console.error(`❌ [ATTACHMENTS] Error stack:`, insertError?.stack)
+      
       // If file_data column doesn't exist, insert without it
       // User will need to run the migration script
       if (insertError?.message?.includes("Invalid column name 'file_data'")) {
-        console.warn("file_data column not found, inserting without it. Please run migration script.")
-    await query(
-      `INSERT INTO dbo.visit_form_attachments (
-        attachment_id, visit_form_id, file_name, file_path, file_size,
-        mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
-      ) VALUES (
-        @param0, @param1, @param2, @param3, @param4,
-        @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
-      )`,
-      [
-        attachmentId,
-        formId,
-        file.name,
-            filePathReference,
-        file.size,
-        file.type,
-        attachmentType,
-        description,
-        createdByUserId,
-        createdByName,
-      ]
-    )
-        // Note: File data will be lost without file_data column
-        console.warn("File uploaded but data not stored. Run scripts/add-file-data-to-attachments.sql to enable file storage.")
+        console.warn("⚠️ [ATTACHMENTS] file_data column not found, inserting without it. Please run migration script.")
+        try {
+          await query(
+            `INSERT INTO dbo.visit_form_attachments (
+              attachment_id, visit_form_id, file_name, file_path, file_size,
+              mime_type, attachment_type, description, created_at, created_by_user_id, created_by_name
+            ) VALUES (
+              @param0, @param1, @param2, @param3, @param4,
+              @param5, @param6, @param7, GETUTCDATE(), @param8, @param9
+            )`,
+            [
+              attachmentId,
+              formId,
+              file.name,
+              filePathReference,
+              file.size,
+              file.type,
+              attachmentType,
+              description,
+              createdByUserId,
+              createdByName,
+            ]
+          )
+          console.log(`✅ [ATTACHMENTS] Inserted without file_data column: ${attachmentId}`)
+          // Note: File data will be lost without file_data column
+          console.warn("⚠️ [ATTACHMENTS] File uploaded but data not stored. Run scripts/add-file-data-to-attachments.sql to enable file storage.")
+        } catch (fallbackError: any) {
+          console.error(`❌ [ATTACHMENTS] Fallback insert also failed:`, fallbackError)
+          throw fallbackError
+        }
       } else {
+        // Re-throw the error with more context
+        console.error(`❌ [ATTACHMENTS] Non-column error, re-throwing:`, insertError)
         throw insertError
       }
     }
@@ -136,12 +158,18 @@ export async function POST(
       },
     })
   } catch (error: any) {
-    console.error("Error uploading file:", error)
+    console.error("❌ [ATTACHMENTS] Error uploading file:", error)
+    console.error("❌ [ATTACHMENTS] Error type:", typeof error)
+    console.error("❌ [ATTACHMENTS] Error message:", error?.message)
+    console.error("❌ [ATTACHMENTS] Error stack:", error?.stack)
+    console.error("❌ [ATTACHMENTS] Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to upload file",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error?.constructor?.name || typeof error,
       },
       { status: 500 }
     )
@@ -155,6 +183,7 @@ export async function GET(
 ) {
   try {
     const formId = params.id
+    console.log(`📸 [ATTACHMENTS] Fetching attachments for form: ${formId}`)
 
     // Get attachments with file_data (base64 data URL)
     // Handle case where file_data column might not exist yet
@@ -169,21 +198,32 @@ export async function GET(
         ORDER BY created_at DESC`,
         [formId]
       )
+      console.log(`📸 [ATTACHMENTS] Found ${attachments.length} attachments`)
+      
+      // Log file_data sizes for debugging
+      attachments.forEach((att: any, index: number) => {
+        const dataSize = att.file_data ? att.file_data.length : 0
+        console.log(`📸 [ATTACHMENTS] Attachment ${index + 1}: ${att.file_name}, file_data size: ${dataSize} chars`)
+      })
     } catch (error: any) {
+      console.error(`❌ [ATTACHMENTS] Query error:`, error)
+      console.error(`❌ [ATTACHMENTS] Error message:`, error?.message)
+      
       // If file_data column doesn't exist, fall back to query without it
       if (error?.message?.includes("Invalid column name 'file_data'")) {
-        console.warn("file_data column not found, using fallback query")
+        console.warn("⚠️ [ATTACHMENTS] file_data column not found, using fallback query")
         attachments = await query(
-      `SELECT 
-        attachment_id, file_name, file_path, file_size, mime_type,
-        attachment_type, description, created_at, created_by_name
-      FROM dbo.visit_form_attachments
-      WHERE visit_form_id = @param0 AND is_deleted = 0
-      ORDER BY created_at DESC`,
-      [formId]
-    )
+          `SELECT 
+            attachment_id, file_name, file_path, file_size, mime_type,
+            attachment_type, description, created_at, created_by_name
+          FROM dbo.visit_form_attachments
+          WHERE visit_form_id = @param0 AND is_deleted = 0
+          ORDER BY created_at DESC`,
+          [formId]
+        )
         // Add null file_data for backward compatibility
         attachments = attachments.map((att: any) => ({ ...att, file_data: null }))
+        console.log(`📸 [ATTACHMENTS] Fallback query found ${attachments.length} attachments`)
       } else {
         throw error
       }
@@ -194,12 +234,17 @@ export async function GET(
       attachments: attachments,
     })
   } catch (error: any) {
-    console.error("Error fetching attachments:", error)
+    console.error("❌ [ATTACHMENTS] Error fetching attachments:", error)
+    console.error("❌ [ATTACHMENTS] Error type:", typeof error)
+    console.error("❌ [ATTACHMENTS] Error message:", error?.message)
+    console.error("❌ [ATTACHMENTS] Error stack:", error?.stack)
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch attachments",
         details: error instanceof Error ? error.message : "Unknown error",
+        errorType: error?.constructor?.name || typeof error,
       },
       { status: 500 }
     )
