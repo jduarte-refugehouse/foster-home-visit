@@ -64,7 +64,8 @@ export async function POST(
     
     console.log(`📸 [ATTACHMENTS] Base64 conversion complete. MIME type: ${mimeType}, Data URL length: ${dataUrl.length} characters`)
     
-    // Store as data URL in file_path column
+    // Store base64 data URL in file_data column (not file_path)
+    // file_path stores a reference identifier: attachment:UUID
     // Format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
     const relativePath = dataUrl
 

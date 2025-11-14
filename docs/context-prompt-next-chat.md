@@ -5,6 +5,12 @@ You are continuing development on a **foster home visit application** built with
 
 ## Current State Summary
 
+### Recent Major Changes (November 13, 2025)
+1. **Enhanced Photo Capture**: Inline image previews, attachments tab, PDF generation from multiple images
+2. **Database Schema Compatibility**: Graceful handling of missing columns, migration scripts provided
+3. **Image Display Fixes**: Always include file_data for images, improved image viewing
+4. **HEIC Format Support**: Proper handling of iPhone/iPad HEIC images
+
 ### Recent Major Changes (November 11, 2025)
 1. **Travel Leg System**: Fully integrated leg-based travel tracking system with continuum logging
 2. **Signature System**: Home liaison and case manager signatures with remote signature links
@@ -17,8 +23,11 @@ You are continuing development on a **foster home visit application** built with
 - ✅ Remote signature collection via tokenized links (email/SMS)
 - ✅ Case manager signature section in form
 - ✅ Visit Completed button functionality
-- ✅ Photo capture for inspection documents
-- ✅ Base64 file storage in database
+- ✅ Photo capture for inspection documents with inline previews
+- ✅ Base64 file storage in database (`file_data` column)
+- ✅ Multi-page PDF generation from multiple images
+- ✅ Attachments tab in appointment detail page
+- ✅ Image viewing in new windows
 
 ### Known Architecture Patterns
 
@@ -47,9 +56,32 @@ You are continuing development on a **foster home visit application** built with
 - **Remote Signatures**: Tokenized links via `/api/visit-forms/[id]/signature-tokens`
 - **Public Route**: `/signature/[token]` - no authentication required
 
+#### File Attachment System
+- **Storage Method**: Base64 data URLs stored in `file_data` column (nvarchar(max))
+- **Why Base64**: Vercel serverless environment has read-only filesystem
+- **File Path Column**: Stores reference identifier (`attachment:UUID`), not actual file path
+- **File Size Limit**: 10MB per file
+- **Attachment Types**: `fire_certificate`, `health_certificate`, `fire_extinguisher_tag`, `other`
+- **Database Columns**: 
+  - `file_data` (nvarchar(max)) - base64 image data (may not exist, code handles gracefully)
+  - `is_deleted` (bit) - soft delete flag (may not exist, code handles gracefully)
+  - `file_path` (nvarchar(500)) - reference identifier, not actual file path
+- **API Endpoints**:
+  - `POST /api/visit-forms/[id]/attachments` - Upload files (always includes file_data)
+  - `GET /api/visit-forms/[id]/attachments` - List attachments (always includes file_data)
+  - `DELETE /api/visit-forms/[id]/attachments/[attachmentId]` - Delete (handles missing columns)
+
 ## Important Files to Review
 
-### Recent Changes
+### Recent Changes (November 13, 2025)
+- `components/forms/home-visit-form-enhanced.tsx` - Inline image previews, PDF generation
+- `app/(protected)/appointment/[id]/page.tsx` - Attachments tab, image viewing
+- `app/api/visit-forms/[id]/attachments/route.ts` - Always include file_data, handle missing columns
+- `app/api/visit-forms/[id]/attachments/[attachmentId]/route.ts` - Graceful delete handling
+- `scripts/add-file-data-to-attachments.sql` - Database migration script
+- `docs/check-attachments-data.sql` - Database verification queries
+
+### Recent Changes (November 11, 2025)
 - `app/api/appointments/[appointmentId]/route.ts` - Fixed scoping, added travel leg flags
 - `app/api/travel-legs/route.ts` - Continuum logging for drive_start
 - `app/api/travel-legs/[legId]/route.ts` - Continuum logging for drive_end
@@ -58,7 +90,8 @@ You are continuing development on a **foster home visit application** built with
 - `app/api/visit-forms/send-report/route.ts` - Case manager signature in email
 
 ### Key Documentation
-- `docs/daily-activity-summary-2025-11-11.md` - Today's complete changelog
+- `docs/daily-activity-summary-2025-11-13.md` - November 13 complete changelog
+- `docs/daily-activity-summary-2025-11-11.md` - November 11 complete changelog
 - `docs/travel-tracking-architecture.md` - Travel leg system documentation
 - `docs/enhanced-home-visit-form.md` - Form structure and features (Version 3.4)
 - `docs/database-architecture.md` - Multi-database architecture
@@ -113,33 +146,97 @@ const showStartDrive =
   !appointment.has_completed_leg
 ```
 
+### File Attachment Handling
+```typescript
+// Always include file_data for images in GET response
+attachments = await query(
+  `SELECT attachment_id, file_name, file_path, file_size, mime_type,
+   attachment_type, description, file_data, created_at, created_by_name
+   FROM dbo.visit_form_attachments
+   WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+   ORDER BY created_at DESC`,
+  [formId]
+)
+
+// Handle missing columns gracefully
+try {
+  await query(`UPDATE ... SET is_deleted = 1, updated_at = GETUTCDATE() ...`)
+} catch (error) {
+  if (error.message.includes("Invalid column name")) {
+    // Fallback to hard delete or alternative approach
+  }
+}
+```
+
+### Image Viewing
+```typescript
+// Create new window with image HTML (more reliable than window.open(dataUrl))
+onClick={() => {
+  if (attachment.file_data) {
+    const newWindow = window.open()
+    if (newWindow) {
+      newWindow.document.write(`<img src="${attachment.file_data}" style="max-width: 100%; height: auto;" />`)
+    }
+  }
+}}
+```
+
 ## Important Notes
 
 1. **Clerk Status**: After initial authentication, Clerk is in "deaf/mute/blind" status - no Clerk hooks/APIs should be used
 2. **Token-Based Auth**: Public routes (signatures) use token-based auth, NOT Clerk
 3. **Travel Legs**: Do NOT rely on appointment context for user identification - use headers or token
-4. **File Storage**: Files stored as base64 data URLs in `file_data` column (not filesystem)
-5. **Header Visibility**: Header always shows with fallback text when data not loaded
-6. **Signature Sections**: Always visible (not conditional) - pre-populate from available data
+4. **File Storage**: Files stored as base64 data URLs in `file_data` column (nvarchar(max)), NOT filesystem
+5. **File Path Column**: `file_path` stores reference identifier (`attachment:UUID`), NOT actual file path
+6. **Database Schema**: Code handles missing `file_data` and `is_deleted` columns gracefully - migration recommended but not required
+7. **Image Display**: GET endpoint always includes `file_data` for images (needed for display)
+8. **Image Viewing**: Use `window.open()` then `document.write()` for base64 data URLs (more reliable than direct open)
+9. **Header Visibility**: Header always shows with fallback text when data not loaded
+10. **Signature Sections**: Always visible (not conditional) - pre-populate from available data
+11. **HEIC Images**: iOS browsers convert HEIC to JPEG automatically - code normalizes MIME types
 
 ## Next Development Priorities
 
-1. **Automatic Signature Link Generation**: Generate case manager signature link automatically in email
-2. **Travel Leg History Enhancement**: Show detailed travel leg info in history tab
-3. **Form Data Pre-loading**: Pre-load form data to prevent empty header
-4. **Performance Optimization**: Optimize API calls and data loading
+1. **Image Optimization**: Automatic compression, thumbnail generation, progressive loading
+2. **Bulk Operations**: Select multiple images for PDF, bulk delete, bulk download as ZIP
+3. **Image Editing**: Crop/rotate before upload, annotation tools, enhancement filters
+4. **Storage Optimization**: CDN for large images, cleanup for old attachments, archive to cold storage
+5. **Enhanced PDF Features**: Custom templates, text annotations, combine multiple attachment types
+6. **Automatic Signature Link Generation**: Generate case manager signature link automatically in email
+7. **Travel Leg History Enhancement**: Show detailed travel leg info in history tab
+8. **Form Data Pre-loading**: Pre-load form data to prevent empty header
+9. **Performance Optimization**: Optimize API calls and data loading
 
 ## Testing Considerations
 
+- Test photo capture and inline previews on iPad/iPhone
+- Verify images display correctly in attachments tab
+- Test PDF generation from multiple images
+- Test image deletion (both inline and in attachments tab)
+- Test image viewing in new windows
+- Verify database migration script works correctly
+- Test with missing database columns (graceful degradation)
 - Test travel leg system on mobile devices
 - Verify signature pre-population in all scenarios
 - Test Visit Completed button from both entry points
 - Verify header visibility and fallback text
 - Test case manager signature link generation
 
+## Database Migration Status
+
+### Required Migration (Recommended)
+Run `scripts/add-file-data-to-attachments.sql` on Bifrost database to add:
+- `file_data` column (nvarchar(max)) - for base64 image storage
+- `is_deleted` column (bit, default 0) - for soft deletes
+
+**Note**: Code works without migration (handles missing columns gracefully), but migration is recommended for full functionality.
+
+### Verification
+After migration, run queries from `docs/check-attachments-data.sql` to verify columns exist and data is stored correctly.
+
 ---
 
-**Last Updated**: November 11, 2025
-**Version**: 3.4
+**Last Updated**: November 13, 2025
+**Version**: 3.5
 **Branch**: cursor-development
 
