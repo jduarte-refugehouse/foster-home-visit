@@ -468,6 +468,7 @@ export function CreateAppointmentDialog({
                     <SelectItem value="meeting">Meeting</SelectItem>
                     <SelectItem value="court_hearing">Court Hearing</SelectItem>
                     <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="staff_training">Staff Training</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>

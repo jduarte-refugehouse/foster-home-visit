@@ -41,6 +41,7 @@ import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
+import { StaffTrainingSummary } from "@/components/appointments/staff-training-summary"
 import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@/lib/continuum-logger"
 
 interface Appointment {
@@ -121,6 +122,8 @@ export default function AppointmentDetailPage() {
   const [leavingAction, setLeavingAction] = useState<"next" | "return" | null>(null)
   const [attachments, setAttachments] = useState<any[]>([])
   const [loadingAttachments, setLoadingAttachments] = useState(false)
+  const [trainingSummary, setTrainingSummary] = useState<string>("")
+  const [loadingTrainingSummary, setLoadingTrainingSummary] = useState(false)
 
   useEffect(() => {
     if (appointmentId) {
@@ -129,6 +132,12 @@ export default function AppointmentDetailPage() {
       fetchMileageRate()
     }
   }, [appointmentId])
+
+  useEffect(() => {
+    if (appointment?.appointment_type === "staff_training" && appointmentId) {
+      fetchTrainingSummary()
+    }
+  }, [appointment?.appointment_type, appointmentId])
 
   useEffect(() => {
     if (activeTab === "attachments" && existingFormData?.visit_form_id) {
@@ -199,6 +208,23 @@ export default function AppointmentDetailPage() {
       }
     } catch (error) {
       console.error("Error fetching visit form status:", error)
+    }
+  }
+
+  const fetchTrainingSummary = async () => {
+    if (!appointmentId) return
+    
+    setLoadingTrainingSummary(true)
+    try {
+      const response = await fetch(`/api/appointments/${appointmentId}/training-summary`)
+      if (response.ok) {
+        const data = await response.json()
+        setTrainingSummary(data.summary || "")
+      }
+    } catch (error) {
+      console.error("Error fetching training summary:", error)
+    } finally {
+      setLoadingTrainingSummary(false)
     }
   }
 
@@ -1685,7 +1711,7 @@ export default function AppointmentDetailPage() {
               className="flex items-center gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-refuge-purple data-[state=active]:bg-transparent px-4 py-3 text-foreground data-[state=active]:text-refuge-purple"
             >
               <Edit className="h-4 w-4" />
-              <span>Visit Form</span>
+              <span>{appointment?.appointment_type === "staff_training" ? "Training Summary" : "Visit Form"}</span>
             </TabsTrigger>
             <TabsTrigger 
               value="history" 
@@ -2082,42 +2108,72 @@ export default function AppointmentDetailPage() {
           </div>
         </TabsContent>
 
-        {/* Visit Form Tab */}
+        {/* Visit Form / Training Summary Tab */}
         <TabsContent value="form" className="mt-0 p-0">
-          {formDataLoading ? (
-            <Card className="rounded-xl shadow-sm">
-              <CardContent className="p-12 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-refuge-purple mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading visit form...</p>
-              </CardContent>
-            </Card>
-          ) : appointmentData && appointment ? (
-            <EnhancedHomeVisitForm
-              appointmentId={appointmentId}
-              appointmentData={appointmentData}
-              prepopulationData={prepopulationData}
-              existingFormData={existingFormData}
-              onSave={handleSaveForm}
-              onSubmit={handleSubmitForm}
-              onCompleteVisit={handleVisitFormCompleted}
-            />
-          ) : appointment ? (
-            <Card className="rounded-xl shadow-sm">
-              <CardContent className="p-12 text-center">
-                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
-                <p className="text-muted-foreground mb-4">Loading form data...</p>
-                <Button onClick={fetchFormData} variant="outline">
-                  Load Visit Form
-                </Button>
-              </CardContent>
-            </Card>
+          {appointment?.appointment_type === "staff_training" ? (
+            // Staff Training Summary
+            loadingTrainingSummary ? (
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-refuge-purple mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading training summary...</p>
+                </CardContent>
+              </Card>
+            ) : appointment ? (
+              <StaffTrainingSummary
+                appointmentId={appointmentId}
+                appointmentType={appointment.appointment_type}
+                initialSummary={trainingSummary}
+                onSave={() => {
+                  fetchTrainingSummary()
+                  fetchAppointmentDetails()
+                }}
+              />
+            ) : (
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+                  <p className="text-muted-foreground">Appointment not loaded</p>
+                </CardContent>
+              </Card>
+            )
           ) : (
-            <Card className="rounded-xl shadow-sm">
-              <CardContent className="p-12 text-center">
-                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
-                <p className="text-muted-foreground">Appointment not loaded</p>
-              </CardContent>
-            </Card>
+            // Regular Visit Form
+            formDataLoading ? (
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-refuge-purple mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading visit form...</p>
+                </CardContent>
+              </Card>
+            ) : appointmentData && appointment ? (
+              <EnhancedHomeVisitForm
+                appointmentId={appointmentId}
+                appointmentData={appointmentData}
+                prepopulationData={prepopulationData}
+                existingFormData={existingFormData}
+                onSave={handleSaveForm}
+                onSubmit={handleSubmitForm}
+                onCompleteVisit={handleVisitFormCompleted}
+              />
+            ) : appointment ? (
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+                  <p className="text-muted-foreground mb-4">Loading form data...</p>
+                  <Button onClick={fetchFormData} variant="outline">
+                    Load Visit Form
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="rounded-xl shadow-sm">
+                <CardContent className="p-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+                  <p className="text-muted-foreground">Appointment not loaded</p>
+                </CardContent>
+              </Card>
+            )
           )}
         </TabsContent>
 
