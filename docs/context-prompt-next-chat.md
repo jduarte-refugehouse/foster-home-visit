@@ -5,6 +5,12 @@ You are continuing development on a **foster home visit application** built with
 
 ## Current State Summary
 
+### Recent Major Changes (November 14, 2025)
+1. **Staff Training Appointment Type**: New appointment type with dedicated summary form
+2. **Training Summary Form**: Large textarea for documenting training sessions
+3. **Travel Tracking for Training**: Full travel leg support for staff training appointments
+4. **Conditional Form Display**: Training summary form shown instead of visit form for staff_training appointments
+
 ### Recent Major Changes (November 13, 2025)
 1. **Enhanced Photo Capture**: Inline image previews, attachments tab, PDF generation from multiple images
 2. **Database Schema Compatibility**: Graceful handling of missing columns, migration scripts provided
@@ -28,6 +34,8 @@ You are continuing development on a **foster home visit application** built with
 - ✅ Multi-page PDF generation from multiple images
 - ✅ Attachments tab in appointment detail page
 - ✅ Image viewing in new windows
+- ✅ Staff Training appointment type with summary form
+- ✅ Training summary save/load functionality
 
 ### Known Architecture Patterns
 
@@ -73,6 +81,13 @@ You are continuing development on a **foster home visit application** built with
 
 ## Important Files to Review
 
+### Recent Changes (November 14, 2025)
+- `components/appointments/staff-training-summary.tsx` - Training summary form component
+- `app/api/appointments/[appointmentId]/training-summary/route.ts` - Training summary API endpoint
+- `app/(protected)/appointment/[id]/page.tsx` - Conditional form display for staff training
+- `components/appointments/create-appointment-dialog.tsx` - Added Staff Training option
+- `scripts/add-staff-training-appointment-type.sql` - Database migration script
+
 ### Recent Changes (November 13, 2025)
 - `components/forms/home-visit-form-enhanced.tsx` - Inline image previews, PDF generation
 - `app/(protected)/appointment/[id]/page.tsx` - Attachments tab, image viewing
@@ -90,6 +105,7 @@ You are continuing development on a **foster home visit application** built with
 - `app/api/visit-forms/send-report/route.ts` - Case manager signature in email
 
 ### Key Documentation
+- `docs/daily-activity-summary-2025-11-14.md` - November 14 complete changelog
 - `docs/daily-activity-summary-2025-11-13.md` - November 13 complete changelog
 - `docs/daily-activity-summary-2025-11-11.md` - November 11 complete changelog
 - `docs/travel-tracking-architecture.md` - Travel leg system documentation
@@ -168,6 +184,27 @@ try {
 }
 ```
 
+### Staff Training Summary Handling
+```typescript
+// GET training summary (uses completion_notes field)
+const appointments = await query(
+  `SELECT appointment_id, appointment_type, completion_notes
+   FROM dbo.appointments
+   WHERE appointment_id = @param0 AND is_deleted = 0`,
+  [appointmentId]
+)
+
+// PUT training summary (saves to completion_notes field)
+await query(
+  `UPDATE dbo.appointments
+   SET completion_notes = @param0,
+       updated_at = GETUTCDATE(),
+       updated_by_user_id = @param1
+   WHERE appointment_id = @param2 AND is_deleted = 0`,
+  [summary, userId, appointmentId]
+)
+```
+
 ### Image Viewing
 ```typescript
 // Create new window with image HTML (more reliable than window.open(dataUrl))
@@ -194,6 +231,9 @@ onClick={() => {
 9. **Header Visibility**: Header always shows with fallback text when data not loaded
 10. **Signature Sections**: Always visible (not conditional) - pre-populate from available data
 11. **HEIC Images**: iOS browsers convert HEIC to JPEG automatically - code normalizes MIME types
+12. **Staff Training Appointments**: Use `appointment_type = 'staff_training'` - shows training summary form instead of visit form
+13. **Training Summary Storage**: Stored in `completion_notes` field of appointments table
+14. **Travel Tracking for Training**: Travel leg buttons work for all appointment types including staff_training
 
 ## Next Development Priorities
 
@@ -206,6 +246,7 @@ onClick={() => {
 7. **Travel Leg History Enhancement**: Show detailed travel leg info in history tab
 8. **Form Data Pre-loading**: Pre-load form data to prevent empty header
 9. **Performance Optimization**: Optimize API calls and data loading
+10. **Training Summary Enhancements**: Add templates, attachments, or structured fields for training summaries
 
 ## Testing Considerations
 
@@ -221,22 +262,39 @@ onClick={() => {
 - Test Visit Completed button from both entry points
 - Verify header visibility and fallback text
 - Test case manager signature link generation
+- Test creating Staff Training appointments
+- Verify training summary form appears for staff_training appointments
+- Test saving and loading training summaries
+- Verify travel leg buttons work for staff training appointments
+- Test multiple travel legs between locations for training appointments
 
 ## Database Migration Status
 
-### Required Migration (Recommended)
+### Required Migrations
+
+#### 1. File Attachments (Recommended)
 Run `scripts/add-file-data-to-attachments.sql` on Bifrost database to add:
 - `file_data` column (nvarchar(max)) - for base64 image storage
 - `is_deleted` column (bit, default 0) - for soft deletes
 
 **Note**: Code works without migration (handles missing columns gracefully), but migration is recommended for full functionality.
 
+#### 2. Staff Training Appointment Type (Required)
+Run `scripts/add-staff-training-appointment-type.sql` on Bifrost database to:
+- Update `CK_appointments_type` constraint to include `staff_training` as valid appointment type
+
+**Note**: This migration is required to create Staff Training appointments. The script is safe to run multiple times.
+
 ### Verification
-After migration, run queries from `docs/check-attachments-data.sql` to verify columns exist and data is stored correctly.
+- After file attachments migration, run queries from `docs/check-attachments-data.sql` to verify columns exist and data is stored correctly.
+- After staff training migration, verify constraint allows `staff_training` type:
+  ```sql
+  SELECT * FROM sys.check_constraints WHERE name = 'CK_appointments_type'
+  ```
 
 ---
 
-**Last Updated**: November 13, 2025
-**Version**: 3.5
+**Last Updated**: November 14, 2025
+**Version**: 3.6
 **Branch**: cursor-development
 
