@@ -226,7 +226,7 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
                      null
 
   try {
-    // Check if user exists
+    // Check if user exists by clerk_user_id (primary lookup)
     const existingUser = await query<AppUser>("SELECT * FROM app_users WHERE clerk_user_id = @param0", [clerkUser.id])
 
     let userId: string
@@ -258,21 +258,67 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
       }
       userId = currentUser.id
     } else {
-      // Create new user with core role determination
-      const coreRole = determineCoreRole(email)
-      const newUserResult = await query<{ id: string }>(
-        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, core_role, is_active, created_at, updated_at)
-         OUTPUT INSERTED.id
-         VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
-        [clerkUser.id, email, firstName, lastName, clerkPhone, coreRole],
-      )
-      userId = newUserResult[0].id
+      // User doesn't exist by clerk_user_id - check for email duplicates before creating
+      if (email) {
+        const emailMatches = await query<AppUser>(
+          "SELECT * FROM app_users WHERE email = @param0 AND clerk_user_id != @param1",
+          [email, clerkUser.id]
+        )
+        
+        if (emailMatches.length > 0) {
+          // Found existing user with same email but different clerk_user_id
+          // This could be a duplicate or a user who changed Clerk accounts
+          // Update the existing record to use the new clerk_user_id
+          const existingByEmail = emailMatches[0]
+          console.log(`⚠️ [USER-MGMT] Found existing user with email ${email} but different clerk_user_id. Updating existing record.`)
+          
+          // Update existing record with new clerk_user_id
+          await query(
+            `UPDATE app_users 
+             SET clerk_user_id = @param0, first_name = @param1, last_name = @param2, phone = @param3, updated_at = GETDATE()
+             WHERE id = @param4`,
+            [clerkUser.id, firstName, lastName, clerkPhone || existingByEmail.phone, existingByEmail.id],
+          )
+          
+          userId = existingByEmail.id
+          
+          // Sync phone if needed
+          if ((!existingByEmail.phone || existingByEmail.phone.trim() === "") && clerkPhone) {
+            await query(
+              `UPDATE app_users SET phone = @param0, updated_at = GETDATE() WHERE id = @param1`,
+              [clerkPhone, userId]
+            )
+            console.log(`📞 [USER-MGMT] Synced phone number from Clerk for existing user: ${clerkPhone}`)
+          }
+        } else {
+          // No email duplicate - create new user
+          const coreRole = determineCoreRole(email)
+          const newUserResult = await query<{ id: string }>(
+            `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, core_role, is_active, created_at, updated_at)
+             OUTPUT INSERTED.id
+             VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
+            [clerkUser.id, email, firstName, lastName, clerkPhone, coreRole],
+          )
+          userId = newUserResult[0].id
 
-      // Assign microservice-specific roles based on email and core role
-      await assignDefaultMicroserviceRoles(userId, email, coreRole)
-      
-      if (clerkPhone) {
-        console.log(`📞 [USER-MGMT] Created new user with phone from Clerk: ${clerkPhone}`)
+          // Assign microservice-specific roles based on email and core role
+          await assignDefaultMicroserviceRoles(userId, email, coreRole)
+          
+          if (clerkPhone) {
+            console.log(`📞 [USER-MGMT] Created new user with phone from Clerk: ${clerkPhone}`)
+          }
+        }
+      } else {
+        // No email provided - create new user anyway (shouldn't happen but handle gracefully)
+        const coreRole = determineCoreRole("")
+        const newUserResult = await query<{ id: string }>(
+          `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, core_role, is_active, created_at, updated_at)
+           OUTPUT INSERTED.id
+           VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
+          [clerkUser.id, email || "", firstName, lastName, clerkPhone, coreRole],
+        )
+        userId = newUserResult[0].id
+        await assignDefaultMicroserviceRoles(userId, email || "", coreRole)
       }
     }
 

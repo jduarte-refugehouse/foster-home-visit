@@ -9,6 +9,8 @@ export async function GET() {
   try {
     console.log("👥 [API] Fetching available staff members")
 
+    // Use LEFT JOIN to ensure we don't miss users even if they don't have roles
+    // Also check for users who might not have clerk_user_id set yet
     const staff = await query(`
       SELECT DISTINCT
         u.id,
@@ -22,6 +24,7 @@ export async function GET() {
       FROM app_users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = 1
       WHERE u.is_active = 1
+        AND (u.clerk_user_id IS NOT NULL OR u.email IS NOT NULL)
       ORDER BY u.first_name, u.last_name
     `)
 

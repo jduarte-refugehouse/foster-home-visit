@@ -62,10 +62,51 @@ export async function POST(
 
     const appointment = appointments[0]
 
-    // Determine recipient - use override if provided, otherwise use assigned staff
-    let recipientClerkUserId = recipientOverride?.clerkUserId || appointment.assigned_to_user_id
-    let recipientName = recipientOverride?.name || appointment.assigned_to_name
+    // Determine recipient - prioritize logged-in user first, then override, then assigned staff
+    // This ensures the person sending the link gets it sent to themselves if they're assigned
+    let recipientClerkUserId: string | null = null
+    let recipientName: string | null = null
     let recipientPhone: string | null = recipientOverride?.phone || null
+    
+    // Priority 1: Logged-in user (if they're assigned to this appointment)
+    if (auth.clerkUserId && appointment.assigned_to_user_id) {
+      // Check if logged-in user matches assigned user (by clerk_user_id or GUID)
+      let loggedInUserMatches = false
+      
+      // Direct match by clerk_user_id
+      if (appointment.assigned_to_user_id === auth.clerkUserId) {
+        loggedInUserMatches = true
+      } else {
+        // Check if assigned_to_user_id is a GUID that matches logged-in user's app_users.id
+        try {
+          const userCheck = await query(
+            `SELECT id FROM app_users WHERE clerk_user_id = @param0 AND id = @param1`,
+            [auth.clerkUserId, appointment.assigned_to_user_id]
+          )
+          loggedInUserMatches = userCheck.length > 0
+        } catch (checkError) {
+          console.error(`❌ [SEND-LINK] Error checking user match:`, checkError)
+        }
+      }
+      
+      if (loggedInUserMatches) {
+        recipientClerkUserId = auth.clerkUserId
+        recipientName = auth.name || appointment.assigned_to_name
+        console.log(`✅ [SEND-LINK] Prioritizing logged-in user: ${auth.clerkUserId}`)
+      }
+    }
+    
+    // Priority 2: Override from request body
+    if (!recipientClerkUserId && recipientOverride?.clerkUserId) {
+      recipientClerkUserId = recipientOverride.clerkUserId
+      recipientName = recipientOverride.name || appointment.assigned_to_name
+    }
+    
+    // Priority 3: Assigned staff member
+    if (!recipientClerkUserId) {
+      recipientClerkUserId = appointment.assigned_to_user_id
+      recipientName = appointment.assigned_to_name
+    }
 
     if (!recipientClerkUserId && !recipientPhone) {
       return NextResponse.json(
