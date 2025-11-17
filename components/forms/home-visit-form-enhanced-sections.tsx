@@ -415,51 +415,96 @@ export const FosterParentInterviewSection = ({ formData, onChange }) => {
           <CardTitle className="text-lg">Foster Parent Support Needs</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Guidance for Home Visit Liaison */}
+          <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+            <p className="text-sm font-semibold text-blue-900 mb-2">
+              Guidance for Home Visit Liaison:
+            </p>
+            <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+              <li>Ask foster parents directly: "What support do you need in this area?"</li>
+              <li>Listen for specific needs, concerns, or requests they may have</li>
+              <li>Document any support you offer or plan to provide</li>
+              <li>If no needs are expressed, mark "No need at this time" to indicate the topic was discussed</li>
+              <li>Use voice input for faster documentation during the conversation</li>
+            </ul>
+          </div>
+
           <div className="space-y-4">
-            {Object.entries(interview.supportNeeds).map(([area, data]) => (
-              <Card key={area} className="border-2">
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="capitalize font-semibold">{area.replace(/([A-Z])/g, " $1").trim()}</Label>
-                    </div>
+            {Object.entries(interview.supportNeeds).map(([area, data]) => {
+              const areaLabel = area.replace(/([A-Z])/g, " $1").trim()
+              const handleNoNeed = () => {
+                onChange(`fosterParentInterview.supportNeeds.${area}.needIdentified`, "-")
+                onChange(`fosterParentInterview.supportNeeds.${area}.supportOffered`, "-")
+              }
+              const hasNoNeed = data.needIdentified === "-" && data.supportOffered === "-"
 
-                    <div>
-                      <Label htmlFor={`${area}-need`}>Need Identified</Label>
-                      <Input
-                        id={`${area}-need`}
-                        value={data.needIdentified}
-                        onChange={(e) => onChange(`fosterParentInterview.supportNeeds.${area}.needIdentified`, e.target.value)}
-                      />
-                    </div>
+              return (
+                <Card key={area} className="border-2">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      {/* Category Header with No Need Button */}
+                      <div className="flex items-center justify-between">
+                        <Label className="capitalize font-semibold text-base">{areaLabel}</Label>
+                        <Button
+                          type="button"
+                          variant={hasNoNeed ? "default" : "outline"}
+                          size="sm"
+                          onClick={handleNoNeed}
+                          className={hasNoNeed ? "bg-slate-600 hover:bg-slate-700" : ""}
+                        >
+                          {hasNoNeed ? "✓ No need at this time" : "Mark: No need at this time"}
+                        </Button>
+                      </div>
 
-                    <div>
-                      <Label htmlFor={`${area}-support`}>Support Offered</Label>
-                      <Input
-                        id={`${area}-support`}
-                        value={data.supportOffered}
-                        onChange={(e) =>
-                          onChange(`fosterParentInterview.supportNeeds.${area}.supportOffered`, e.target.value)
-                        }
-                      />
-                    </div>
+                      {/* Fields Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor={`${area}-need`}>Need Identified</Label>
+                          <TextareaWithVoice
+                            id={`${area}-need`}
+                            value={data.needIdentified || ""}
+                            onChange={(e) => onChange(`fosterParentInterview.supportNeeds.${area}.needIdentified`, e.target.value)}
+                            placeholder={`What support does the foster parent need in ${areaLabel.toLowerCase()}?`}
+                            rows={3}
+                            showVoiceButton={true}
+                            className="text-sm"
+                          />
+                        </div>
 
-                    <div className="flex items-center space-x-2 pt-6">
-                      <Checkbox
-                        id={`${area}-followup`}
-                        checked={data.followUpRequired}
-                        onCheckedChange={(checked) =>
-                          onChange(`fosterParentInterview.supportNeeds.${area}.followUpRequired`, checked)
-                        }
-                      />
-                      <Label htmlFor={`${area}-followup`} className="cursor-pointer">
-                        Follow-up Required
-                      </Label>
+                        <div>
+                          <Label htmlFor={`${area}-support`}>Support Offered</Label>
+                          <TextareaWithVoice
+                            id={`${area}-support`}
+                            value={data.supportOffered || ""}
+                            onChange={(e) =>
+                              onChange(`fosterParentInterview.supportNeeds.${area}.supportOffered`, e.target.value)
+                            }
+                            placeholder={`What support was offered or planned for ${areaLabel.toLowerCase()}?`}
+                            rows={3}
+                            showVoiceButton={true}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Follow-up Checkbox */}
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Checkbox
+                          id={`${area}-followup`}
+                          checked={data.followUpRequired}
+                          onCheckedChange={(checked) =>
+                            onChange(`fosterParentInterview.supportNeeds.${area}.followUpRequired`, checked)
+                          }
+                        />
+                        <Label htmlFor={`${area}-followup`} className="cursor-pointer">
+                          Follow-up Required
+                        </Label>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </CardContent>
       </Card>
