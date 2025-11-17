@@ -64,6 +64,10 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     let legStartLng: number | null = null
     let legEndLat: number | null = null
     let legEndLng: number | null = null
+    let returnLegMileage: number | null = null
+    let returnLegTimestamp: string | null = null
+    let returnLegLat: number | null = null
+    let returnLegLng: number | null = null
     
     try {
       const travelLegs = await query(
@@ -104,14 +108,15 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         
         // Check for completed return leg mileage
         const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
-        let returnLegMileage: number | null = null
-        let returnLegTimestamp: string | null = null
-        let returnLegLat: number | null = null
-        let returnLegLng: number | null = null
         
-        if (completedReturnLeg && completedReturnLeg.calculated_mileage) {
-          returnLegMileage = completedReturnLeg.calculated_mileage
-          returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
+        if (completedReturnLeg) {
+          returnLegMileage = completedReturnLeg.calculated_mileage || null
+          try {
+            returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
+          } catch (timestampError) {
+            console.error("⚠️ [API] Error formatting return leg timestamp:", timestampError)
+            returnLegTimestamp = null
+          }
           returnLegLat = completedReturnLeg.end_latitude || null
           returnLegLng = completedReturnLeg.end_longitude || null
         }
@@ -148,10 +153,10 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         arrived_latitude: legEndLat || appointment.arrived_latitude || null,
         arrived_longitude: legEndLng || appointment.arrived_longitude || null,
         // Add return leg mileage data (use leg mileage if available, otherwise use appointment return_mileage)
-        return_mileage: returnLegMileage !== null ? returnLegMileage : (appointment.return_mileage || null),
-        return_timestamp: returnLegTimestamp || appointment.return_timestamp || null,
-        return_latitude: returnLegLat !== null ? returnLegLat : (appointment.return_latitude || null),
-        return_longitude: returnLegLng !== null ? returnLegLng : (appointment.return_longitude || null),
+        return_mileage: returnLegMileage !== null && returnLegMileage !== undefined ? returnLegMileage : (appointment.return_mileage || null),
+        return_timestamp: returnLegTimestamp && returnLegTimestamp !== "" ? returnLegTimestamp : (appointment.return_timestamp || null),
+        return_latitude: returnLegLat !== null && returnLegLat !== undefined ? returnLegLat : (appointment.return_latitude || null),
+        return_longitude: returnLegLng !== null && returnLegLng !== undefined ? returnLegLng : (appointment.return_longitude || null),
       },
       timestamp: new Date().toISOString(),
     })
