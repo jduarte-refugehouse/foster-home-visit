@@ -920,74 +920,92 @@ export const ObservationsSection = ({ formData, onChange }) => {
         <AlertDescription>Document all observations objectively. Use this section for important details not captured elsewhere.</AlertDescription>
       </Alert>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
           <Label htmlFor="environmental">Environmental Observations</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to observe:</strong> Overall cleanliness and organization of the home, safety hazards (clutter, tripping hazards, exposed wires), temperature and ventilation, odors, pest issues, general maintenance, and whether the environment feels safe and welcoming for children.
+          </p>
           <TextareaWithVoice
             id="environmental"
             value={observations.environmental}
             onChange={(e) => onChange("observations.environmental", e.target.value)}
-            placeholder="Overall home environment, cleanliness, safety observations..."
+            placeholder="Document the physical condition of the home, cleanliness standards, safety concerns, and overall environmental quality..."
             rows={4}
             showVoiceButton={true}
           />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="familyDynamics">Family Dynamics</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to observe:</strong> How foster parents interact with each other (respectful, supportive, tense), communication style (open, defensive, collaborative), decision-making patterns, how they handle stress or disagreements, and the overall emotional climate of the household.
+          </p>
           <TextareaWithVoice
             id="familyDynamics"
             value={observations.familyDynamics}
             onChange={(e) => onChange("observations.familyDynamics", e.target.value)}
-            placeholder="Interactions between family members, communication patterns..."
+            placeholder="Note the quality of relationships between foster parents, communication patterns, conflict resolution, and overall family functioning..."
             rows={4}
             showVoiceButton={true}
           />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="childInteractions">Child Interactions</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to observe:</strong> How foster parents interact with children (warm, responsive, patient, dismissive), how children respond to foster parents (comfortable, fearful, seeking attention), sibling relationships, children's comfort level in the home, and any concerning or positive interaction patterns.
+          </p>
           <TextareaWithVoice
             id="childInteractions"
             value={observations.childInteractions}
             onChange={(e) => onChange("observations.childInteractions", e.target.value)}
-            placeholder="How children interact with each other and foster parents..."
+            placeholder="Document how children interact with foster parents and each other, attachment behaviors, responsiveness, and the quality of relationships observed..."
             rows={4}
             showVoiceButton={true}
           />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="complianceConcerns">Compliance Concerns</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to observe:</strong> Any violations of licensing requirements, missing documentation, expired certifications, safety code violations, capacity issues, medication storage problems, or other regulatory concerns that need immediate attention or follow-up.
+          </p>
           <TextareaWithVoice
             id="complianceConcerns"
             value={observations.complianceConcerns}
             onChange={(e) => onChange("observations.complianceConcerns", e.target.value)}
-            placeholder="Any compliance issues or areas requiring attention..."
+            placeholder="Document any compliance issues, licensing violations, missing documentation, or areas that require corrective action..."
             rows={4}
             showVoiceButton={true}
           />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="recommendations">Recommendations</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to consider:</strong> Suggestions for training, resources, or support that could help the foster family. This might include parenting strategies, community resources, home improvements, or referrals to services that could enhance the placement quality.
+          </p>
           <TextareaWithVoice
             id="recommendations"
             value={observations.recommendations}
             onChange={(e) => onChange("observations.recommendations", e.target.value)}
-            placeholder="Suggestions for improvements or resources..."
+            placeholder="Provide constructive recommendations for training, resources, improvements, or support services that could benefit the foster family..."
             rows={4}
             showVoiceButton={true}
           />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="other">Other Observations</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to document:</strong> Any other significant observations not captured in other fields. This might include unique strengths, concerning patterns, positive changes since last visit, community involvement, or anything else that provides important context about the home or family.
+          </p>
           <TextareaWithVoice
             id="other"
             value={observations.other}
             onChange={(e) => onChange("observations.other", e.target.value)}
-            placeholder="Any other relevant observations..."
+            placeholder="Document any other relevant observations, strengths, concerns, or contextual information about the home or family..."
             rows={4}
             showVoiceButton={true}
           />
@@ -995,16 +1013,20 @@ export const ObservationsSection = ({ formData, onChange }) => {
       </div>
 
       <div className="border-t pt-6">
-        <Label htmlFor="observations-combined-notes">Combined General Observations</Label>
-        <TextareaWithVoice
-          id="observations-combined-notes"
-          value={observations.combinedNotes}
-          onChange={(e) => onChange("observations.combinedNotes", e.target.value)}
-          placeholder="Summary of overall observations and impressions from the visit..."
-          rows={4}
-          className="mt-2"
-          showVoiceButton={true}
-        />
+        <div className="space-y-2">
+          <Label htmlFor="observations-combined-notes">Combined General Observations</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            <strong>What to document:</strong> A comprehensive summary of your overall impressions from the visit. This should synthesize key points from all observation categories above, highlight the most important findings, note any significant changes since the last visit, and provide an overall assessment of the home's suitability and the family's functioning.
+          </p>
+          <TextareaWithVoice
+            id="observations-combined-notes"
+            value={observations.combinedNotes}
+            onChange={(e) => onChange("observations.combinedNotes", e.target.value)}
+            placeholder="Provide a comprehensive summary synthesizing key observations, overall impressions, significant changes, and assessment of home suitability and family functioning..."
+            rows={4}
+            showVoiceButton={true}
+          />
+        </div>
       </div>
     </div>
   )
