@@ -1863,11 +1863,13 @@ export default function AppointmentDetailPage() {
                       })
                       
                       if (response.ok) {
+                        const responseData = await response.json()
                         toast({
                           title: "Return Complete",
-                          description: "Return travel completed successfully.",
+                          description: `Return travel completed successfully. Distance: ${responseData.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
                         })
-                        fetchAppointmentDetails()
+                        // Refresh appointment details to update button state and mileage tracking
+                        await fetchAppointmentDetails()
                         setHistoryRefreshKey((prev) => prev + 1)
                       } else {
                         const errorData = await response.json()

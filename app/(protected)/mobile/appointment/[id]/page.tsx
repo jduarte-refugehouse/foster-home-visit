@@ -1200,13 +1200,13 @@ export default function MobileAppointmentDetailPage() {
             </>
           )}
 
-          {/* Return Travel In Progress: Show "Arrived at Home" button */}
+          {/* Return Travel In Progress: Show "Complete Return" button */}
           {/* Show if currentLegId exists (return leg was created) and return is not completed */}
           {currentLegId && !hasReturnCompleted && (
             <Button
               onClick={async () => {
                 try {
-                  // Don't set capturingLocation here - captureLocation does it internally
+                  setCapturingLocation(true)
                   const location = await captureLocation("arrived")
 
                   // Set Clerk auth headers - use ref to ensure we always have the latest user info
@@ -1244,16 +1244,19 @@ export default function MobileAppointmentDetailPage() {
                     }),
                   })
 
-                  const data = await handleApiResponse(response, "Arrived at Home")
+                  const data = await handleApiResponse(response, "Complete Return")
 
                   // Clear current leg since it's now completed
                   setCurrentLegId(null)
                   
                   toast({
-                    title: "Arrived at Home",
-                    description: `Return travel completed. Distance: ${data.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
+                    title: "Return Complete",
+                    description: `Return travel completed successfully. Distance: ${data.calculated_mileage?.toFixed(2) || "0.00"} miles.`,
                   })
-                  fetchAppointmentDetails()
+                  
+                  // Refresh appointment details to update button state and mileage tracking
+                  await fetchAppointmentDetails()
+                  await fetchCurrentTravelLeg()
                 } catch (error) {
                   console.error("Error logging arrival at home:", error)
                   
@@ -1281,11 +1284,11 @@ export default function MobileAppointmentDetailPage() {
                 }
               }}
               disabled={capturingLocation}
-              className="w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              {capturingLocation ? "Capturing Location..." : "Arrived at Home"}
+              {capturingLocation ? "Capturing..." : "Complete Return"}
             </Button>
           )}
 
