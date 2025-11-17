@@ -218,13 +218,18 @@ export default function MobileAppointmentDetailPage() {
       })
 
       if (data.success && data.legs && data.legs.length > 0) {
-        // Find leg that ends at this appointment (in-progress leg to this appointment)
-        // or starts from this appointment (completed leg from this appointment)
-        const relevantLeg = data.legs.find(
-          (leg: any) =>
-            (leg.appointment_id_to === appointmentId && leg.leg_status === 'in_progress') ||
-            leg.appointment_id_from === appointmentId
+        // Prioritize return legs (FROM appointment) over incoming legs (TO appointment)
+        // First, try to find a leg going FROM this appointment (return leg)
+        let relevantLeg = data.legs.find(
+          (leg: any) => leg.appointment_id_from === appointmentId
         )
+        
+        // If no return leg found, look for leg going TO this appointment (incoming leg)
+        if (!relevantLeg) {
+          relevantLeg = data.legs.find(
+            (leg: any) => leg.appointment_id_to === appointmentId && leg.leg_status === 'in_progress'
+          )
+        }
 
         if (relevantLeg) {
           console.log("✅ [fetchCurrentTravelLeg] Found relevant leg:", {
@@ -234,10 +239,12 @@ export default function MobileAppointmentDetailPage() {
             appointment_id_to: relevantLeg.appointment_id_to,
             appointment_id_from: relevantLeg.appointment_id_from
           })
+          // Only update if we found a leg - don't clear currentLegId if no leg found
           setCurrentLegId(relevantLeg.leg_id)
           setJourneyId(relevantLeg.journey_id)
         } else {
           console.log("ℹ️ [fetchCurrentTravelLeg] No relevant leg found for appointment:", appointmentId)
+          // Don't clear currentLegId - it might have been set by a recent action
         }
       } else {
         console.log("ℹ️ [fetchCurrentTravelLeg] No in-progress legs found")
@@ -871,7 +878,10 @@ export default function MobileAppointmentDetailPage() {
           description: "Return trip tracking started. Click 'Arrived at Home' when you reach your destination.",
         })
         setShowLeavingDialog(false)
-        fetchAppointmentDetails()
+        
+        // Refresh appointment details and travel leg to ensure state is synced
+        await fetchAppointmentDetails()
+        await fetchCurrentTravelLeg()
       }
     } catch (error) {
       console.error("Error handling leaving action:", error)
@@ -1138,8 +1148,8 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Post-Visit Phase: Leaving */}
-          {/* Show if visit completed or arrived, but NOT if return travel has started (check both hasReturnStarted and currentLegId) */}
-          {(visitCompleted || (hasArrived && !hasReturnStarted && !currentLegId && (appointment.status === "scheduled" || visitInProgress))) && (
+          {/* Show if visit completed or arrived, but NOT if return travel leg exists (currentLegId) */}
+          {(visitCompleted || (hasArrived && !currentLegId && (appointment.status === "scheduled" || visitInProgress))) && (
             <>
               {hasNextAppointment && nextAppointment && (
                 <Button
@@ -1191,8 +1201,8 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Return Travel In Progress: Show "Arrived at Home" button */}
-          {/* Show if return has started OR if currentLegId exists (just created return leg) */}
-          {((hasReturnStarted || currentLegId) && !hasReturnCompleted && currentLegId) && (
+          {/* Show if currentLegId exists (return leg was created) and return is not completed */}
+          {currentLegId && !hasReturnCompleted && (
             <Button
               onClick={async () => {
                 try {
