@@ -4,6 +4,7 @@ import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 import { query } from "@/lib/db"
 import { getUserByClerkId } from "@/lib/user-management"
 import { format } from "date-fns"
+import PDFDocument from "pdfkit"
 
 export const runtime = "nodejs"
 
@@ -137,6 +138,55 @@ export async function POST(request: NextRequest) {
     // Set SendGrid API key
     sgMail.setApiKey(apiKey)
 
+    // Get visit form ID from appointment to fetch attachments
+    let visitFormId: string | null = null
+    let attachments: any[] = []
+    try {
+      const visitFormResult = await query<{ visit_form_id: string }>(
+        `SELECT TOP 1 visit_form_id FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0 ORDER BY created_at DESC`,
+        [appointmentId]
+      )
+      if (visitFormResult.length > 0) {
+        visitFormId = visitFormResult[0].visit_form_id
+        console.log(`📸 [REPORT] Found visit form ID: ${visitFormId}`)
+        
+        // Fetch attachments
+        try {
+          attachments = await query(
+            `SELECT 
+              attachment_id, file_name, file_path, file_size, mime_type,
+              attachment_type, description, file_data, created_at, created_by_name
+            FROM dbo.visit_form_attachments
+            WHERE visit_form_id = @param0 AND (is_deleted = 0 OR is_deleted IS NULL)
+            ORDER BY created_at DESC`,
+            [visitFormId]
+          )
+          console.log(`📸 [REPORT] Found ${attachments.length} attachments`)
+        } catch (attachError: any) {
+          if (attachError?.message?.includes("Invalid column name")) {
+            // Try without is_deleted column
+            attachments = await query(
+              `SELECT 
+                attachment_id, file_name, file_path, file_size, mime_type,
+                attachment_type, description, file_data, created_at, created_by_name
+              FROM dbo.visit_form_attachments
+              WHERE visit_form_id = @param0
+              ORDER BY created_at DESC`,
+              [visitFormId]
+            )
+            console.log(`📸 [REPORT] Found ${attachments.length} attachments (without is_deleted check)`)
+          } else {
+            console.error(`❌ [REPORT] Error fetching attachments:`, attachError)
+          }
+        }
+      } else {
+        console.log(`⚠️ [REPORT] No visit form found for appointment ${appointmentId}`)
+      }
+    } catch (error) {
+      console.error(`❌ [REPORT] Error fetching visit form/attachments:`, error)
+      // Continue without attachments
+    }
+
     // Generate report content
     const visitDate = formData.visitInfo?.date
       ? format(new Date(formData.visitInfo.date), "MMMM d, yyyy")
@@ -145,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     const subject = `Foster Home Visit Report - ${familyName} - ${visitDate}`
 
-    const htmlContent = generateCompleteReportHTML(formData, appointmentId, visitDate, visitTime, familyName, appointment)
+    const htmlContent = generateCompleteReportHTML(formData, appointmentId, visitDate, visitTime, familyName, appointment, attachments)
     const textContent = generateCompleteReportText(formData, appointmentId, visitDate, visitTime, familyName, appointment)
 
     // Determine recipient based on recipientType
@@ -180,6 +230,89 @@ export async function POST(request: NextRequest) {
     // Add CC if specified
     if (ccEmailList) {
       msg.cc = ccEmailList
+    }
+
+    // Generate PDF from images and attach if there are images
+    const imageAttachments = attachments.filter((att: any) => att.file_data && att.mime_type?.startsWith('image/'))
+    if (imageAttachments.length > 0) {
+      try {
+        console.log(`📄 [REPORT] Generating PDF from ${imageAttachments.length} images`)
+        
+        // Create PDF document
+        const doc = new PDFDocument({ margin: 50 })
+        const chunks: Buffer[] = []
+        
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk))
+        doc.on('end', () => {})
+        
+        // Add title
+        doc.fontSize(16).text(`Foster Home Visit Attachments - ${familyName}`, { align: 'center' })
+        doc.fontSize(12).text(`Visit Date: ${visitDate}`, { align: 'center' })
+        doc.moveDown()
+        
+        // Add each image to PDF
+        for (let i = 0; i < imageAttachments.length; i++) {
+          const attachment = imageAttachments[i]
+          if (i > 0) {
+            doc.addPage()
+          }
+          
+          // Extract base64 data
+          const base64Data = attachment.file_data.replace(/^data:image\/\w+;base64,/, '')
+          const imageBuffer = Buffer.from(base64Data, 'base64')
+          
+          // Add image description
+          doc.fontSize(12).text(attachment.description || attachment.file_name || `Attachment ${i + 1}`, { align: 'left' })
+          doc.moveDown(0.5)
+          
+          // Calculate image dimensions to fit page
+          const pageWidth = doc.page.width - 100 // margins
+          const pageHeight = doc.page.height - 200 // leave space for title/description
+          
+          // Get image dimensions (approximate - pdfkit will handle scaling)
+          doc.image(imageBuffer, {
+            fit: [pageWidth, pageHeight],
+            align: 'center',
+            valign: 'center'
+          })
+          
+          // Add metadata
+          doc.moveDown()
+          doc.fontSize(8).fillColor('gray')
+          if (attachment.created_at) {
+            doc.text(`Uploaded: ${format(new Date(attachment.created_at), "MMM d, yyyy h:mm a")}`, { align: 'left' })
+          }
+          if (attachment.created_by_name) {
+            doc.text(`By: ${attachment.created_by_name}`, { align: 'left' })
+          }
+          doc.fillColor('black')
+        }
+        
+        doc.end()
+        
+        // Wait for PDF to finish generating
+        await new Promise<void>((resolve) => {
+          doc.on('end', () => resolve())
+        })
+        
+        // Combine chunks into single buffer
+        const pdfBuffer = Buffer.concat(chunks)
+        
+        // Attach PDF to email
+        msg.attachments = [
+          {
+            content: pdfBuffer.toString('base64'),
+            filename: `visit-attachments-${familyName.replace(/\s+/g, '-')}-${visitDate.replace(/\s+/g, '-')}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment',
+          }
+        ]
+        
+        console.log(`✅ [REPORT] PDF generated successfully (${pdfBuffer.length} bytes)`)
+      } catch (pdfError) {
+        console.error(`❌ [REPORT] Error generating PDF:`, pdfError)
+        // Continue without PDF attachment - images are still inline in HTML
+      }
     }
 
     // Send the email
@@ -225,6 +358,7 @@ function generateCompleteReportHTML(
   visitTime: string,
   familyName: string,
   appointment?: any,
+  attachments: any[] = [],
 ): string {
   // Helper to format signature field with image (handles flat structure: parent1, parent1Signature, parent1Date)
   const formatSignatureField = (label: string, name: string, signature: any, date: string) => {
@@ -332,31 +466,62 @@ function generateCompleteReportHTML(
     return '<span style="color: #9ca3af; font-style: italic;">Not answered</span>'
   }
 
-  // Helper to format compliance sections - show ALL items in tabular format
+  // Helper to format compliance sections - ALWAYS show sections for compliance validation
   const formatComplianceSection = (sectionData: any, sectionName: string, showMonthly = true, isQuarterly = true) => {
-    if (!sectionData) return ""
+    // For compliance, always show the section even if empty
+    // This ensures case managers can validate all sections were reviewed
     
-    // Handle case where sectionData might be an object with items, or just items array
-    const items = sectionData.items || (Array.isArray(sectionData) ? sectionData : [])
-    
-    // If no items and no combined notes, don't show section
-    if ((!items || items.length === 0) && !sectionData.combinedNotes) {
-      return ""
-    }
-    
-    // If no items but has combined notes, show just the notes
-    if (!items || items.length === 0) {
+    // If sectionData is null/undefined, show empty section
+    if (!sectionData) {
       return `
         <div style="margin-bottom: 20px;">
           <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
-          <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
+          <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No items reviewed for this section.</p>
         </div>
       `
     }
     
+    // Handle case where sectionData might be an object with items, or just items array
+    const items = sectionData?.items || (Array.isArray(sectionData) ? sectionData : [])
+    
     // Ensure items is an array
     if (!Array.isArray(items)) {
-      return ""
+      // If section exists but has no items, show empty section
+      if (sectionData && typeof sectionData === 'object') {
+        return `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+            <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No items reviewed for this section.</p>
+            ${sectionData.combinedNotes ? `<p style="margin-top: 10px; font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>` : ""}
+          </div>
+        `
+      }
+      // Show empty section for compliance validation
+      return `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+          <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No items reviewed for this section.</p>
+        </div>
+      `
+    }
+    
+    // If no items but has combined notes, show section with notes
+    if (items.length === 0) {
+      if (sectionData?.combinedNotes) {
+        return `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+            <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
+          </div>
+        `
+      }
+      // Show empty section for compliance validation
+      return `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+          <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No items reviewed for this section.</p>
+        </div>
+      `
     }
 
     // Check if this section uses monthly tracking (has month1, month2, month3)
@@ -802,29 +967,63 @@ function generateCompleteReportHTML(
           if (formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare) {
             return "" // Will be handled by legacy section below
           }
-          return ""
+          // For compliance validation, show empty compliance review section
+          return `
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
+              <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No compliance sections were reviewed for this visit.</p>
+            </div>
+          `
         }
         
-        // Build list of all compliance sections to show
+        // Build list of all compliance sections - ALWAYS show all expected sections for compliance validation
         const sections: string[] = []
         
-        if (complianceReview.medication) sections.push(formatComplianceSection(complianceReview.medication, "1. Medication", true, true))
-        if (complianceReview.healthSafety) sections.push(formatComplianceSection(complianceReview.healthSafety, "2. Health & Safety", true, true))
-        if (complianceReview.inspections) sections.push(formatInspectionsSection(complianceReview.inspections))
-        if (complianceReview.childrensRights) sections.push(formatComplianceSection(complianceReview.childrensRights, "3. Children's Rights & Well-Being", true, true))
-        if (complianceReview.bedrooms) sections.push(formatComplianceSection(complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true))
-        if (complianceReview.education) sections.push(formatComplianceSection(complianceReview.education, "5. Education & Life Skills", true, true))
-        if (complianceReview.indoorSpace) sections.push(formatComplianceSection(complianceReview.indoorSpace, "6. Indoor Space", true, true))
-        if (complianceReview.outdoorSpace) sections.push(formatComplianceSection(complianceReview.outdoorSpace, "8. Outdoor Space", false, false))
-        if (complianceReview.vehicles) sections.push(formatComplianceSection(complianceReview.vehicles, "9. Vehicles", false, false))
-        if (complianceReview.swimming) sections.push(formatComplianceSection(complianceReview.swimming, "10. Swimming Areas", false, false))
-        if (complianceReview.infants) sections.push(formatComplianceSection(complianceReview.infants, "11. Infants", false, false))
-        if (complianceReview.packageCompliance) sections.push(formatPackageComplianceSection(complianceReview.packageCompliance))
+        // Define all expected compliance sections
+        const expectedSections = [
+          { key: "medication", name: "1. Medication", showMonthly: true, isQuarterly: true },
+          { key: "healthSafety", name: "2. Health & Safety", showMonthly: true, isQuarterly: true },
+          { key: "childrensRights", name: "3. Children's Rights & Well-Being", showMonthly: true, isQuarterly: true },
+          { key: "bedrooms", name: "4. Bedrooms and Belongings", showMonthly: true, isQuarterly: true },
+          { key: "education", name: "5. Education & Life Skills", showMonthly: true, isQuarterly: true },
+          { key: "indoorSpace", name: "6. Indoor Space", showMonthly: true, isQuarterly: true },
+          { key: "outdoorSpace", name: "8. Outdoor Space", showMonthly: false, isQuarterly: false },
+          { key: "vehicles", name: "9. Vehicles", showMonthly: false, isQuarterly: false },
+          { key: "swimming", name: "10. Swimming Areas", showMonthly: false, isQuarterly: false },
+          { key: "infants", name: "11. Infants", showMonthly: false, isQuarterly: false },
+        ]
+        
+        // Always show inspections if it exists
+        if (complianceReview.inspections) {
+          sections.push(formatInspectionsSection(complianceReview.inspections))
+        }
+        
+        // Show all expected sections (even if empty) for compliance validation
+        expectedSections.forEach(({ key, name, showMonthly, isQuarterly }) => {
+          if (complianceReview[key]) {
+            sections.push(formatComplianceSection(complianceReview[key], name, showMonthly, isQuarterly))
+          } else {
+            // Show empty section for compliance validation
+            sections.push(formatComplianceSection(null, name, showMonthly, isQuarterly))
+          }
+        })
+        
+        // Package compliance (optional)
+        if (complianceReview.packageCompliance) {
+          sections.push(formatPackageComplianceSection(complianceReview.packageCompliance))
+        }
         
         // Filter out empty strings
         const validSections = sections.filter(s => s && s.trim())
         
-        if (validSections.length === 0) return ""
+        if (validSections.length === 0) {
+          return `
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
+              <p style="color: #9ca3af; font-style: italic; padding: 15px; background-color: #f9fafb; border-radius: 4px;">No compliance sections were reviewed for this visit.</p>
+            </div>
+          `
+        }
         
         return `
           <div style="margin-bottom: 30px;">
@@ -1341,6 +1540,44 @@ function generateCompleteReportHTML(
             return signatureHtml
           })()}
         </div>
+      </div>
+      ` : ""}
+
+      <!-- Attachments -->
+      ${attachments && attachments.length > 0 ? `
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Attachments</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+          ${attachments.filter((att: any) => att.file_data && att.mime_type?.startsWith('image/')).map((attachment: any) => {
+            const attachmentTypeLabel = attachment.attachment_type ? attachment.attachment_type.replace(/([A-Z])/g, " $1").trim() : "Photo"
+            const createdDate = attachment.created_at ? format(new Date(attachment.created_at), "MMM d, yyyy h:mm a") : ""
+            return `
+              <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${attachment.description || attachment.file_name || attachmentTypeLabel}</h4>
+                ${attachment.file_data ? `
+                  <div style="margin-bottom: 10px;">
+                    <img src="${attachment.file_data}" alt="${attachment.description || attachment.file_name || 'Attachment'}" style="max-width: 100%; height: auto; border: 1px solid #d1d5db; border-radius: 4px;" />
+                  </div>
+                ` : ""}
+                <p style="font-size: 11px; color: #6b7280; margin: 5px 0;">
+                  ${attachmentTypeLabel}${createdDate ? ` • ${createdDate}` : ""}
+                  ${attachment.created_by_name ? ` • ${attachment.created_by_name}` : ""}
+                </p>
+              </div>
+            `
+          }).join("")}
+        </div>
+        ${attachments.filter((att: any) => !att.file_data || !att.mime_type?.startsWith('image/')).length > 0 ? `
+          <div style="margin-top: 15px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Other Attachments</h4>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${attachments.filter((att: any) => !att.file_data || !att.mime_type?.startsWith('image/')).map((attachment: any) => {
+                const createdDate = attachment.created_at ? format(new Date(attachment.created_at), "MMM d, yyyy h:mm a") : ""
+                return `<li style="margin: 5px 0;">${attachment.file_name || attachment.description || 'Attachment'}${createdDate ? ` (${createdDate})` : ""}</li>`
+              }).join("")}
+            </ul>
+          </div>
+        ` : ""}
       </div>
       ` : ""}
 
