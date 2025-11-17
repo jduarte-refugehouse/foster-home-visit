@@ -47,20 +47,27 @@ export async function POST(request: NextRequest) {
     // Debug: Log the formData structure to see what we're receiving
     console.log("📋 [API] FormData keys:", Object.keys(formData))
     console.log("📋 [API] ComplianceReview keys:", formData.complianceReview ? Object.keys(formData.complianceReview) : "No complianceReview")
-    console.log("📋 [API] ComplianceReview sections:", formData.complianceReview ? Object.keys(formData.complianceReview).filter(k => formData.complianceReview[k] !== null) : [])
+    console.log("📋 [API] ComplianceReview sections:", formData.complianceReview ? Object.keys(formData.complianceReview).filter(k => formData.complianceReview[k] !== null && formData.complianceReview[k] !== undefined) : [])
     
-    // Debug: Log sample compliance section to see structure
-    if (formData.complianceReview?.medication) {
-      console.log("📋 [API] Medication section sample:", {
-        itemsCount: formData.complianceReview.medication.items?.length || 0,
-        firstItem: formData.complianceReview.medication.items?.[0],
-        hasMonth1: formData.complianceReview.medication.items?.[0]?.month1 !== undefined,
+    // Debug: Log each compliance section to see what's there
+    if (formData.complianceReview) {
+      Object.entries(formData.complianceReview).forEach(([key, value]: [string, any]) => {
+        if (value && typeof value === 'object') {
+          const items = value.items || (Array.isArray(value) ? value : [])
+          console.log(`📋 [API] Compliance section "${key}":`, {
+            hasItems: !!items,
+            itemsCount: Array.isArray(items) ? items.length : 0,
+            hasCombinedNotes: !!value.combinedNotes,
+            firstItemSample: Array.isArray(items) && items.length > 0 ? items[0] : null
+          })
+        }
       })
     }
     
-    console.log("📋 [API] Signatures:", formData.signatures)
-    console.log("📋 [API] Observations:", formData.observations)
-    console.log("📋 [API] FamilyInfo:", formData.familyInfo)
+    console.log("📋 [API] Signatures:", formData.signatures ? Object.keys(formData.signatures) : "No signatures")
+    console.log("📋 [API] Observations keys:", formData.observations ? Object.keys(formData.observations) : "No observations")
+    console.log("📋 [API] FosterParentInterview:", formData.fosterParentInterview ? "exists" : formData.parentInterviews?.fosterParentInterview ? "exists in parentInterviews" : "not found")
+    console.log("📋 [API] VisitSummary:", formData.visitSummary ? Object.keys(formData.visitSummary) : "No visitSummary")
 
     // Get current user's email for CC (use from auth if available, otherwise lookup)
     let ccEmail = currentUserEmail
@@ -332,17 +339,23 @@ function generateCompleteReportHTML(
     // Handle case where sectionData might be an object with items, or just items array
     const items = sectionData.items || (Array.isArray(sectionData) ? sectionData : [])
     
-    // Show ALL items, regardless of whether they have status or not
+    // If no items and no combined notes, don't show section
+    if ((!items || items.length === 0) && !sectionData.combinedNotes) {
+      return ""
+    }
+    
+    // If no items but has combined notes, show just the notes
     if (!items || items.length === 0) {
-      // Still show section if there are combined notes
-      if (sectionData.combinedNotes) {
-        return `
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
-            <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
-          </div>
-        `
-      }
+      return `
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">${sectionName}${isQuarterly ? ' <span style="font-size: 12px; color: #6b7280; font-weight: normal;">(Quarterly)</span>' : ''}</h3>
+          <p style="font-style: italic; white-space: pre-wrap;">${sectionData.combinedNotes}</p>
+        </div>
+      `
+    }
+    
+    // Ensure items is an array
+    if (!Array.isArray(items)) {
       return ""
     }
 
@@ -781,26 +794,46 @@ function generateCompleteReportHTML(
       ` : ""}
 
       <!-- Compliance Review -->
-      ${formData.complianceReview && Object.keys(formData.complianceReview).length > 0 ? `
-      <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
-        ${formData.complianceReview.medication ? formatComplianceSection(formData.complianceReview.medication, "1. Medication", true, true) : ""}
-        ${formData.complianceReview.healthSafety ? formatComplianceSection(formData.complianceReview.healthSafety, "2. Health & Safety", true, true) : ""}
-        ${formData.complianceReview.inspections ? formatInspectionsSection(formData.complianceReview.inspections) : ""}
-        ${formData.complianceReview.childrensRights ? formatComplianceSection(formData.complianceReview.childrensRights, "3. Children's Rights & Well-Being", true, true) : ""}
-        ${formData.complianceReview.bedrooms ? formatComplianceSection(formData.complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true) : ""}
-        ${formData.complianceReview.education ? formatComplianceSection(formData.complianceReview.education, "5. Education & Life Skills", true, true) : ""}
-        ${formData.complianceReview.indoorSpace ? formatComplianceSection(formData.complianceReview.indoorSpace, "6. Indoor Space", true, true) : ""}
-        <!-- HIDDEN FOR V1: ${formData.complianceReview.documentation ? formatComplianceSection(formData.complianceReview.documentation, "7. Documentation", true, true) : ""} -->
-        ${formData.complianceReview.outdoorSpace ? formatComplianceSection(formData.complianceReview.outdoorSpace, "8. Outdoor Space", false, false) : ""}
-        <!-- HIDDEN FOR V1: ${formData.complianceReview.traumaInformedCare ? formatTraumaInformedCare(formData.complianceReview.traumaInformedCare) : ""} -->
-        ${formData.complianceReview.vehicles ? formatComplianceSection(formData.complianceReview.vehicles, "9. Vehicles", false, false) : ""}
-        ${formData.complianceReview.swimming ? formatComplianceSection(formData.complianceReview.swimming, "10. Swimming Areas", false, false) : ""}
-        ${formData.complianceReview.infants ? formatComplianceSection(formData.complianceReview.infants, "11. Infants", false, false) : ""}
-        ${formData.complianceReview.packageCompliance ? formatPackageComplianceSection(formData.complianceReview.packageCompliance) : ""}
-        <!-- HIDDEN FOR V1: ${formData.complianceReview.qualityEnhancement ? formatQualityEnhancement(formData.complianceReview.qualityEnhancement) : ""} -->
-      </div>
-      ` : formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare ? `
+      ${(() => {
+        // Check for complianceReview first, then legacy format
+        const complianceReview = formData.complianceReview
+        if (!complianceReview || (typeof complianceReview === 'object' && Object.keys(complianceReview).length === 0)) {
+          // Check legacy format
+          if (formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare) {
+            return "" // Will be handled by legacy section below
+          }
+          return ""
+        }
+        
+        // Build list of all compliance sections to show
+        const sections: string[] = []
+        
+        if (complianceReview.medication) sections.push(formatComplianceSection(complianceReview.medication, "1. Medication", true, true))
+        if (complianceReview.healthSafety) sections.push(formatComplianceSection(complianceReview.healthSafety, "2. Health & Safety", true, true))
+        if (complianceReview.inspections) sections.push(formatInspectionsSection(complianceReview.inspections))
+        if (complianceReview.childrensRights) sections.push(formatComplianceSection(complianceReview.childrensRights, "3. Children's Rights & Well-Being", true, true))
+        if (complianceReview.bedrooms) sections.push(formatComplianceSection(complianceReview.bedrooms, "4. Bedrooms and Belongings", true, true))
+        if (complianceReview.education) sections.push(formatComplianceSection(complianceReview.education, "5. Education & Life Skills", true, true))
+        if (complianceReview.indoorSpace) sections.push(formatComplianceSection(complianceReview.indoorSpace, "6. Indoor Space", true, true))
+        if (complianceReview.outdoorSpace) sections.push(formatComplianceSection(complianceReview.outdoorSpace, "8. Outdoor Space", false, false))
+        if (complianceReview.vehicles) sections.push(formatComplianceSection(complianceReview.vehicles, "9. Vehicles", false, false))
+        if (complianceReview.swimming) sections.push(formatComplianceSection(complianceReview.swimming, "10. Swimming Areas", false, false))
+        if (complianceReview.infants) sections.push(formatComplianceSection(complianceReview.infants, "11. Infants", false, false))
+        if (complianceReview.packageCompliance) sections.push(formatPackageComplianceSection(complianceReview.packageCompliance))
+        
+        // Filter out empty strings
+        const validSections = sections.filter(s => s && s.trim())
+        
+        if (validSections.length === 0) return ""
+        
+        return `
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
+            ${validSections.join("")}
+          </div>
+        `
+      })()}
+      ${formData.medication || formData.healthSafety || formData.childrensRights || formData.traumaInformedCare ? `
       <!-- Compliance Review (from formData root - legacy format) -->
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Compliance Review</h2>
@@ -844,7 +877,38 @@ function generateCompleteReportHTML(
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Follow-up Items</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
           <ul style="margin: 0; padding-left: 20px;">
-            ${formData.observations.followUpItems.map((item: any) => `<li style="margin: 5px 0;">${typeof item === 'string' ? item : item.description || item}</li>`).join("")}
+            ${formData.observations.followUpItems.map((item: any) => {
+              let itemText = ""
+              if (typeof item === 'string') {
+                itemText = item
+              } else if (typeof item === 'object' && item !== null) {
+                // Handle object format
+                itemText = item.description || item.text || item.item || item.name || JSON.stringify(item)
+              } else {
+                itemText = String(item)
+              }
+              return `<li style="margin: 5px 0;">${itemText}</li>`
+            }).join("")}
+          </ul>
+        </div>
+      </div>
+      ` : formData.followUpItems && Array.isArray(formData.followUpItems) && formData.followUpItems.length > 0 ? `
+      <!-- Follow-up Items (from formData root) -->
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Follow-up Items</h2>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+          <ul style="margin: 0; padding-left: 20px;">
+            ${formData.followUpItems.map((item: any) => {
+              let itemText = ""
+              if (typeof item === 'string') {
+                itemText = item
+              } else if (typeof item === 'object' && item !== null) {
+                itemText = item.description || item.text || item.item || item.name || JSON.stringify(item)
+              } else {
+                itemText = String(item)
+              }
+              return `<li style="margin: 5px 0;">${itemText}</li>`
+            }).join("")}
           </ul>
         </div>
       </div>
@@ -995,12 +1059,29 @@ function generateCompleteReportHTML(
       ` : ""}
 
       <!-- Foster Parent Interview Section -->
-      ${formData.fosterParentInterview ? `
-      <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview Summary</h2>
-        ${(() => {
-          const interview = formData.fosterParentInterview
-          let html = ""
+      ${(() => {
+        // Check both possible data structures
+        const interview = formData.fosterParentInterview || formData.parentInterviews?.fosterParentInterview
+        if (!interview) return ""
+        
+        // If it's a string, just display it
+        if (typeof interview === 'string') {
+          return `
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview Summary</h2>
+              <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+                <p style="white-space: pre-wrap;">${interview}</p>
+              </div>
+            </div>
+          `
+        }
+        
+        // If it's an object, format it properly
+        if (typeof interview === 'object' && interview !== null) {
+          let html = `
+            <div style="margin-bottom: 30px;">
+              <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview Summary</h2>
+          `
           
           // Children Discussed
           if (interview.childrenDiscussed && Array.isArray(interview.childrenDiscussed) && interview.childrenDiscussed.length > 0) {
@@ -1035,12 +1116,16 @@ function generateCompleteReportHTML(
             `
           }
           
-          // Support Needs
+          // Support Needs - check for both "-" values and actual content
           if (interview.supportNeeds && typeof interview.supportNeeds === 'object') {
             const supportNeeds = interview.supportNeeds
-            const needsEntries = Object.entries(supportNeeds).filter(([key, data]: [string, any]) => 
-              data && (data.needIdentified || data.supportOffered || data.followUpRequired)
-            )
+            const needsEntries = Object.entries(supportNeeds).filter(([key, data]: [string, any]) => {
+              if (!data || typeof data !== 'object') return false
+              // Include if there's actual content (not just "-" or empty)
+              const hasNeed = data.needIdentified && data.needIdentified.trim() && data.needIdentified !== "-"
+              const hasSupport = data.supportOffered && data.supportOffered.trim() && data.supportOffered !== "-"
+              return hasNeed || hasSupport || data.followUpRequired
+            })
             
             if (needsEntries.length > 0) {
               html += `
@@ -1051,8 +1136,8 @@ function generateCompleteReportHTML(
                     return `
                       <div style="margin-bottom: 15px; padding: 10px; background-color: #f9fafb; border-radius: 4px;">
                         <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${areaLabel}</h4>
-                        ${data.needIdentified ? `<p style="margin: 3px 0;"><strong>Need Identified:</strong> ${data.needIdentified}</p>` : ""}
-                        ${data.supportOffered ? `<p style="margin: 3px 0;"><strong>Support Offered:</strong> ${data.supportOffered}</p>` : ""}
+                        ${data.needIdentified && data.needIdentified.trim() && data.needIdentified !== "-" ? `<p style="margin: 3px 0;"><strong>Need Identified:</strong> ${data.needIdentified}</p>` : ""}
+                        ${data.supportOffered && data.supportOffered.trim() && data.supportOffered !== "-" ? `<p style="margin: 3px 0;"><strong>Support Offered:</strong> ${data.supportOffered}</p>` : ""}
                         ${data.followUpRequired ? `<p style="margin: 3px 0;"><strong>Follow-up Required:</strong> Yes</p>` : ""}
                       </div>
                     `
@@ -1063,7 +1148,7 @@ function generateCompleteReportHTML(
           }
           
           // Combined Notes
-          if (interview.combinedNotes) {
+          if (interview.combinedNotes && interview.combinedNotes.trim()) {
             html += `
               <div style="margin-top: 15px;">
                 <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Combined Notes</h4>
@@ -1072,18 +1157,12 @@ function generateCompleteReportHTML(
             `
           }
           
-          return html || ""
-        })()}
-      </div>
-      ` : formData.parentInterviews?.fosterParentInterview ? `
-      <!-- Legacy format -->
-      <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview</h2>
-        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${typeof formData.parentInterviews.fosterParentInterview === 'string' ? formData.parentInterviews.fosterParentInterview : JSON.stringify(formData.parentInterviews.fosterParentInterview, null, 2)}</p>
-        </div>
-      </div>
-      ` : ""}
+          html += `</div>`
+          return html
+        }
+        
+        return ""
+      })()}
 
       <!-- Observations Section -->
       ${formData.observations ? `
