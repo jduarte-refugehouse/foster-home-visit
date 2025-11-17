@@ -23,6 +23,22 @@ export async function POST(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
+    // Parse request body for optional recipient override
+    let recipientOverride: { clerkUserId?: string; phone?: string; name?: string } | null = null
+    try {
+      const body = await request.json()
+      if (body && (body.recipientClerkUserId || body.recipientPhone)) {
+        recipientOverride = {
+          clerkUserId: body.recipientClerkUserId,
+          phone: body.recipientPhone,
+          name: body.recipientName,
+        }
+      }
+    } catch (e) {
+      // No body provided or invalid JSON, use default behavior
+      console.log("No recipient override provided, using assigned staff member")
+    }
+
     // Get appointment details
     const appointments = await query(
       `
@@ -46,43 +62,59 @@ export async function POST(
 
     const appointment = appointments[0]
 
-    if (!appointment.assigned_to_user_id) {
+    // Determine recipient - use override if provided, otherwise use assigned staff
+    let recipientClerkUserId = recipientOverride?.clerkUserId || appointment.assigned_to_user_id
+    let recipientName = recipientOverride?.name || appointment.assigned_to_name
+    let recipientPhone: string | null = recipientOverride?.phone || null
+
+    if (!recipientClerkUserId && !recipientPhone) {
       return NextResponse.json(
         { error: "No staff member assigned to this appointment" },
         { status: 400 },
       )
     }
 
-    // Get staff member's phone number from app_users
-    const staffUsers = await query(
-      `
-      SELECT 
-        u.id,
-        u.clerk_user_id,
-        u.phone,
-        u.first_name,
-        u.last_name,
-        u.email
-      FROM app_users u
-      WHERE u.clerk_user_id = @param0 AND u.is_active = 1
-    `,
-      [appointment.assigned_to_user_id],
-    )
-
-    if (staffUsers.length === 0) {
-      return NextResponse.json(
-        { error: "Staff member not found in system" },
-        { status: 404 },
+    // If phone not provided in override, fetch from database
+    if (!recipientPhone && recipientClerkUserId) {
+      const staffUsers = await query(
+        `
+        SELECT 
+          u.id,
+          u.clerk_user_id,
+          u.phone,
+          u.first_name,
+          u.last_name,
+          u.email
+        FROM app_users u
+        WHERE u.clerk_user_id = @param0 AND u.is_active = 1
+      `,
+        [recipientClerkUserId],
       )
+
+      if (staffUsers.length === 0) {
+        // Staff member not found - return error with details for UI to handle
+        return NextResponse.json(
+          {
+            error: "Staff member not found in system",
+            recipientName: recipientName,
+            recipientClerkUserId: recipientClerkUserId,
+          },
+          { status: 404 },
+        )
+      }
+
+      const staffUser = staffUsers[0]
+      recipientPhone = staffUser.phone || null
+      recipientName = recipientName || `${staffUser.first_name} ${staffUser.last_name}`.trim()
     }
 
-    const staffUser = staffUsers[0]
-
-    if (!staffUser.phone || staffUser.phone.trim() === "") {
+    if (!recipientPhone || recipientPhone.trim() === "") {
       return NextResponse.json(
         {
           error: "Phone number not found",
-          message: `No phone number on file for ${appointment.assigned_to_name}. Please add a phone number to their profile.`,
+          message: `No phone number on file for ${recipientName}. Please add a phone number to their profile.`,
+          recipientName: recipientName,
+          recipientClerkUserId: recipientClerkUserId,
         },
         { status: 400 },
       )
@@ -160,8 +192,8 @@ export async function POST(
         sent_by_user_email: auth.email || undefined,
         communication_type: "notification",
         delivery_method: "sms",
-        recipient_phone: staffUser.phone,
-        recipient_name: appointment.assigned_to_name,
+        recipient_phone: recipientPhone,
+        recipient_name: recipientName,
         message_text: messageText,
         status: "pending",
       })
@@ -176,7 +208,7 @@ export async function POST(
     const twilioMessage = await client.messages.create({
       body: messageText,
       messagingServiceSid: messagingServiceSid,
-      to: staffUser.phone,
+      to: recipientPhone!,
     })
 
     // Update communication log
@@ -190,8 +222,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Appointment link sent to ${appointment.assigned_to_name}`,
-      phoneNumber: staffUser.phone,
+      message: `Appointment link sent to ${recipientName}`,
+      phoneNumber: recipientPhone,
+      recipientName: recipientName,
       sid: twilioMessage.sid,
     })
   } catch (error: any) {

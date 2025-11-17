@@ -14,6 +14,7 @@ export interface AppUser {
   email: string
   first_name: string
   last_name: string
+  phone?: string | null
   is_active: boolean
   created_at: Date
   updated_at: Date
@@ -218,6 +219,11 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
   const email = clerkUser.emailAddresses[0]?.emailAddress
   const firstName = clerkUser.firstName || ""
   const lastName = clerkUser.lastName || ""
+  
+  // Extract phone number from Clerk user (first verified phone number)
+  const clerkPhone = clerkUser.phoneNumbers?.find((p: any) => p.verification?.status === "verified")?.phoneNumber || 
+                     clerkUser.phoneNumbers?.[0]?.phoneNumber || 
+                     null
 
   try {
     // Check if user exists
@@ -226,27 +232,48 @@ export async function createOrUpdateAppUser(clerkUser: any): Promise<AppUser> {
     let userId: string
 
     if (existingUser.length > 0) {
-      // Update existing user
-      await query(
-        `UPDATE app_users 
-         SET email = @param1, first_name = @param2, last_name = @param3, updated_at = GETDATE()
-         WHERE clerk_user_id = @param0`,
-        [clerkUser.id, email, firstName, lastName],
-      )
-      userId = existingUser[0].id
+      const currentUser = existingUser[0]
+      const currentPhone = currentUser.phone || null
+      
+      // Update existing user - sync phone if database field is empty and Clerk has a phone
+      const shouldUpdatePhone = (!currentPhone || currentPhone.trim() === "") && clerkPhone
+      
+      if (shouldUpdatePhone) {
+        // Update with phone number from Clerk
+        await query(
+          `UPDATE app_users 
+           SET email = @param1, first_name = @param2, last_name = @param3, phone = @param4, updated_at = GETDATE()
+           WHERE clerk_user_id = @param0`,
+          [clerkUser.id, email, firstName, lastName, clerkPhone],
+        )
+        console.log(`📞 [USER-MGMT] Synced phone number from Clerk for user ${clerkUser.id}: ${clerkPhone}`)
+      } else {
+        // Update without phone (phone already exists or Clerk doesn't have one)
+        await query(
+          `UPDATE app_users 
+           SET email = @param1, first_name = @param2, last_name = @param3, updated_at = GETDATE()
+           WHERE clerk_user_id = @param0`,
+          [clerkUser.id, email, firstName, lastName],
+        )
+      }
+      userId = currentUser.id
     } else {
       // Create new user with core role determination
       const coreRole = determineCoreRole(email)
       const newUserResult = await query<{ id: string }>(
-        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, core_role, is_active, created_at, updated_at)
+        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, core_role, is_active, created_at, updated_at)
          OUTPUT INSERTED.id
-         VALUES (@param0, @param1, @param2, @param3, @param4, 1, GETDATE(), GETDATE())`,
-        [clerkUser.id, email, firstName, lastName, coreRole],
+         VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
+        [clerkUser.id, email, firstName, lastName, clerkPhone, coreRole],
       )
       userId = newUserResult[0].id
 
       // Assign microservice-specific roles based on email and core role
       await assignDefaultMicroserviceRoles(userId, email, coreRole)
+      
+      if (clerkPhone) {
+        console.log(`📞 [USER-MGMT] Created new user with phone from Clerk: ${clerkPhone}`)
+      }
     }
 
     // Return the updated/created user

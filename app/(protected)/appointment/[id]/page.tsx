@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   ArrowLeft, 
   Clock, 
@@ -113,6 +114,11 @@ export default function AppointmentDetailPage() {
   const [showPhoneMissingDialog, setShowPhoneMissingDialog] = useState(false)
   const [phoneMissingMessage, setPhoneMissingMessage] = useState("")
   const [showSendLinkDialog, setShowSendLinkDialog] = useState(false)
+  const [staffMembers, setStaffMembers] = useState<any[]>([])
+  const [loadingStaff, setLoadingStaff] = useState(false)
+  const [selectedRecipient, setSelectedRecipient] = useState<{ clerkUserId?: string; name: string; phone: string } | null>(null)
+  const [recipientPhone, setRecipientPhone] = useState("")
+  const [errorData, setErrorData] = useState<{ error: string; recipientName?: string; recipientClerkUserId?: string } | null>(null)
   const [mileageRate, setMileageRate] = useState<number>(0.67) // Default rate
   const [showTollDialog, setShowTollDialog] = useState(false)
   const [tollAmount, setTollAmount] = useState<string>("")
@@ -879,6 +885,94 @@ export default function AppointmentDetailPage() {
     window.open(`/appointment/${appointmentId}`, '_blank')
   }
 
+  // Fetch staff members for recipient selection
+  const fetchStaffMembers = async () => {
+    try {
+      setLoadingStaff(true)
+      const response = await fetch("/api/appointments/staff")
+      if (response.ok) {
+        const data = await response.json()
+        const allStaff = [...(data.staff || []), ...(data.caseManagers || [])]
+        setStaffMembers(allStaff)
+        
+        // If we have a selected recipient, try to populate their phone from the staff list
+        if (selectedRecipient?.clerkUserId) {
+          const staff = allStaff.find((s) => s.id === selectedRecipient.clerkUserId)
+          if (staff && staff.phone && !recipientPhone) {
+            setRecipientPhone(staff.phone)
+            setSelectedRecipient({ ...selectedRecipient, phone: staff.phone })
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching staff:", error)
+    } finally {
+      setLoadingStaff(false)
+    }
+  }
+
+  // Initialize recipient when dialog opens
+  useEffect(() => {
+    if (showSendLinkDialog && appointment) {
+      fetchStaffMembers()
+      // Set default recipient from appointment
+      const defaultRecipient = {
+        clerkUserId: appointment.assigned_to_user_id,
+        name: appointment.assigned_to_name,
+        phone: "", // Will be fetched or entered
+      }
+      setSelectedRecipient(defaultRecipient)
+      setRecipientPhone("")
+      setErrorData(null)
+      
+      // Try to fetch phone from database if we have a clerk_user_id
+      if (appointment.assigned_to_user_id) {
+        // Phone will be populated when staff list loads or user selects recipient
+      }
+    }
+  }, [showSendLinkDialog, appointment])
+
+  // Handle recipient selection change
+  const handleRecipientChange = (clerkUserId: string) => {
+    const staff = staffMembers.find((s) => s.id === clerkUserId)
+    if (staff) {
+      const newRecipient = {
+        clerkUserId: staff.id,
+        name: staff.name,
+        phone: staff.phone || "",
+      }
+      setSelectedRecipient(newRecipient)
+      setRecipientPhone(staff.phone || "")
+      // Clear error when selecting new recipient
+      setErrorData(null)
+    }
+  }
+
+  // Format phone number helper
+  const formatPhoneNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "")
+    if (digits.length <= 10) {
+      if (digits.length === 0) return ""
+      if (digits.length <= 3) return `(${digits}`
+      if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+    }
+    return `+${digits.slice(0, -10)} (${digits.slice(-10, -7)}) ${digits.slice(-7, -4)}-${digits.slice(-4)}`
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value)
+    setRecipientPhone(formatted)
+    if (selectedRecipient) {
+      setSelectedRecipient({ ...selectedRecipient, phone: formatted })
+    }
+  }
+
+  // Get phone digits for API
+  const getPhoneDigits = (phoneStr: string) => {
+    return phoneStr.replace(/\D/g, "")
+  }
+
   const handleSendAppointmentLink = async () => {
     if (!appointmentId) return
 
@@ -894,9 +988,24 @@ export default function AppointmentDetailPage() {
         headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
       }
 
+      // Prepare request body with recipient override if provided
+      const body: any = {}
+      if (selectedRecipient) {
+        if (selectedRecipient.clerkUserId) {
+          body.recipientClerkUserId = selectedRecipient.clerkUserId
+        }
+        if (recipientPhone && recipientPhone.trim()) {
+          body.recipientPhone = getPhoneDigits(recipientPhone)
+        }
+        if (selectedRecipient.name) {
+          body.recipientName = selectedRecipient.name
+        }
+      }
+
       const response = await fetch(`/api/appointments/${appointmentId}/send-link`, {
         method: "POST",
         headers,
+        body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
       })
 
       const data = await response.json()
@@ -904,13 +1013,27 @@ export default function AppointmentDetailPage() {
       if (response.ok) {
         toast({
           title: "Link Sent",
-          description: data.message || `Appointment link sent to ${appointment?.assigned_to_name || "staff member"}`,
+          description: data.message || `Appointment link sent to ${data.recipientName || selectedRecipient?.name || "staff member"}`,
         })
+        setShowSendLinkDialog(false)
+        setSelectedRecipient(null)
+        setRecipientPhone("")
       } else {
-        // Check if it's a missing phone number error
-        if (data.error === "Phone number not found" || response.status === 400) {
-          setPhoneMissingMessage(data.message || data.error || "Phone number not found for this staff member.")
-          setShowPhoneMissingDialog(true)
+        // Handle "staff member not found" error by showing enhanced dialog
+        if (data.error === "Staff member not found in system" || response.status === 404) {
+          setErrorData({
+            error: data.error,
+            recipientName: data.recipientName,
+            recipientClerkUserId: data.recipientClerkUserId,
+          })
+          // Keep dialog open so user can select different recipient
+        } else if (data.error === "Phone number not found" || response.status === 400) {
+          setErrorData({
+            error: data.error,
+            recipientName: data.recipientName,
+            recipientClerkUserId: data.recipientClerkUserId,
+          })
+          // Keep dialog open so user can enter phone
         } else {
           toast({
             title: "Error",
@@ -2353,28 +2476,116 @@ export default function AppointmentDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Send Link Confirmation Dialog */}
-      <Dialog open={showSendLinkDialog} onOpenChange={setShowSendLinkDialog}>
-        <DialogContent>
+      {/* Send Link Confirmation Dialog - Enhanced */}
+      <Dialog open={showSendLinkDialog} onOpenChange={(open) => {
+        setShowSendLinkDialog(open)
+        if (!open) {
+          setErrorData(null)
+          setSelectedRecipient(null)
+          setRecipientPhone("")
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Send Appointment Link</DialogTitle>
             <DialogDescription>
-              Send a text message with the appointment link to <strong>{appointment?.assigned_to_name}</strong>?
-              <br />
-              <br />
-              The link will open the mobile-optimized appointment view where they can access directions, start drive tracking, and other quick actions.
+              Send a text message with the appointment link. The link will open the mobile-optimized appointment view where they can access directions, start drive tracking, and other quick actions.
             </DialogDescription>
           </DialogHeader>
+          
+          {errorData && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800 font-medium">{errorData.error}</p>
+              {errorData.recipientName && (
+                <p className="text-xs text-red-600 mt-1">Recipient: {errorData.recipientName}</p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-4 py-4">
+            {/* Recipient Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="recipient">Recipient</Label>
+              {loadingStaff ? (
+                <div className="text-sm text-muted-foreground">Loading staff members...</div>
+              ) : (
+                <Select
+                  value={selectedRecipient?.clerkUserId || ""}
+                  onValueChange={handleRecipientChange}
+                  disabled={sendingLink}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select recipient">
+                      {selectedRecipient?.name || appointment?.assigned_to_name || "Select recipient"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffMembers.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.name} {staff.phone ? `(${staff.phone})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                Phone Number {!recipientPhone && <span className="text-red-500">*</span>}
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="(555) 123-4567"
+                value={recipientPhone}
+                onChange={handlePhoneChange}
+                disabled={sendingLink}
+                className={errorData && !recipientPhone ? "border-red-500" : ""}
+              />
+              {selectedRecipient && selectedRecipient.phone && recipientPhone !== selectedRecipient.phone && (
+                <p className="text-xs text-muted-foreground">
+                  Phone number from database: {selectedRecipient.phone}
+                </p>
+              )}
+              {errorData?.error === "Phone number not found" && (
+                <p className="text-xs text-red-600">
+                  Please enter a phone number for this recipient.
+                </p>
+              )}
+            </div>
+
+            {/* Confirmation Preview */}
+            {selectedRecipient && recipientPhone && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm font-medium text-blue-900">Confirmation</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  <strong>Recipient:</strong> {selectedRecipient.name}
+                </p>
+                <p className="text-xs text-blue-700">
+                  <strong>Phone:</strong> {recipientPhone}
+                </p>
+              </div>
+            )}
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSendLinkDialog(false)} disabled={sendingLink}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowSendLinkDialog(false)
+                setErrorData(null)
+                setSelectedRecipient(null)
+                setRecipientPhone("")
+              }} 
+              disabled={sendingLink}
+            >
               Cancel
             </Button>
             <Button 
-              onClick={() => {
-                setShowSendLinkDialog(false)
-                handleSendAppointmentLink()
-              }} 
-              disabled={sendingLink}
+              onClick={handleSendAppointmentLink} 
+              disabled={sendingLink || !recipientPhone || recipientPhone.trim() === ""}
               className="bg-refuge-purple hover:bg-refuge-purple-dark text-white"
             >
               {sendingLink ? "Sending..." : "Send Link"}
