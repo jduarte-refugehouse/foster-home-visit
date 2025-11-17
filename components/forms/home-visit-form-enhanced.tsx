@@ -582,6 +582,7 @@ const EnhancedHomeVisitForm = ({
     // Visit Summary
     visitSummary: {
       overallStatus: "", // fully-compliant, substantially-compliant, corrective-action, immediate-intervention
+      overallAssessment: "", // Overall assessment text field
       keyStrengths: ["", "", ""],
       priorityAreas: [
         { priority: "", description: "", actionPlanned: "" },
@@ -593,6 +594,7 @@ const EnhancedHomeVisitForm = ({
         contactInformation: "",
         templatesForms: "",
         other: "",
+        combined: "", // Combined resources field for simplified entry
       },
       nextVisit: {
         visitType: "monthly",

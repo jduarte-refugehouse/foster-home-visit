@@ -1297,56 +1297,13 @@ export const VisitSummarySection = ({ formData, onChange }) => {
         Visit Summary
       </h2>
 
-      {/* AI-Powered Visit Summary */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Brain className="h-5 w-5 text-refuge-purple" />
-              AI-Generated Visit Summary
-            </CardTitle>
-            <Button
-              onClick={generateVisitSummary}
-              disabled={generatingSummary}
-              size="sm"
-              className="bg-refuge-purple hover:bg-refuge-magenta"
-            >
-              {generatingSummary ? "Generating..." : "🤖 Generate Summary"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {summaryError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{summaryError}</AlertDescription>
-            </Alert>
-          )}
-          {aiSummary || summary.aiGeneratedSummary ? (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <div className="whitespace-pre-wrap text-sm bg-white dark:bg-gray-900 p-4 rounded border">
-                {aiSummary || summary.aiGeneratedSummary}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Click "Generate Summary" to create an AI-powered comprehensive summary of the visit, including significant dates, 
-              compliance status, observations, and key highlights. This summary will be generated before collecting signatures.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Alert>
-        <AlertDescription>
-          Provide an overall assessment of the visit, highlighting strengths, priorities for next visit, and resources
-          provided.
-        </AlertDescription>
-      </Alert>
-
-      {/* Overall Compliance Status */}
+      {/* Overall Compliance Status - Most Important, First */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Overall Compliance Status *</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Select the compliance status that best reflects the overall condition of the home and adherence to licensing requirements.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1387,24 +1344,50 @@ export const VisitSummarySection = ({ formData, onChange }) => {
         </CardContent>
       </Card>
 
-      {/* Key Strengths */}
+      {/* Overall Assessment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Overall Assessment</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Provide a comprehensive assessment of the visit, highlighting key strengths, areas for improvement, priorities for the next visit, and any resources provided.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <TextareaWithVoice
+            id="overall-assessment"
+            value={summary.overallAssessment || ""}
+            onChange={(e) => onChange("visitSummary.overallAssessment", e.target.value)}
+            placeholder="Summarize the visit, including strengths observed, concerns identified, priorities for follow-up, and resources shared with the foster family..."
+            rows={6}
+            showVoiceButton={true}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Key Strengths - Simplified */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Key Strengths Observed</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            List up to 3 main strengths you observed during this visit.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[0, 1, 2].map((index) => (
               <div key={index}>
-                <Label htmlFor={`strength-${index}`}>{index + 1}. Strength</Label>
+                <Label htmlFor={`strength-${index}`} className="text-sm">
+                  {index === 0 ? "1. " : index === 1 ? "2. " : "3. "}Strength {index > 0 && "(optional)"}
+                </Label>
                 <TextareaWithVoice
                   id={`strength-${index}`}
-                  value={summary.keyStrengths[index]}
+                  value={summary.keyStrengths[index] || ""}
                   onChange={(e) => {
                     const newStrengths = [...summary.keyStrengths]
                     newStrengths[index] = e.target.value
                     onChange("visitSummary.keyStrengths", newStrengths)
                   }}
+                  placeholder={index === 0 ? "Enter the primary strength observed..." : "Enter another strength (optional)..."}
                   rows={2}
                   showVoiceButton={true}
                 />
@@ -1414,118 +1397,78 @@ export const VisitSummarySection = ({ formData, onChange }) => {
         </CardContent>
       </Card>
 
-      {/* Priority Areas for Next Visit */}
+      {/* Priority Areas for Next Visit - Simplified */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Priority Areas for Next Visit</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            List up to 3 priority areas to focus on during the next visit. You can leave fields blank if not needed.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {[0, 1, 2].map((index) => (
-              <Card key={index} className="border-2">
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor={`priority-${index}`}>Priority #{index + 1}</Label>
-                      <Input
-                        id={`priority-${index}`}
-                        value={summary.priorityAreas[index].priority}
-                        onChange={(e) => {
-                          const newAreas = [...summary.priorityAreas]
-                          newAreas[index].priority = e.target.value
-                          onChange("visitSummary.priorityAreas", newAreas)
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor={`priority-desc-${index}`}>Description</Label>
-                      <TextareaWithVoice
-                        id={`priority-desc-${index}`}
-                        value={summary.priorityAreas[index].description}
-                        onChange={(e) => {
-                          const newAreas = [...summary.priorityAreas]
-                          newAreas[index].description = e.target.value
-                          onChange("visitSummary.priorityAreas", newAreas)
-                        }}
-                        rows={2}
-                        showVoiceButton={true}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor={`priority-action-${index}`}>Action Planned</Label>
-                      <TextareaWithVoice
-                        id={`priority-action-${index}`}
-                        value={summary.priorityAreas[index].actionPlanned}
-                        onChange={(e) => {
-                          const newAreas = [...summary.priorityAreas]
-                          newAreas[index].actionPlanned = e.target.value
-                          onChange("visitSummary.priorityAreas", newAreas)
-                        }}
-                        rows={2}
-                        showVoiceButton={true}
-                      />
-                    </div>
+              <div key={index} className="border rounded-lg p-4 space-y-3">
+                <Label htmlFor={`priority-${index}`} className="text-sm font-semibold">
+                  Priority {index + 1} {index > 0 && "(optional)"}
+                </Label>
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor={`priority-name-${index}`} className="text-xs text-muted-foreground">Area/Topic</Label>
+                    <Input
+                      id={`priority-name-${index}`}
+                      value={summary.priorityAreas[index]?.priority || ""}
+                      onChange={(e) => {
+                        const newAreas = [...summary.priorityAreas]
+                        if (!newAreas[index]) newAreas[index] = { priority: "", description: "", actionPlanned: "" }
+                        newAreas[index].priority = e.target.value
+                        onChange("visitSummary.priorityAreas", newAreas)
+                      }}
+                      placeholder="e.g., Medication management, Safety improvements..."
+                      className="text-sm"
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <Label htmlFor={`priority-desc-${index}`} className="text-xs text-muted-foreground">What to focus on</Label>
+                    <TextareaWithVoice
+                      id={`priority-desc-${index}`}
+                      value={summary.priorityAreas[index]?.description || ""}
+                      onChange={(e) => {
+                        const newAreas = [...summary.priorityAreas]
+                        if (!newAreas[index]) newAreas[index] = { priority: "", description: "", actionPlanned: "" }
+                        newAreas[index].description = e.target.value
+                        onChange("visitSummary.priorityAreas", newAreas)
+                      }}
+                      placeholder="Describe what should be reviewed or addressed..."
+                      rows={2}
+                      showVoiceButton={true}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Resources Provided */}
+      {/* Resources Provided - Simplified */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Resources Provided</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Document any resources, materials, or information you shared with the foster family during this visit.
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="resources-training">Training Materials</Label>
-              <TextareaWithVoice
-                id="resources-training"
-                value={summary.resourcesProvided.trainingMaterials}
-                onChange={(e) => onChange("visitSummary.resourcesProvided.trainingMaterials", e.target.value)}
-                rows={2}
-                showVoiceButton={true}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="resources-contact">Contact Information</Label>
-              <TextareaWithVoice
-                id="resources-contact"
-                value={summary.resourcesProvided.contactInformation}
-                onChange={(e) => onChange("visitSummary.resourcesProvided.contactInformation", e.target.value)}
-                rows={2}
-                showVoiceButton={true}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="resources-templates">Templates/Forms</Label>
-              <TextareaWithVoice
-                id="resources-templates"
-                value={summary.resourcesProvided.templatesForms}
-                onChange={(e) => onChange("visitSummary.resourcesProvided.templatesForms", e.target.value)}
-                rows={2}
-                showVoiceButton={true}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="resources-other">Other Resources</Label>
-              <TextareaWithVoice
-                id="resources-other"
-                value={summary.resourcesProvided.other}
-                onChange={(e) => onChange("visitSummary.resourcesProvided.other", e.target.value)}
-                rows={2}
-                showVoiceButton={true}
-              />
-            </div>
-          </div>
+          <TextareaWithVoice
+            id="resources-provided"
+            value={summary.resourcesProvided?.combined || ""}
+            onChange={(e) => onChange("visitSummary.resourcesProvided.combined", e.target.value)}
+            placeholder="List any training materials, contact information, templates, forms, or other resources you provided to the foster family..."
+            rows={4}
+            showVoiceButton={true}
+          />
         </CardContent>
       </Card>
 
@@ -1533,11 +1476,14 @@ export const VisitSummarySection = ({ formData, onChange }) => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Next Scheduled Visit</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Schedule the next visit with the foster family. All fields are optional if not yet scheduled.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label htmlFor="next-visit-type">Visit Type *</Label>
+              <Label htmlFor="next-visit-type">Visit Type</Label>
               <Select
                 value={summary.nextVisit.visitType}
                 onValueChange={(value) => onChange("visitSummary.nextVisit.visitType", value)}
@@ -1584,6 +1530,48 @@ export const VisitSummarySection = ({ formData, onChange }) => {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* AI-Powered Visit Summary - Moved to Bottom */}
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-purple-200 dark:border-purple-800">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-refuge-purple" />
+              AI-Generated Visit Summary
+            </CardTitle>
+            <Button
+              onClick={generateVisitSummary}
+              disabled={generatingSummary}
+              size="sm"
+              className="bg-refuge-purple hover:bg-refuge-magenta"
+            >
+              {generatingSummary ? "Generating..." : "🤖 Generate Summary"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Generate a comprehensive AI-powered summary of the entire visit. This is optional and can be done after completing the form above.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {summaryError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{summaryError}</AlertDescription>
+            </Alert>
+          )}
+          {aiSummary || summary.aiGeneratedSummary ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap text-sm bg-white dark:bg-gray-900 p-4 rounded border">
+                {aiSummary || summary.aiGeneratedSummary}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Click "Generate Summary" to create an AI-powered comprehensive summary of the visit, including significant dates, 
+              compliance status, observations, and key highlights. This summary will be generated before collecting signatures.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
