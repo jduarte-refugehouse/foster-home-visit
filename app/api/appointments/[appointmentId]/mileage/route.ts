@@ -499,15 +499,53 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         const appointment = existingAppointment[0]
-        console.log("📍 [MILEAGE] Appointment data:", {
-          startLat: appointment.start_drive_latitude,
-          startLng: appointment.start_drive_longitude,
-          arrivedLat: appointment.arrived_latitude,
-          arrivedLng: appointment.arrived_longitude,
+        
+        // Try to get locations from travel legs first (new system), fall back to appointment fields (legacy)
+        let startLat: number | null = null
+        let startLng: number | null = null
+        let endLat: number | null = null
+        let endLng: number | null = null
+        
+        try {
+          // Check for completed travel leg TO this appointment (outbound trip)
+          const travelLegs = await query(
+            `SELECT start_latitude, start_longitude, end_latitude, end_longitude
+             FROM travel_legs
+             WHERE appointment_id_to = @param0 
+               AND leg_status = 'completed'
+               AND is_deleted = 0
+             ORDER BY end_timestamp DESC`,
+            [appointmentId]
+          )
+          
+          if (travelLegs.length > 0) {
+            const leg = travelLegs[0]
+            startLat = leg.start_latitude || null
+            startLng = leg.start_longitude || null
+            endLat = leg.end_latitude || null
+            endLng = leg.end_longitude || null
+            console.log("📍 [MILEAGE] Using travel leg data:", { startLat, startLng, endLat, endLng })
+          }
+        } catch (legError) {
+          console.log("⚠️ [MILEAGE] Could not fetch travel legs, using appointment data:", legError)
+        }
+        
+        // Fall back to appointment fields if travel leg data not available
+        if (!startLat || !startLng) {
+          startLat = appointment.start_drive_latitude || null
+          startLng = appointment.start_drive_longitude || null
+        }
+        if (!endLat || !endLng) {
+          endLat = appointment.arrived_latitude || null
+          endLng = appointment.arrived_longitude || null
+        }
+        
+        console.log("📍 [MILEAGE] Final location data:", {
+          startLat, startLng, endLat, endLng
         })
 
         // Check if both locations exist
-        if (!appointment.start_drive_latitude || !appointment.start_drive_longitude) {
+        if (!startLat || !startLng) {
           console.error("❌ [MILEAGE] Start drive location missing")
           return NextResponse.json(
             { error: "Start drive location not captured. Please click 'Start Drive' first." },
@@ -515,7 +553,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           )
         }
 
-        if (!appointment.arrived_latitude || !appointment.arrived_longitude) {
+        if (!endLat || !endLng) {
           console.error("❌ [MILEAGE] Arrived location missing")
           return NextResponse.json(
             { error: "Arrived location not captured. Please click 'Mark as Arrived' first." },
@@ -524,14 +562,14 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         // Parse coordinates to ensure they're numbers
-        const startLat = parseFloat(appointment.start_drive_latitude)
-        const startLng = parseFloat(appointment.start_drive_longitude)
-        const endLat = parseFloat(appointment.arrived_latitude)
-        const endLng = parseFloat(appointment.arrived_longitude)
+        const parsedStartLat = parseFloat(String(startLat))
+        const parsedStartLng = parseFloat(String(startLng))
+        const parsedEndLat = parseFloat(String(endLat))
+        const parsedEndLng = parseFloat(String(endLng))
 
-        if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
+        if (isNaN(parsedStartLat) || isNaN(parsedStartLng) || isNaN(parsedEndLat) || isNaN(parsedEndLng)) {
           console.error("❌ [MILEAGE] Invalid coordinate values:", {
-            startLat, startLng, endLat, endLng
+            parsedStartLat, parsedStartLng, parsedEndLat, parsedEndLng
           })
           return NextResponse.json(
             { error: "Invalid coordinate values in database" },
@@ -540,21 +578,21 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         console.log("🚗 [MILEAGE] Calling calculateDrivingDistance with:", {
-          startLat, startLng, endLat, endLng
+          startLat: parsedStartLat, startLng: parsedStartLng, endLat: parsedEndLat, endLng: parsedEndLng
         })
 
         // Calculate driving distance and tolls using Google Routes API
         const routeData = await calculateDrivingDistance(
-          startLat,
-          startLng,
-          endLat,
-          endLng,
+          parsedStartLat,
+          parsedStartLng,
+          parsedEndLat,
+          parsedEndLng,
         )
 
         // If calculation failed or returned null, check if coordinates are the same (0 distance)
         if (routeData === null) {
-          const latDiff = Math.abs(startLat - endLat)
-          const lngDiff = Math.abs(startLng - endLng)
+          const latDiff = Math.abs(parsedStartLat - parsedEndLat)
+          const lngDiff = Math.abs(parsedStartLng - parsedEndLng)
           // If coordinates are very close (within ~10 meters), treat as 0 miles
           if (latDiff < 0.0001 && lngDiff < 0.0001) {
             const finalMileage = 0.00

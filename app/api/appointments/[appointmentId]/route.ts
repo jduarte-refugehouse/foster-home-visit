@@ -73,7 +73,8 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
       const travelLegs = await query(
         `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from,
                 calculated_mileage, start_timestamp, end_timestamp,
-                start_latitude, start_longitude, end_latitude, end_longitude
+                start_latitude, start_longitude, end_latitude, end_longitude,
+                start_location_name, end_location_name
          FROM travel_legs
          WHERE (appointment_id_to = @param0 OR appointment_id_from = @param0)
            AND is_deleted = 0
@@ -108,17 +109,38 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         
         // Check for completed return leg mileage
         const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
+        let returnLegStartTimestamp: string | null = null
+        let returnLegStartLat: number | null = null
+        let returnLegStartLng: number | null = null
         
         if (completedReturnLeg) {
           returnLegMileage = completedReturnLeg.calculated_mileage || null
           try {
             returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
+            returnLegStartTimestamp = completedReturnLeg.start_timestamp ? formatLocalDatetime(completedReturnLeg.start_timestamp) : null
           } catch (timestampError) {
             console.error("⚠️ [API] Error formatting return leg timestamp:", timestampError)
             returnLegTimestamp = null
+            returnLegStartTimestamp = null
           }
+          // End location (where they arrived - office/home)
           returnLegLat = completedReturnLeg.end_latitude || null
           returnLegLng = completedReturnLeg.end_longitude || null
+          // Start location (where they left from - appointment location)
+          // If return leg doesn't have start location, use arrival location from outbound leg (they start return from where they arrived)
+          returnLegStartLat = completedReturnLeg.start_latitude || null
+          returnLegStartLng = completedReturnLeg.start_longitude || null
+          
+          // If return leg start location is missing, use the arrival location from the outbound leg
+          if ((!returnLegStartLat || !returnLegStartLng) && legEndLat && legEndLng) {
+            returnLegStartLat = legEndLat
+            returnLegStartLng = legEndLng
+            // Use arrival timestamp as start timestamp if return leg doesn't have one
+            if (!returnLegStartTimestamp && legEndTimestamp) {
+              returnLegStartTimestamp = legEndTimestamp
+            }
+            console.log("📍 [API] Using arrival location as return start location:", { returnLegStartLat, returnLegStartLng })
+          }
         }
         
         console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, return_in_progress=${hasInProgressReturnLeg}, return_leg_id=${returnLegId}, mileage=${legMileage}`)
@@ -155,8 +177,11 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         // Add return leg mileage data (use leg mileage if available, otherwise use appointment return_mileage)
         return_mileage: returnLegMileage !== null && returnLegMileage !== undefined ? returnLegMileage : (appointment.return_mileage || null),
         return_timestamp: returnLegTimestamp && returnLegTimestamp !== "" ? returnLegTimestamp : (appointment.return_timestamp || null),
+        return_start_timestamp: returnLegStartTimestamp && returnLegStartTimestamp !== "" ? returnLegStartTimestamp : null,
         return_latitude: returnLegLat !== null && returnLegLat !== undefined ? returnLegLat : (appointment.return_latitude || null),
         return_longitude: returnLegLng !== null && returnLegLng !== undefined ? returnLegLng : (appointment.return_longitude || null),
+        return_start_latitude: returnLegStartLat !== null && returnLegStartLat !== undefined ? returnLegStartLat : null,
+        return_start_longitude: returnLegStartLng !== null && returnLegStartLng !== undefined ? returnLegStartLng : null,
       },
       timestamp: new Date().toISOString(),
     })

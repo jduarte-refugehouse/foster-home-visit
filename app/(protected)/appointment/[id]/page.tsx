@@ -81,7 +81,10 @@ interface Appointment {
   return_latitude?: number
   return_longitude?: number
   return_timestamp?: string
+  return_start_timestamp?: string | null
   return_mileage?: number | null
+  return_start_latitude?: number | null
+  return_start_longitude?: number | null
   // Travel leg flags (from new leg-based system)
   has_in_progress_leg?: boolean
   has_completed_leg?: boolean
@@ -2257,18 +2260,34 @@ export default function AppointmentDetailPage() {
                 )}
                 {appointment.return_timestamp && (
                   <div className="pt-3 border-t">
-                    <p className="text-sm text-muted-foreground">Return Travel</p>
-                    <p className="text-sm">
-                      {format(new Date(appointment.return_timestamp), "MMM d, yyyy 'at' h:mm a")}
-                    </p>
-                    {appointment.return_mileage !== null && appointment.return_mileage !== undefined && (
-                      <p className="text-lg font-semibold text-purple-600 mt-1">
-                        {appointment.return_mileage.toFixed(2)} miles
-                      </p>
+                    <p className="text-sm text-muted-foreground mb-2 font-medium">Return Travel</p>
+                    {appointment.return_start_timestamp && (
+                      <div className="mb-3">
+                        <p className="text-xs text-muted-foreground">Started</p>
+                        <p className="text-sm">
+                          {format(new Date(appointment.return_start_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                        {appointment.return_start_latitude && appointment.return_start_longitude && (
+                          <p className="text-xs text-muted-foreground">
+                            {appointment.return_start_latitude.toFixed(6)}, {appointment.return_start_longitude.toFixed(6)}
+                          </p>
+                        )}
+                      </div>
                     )}
-                    {appointment.return_latitude && appointment.return_longitude && (
-                      <p className="text-xs text-muted-foreground">
-                        {appointment.return_latitude.toFixed(6)}, {appointment.return_longitude.toFixed(6)}
+                    <div>
+                      <p className="text-xs text-muted-foreground">Completed</p>
+                      <p className="text-sm">
+                        {format(new Date(appointment.return_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                      {appointment.return_latitude && appointment.return_longitude && (
+                        <p className="text-xs text-muted-foreground">
+                          {appointment.return_latitude.toFixed(6)}, {appointment.return_longitude.toFixed(6)}
+                        </p>
+                      )}
+                    </div>
+                    {appointment.return_mileage !== null && appointment.return_mileage !== undefined && (
+                      <p className="text-lg font-semibold text-purple-600 mt-2">
+                        {appointment.return_mileage.toFixed(2)} miles
                       </p>
                     )}
                   </div>
