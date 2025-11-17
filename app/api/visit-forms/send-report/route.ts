@@ -220,7 +220,7 @@ function generateCompleteReportHTML(
   appointment?: any,
 ): string {
   // Helper to format signature field with image (handles flat structure: parent1, parent1Signature, parent1Date)
-  const formatSignatureField = (label: string, name: string, signature: string, date: string) => {
+  const formatSignatureField = (label: string, name: string, signature: any, date: string) => {
     if (!name && !signature) return ""
     
     const nameDisplay = name || "Not provided"
@@ -250,15 +250,28 @@ function generateCompleteReportHTML(
         console.log(`⚠️ [REPORT] Date formatting error for ${label}:`, date, e)
         dateDisplay = date.trim()
       }
-    } else {
-      console.log(`⚠️ [REPORT] No date provided for ${label}`)
     }
     
-    const signatureImg = signature && typeof signature === 'string' && (signature.startsWith('data:image') || signature.startsWith('data:image/png') || signature.length > 100)
-      ? `<div style="margin-top: 8px;"><img src="${signature}" alt="${label} signature" style="max-width: 300px; border: 1px solid #d1d5db; border-radius: 4px;" /></div>`
-      : signature && typeof signature === 'string' && signature.trim().length > 0
-        ? `<div style="margin-top: 8px; color: #6b7280; font-size: 12px;">Signature data present</div>`
-        : ""
+    // Handle signature - could be string (base64 data URL) or object
+    let signatureImg = ""
+    if (signature) {
+      let sigString = ""
+      if (typeof signature === 'string') {
+        sigString = signature
+      } else if (typeof signature === 'object' && signature !== null) {
+        // If it's an object, try to extract the image data
+        sigString = signature.data || signature.image || signature.signature || JSON.stringify(signature)
+      }
+      
+      if (sigString && typeof sigString === 'string') {
+        // Check if it's a base64 image data URL
+        if (sigString.startsWith('data:image') || sigString.startsWith('data:image/png') || sigString.startsWith('data:image/jpeg') || sigString.length > 100) {
+          signatureImg = `<div style="margin-top: 8px;"><img src="${sigString}" alt="${label} signature" style="max-width: 300px; max-height: 150px; border: 1px solid #d1d5db; border-radius: 4px;" /></div>`
+        } else if (sigString.trim().length > 0) {
+          signatureImg = `<div style="margin-top: 8px; color: #6b7280; font-size: 12px;">Signature data present</div>`
+        }
+      }
+    }
     
     return `
       <div style="margin-bottom: 15px;">
@@ -850,7 +863,124 @@ function generateCompleteReportHTML(
       ` : ""} -->
 
       <!-- Visit Summary -->
-      ${formData.recommendations?.visitSummary ? `
+      ${formData.visitSummary ? `
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Visit Summary</h2>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+          ${(() => {
+            const summary = formData.visitSummary
+            let html = ""
+            
+            // Overall Compliance Status
+            if (summary.overallStatus) {
+              const statusLabels: Record<string, string> = {
+                "fully-compliant": "Fully Compliant",
+                "substantially-compliant": "Substantially Compliant with Minor Issues",
+                "corrective-action": "Corrective Action Required",
+                "immediate-intervention": "Immediate Intervention Needed"
+              }
+              const statusColor: Record<string, string> = {
+                "fully-compliant": "#16a34a",
+                "substantially-compliant": "#eab308",
+                "corrective-action": "#f97316",
+                "immediate-intervention": "#dc2626"
+              }
+              html += `<p style="margin: 5px 0;"><strong>Overall Compliance Status:</strong> <span style="color: ${statusColor[summary.overallStatus] || '#374151'}; font-weight: bold;">${statusLabels[summary.overallStatus] || summary.overallStatus}</span></p>`
+            }
+            
+            // Overall Assessment
+            if (summary.overallAssessment) {
+              html += `
+                <div style="margin-top: 15px;">
+                  <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Overall Assessment</h4>
+                  <p style="white-space: pre-wrap;">${summary.overallAssessment}</p>
+                </div>
+              `
+            }
+            
+            // Key Strengths
+            if (summary.keyStrengths && Array.isArray(summary.keyStrengths)) {
+              const strengths = summary.keyStrengths.filter((s: string) => s && s.trim())
+              if (strengths.length > 0) {
+                html += `
+                  <div style="margin-top: 15px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Key Strengths Observed</h4>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                      ${strengths.map((s: string) => `<li style="margin: 3px 0;">${s}</li>`).join("")}
+                    </ul>
+                  </div>
+                `
+              }
+            }
+            
+            // Priority Areas
+            if (summary.priorityAreas && Array.isArray(summary.priorityAreas)) {
+              const areas = summary.priorityAreas.filter((a: any) => a && (a.priority || a.description))
+              if (areas.length > 0) {
+                html += `
+                  <div style="margin-top: 15px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Priority Areas for Next Visit</h4>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                      ${areas.map((a: any) => `<li style="margin: 3px 0;"><strong>${a.priority || "Priority"}:</strong> ${a.description || ""}</li>`).join("")}
+                    </ul>
+                  </div>
+                `
+              }
+            }
+            
+            // Resources Provided
+            if (summary.resourcesProvided) {
+              if (summary.resourcesProvided.combined) {
+                html += `
+                  <div style="margin-top: 15px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Resources Provided</h4>
+                    <p style="white-space: pre-wrap;">${summary.resourcesProvided.combined}</p>
+                  </div>
+                `
+              } else {
+                const resources = Object.entries(summary.resourcesProvided).filter(([k, v]: [string, any]) => v && String(v).trim() && k !== 'combined')
+                if (resources.length > 0) {
+                  html += `
+                    <div style="margin-top: 15px;">
+                      <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Resources Provided</h4>
+                      <ul style="margin: 5px 0; padding-left: 20px;">
+                        ${resources.map(([k, v]: [string, any]) => `<li style="margin: 3px 0;"><strong>${k.replace(/([A-Z])/g, " $1").trim()}:</strong> ${v}</li>`).join("")}
+                      </ul>
+                    </div>
+                  `
+                }
+              }
+            }
+            
+            // Next Scheduled Visit
+            if (summary.nextVisit && (summary.nextVisit.date || summary.nextVisit.time || summary.nextVisit.location)) {
+              html += `
+                <div style="margin-top: 15px;">
+                  <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Next Scheduled Visit</h4>
+                  <p style="margin: 3px 0;"><strong>Type:</strong> ${summary.nextVisit.visitType || "N/A"}</p>
+                  ${summary.nextVisit.date ? `<p style="margin: 3px 0;"><strong>Date:</strong> ${summary.nextVisit.date}</p>` : ""}
+                  ${summary.nextVisit.time ? `<p style="margin: 3px 0;"><strong>Time:</strong> ${summary.nextVisit.time}</p>` : ""}
+                  ${summary.nextVisit.location ? `<p style="margin: 3px 0;"><strong>Location:</strong> ${summary.nextVisit.location}</p>` : ""}
+                </div>
+              `
+            }
+            
+            // AI Generated Summary
+            if (summary.aiGeneratedSummary) {
+              html += `
+                <div style="margin-top: 15px; border-top: 1px solid #d1d5db; padding-top: 15px;">
+                  <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">AI-Generated Summary</h4>
+                  <div style="white-space: pre-wrap; font-size: 12px; background-color: white; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">${summary.aiGeneratedSummary}</div>
+                </div>
+              `
+            }
+            
+            return html || ""
+          })()}
+        </div>
+      </div>
+      ` : formData.recommendations?.visitSummary ? `
+      <!-- Legacy format -->
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Visit Summary</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
@@ -864,8 +994,89 @@ function generateCompleteReportHTML(
       </div>
       ` : ""}
 
-      <!-- Parent Interviews (moved after compliance) -->
-      ${formData.parentInterviews?.fosterParentInterview ? `
+      <!-- Foster Parent Interview Section -->
+      ${formData.fosterParentInterview ? `
+      <div style="margin-bottom: 30px;">
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview Summary</h2>
+        ${(() => {
+          const interview = formData.fosterParentInterview
+          let html = ""
+          
+          // Children Discussed
+          if (interview.childrenDiscussed && Array.isArray(interview.childrenDiscussed) && interview.childrenDiscussed.length > 0) {
+            html += `
+              <div style="margin-bottom: 20px;">
+                <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Children Discussed</h3>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; background-color: white;">
+                    <thead>
+                      <tr style="background-color: #f9fafb; border-bottom: 2px solid #d1d5db;">
+                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151;">Child Name</th>
+                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151;">Behaviors Noted</th>
+                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151;">Medical/Therapy</th>
+                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151;">School Performance</th>
+                        <th style="padding: 10px; text-align: left; font-weight: 600; font-size: 12px; color: #374151;">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${interview.childrenDiscussed.map((child: any) => `
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                          <td style="padding: 8px;">${child.childName || "—"}</td>
+                          <td style="padding: 8px; white-space: pre-wrap; font-size: 12px;">${child.behaviorsNoted || "—"}</td>
+                          <td style="padding: 8px; white-space: pre-wrap; font-size: 12px;">${child.medicalTherapy || "—"}</td>
+                          <td style="padding: 8px; white-space: pre-wrap; font-size: 12px;">${child.schoolPerformance || "—"}</td>
+                          <td style="padding: 8px; white-space: pre-wrap; font-size: 12px;">${child.notes || "—"}</td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `
+          }
+          
+          // Support Needs
+          if (interview.supportNeeds && typeof interview.supportNeeds === 'object') {
+            const supportNeeds = interview.supportNeeds
+            const needsEntries = Object.entries(supportNeeds).filter(([key, data]: [string, any]) => 
+              data && (data.needIdentified || data.supportOffered || data.followUpRequired)
+            )
+            
+            if (needsEntries.length > 0) {
+              html += `
+                <div style="margin-bottom: 20px;">
+                  <h3 style="color: #374151; font-size: 16px; margin-bottom: 10px;">Support Needs</h3>
+                  ${needsEntries.map(([area, data]: [string, any]) => {
+                    const areaLabel = area.replace(/([A-Z])/g, " $1").trim()
+                    return `
+                      <div style="margin-bottom: 15px; padding: 10px; background-color: #f9fafb; border-radius: 4px;">
+                        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${areaLabel}</h4>
+                        ${data.needIdentified ? `<p style="margin: 3px 0;"><strong>Need Identified:</strong> ${data.needIdentified}</p>` : ""}
+                        ${data.supportOffered ? `<p style="margin: 3px 0;"><strong>Support Offered:</strong> ${data.supportOffered}</p>` : ""}
+                        ${data.followUpRequired ? `<p style="margin: 3px 0;"><strong>Follow-up Required:</strong> Yes</p>` : ""}
+                      </div>
+                    `
+                  }).join("")}
+                </div>
+              `
+            }
+          }
+          
+          // Combined Notes
+          if (interview.combinedNotes) {
+            html += `
+              <div style="margin-top: 15px;">
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Combined Notes</h4>
+                <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 10px; border-radius: 4px;">${interview.combinedNotes}</p>
+              </div>
+            `
+          }
+          
+          return html || ""
+        })()}
+      </div>
+      ` : formData.parentInterviews?.fosterParentInterview ? `
+      <!-- Legacy format -->
       <div style="margin-bottom: 30px;">
         <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Foster Parent Interview</h2>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
@@ -874,13 +1085,60 @@ function generateCompleteReportHTML(
       </div>
       ` : ""}
 
-      <!-- Observations -->
-      ${formData.observations?.observations ? `
+      <!-- Observations Section -->
+      ${formData.observations ? `
       <div style="margin-bottom: 30px;">
-        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">General Observations</h2>
-        <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
-          <p style="white-space: pre-wrap;">${typeof formData.observations.observations === 'string' ? formData.observations.observations : JSON.stringify(formData.observations.observations, null, 2)}</p>
+        <h2 style="color: #374151; border-bottom: 2px solid #d1d5db; padding-bottom: 8px; margin-bottom: 15px;">Additional Observations & Comments</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          ${formData.observations.environmental ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Environmental Observations</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.environmental}</p>
+            </div>
+          ` : ""}
+          ${formData.observations.familyDynamics ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Family Dynamics</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.familyDynamics}</p>
+            </div>
+          ` : ""}
+          ${formData.observations.childInteractions ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Child Interactions</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.childInteractions}</p>
+            </div>
+          ` : ""}
+          ${formData.observations.complianceConcerns ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Compliance Concerns</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.complianceConcerns}</p>
+            </div>
+          ` : ""}
+          ${formData.observations.recommendations ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Recommendations</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.recommendations}</p>
+            </div>
+          ` : ""}
+          ${formData.observations.other ? `
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+              <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Other Observations</h4>
+              <p style="white-space: pre-wrap; font-size: 12px;">${formData.observations.other}</p>
+            </div>
+          ` : ""}
         </div>
+        ${formData.observations.combinedNotes ? `
+          <div style="margin-top: 15px; background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Combined General Observations</h4>
+            <p style="white-space: pre-wrap;">${formData.observations.combinedNotes}</p>
+          </div>
+        ` : ""}
+        ${formData.observations.observations && typeof formData.observations.observations === 'string' ? `
+          <div style="margin-top: 15px; background-color: #f9fafb; padding: 15px; border-radius: 8px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">General Observations</h4>
+            <p style="white-space: pre-wrap;">${formData.observations.observations}</p>
+          </div>
+        ` : ""}
       </div>
       ` : ""}
 
@@ -1253,10 +1511,81 @@ function generateCompleteReportText(
     })
   }
 
-  if (formData.parentInterviews?.fosterParentInterview) {
+  // Foster Parent Interview Section
+  if (formData.fosterParentInterview) {
+    const interview = formData.fosterParentInterview
+    content += `FOSTER PARENT INTERVIEW SUMMARY\n\n`
+    
+    // Children Discussed
+    if (interview.childrenDiscussed && Array.isArray(interview.childrenDiscussed) && interview.childrenDiscussed.length > 0) {
+      content += `Children Discussed:\n`
+      interview.childrenDiscussed.forEach((child: any) => {
+        content += `  ${child.childName || "—"}\n`
+        if (child.behaviorsNoted) content += `    Behaviors Noted: ${child.behaviorsNoted}\n`
+        if (child.medicalTherapy) content += `    Medical/Therapy: ${child.medicalTherapy}\n`
+        if (child.schoolPerformance) content += `    School Performance: ${child.schoolPerformance}\n`
+        if (child.notes) content += `    Notes: ${child.notes}\n`
+        content += `\n`
+      })
+    }
+    
+    // Support Needs
+    if (interview.supportNeeds && typeof interview.supportNeeds === 'object') {
+      const needsEntries = Object.entries(interview.supportNeeds).filter(([key, data]: [string, any]) => 
+        data && (data.needIdentified || data.supportOffered || data.followUpRequired)
+      )
+      if (needsEntries.length > 0) {
+        content += `Support Needs:\n`
+        needsEntries.forEach(([area, data]: [string, any]) => {
+          const areaLabel = area.replace(/([A-Z])/g, " $1").trim()
+          content += `  ${areaLabel}:\n`
+          if (data.needIdentified) content += `    Need Identified: ${data.needIdentified}\n`
+          if (data.supportOffered) content += `    Support Offered: ${data.supportOffered}\n`
+          if (data.followUpRequired) content += `    Follow-up Required: Yes\n`
+          content += `\n`
+        })
+      }
+    }
+    
+    if (interview.combinedNotes) {
+      content += `Combined Notes: ${interview.combinedNotes}\n\n`
+    }
+  } else if (formData.parentInterviews?.fosterParentInterview) {
     content += `FOSTER PARENT INTERVIEW\n`
     const interview = formData.parentInterviews.fosterParentInterview
     content += `${typeof interview === 'string' ? interview : JSON.stringify(interview, null, 2)}\n\n`
+  }
+
+  // Observations Section
+  if (formData.observations) {
+    const hasObservations = formData.observations.environmental || formData.observations.familyDynamics || 
+                          formData.observations.childInteractions || formData.observations.complianceConcerns ||
+                          formData.observations.recommendations || formData.observations.other || 
+                          formData.observations.combinedNotes
+    if (hasObservations) {
+      content += `ADDITIONAL OBSERVATIONS & COMMENTS\n\n`
+      if (formData.observations.environmental) {
+        content += `Environmental Observations: ${formData.observations.environmental}\n\n`
+      }
+      if (formData.observations.familyDynamics) {
+        content += `Family Dynamics: ${formData.observations.familyDynamics}\n\n`
+      }
+      if (formData.observations.childInteractions) {
+        content += `Child Interactions: ${formData.observations.childInteractions}\n\n`
+      }
+      if (formData.observations.complianceConcerns) {
+        content += `Compliance Concerns: ${formData.observations.complianceConcerns}\n\n`
+      }
+      if (formData.observations.recommendations) {
+        content += `Recommendations: ${formData.observations.recommendations}\n\n`
+      }
+      if (formData.observations.other) {
+        content += `Other Observations: ${formData.observations.other}\n\n`
+      }
+      if (formData.observations.combinedNotes) {
+        content += `Combined General Observations: ${formData.observations.combinedNotes}\n\n`
+      }
+    }
   }
 
   if (formData.observations?.followUpItems && formData.observations.followUpItems.length > 0) {
@@ -1276,7 +1605,73 @@ function generateCompleteReportText(
   //   content += `\n`
   // }
 
-  if (formData.recommendations?.visitSummary) {
+  // Visit Summary Section
+  if (formData.visitSummary) {
+    const summary = formData.visitSummary
+    content += `VISIT SUMMARY\n\n`
+    
+    if (summary.overallStatus) {
+      const statusLabels: Record<string, string> = {
+        "fully-compliant": "Fully Compliant",
+        "substantially-compliant": "Substantially Compliant with Minor Issues",
+        "corrective-action": "Corrective Action Required",
+        "immediate-intervention": "Immediate Intervention Needed"
+      }
+      content += `Overall Compliance Status: ${statusLabels[summary.overallStatus] || summary.overallStatus}\n\n`
+    }
+    
+    if (summary.overallAssessment) {
+      content += `Overall Assessment: ${summary.overallAssessment}\n\n`
+    }
+    
+    if (summary.keyStrengths && Array.isArray(summary.keyStrengths)) {
+      const strengths = summary.keyStrengths.filter((s: string) => s && s.trim())
+      if (strengths.length > 0) {
+        content += `Key Strengths Observed:\n`
+        strengths.forEach((s: string) => content += `  - ${s}\n`)
+        content += `\n`
+      }
+    }
+    
+    if (summary.priorityAreas && Array.isArray(summary.priorityAreas)) {
+      const areas = summary.priorityAreas.filter((a: any) => a && (a.priority || a.description))
+      if (areas.length > 0) {
+        content += `Priority Areas for Next Visit:\n`
+        areas.forEach((a: any) => content += `  - ${a.priority || "Priority"}: ${a.description || ""}\n`)
+        content += `\n`
+      }
+    }
+    
+    if (summary.resourcesProvided) {
+      if (summary.resourcesProvided.combined) {
+        content += `Resources Provided: ${summary.resourcesProvided.combined}\n\n`
+      } else {
+        const resources = Object.entries(summary.resourcesProvided).filter(([k, v]: [string, any]) => v && String(v).trim() && k !== 'combined')
+        if (resources.length > 0) {
+          content += `Resources Provided:\n`
+          resources.forEach(([k, v]: [string, any]) => {
+            const keyLabel = k.replace(/([A-Z])/g, " $1").trim()
+            content += `  - ${keyLabel}: ${v}\n`
+          })
+          content += `\n`
+        }
+      }
+    }
+    
+    if (summary.nextVisit && (summary.nextVisit.date || summary.nextVisit.time || summary.nextVisit.location)) {
+      content += `Next Scheduled Visit:\n`
+      content += `  Type: ${summary.nextVisit.visitType || "N/A"}\n`
+      if (summary.nextVisit.date) content += `  Date: ${summary.nextVisit.date}\n`
+      if (summary.nextVisit.time) content += `  Time: ${summary.nextVisit.time}\n`
+      if (summary.nextVisit.location) content += `  Location: ${summary.nextVisit.location}\n`
+      content += `\n`
+    }
+    
+    if (summary.aiGeneratedSummary) {
+      content += `AI-Generated Summary:\n${summary.aiGeneratedSummary}\n\n`
+    }
+  } else if (formData.recommendations?.visitSummary) {
+    // Legacy format
     content += `VISIT SUMMARY\n`
     const summary = formData.recommendations.visitSummary
     if (typeof summary === 'string') {
@@ -1316,10 +1711,9 @@ function generateCompleteReportText(
     }
   }
 
-  if (formData.observations?.observations) {
+  if (formData.observations?.observations && typeof formData.observations.observations === 'string') {
     content += `GENERAL OBSERVATIONS\n`
-    const observations = formData.observations.observations
-    content += `${typeof observations === 'string' ? observations : JSON.stringify(observations, null, 2)}\n\n`
+    content += `${formData.observations.observations}\n\n`
   }
 
   if (formData.signatures) {

@@ -1354,7 +1354,7 @@ const EnhancedHomeVisitForm = ({
                     className="flex-shrink-0 bg-refuge-purple hover:bg-refuge-magenta"
                     onClick={() => onSubmit?.(formData)}
                   >
-                    Submit
+                    Send Home Visit Summary
                   </Button>
                 ) : (
                   <Button
