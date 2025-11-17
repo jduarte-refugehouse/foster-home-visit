@@ -46,6 +46,11 @@ interface Appointment {
   return_longitude?: number
   return_timestamp?: string
   return_mileage?: number | null
+  // Travel leg tracking fields
+  has_in_progress_leg?: boolean
+  has_completed_leg?: boolean
+  has_in_progress_return_leg?: boolean
+  return_leg_id?: string | null
 }
 
 export default function MobileAppointmentDetailPage() {
@@ -166,6 +171,13 @@ export default function MobileAppointmentDetailPage() {
       fetchCurrentTravelLeg()
     }
   }, [appointmentId])
+  
+  // Sync currentLegId from appointment data when it's loaded
+  useEffect(() => {
+    if (appointment?.return_leg_id && !currentLegId) {
+      setCurrentLegId(appointment.return_leg_id)
+    }
+  }, [appointment?.return_leg_id, currentLegId])
 
   // Fetch current in-progress travel leg for this appointment
   const fetchCurrentTravelLeg = async () => {
@@ -931,8 +943,11 @@ export default function MobileAppointmentDetailPage() {
   // New leg-based system uses currentLegId, old system used appointment.start_drive_timestamp
   const hasStartedDrive = !!currentLegId || !!appointment.start_drive_timestamp || !!appointment.has_in_progress_leg
   const hasArrived = !!appointment.arrived_timestamp || !!appointment.has_completed_leg
-  const hasReturnStarted = !!appointment.return_timestamp
-  const hasReturnCompleted = !!appointment.return_mileage
+  // Return has started if: return_timestamp exists (legacy) OR appointment has return leg flag OR currentLegId exists (set when return leg created)
+  const hasReturnStarted = !!appointment.return_timestamp || 
+    !!appointment.has_in_progress_return_leg ||
+    (!!currentLegId && appointment.return_leg_id === currentLegId)
+  const hasReturnCompleted = !!appointment.return_mileage || (!!appointment.return_timestamp && !appointment.has_in_progress_return_leg)
   const visitInProgress = appointment.status === "in-progress"
   const visitCompleted = appointment.status === "completed"
   const showVisitContent = visitInProgress || visitCompleted
@@ -1123,7 +1138,8 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Post-Visit Phase: Leaving */}
-          {(visitCompleted || (hasArrived && !hasReturnStarted && (appointment.status === "scheduled" || visitInProgress))) && (
+          {/* Show if visit completed or arrived, but NOT if return travel has started (check both hasReturnStarted and currentLegId) */}
+          {(visitCompleted || (hasArrived && !hasReturnStarted && !currentLegId && (appointment.status === "scheduled" || visitInProgress))) && (
             <>
               {hasNextAppointment && nextAppointment && (
                 <Button
@@ -1175,7 +1191,8 @@ export default function MobileAppointmentDetailPage() {
           )}
 
           {/* Return Travel In Progress: Show "Arrived at Home" button */}
-          {hasReturnStarted && !hasReturnCompleted && currentLegId && (
+          {/* Show if return has started OR if currentLegId exists (just created return leg) */}
+          {((hasReturnStarted || currentLegId) && !hasReturnCompleted && currentLegId) && (
             <Button
               onClick={async () => {
                 try {
