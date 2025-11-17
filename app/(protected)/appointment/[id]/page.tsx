@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
@@ -960,7 +960,18 @@ export default function AppointmentDetailPage() {
   }, [showSendLinkDialog, appointment, user])
   
   // Update recipient when staffMembers loads (to check GUID match and populate phone)
+  // Use a ref to track if we've already processed this staffMembers array to prevent infinite loops
+  const staffProcessedRef = useRef<string>("")
+  
   useEffect(() => {
+    // Create a unique key for this staffMembers array to track if we've processed it
+    const staffKey = staffMembers.map(s => s.id).join(",")
+    
+    // Skip if we've already processed this exact staffMembers array
+    if (staffProcessedRef.current === staffKey) {
+      return
+    }
+    
     if (showSendLinkDialog && user && appointment && staffMembers.length > 0 && selectedRecipient) {
       // Check if logged-in user matches assigned user by GUID
       if (user.id && appointment.assigned_to_user_id && selectedRecipient.clerkUserId === appointment.assigned_to_user_id) {
@@ -974,23 +985,38 @@ export default function AppointmentDetailPage() {
         // If logged-in user matches assigned user, switch to logged-in user
         if (loggedInStaff && assignedStaff && 
             (loggedInStaff.id === assignedStaff.id || loggedInStaff.appUserId === assignedStaff.appUserId)) {
-          setSelectedRecipient({
-            clerkUserId: user.id,
-            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || appointment.assigned_to_name,
-            phone: loggedInStaff.phone || "",
-          })
-          if (loggedInStaff.phone) {
-            setRecipientPhone(loggedInStaff.phone)
+          // Only update if the values are actually different
+          const newPhone = loggedInStaff.phone || ""
+          if (selectedRecipient.clerkUserId !== user.id || selectedRecipient.phone !== newPhone) {
+            setSelectedRecipient({
+              clerkUserId: user.id,
+              name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || appointment.assigned_to_name,
+              phone: newPhone,
+            })
+            if (loggedInStaff.phone) {
+              setRecipientPhone(loggedInStaff.phone)
+            }
+            console.log(`✅ [SEND-LINK] Updated to logged-in user after staff load: ${user.id}`)
           }
-          console.log(`✅ [SEND-LINK] Updated to logged-in user after staff load: ${user.id}`)
+          // Mark this staffMembers array as processed
+          staffProcessedRef.current = staffKey
         } else if (assignedStaff && assignedStaff.phone && !recipientPhone) {
           // Populate phone for assigned staff
           setRecipientPhone(assignedStaff.phone)
           setSelectedRecipient({ ...selectedRecipient, phone: assignedStaff.phone })
+          // Mark this staffMembers array as processed
+          staffProcessedRef.current = staffKey
         }
       }
     }
-  }, [staffMembers, showSendLinkDialog, user, appointment, selectedRecipient, recipientPhone])
+  }, [staffMembers, showSendLinkDialog, user, appointment])
+  
+  // Reset the processed ref when dialog closes
+  useEffect(() => {
+    if (!showSendLinkDialog) {
+      staffProcessedRef.current = ""
+    }
+  }, [showSendLinkDialog])
 
   // Handle recipient selection change
   const handleRecipientChange = (clerkUserId: string) => {
@@ -2819,4 +2845,5 @@ export default function AppointmentDetailPage() {
     </div>
   )
 }
+
 
