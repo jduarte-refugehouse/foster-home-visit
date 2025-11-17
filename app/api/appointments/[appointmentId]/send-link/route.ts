@@ -75,8 +75,10 @@ export async function POST(
     }
 
     // If phone not provided in override, fetch from database
+    // Check both clerk_user_id and id (GUID) since staff list can return either
     if (!recipientPhone && recipientClerkUserId) {
-      const staffUsers = await query(
+      // First try by clerk_user_id (most common case)
+      let staffUsers = await query(
         `
         SELECT 
           u.id,
@@ -91,11 +93,69 @@ export async function POST(
         [recipientClerkUserId],
       )
 
+      // If not found, try by id (GUID) - in case staff list returned GUID instead of clerk_user_id
+      if (staffUsers.length === 0) {
+        // Check if it looks like a GUID
+        const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientClerkUserId)
+        if (isGuid) {
+          staffUsers = await query(
+            `
+            SELECT 
+              u.id,
+              u.clerk_user_id,
+              u.phone,
+              u.first_name,
+              u.last_name,
+              u.email
+            FROM app_users u
+            WHERE u.id = @param0 AND u.is_active = 1
+          `,
+            [recipientClerkUserId],
+          )
+        }
+      }
+
+      // If still not found and it's a Clerk user ID (starts with 'user_'), try to sync from Clerk
+      if (staffUsers.length === 0 && recipientClerkUserId.startsWith('user_')) {
+        try {
+          const { clerkClient } = await import("@clerk/nextjs/server")
+          const clerkUser = await clerkClient.users.getUser(recipientClerkUserId)
+          if (clerkUser) {
+            // Sync user from Clerk to app_users
+            const { createOrUpdateAppUser } = await import("@/lib/user-management")
+            const syncedUser = await createOrUpdateAppUser(clerkUser)
+            
+            // Now query again
+            staffUsers = await query(
+              `
+              SELECT 
+                u.id,
+                u.clerk_user_id,
+                u.phone,
+                u.first_name,
+                u.last_name,
+                u.email
+              FROM app_users u
+              WHERE u.clerk_user_id = @param0 AND u.is_active = 1
+            `,
+              [recipientClerkUserId],
+            )
+            
+            console.log(`✅ [SEND-LINK] Synced user ${recipientClerkUserId} from Clerk to app_users`)
+          }
+        } catch (syncError) {
+          console.error(`❌ [SEND-LINK] Error syncing user from Clerk:`, syncError)
+          // Continue to error handling below
+        }
+      }
+
       if (staffUsers.length === 0) {
         // Staff member not found - return error with details for UI to handle
+        // This could be a case manager (not in app_users) or user doesn't exist
         return NextResponse.json(
           {
             error: "Staff member not found in system",
+            message: `${recipientName || "This staff member"} is not in the app_users table. They may be a case manager or need to be added to the system.`,
             recipientName: recipientName,
             recipientClerkUserId: recipientClerkUserId,
           },
