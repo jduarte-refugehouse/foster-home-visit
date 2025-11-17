@@ -892,12 +892,43 @@ export default function AppointmentDetailPage() {
       const response = await fetch("/api/appointments/staff")
       if (response.ok) {
         const data = await response.json()
-        const allStaff = [...(data.staff || []), ...(data.caseManagers || [])]
+        
+        // Deduplicate by email or ID to prevent duplicates
+        // Case managers might have same name as app_users, so prioritize app_users entries
+        const staffMap = new Map<string, any>()
+        
+        // Add staff from app_users first (these have priority)
+        ;(data.staff || []).forEach((member: any) => {
+          // Use email as primary key, fallback to ID, then name
+          const key = member.email?.toLowerCase() || member.id || member.name?.toLowerCase()
+          if (key) {
+            // Always prefer app_users entry over case manager
+            if (!staffMap.has(key) || staffMap.get(key).type === "case_manager") {
+              staffMap.set(key, member)
+            }
+          }
+        })
+        
+        // Add case managers only if they don't already exist in app_users
+        ;(data.caseManagers || []).forEach((manager: any) => {
+          const key = manager.email?.toLowerCase() || manager.id || manager.name?.toLowerCase()
+          // Only add if not already in map (by email/ID)
+          // Case managers should not duplicate app_users entries
+          if (key && !staffMap.has(key)) {
+            staffMap.set(key, manager)
+          }
+        })
+        
+        const allStaff = Array.from(staffMap.values())
         setStaffMembers(allStaff)
         
         // If we have a selected recipient, try to populate their phone from the staff list
         if (selectedRecipient?.clerkUserId) {
-          const staff = allStaff.find((s) => s.id === selectedRecipient.clerkUserId)
+          const staff = allStaff.find((s) => 
+            s.id === selectedRecipient.clerkUserId || 
+            s.appUserId === selectedRecipient.clerkUserId ||
+            (s.email && user?.emailAddresses?.[0]?.emailAddress === s.email)
+          )
           if (staff && staff.phone && !recipientPhone) {
             setRecipientPhone(staff.phone)
             setSelectedRecipient({ ...selectedRecipient, phone: staff.phone })
@@ -913,24 +944,75 @@ export default function AppointmentDetailPage() {
 
   // Initialize recipient when dialog opens
   useEffect(() => {
-    if (showSendLinkDialog && appointment) {
+    if (showSendLinkDialog && appointment && user) {
       fetchStaffMembers()
-      // Set default recipient from appointment
-      const defaultRecipient = {
-        clerkUserId: appointment.assigned_to_user_id,
-        name: appointment.assigned_to_name,
-        phone: "", // Will be fetched or entered
+      
+      // Priority 1: Logged-in user (if they're assigned to this appointment)
+      let defaultRecipient: { clerkUserId?: string; name: string; phone: string } | null = null
+      
+      if (user.id && appointment.assigned_to_user_id) {
+        // Check if logged-in user matches assigned user (direct ID match or check via staffMembers if loaded)
+        const directMatch = appointment.assigned_to_user_id === user.id
+        const guidMatch = staffMembers.length > 0 && 
+          staffMembers.some(s => s.id === user.id && (s.appUserId === appointment.assigned_to_user_id))
+        
+        if (directMatch || guidMatch) {
+          defaultRecipient = {
+            clerkUserId: user.id,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || appointment.assigned_to_name,
+            phone: "",
+          }
+          console.log(`✅ [SEND-LINK] Defaulting to logged-in user: ${user.id}`)
+        }
       }
+      
+      // Priority 2: Assigned staff member (fallback)
+      if (!defaultRecipient) {
+        defaultRecipient = {
+          clerkUserId: appointment.assigned_to_user_id,
+          name: appointment.assigned_to_name,
+          phone: "",
+        }
+      }
+      
       setSelectedRecipient(defaultRecipient)
       setRecipientPhone("")
       setErrorData(null)
-      
-      // Try to fetch phone from database if we have a clerk_user_id
-      if (appointment.assigned_to_user_id) {
-        // Phone will be populated when staff list loads or user selects recipient
+    }
+  }, [showSendLinkDialog, appointment, user])
+  
+  // Update recipient when staffMembers loads (to check GUID match and populate phone)
+  useEffect(() => {
+    if (showSendLinkDialog && user && appointment && staffMembers.length > 0 && selectedRecipient) {
+      // Check if logged-in user matches assigned user by GUID
+      if (user.id && appointment.assigned_to_user_id && selectedRecipient.clerkUserId === appointment.assigned_to_user_id) {
+        const loggedInStaff = staffMembers.find(s => 
+          s.id === user.id || s.appUserId === user.id
+        )
+        const assignedStaff = staffMembers.find(s => 
+          s.id === appointment.assigned_to_user_id || s.appUserId === appointment.assigned_to_user_id
+        )
+        
+        // If logged-in user matches assigned user, switch to logged-in user
+        if (loggedInStaff && assignedStaff && 
+            (loggedInStaff.id === assignedStaff.id || loggedInStaff.appUserId === assignedStaff.appUserId)) {
+          setSelectedRecipient({
+            clerkUserId: user.id,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || appointment.assigned_to_name,
+            phone: loggedInStaff.phone || "",
+          })
+          if (loggedInStaff.phone) {
+            setRecipientPhone(loggedInStaff.phone)
+          }
+          console.log(`✅ [SEND-LINK] Updated to logged-in user after staff load: ${user.id}`)
+        } else if (assignedStaff && assignedStaff.phone && !recipientPhone) {
+          // Populate phone for assigned staff
+          setRecipientPhone(assignedStaff.phone)
+          setSelectedRecipient({ ...selectedRecipient, phone: assignedStaff.phone })
+        }
       }
     }
-  }, [showSendLinkDialog, appointment])
+  }, [staffMembers, showSendLinkDialog, user, appointment, selectedRecipient, recipientPhone])
 
   // Handle recipient selection change
   const handleRecipientChange = (clerkUserId: string) => {

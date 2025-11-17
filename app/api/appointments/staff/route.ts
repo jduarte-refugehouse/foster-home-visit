@@ -11,8 +11,9 @@ export async function GET() {
 
     // Use LEFT JOIN to ensure we don't miss users even if they don't have roles
     // Also check for users who might not have clerk_user_id set yet
+    // Use GROUP BY to prevent duplicates from multiple roles
     const staff = await query(`
-      SELECT DISTINCT
+      SELECT 
         u.id,
         u.clerk_user_id,
         u.email,
@@ -20,11 +21,12 @@ export async function GET() {
         u.first_name,
         u.last_name,
         u.is_active,
-        COALESCE(ur.role_name, 'Staff') as role_name
+        COALESCE(MAX(ur.role_name), 'Staff') as role_name
       FROM app_users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = 1
       WHERE u.is_active = 1
         AND (u.clerk_user_id IS NOT NULL OR u.email IS NOT NULL)
+      GROUP BY u.id, u.clerk_user_id, u.email, u.phone, u.first_name, u.last_name, u.is_active
       ORDER BY u.first_name, u.last_name
     `)
 
