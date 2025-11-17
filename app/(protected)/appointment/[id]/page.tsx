@@ -895,38 +895,14 @@ export default function AppointmentDetailPage() {
       if (response.ok) {
         const data = await response.json()
         
-        // Deduplicate by email or ID to prevent duplicates
-        // Case managers might have same name as app_users, so prioritize app_users entries
-        const staffMap = new Map<string, any>()
-        
-        // Add staff from app_users first (these have priority)
-        ;(data.staff || []).forEach((member: any) => {
-          // Use email as primary key, fallback to ID, then name
-          const key = member.email?.toLowerCase() || member.id || member.name?.toLowerCase()
-          if (key) {
-            // Always prefer app_users entry over case manager
-            if (!staffMap.has(key) || staffMap.get(key).type === "case_manager") {
-              staffMap.set(key, member)
-            }
-          }
-        })
-        
-        // Add case managers only if they don't already exist in app_users
-        ;(data.caseManagers || []).forEach((manager: any) => {
-          const key = manager.email?.toLowerCase() || manager.id || manager.name?.toLowerCase()
-          // Only add if not already in map (by email/ID)
-          // Case managers should not duplicate app_users entries
-          if (key && !staffMap.has(key)) {
-            staffMap.set(key, manager)
-          }
-        })
-        
-        const allStaff = Array.from(staffMap.values())
+        // API already returns unique staff members with @refugehouse.org domain
+        // No need for additional deduplication
+        const allStaff = data.staff || []
         setStaffMembers(allStaff)
         
         // If we have a selected recipient, try to populate their phone from the staff list
         if (selectedRecipient?.clerkUserId) {
-          const staff = allStaff.find((s) => 
+          const staff = allStaff.find((s: any) => 
             s.id === selectedRecipient.clerkUserId || 
             s.appUserId === selectedRecipient.clerkUserId ||
             (s.email && user?.emailAddresses?.[0]?.emailAddress === s.email)

@@ -27,7 +27,6 @@ interface Staff {
   id: string
   name: string
   email: string
-  role: string
   type: "user" | "case_manager"
 }
 
@@ -181,7 +180,8 @@ export function CreateAppointmentDialog({
 
       if (staffResponse.ok) {
         const staffData = await staffResponse.json()
-        setStaff([...staffData.staff, ...staffData.caseManagers])
+        // Only use app_users - no case managers needed
+        setStaff(staffData.staff || [])
       }
 
       if (homesResponse.ok) {
@@ -345,7 +345,7 @@ export function CreateAppointmentDialog({
         ...prev,
         assignedToUserId: selectedStaff.id,
         assignedToName: selectedStaff.name,
-        assignedToRole: selectedStaff.role,
+        assignedToRole: "", // No role assignment needed
       }))
     }
   }
@@ -605,7 +605,7 @@ export function CreateAppointmentDialog({
                   <SelectContent>
                     {staff.map((member) => (
                       <SelectItem key={member.id} value={member.id}>
-                        {member.name} - {member.role}
+                        {member.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
