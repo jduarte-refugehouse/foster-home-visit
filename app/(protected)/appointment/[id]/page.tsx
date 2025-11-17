@@ -85,6 +85,8 @@ interface Appointment {
   // Travel leg flags (from new leg-based system)
   has_in_progress_leg?: boolean
   has_completed_leg?: boolean
+  has_in_progress_return_leg?: boolean
+  return_leg_id?: string | null
 }
 
 export default function AppointmentDetailPage() {
@@ -1818,7 +1820,7 @@ export default function AppointmentDetailPage() {
                   <MapPinIcon className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Arrived"}
                 </Button>
-              ) : (appointment.arrived_timestamp || appointment.has_completed_leg) && !appointment.return_timestamp && (appointment.status === "scheduled" || appointment.status === "in-progress") ? (
+              ) : (appointment.arrived_timestamp || appointment.has_completed_leg) && !appointment.return_timestamp && !appointment.has_in_progress_return_leg && (appointment.status === "scheduled" || appointment.status === "in_progress" || appointment.status === "completed") ? (
                 <Button 
                   size="sm"
                   onClick={handleLeaving}
@@ -1827,6 +1829,68 @@ export default function AppointmentDetailPage() {
                 >
                   <Navigation className="h-4 w-4 mr-1.5" />
                   {capturingLocation ? "Capturing..." : "Leaving"}
+                </Button>
+              ) : appointment.has_in_progress_return_leg && appointment.return_leg_id ? (
+                <Button 
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      setCapturingLocation(true)
+                      const location = await captureLocation("arrived")
+                      
+                      const headers: HeadersInit = {
+                        "Content-Type": "application/json",
+                      }
+                      if (user) {
+                        headers["x-user-email"] = user.emailAddresses[0]?.emailAddress || ""
+                        headers["x-user-clerk-id"] = user.id
+                        headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                      }
+                      
+                      const response = await fetch(`/api/travel-legs/${appointment.return_leg_id}`, {
+                        method: "PATCH",
+                        headers,
+                        body: JSON.stringify({
+                          end_latitude: location.latitude,
+                          end_longitude: location.longitude,
+                          end_timestamp: new Date().toISOString(),
+                          end_location_name: "Office/Home",
+                          end_location_type: "office",
+                          is_final_leg: true,
+                        }),
+                      })
+                      
+                      if (response.ok) {
+                        toast({
+                          title: "Return Complete",
+                          description: "Return travel completed successfully.",
+                        })
+                        fetchAppointmentDetails()
+                        setHistoryRefreshKey((prev) => prev + 1)
+                      } else {
+                        const errorData = await response.json()
+                        toast({
+                          title: "Error",
+                          description: errorData.error || "Failed to complete return travel",
+                          variant: "destructive",
+                        })
+                      }
+                    } catch (error) {
+                      console.error("Error completing return travel:", error)
+                      toast({
+                        title: "Error",
+                        description: error instanceof Error ? error.message : "Failed to complete return travel",
+                        variant: "destructive",
+                      })
+                    } finally {
+                      setCapturingLocation(false)
+                    }
+                  }}
+                  disabled={capturingLocation}
+                  className="h-8 px-3 text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  {capturingLocation ? "Capturing..." : "Complete Return"}
                 </Button>
               ) : null}
             </>

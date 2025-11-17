@@ -55,6 +55,8 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     // Check for travel legs for this appointment
     let hasInProgressLeg = false
     let hasCompletedLeg = false
+    let hasInProgressReturnLeg = false
+    let returnLegId: string | null = null
     let legMileage: number | null = null
     let legStartTimestamp: string | null = null
     let legEndTimestamp: string | null = null
@@ -76,10 +78,18 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
       )
 
       if (travelLegs.length > 0) {
+        // Check for legs TO this appointment (arrival)
         hasInProgressLeg = travelLegs.some((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_to === appointmentId)
         hasCompletedLeg = travelLegs.some((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
         
-        // Get the most recent completed leg for this appointment
+        // Check for return legs FROM this appointment (departure)
+        const returnLeg = travelLegs.find((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_from === appointmentId)
+        if (returnLeg) {
+          hasInProgressReturnLeg = true
+          returnLegId = returnLeg.leg_id
+        }
+        
+        // Get the most recent completed leg for this appointment (arrival)
         const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
         if (completedLeg) {
           legMileage = completedLeg.calculated_mileage || null
@@ -92,7 +102,14 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
           legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
         }
         
-        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, mileage=${legMileage}`)
+        // Check for completed return leg mileage
+        const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
+        if (completedReturnLeg && completedReturnLeg.calculated_mileage) {
+          // Return mileage is stored in appointment.return_mileage, but we can also check the leg
+          // The appointment API will handle return_mileage separately
+        }
+        
+        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, return_in_progress=${hasInProgressReturnLeg}, return_leg_id=${returnLegId}, mileage=${legMileage}`)
       }
     } catch (legError) {
       // Don't fail if travel_legs table doesn't exist or query fails
@@ -112,6 +129,8 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         // Add travel leg flags for button state
         has_in_progress_leg: hasInProgressLeg,
         has_completed_leg: hasCompletedLeg,
+        has_in_progress_return_leg: hasInProgressReturnLeg,
+        return_leg_id: returnLegId,
         // Add travel leg mileage data (use leg mileage if available, otherwise use appointment mileage)
         calculated_mileage: legMileage !== null ? legMileage : (appointment.calculated_mileage || null),
         // Add travel leg timestamps (use leg timestamps if available, otherwise use appointment timestamps)
