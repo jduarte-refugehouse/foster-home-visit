@@ -68,6 +68,9 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     let returnLegTimestamp: string | null = null
     let returnLegLat: number | null = null
     let returnLegLng: number | null = null
+    let returnLegStartTimestamp: string | null = null
+    let returnLegStartLat: number | null = null
+    let returnLegStartLng: number | null = null
     
     try {
       const travelLegs = await query(
@@ -109,9 +112,6 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         
         // Check for completed return leg mileage
         const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
-        let returnLegStartTimestamp: string | null = null
-        let returnLegStartLat: number | null = null
-        let returnLegStartLng: number | null = null
         
         if (completedReturnLeg) {
           returnLegMileage = completedReturnLeg.calculated_mileage || null
