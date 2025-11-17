@@ -104,9 +104,16 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         
         // Check for completed return leg mileage
         const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
+        let returnLegMileage: number | null = null
+        let returnLegTimestamp: string | null = null
+        let returnLegLat: number | null = null
+        let returnLegLng: number | null = null
+        
         if (completedReturnLeg && completedReturnLeg.calculated_mileage) {
-          // Return mileage is stored in appointment.return_mileage, but we can also check the leg
-          // The appointment API will handle return_mileage separately
+          returnLegMileage = completedReturnLeg.calculated_mileage
+          returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
+          returnLegLat = completedReturnLeg.end_latitude || null
+          returnLegLng = completedReturnLeg.end_longitude || null
         }
         
         console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, return_in_progress=${hasInProgressReturnLeg}, return_leg_id=${returnLegId}, mileage=${legMileage}`)
@@ -140,6 +147,11 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         start_drive_longitude: legStartLng || appointment.start_drive_longitude || null,
         arrived_latitude: legEndLat || appointment.arrived_latitude || null,
         arrived_longitude: legEndLng || appointment.arrived_longitude || null,
+        // Add return leg mileage data (use leg mileage if available, otherwise use appointment return_mileage)
+        return_mileage: returnLegMileage !== null ? returnLegMileage : (appointment.return_mileage || null),
+        return_timestamp: returnLegTimestamp || appointment.return_timestamp || null,
+        return_latitude: returnLegLat !== null ? returnLegLat : (appointment.return_latitude || null),
+        return_longitude: returnLegLng !== null ? returnLegLng : (appointment.return_longitude || null),
       },
       timestamp: new Date().toISOString(),
     })

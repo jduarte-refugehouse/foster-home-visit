@@ -173,6 +173,41 @@ export async function PATCH(
       ]
     )
 
+    // If this is a return leg (has appointment_id_from but no appointment_id_to), update appointment return_mileage
+    const returnAppointmentId = legDetails[0]?.appointment_id_from
+    if (returnAppointmentId && !appointment_id_to && is_final_leg) {
+      try {
+        await query(
+          `UPDATE appointments 
+           SET return_latitude = @param1,
+               return_longitude = @param2,
+               return_timestamp = @param3,
+               return_mileage = @param4,
+               updated_at = GETUTCDATE()
+           WHERE appointment_id = @param0 AND is_deleted = 0`,
+          [
+            returnAppointmentId,
+            end_latitude,
+            end_longitude,
+            end_timestamp,
+            calculatedMileage,
+          ]
+        )
+        console.log(`✅ [TRAVEL] Updated appointment ${returnAppointmentId} with return mileage: ${calculatedMileage.toFixed(2)} miles`)
+      } catch (updateError: any) {
+        // If return columns don't exist, log a warning but don't fail
+        if (updateError.message?.includes("Invalid column name") && 
+            (updateError.message.includes("return_latitude") || 
+             updateError.message.includes("return_longitude") || 
+             updateError.message.includes("return_timestamp") ||
+             updateError.message.includes("return_mileage"))) {
+          console.warn("⚠️ [TRAVEL] Return travel columns not found in appointments table. Please run migration script.")
+        } else {
+          console.error("⚠️ [TRAVEL] Failed to update appointment return mileage (non-fatal):", updateError)
+        }
+      }
+    }
+
     // Log continuum entry for drive_end if this leg is tied to an appointment
     const finalAppointmentId = appointment_id_to || legDetails[0]?.appointment_id_to
     if (finalAppointmentId) {
