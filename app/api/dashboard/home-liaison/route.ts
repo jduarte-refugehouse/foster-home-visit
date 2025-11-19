@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getConnection, query } from "@/lib/db"
 import { format, addDays, startOfDay, endOfDay } from "date-fns"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"
 

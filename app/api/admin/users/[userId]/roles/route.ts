@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@/lib/user-management"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
   try {

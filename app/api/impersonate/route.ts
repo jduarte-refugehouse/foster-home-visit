@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
 import { getUserByClerkId } from "@/lib/user-management"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"
 

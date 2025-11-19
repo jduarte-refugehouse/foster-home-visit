@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { checkUserAccess } from "@/lib/user-access-check"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode } from "@/lib/microservice-config"
 import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@/lib/user-management"
 import { getEffectiveUser } from "@/lib/impersonation"
