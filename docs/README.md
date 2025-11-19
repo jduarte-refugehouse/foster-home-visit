@@ -23,6 +23,8 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 
 ### 🔧 Development Guides
 
+- **[Development Workflow](./development-workflow.md)** - ⚠️ **CRITICAL: Remote testing workflow**
+- **[Vercel Branch Deployment Strategy](./vercel-branch-deployment-strategy.md)** - How to configure branch-based deployments for microservices
 - **[Navigation Specification](./navigation-specification.md)** - How navigation works
 - **[Refuge House Style Guide](./refuge-house-style-guide.md)** - UI/UX guidelines
 - **[Quick Reference for AI](./quick-reference-for-ai.md)** - Context for AI assistants
@@ -47,6 +49,7 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 
 ### 🧪 Testing & Setup
 
+- **[Development Workflow](./development-workflow.md)** - ⚠️ **CRITICAL: Remote testing workflow (no local testing)**
 - **[Testing Public Signature Routes](./testing-public-signature-routes.md)** - Signature testing
 - **[Testing Travel Legs Mobile](./testing-travel-legs-mobile.md)** - Mobile travel testing
 - **[iPad Safari Console Debugging](./ipad-safari-console-debugging.md)** - Mobile debugging

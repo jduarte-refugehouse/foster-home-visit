@@ -106,6 +106,9 @@ VALUES
    - **Root Directory**: `.` (root of monorepo)
    - **Build Command**: `npm run build`
    - **Output Directory**: `.next`
+   - **Production Branch**: Set to your microservice-specific branch (e.g., `case-management-main`)
+     - ⚠️ **Important**: This prevents commits to other branches from deploying to this microservice
+     - See `docs/vercel-branch-deployment-strategy.md` for detailed branch strategy
 
 ### 2.2 Set Environment Variables
 
@@ -277,8 +280,33 @@ export const MICROSERVICE_CONFIGS: Record<string, MicroserviceConfig> = {
 
 ## Step 5: Testing
 
-### 5.1 Local Development
+### ⚠️ IMPORTANT: Remote Testing Workflow
 
+**All testing is done in remote environments (Vercel deployments). No local testing is performed.**
+
+### 5.1 Testing Workflow
+
+1. **Deploy to Vercel Preview/Production**
+   - Push changes to GitHub
+   - Vercel automatically deploys (or manually trigger deployment)
+   - Access via Vercel preview URL or production domain
+
+2. **Test in Remote Environment**
+   - Access via `https://your-microservice.vercel.app` (preview) or `https://your-microservice.refugehouse.app` (production)
+   - Test authentication and permissions
+   - Verify navigation loads correctly
+   - Test all microservice-specific features
+
+3. **Environment Configuration**
+   - Ensure `MICROSERVICE_CODE` environment variable is set in Vercel project settings
+   - Verify all required environment variables are configured
+   - Check database connectivity and permissions
+
+### 5.2 Local Development (Reference Only)
+
+**Note:** While local development is possible, the standard workflow is to test directly in remote Vercel environments.
+
+If you need to run locally for reference:
 1. Set environment variable:
    ```bash
    export MICROSERVICE_CODE=service-plan
@@ -291,12 +319,7 @@ export const MICROSERVICE_CONFIGS: Record<string, MicroserviceConfig> = {
 
 3. Access at `http://localhost:3000`
 
-### 5.2 Production Testing
-
-1. Deploy to Vercel
-2. Access via `https://serviceplan.refugehouse.app`
-3. Test authentication and permissions
-4. Verify navigation loads correctly
+**However, all actual testing and validation should be done in remote Vercel deployments.**
 
 ## Step 6: User Access Management
 
