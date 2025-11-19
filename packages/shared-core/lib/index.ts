@@ -28,3 +28,10 @@ export * from './continuum-logger'
 export * from './sms-helper'
 export * from './email-helper'
 
+// AI & Speech
+export * from './anthropic-helper'
+export * from './deepgram-streaming'
+export * from './google-speech-helper'
+export * from './speech-utils'
+export * from './environment'
+

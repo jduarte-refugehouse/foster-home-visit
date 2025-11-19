@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { enhanceResponse } from "@/lib/anthropic-helper"
+import { enhanceResponse } from "@refugehouse/shared-core/anthropic"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"

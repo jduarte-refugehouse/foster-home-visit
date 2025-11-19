@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@refugehouse/shared-core/components/ui/input"
 import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { Info, CheckCircle2, XCircle } from "lucide-react"
-import { ANTHROPIC_MODELS } from "@/lib/anthropic-helper"
+import { ANTHROPIC_MODELS } from "@refugehouse/shared-core/anthropic"
 
 export default function TestAIPage() {
   const { user, isLoaded } = useUser()
