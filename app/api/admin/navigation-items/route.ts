@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
-import { checkPermission } from "@/lib/permissions-middleware"
+import { checkPermission } from "@refugehouse/shared-core/permissions"
 import { CURRENT_MICROSERVICE } from "@/lib/user-management"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 

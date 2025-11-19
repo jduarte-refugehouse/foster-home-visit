@@ -22,7 +22,8 @@
       "@/*": ["./*"],
       "@refugehouse/shared-core/*": ["./packages/shared-core/*"],
       "@refugehouse/shared-core/system-admin": ["./packages/shared-core/lib/system-admin-check.ts"],
-      "@refugehouse/shared-core/auth": ["./packages/shared-core/lib/clerk-auth-helper.ts"]
+      "@refugehouse/shared-core/auth": ["./packages/shared-core/lib/clerk-auth-helper.ts"],
+      "@refugehouse/shared-core/permissions": ["./packages/shared-core/lib/permissions-middleware.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -5,7 +5,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/permissions-middleware"
+import { requireAuth } from "@refugehouse/shared-core/permissions"
 import { query } from "@/lib/db"
 import { getMicroserviceCode, MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 import sgMail from "@sendgrid/mail"
