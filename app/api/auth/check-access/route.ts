@@ -4,7 +4,7 @@ import { requireClerkAuth } from "@/lib/clerk-auth-helper"
 import { getMicroserviceCode } from "@/lib/microservice-config"
 import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@/lib/user-management"
 import { getEffectiveUser } from "@/lib/impersonation"
-import { isSystemAdmin } from "@/lib/system-admin-check"
+import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 
 /**
  * @shared-core

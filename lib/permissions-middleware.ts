@@ -3,7 +3,7 @@ import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./
 import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
 import { getClerkUserIdFromRequest } from "./clerk-auth-helper"
-import { isSystemAdmin } from "./system-admin-check"
+import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 
 export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
   // SAFE: Use header-based auth for API routes (no middleware required)

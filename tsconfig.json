@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@refugehouse/shared-core/*": ["./packages/shared-core/*"]
+      "@refugehouse/shared-core/*": ["./packages/shared-core/*"],
+      "@refugehouse/shared-core/system-admin": ["./packages/shared-core/lib/system-admin-check.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
