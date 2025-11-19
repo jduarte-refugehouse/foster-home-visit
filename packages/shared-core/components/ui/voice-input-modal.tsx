@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@refugehouse/shared-core/components/ui/dialog'
+import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Mic, MicOff, X, Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { cn } from '@refugehouse/shared-core/utils'
+import { Alert, AlertDescription } from '@refugehouse/shared-core/components/ui/alert'
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
 
 interface VoiceInputModalProps {
