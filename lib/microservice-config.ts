@@ -147,14 +147,47 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
 /**
  * @shared-core
  * This function should be moved to packages/shared-core/lib/microservice-config.ts
- * Gets the microservice code from environment variable or falls back to config
+ * Gets the microservice code using tiered detection strategy:
+ * 1. Environment variable (explicit override - highest priority)
+ * 2. Branch name detection (for Vercel preview deployments)
+ * 3. Fall back to config (default)
  */
 export function getMicroserviceCode(): string {
-  // Priority 1: Environment variable (for Vercel deployments)
+  // Tier 1: Environment variable (explicit override - highest priority)
+  // This is set in Vercel project settings and takes precedence
   if (process.env.MICROSERVICE_CODE) {
     return process.env.MICROSERVICE_CODE
   }
-  // Priority 2: Fall back to config (for local dev or when env var not set)
+
+  // Tier 2: Branch name detection (for Vercel preview deployments)
+  // Vercel automatically sets VERCEL_BRANCH environment variable
+  if (process.env.VERCEL_BRANCH) {
+    const branch = process.env.VERCEL_BRANCH.toLowerCase()
+    
+    // Match branch names to microservice codes
+    // Pattern: branch names containing microservice identifier
+    if (branch.includes('visits') || branch.includes('home-visit')) {
+      return 'home-visits'
+    }
+    if (branch.includes('case-management') || branch.includes('case-management')) {
+      return 'case-management'
+    }
+    if (branch.includes('admin') && !branch.includes('case-management')) {
+      return 'admin'
+    }
+    if (branch.includes('training')) {
+      return 'training'
+    }
+    if (branch.includes('placements')) {
+      return 'placements'
+    }
+    if (branch.includes('service-plan') || branch.includes('service-plans')) {
+      return 'service-plans'
+    }
+    // Add more microservice branch patterns as needed
+  }
+
+  // Tier 3: Fall back to config (default for local dev or when no detection works)
   return MICROSERVICE_CONFIG.code
 }
 
