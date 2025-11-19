@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { transcribeWithGoogleSpeech, isGoogleSpeechAvailable } from '@/lib/google-speech-helper'
+import { transcribeWithGoogleSpeech, isGoogleSpeechAvailable } from '@refugehouse/shared-core/google-speech'
 
 export const runtime = 'nodejs'
 

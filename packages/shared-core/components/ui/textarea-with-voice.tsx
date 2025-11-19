@@ -1,11 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
+import { Textarea } from '@refugehouse/shared-core/components/ui/textarea'
+import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Mic } from 'lucide-react'
-import { VoiceInputModal } from '@/components/ui/voice-input-modal'
-import { cn } from '@/lib/utils'
+import { VoiceInputModal } from '@refugehouse/shared-core/components/ui/voice-input-modal'
+import { cn } from '@refugehouse/shared-core/utils'
 import { useToast } from '@/hooks/use-toast'
 
 interface TextareaWithVoiceProps extends React.ComponentProps<'textarea'> {
