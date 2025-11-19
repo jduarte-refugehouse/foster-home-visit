@@ -29,7 +29,8 @@
       "@refugehouse/shared-core/db": ["./packages/shared-core/lib/db.ts"],
       "@refugehouse/shared-core/impersonation": ["./packages/shared-core/lib/impersonation.ts"],
       "@refugehouse/shared-core/communication": ["./packages/shared-core/lib/communication-logging.ts"],
-      "@refugehouse/shared-core/continuum": ["./packages/shared-core/lib/continuum-logger.ts"]
+      "@refugehouse/shared-core/continuum": ["./packages/shared-core/lib/continuum-logger.ts"],
+      "@refugehouse/shared-core/components/access-guard": ["./packages/shared-core/components/access-guard.tsx"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

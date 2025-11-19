@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useDeviceType } from "@/hooks/use-device-type"
-import { AccessGuard } from "@/components/access-guard"
+import { AccessGuard } from "@refugehouse/shared-core/components/access-guard"
 
 /**
  * Mobile Layout - Detects device type and provides mobile-optimized experience
