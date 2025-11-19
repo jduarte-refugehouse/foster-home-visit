@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./user-management"
 import { getEffectiveUser } from "./impersonation"
-import { MICROSERVICE_CONFIG } from "./microservice-config"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 
