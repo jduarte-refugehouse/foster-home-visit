@@ -64,3 +64,6 @@ export function requireClerkAuth(request: NextRequest): {
   }
 }
 
+// Re-export functions from auth-utils for convenience
+export { getAuth, isClerkEnabled, getCurrentUser } from './auth-utils'
+
