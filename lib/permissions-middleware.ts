@@ -3,6 +3,7 @@ import { getUserByClerkId, hasPermission, getUserRolesForMicroservice } from "./
 import { getEffectiveUser } from "./impersonation"
 import { MICROSERVICE_CONFIG } from "./microservice-config"
 import { getClerkUserIdFromRequest } from "./clerk-auth-helper"
+import { isSystemAdmin } from "./system-admin-check"
 
 export async function checkPermission(requiredPermission: string | string[], microserviceCode?: string, request?: NextRequest) {
   // SAFE: Use header-based auth for API routes (no middleware required)
@@ -38,8 +39,9 @@ export async function checkPermission(requiredPermission: string | string[], mic
   const targetMicroservice = microserviceCode || MICROSERVICE_CONFIG.code
   const permissions = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission]
 
-  // System admins have access to everything
-  if (user.core_role === "system_admin") {
+  // SECURITY: System admins - check email directly using centralized function
+  // Only specific emails can be system admins - this prevents accidental access
+  if (user.email && isSystemAdmin(user.email)) {
     return { authorized: true, user, reason: "System admin access" }
   }
 
@@ -90,8 +92,9 @@ export async function checkRole(requiredRole: string | string[], microserviceCod
   const targetMicroservice = microserviceCode || MICROSERVICE_CONFIG.code
   const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
 
-  // System admins have access to everything
-  if (user.core_role === "system_admin") {
+  // SECURITY: System admins - check email directly using centralized function
+  // Only specific emails can be system admins - this prevents accidental access
+  if (user.email && isSystemAdmin(user.email)) {
     return { authorized: true, user, reason: "System admin access" }
   }
 
