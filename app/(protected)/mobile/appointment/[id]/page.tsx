@@ -372,73 +372,17 @@ export default function MobileAppointmentDetailPage() {
     return response.json()
   }
 
-  const captureLocation = (action: "start_drive" | "arrived") => {
-    return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-      if (!navigator.geolocation) {
-        setCapturingLocation(false)
-        reject(new Error("Geolocation is not supported by your browser"))
-        return
-      }
-
-      setCapturingLocation(true)
-      console.log(`📍 [LOCATION] Starting location capture for: ${action}`)
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCapturingLocation(false)
-          console.log(`✅ [LOCATION] Location captured:`, {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-          })
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          })
-        },
-        (error) => {
-          setCapturingLocation(false)
-          console.error(`❌ [LOCATION] Location capture failed:`, {
-            code: error.code,
-            message: error.message,
-            action,
-          })
-          
-          // Provide more descriptive error messages with iOS-specific guidance
-          let errorMessage = error.message
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              if (isIOS) {
-                errorMessage = "Location permission denied. Go to Settings → Privacy & Security → Location Services → Safari Websites, then allow location access for this site."
-              } else {
-                errorMessage = "Location permission denied. Please enable location access in your browser settings."
-              }
-              break
-            case error.POSITION_UNAVAILABLE:
-              if (isIOS) {
-                errorMessage = "Location unavailable. Check: Settings → Privacy & Security → Location Services is ON, you're outside or near a window, and Wi-Fi/Cellular is ON."
-              } else {
-                errorMessage = "Location information is unavailable. Please check your device's location settings."
-              }
-              break
-            case error.TIMEOUT:
-              errorMessage = "Location request timed out. Make sure you're outside or near a window for GPS signal, then try again."
-              break
-            default:
-              errorMessage = error.message || "Failed to capture location"
-          }
-          
-          reject(new Error(errorMessage))
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000, // Increased timeout to 15 seconds
-          maximumAge: 0,
-        },
-      )
-    })
+  const captureLocation = async (action: "start_drive" | "arrived") => {
+    setCapturingLocation(true)
+    try {
+      const { captureLocation: captureLocationHelper } = await import("@refugehouse/shared-core/geolocation")
+      const location = await captureLocationHelper(action)
+      setCapturingLocation(false)
+      return location
+    } catch (error: any) {
+      setCapturingLocation(false)
+      throw new Error(error.userFriendlyMessage || error.message || "Failed to capture location")
+    }
   }
 
   const handleStartDrive = async () => {

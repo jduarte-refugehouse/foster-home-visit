@@ -39,4 +39,5 @@ export * from './environment'
 export * from './route-calculator'
 export * from './ics-generator'
 export * from './utils'
+export * from './geolocation-helper'
 

@@ -38,6 +38,7 @@
       "@refugehouse/shared-core/speech-utils": ["./packages/shared-core/lib/speech-utils.ts"],
       "@refugehouse/shared-core/environment": ["./packages/shared-core/lib/environment.ts"],
       "@refugehouse/shared-core/route-calculator": ["./packages/shared-core/lib/route-calculator.ts"],
+      "@refugehouse/shared-core/geolocation": ["./packages/shared-core/lib/geolocation-helper.ts"],
       "@refugehouse/shared-core/ics-generator": ["./packages/shared-core/lib/ics-generator.ts"],
       "@refugehouse/shared-core/utils": ["./packages/shared-core/lib/utils.ts"],
       "@refugehouse/shared-core/components/access-guard": ["./packages/shared-core/components/access-guard.tsx"],

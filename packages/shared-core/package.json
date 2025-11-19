@@ -22,6 +22,7 @@
     "./speech-utils": "./lib/speech-utils.ts",
     "./environment": "./lib/environment.ts",
     "./route-calculator": "./lib/route-calculator.ts",
+    "./geolocation": "./lib/geolocation-helper.ts",
     "./ics-generator": "./lib/ics-generator.ts",
     "./utils": "./lib/utils.ts",
     "./components/access-guard": "./components/access-guard.tsx",
