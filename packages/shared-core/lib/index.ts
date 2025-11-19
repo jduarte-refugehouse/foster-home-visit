@@ -24,3 +24,7 @@ export * from './impersonation'
 export * from './communication-logging'
 export * from './continuum-logger'
 
+// Communication
+export * from './sms-helper'
+export * from './email-helper'
+
