@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createUser, updateUserLastLogin } from "@/lib/user-management"
+import { createUser, updateUserLastLogin } from "@refugehouse/shared-core/user-management"
 
 export async function POST(request: NextRequest) {
   try {

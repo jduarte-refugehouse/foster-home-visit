@@ -163,7 +163,7 @@ export async function POST(
           const clerkUser = await clerkClient.users.getUser(recipientClerkUserId)
           if (clerkUser) {
             // Sync user from Clerk to app_users
-            const { createOrUpdateAppUser } = await import("@/lib/user-management")
+            const { createOrUpdateAppUser } = await import("@refugehouse/shared-core/user-management")
             const syncedUser = await createOrUpdateAppUser(clerkUser)
             
             // Now query again

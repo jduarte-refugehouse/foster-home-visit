@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@/lib/db"
 import { checkPermission } from "@refugehouse/shared-core/permissions"
-import { CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"

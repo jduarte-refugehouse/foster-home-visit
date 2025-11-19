@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { clerkClient } from "@clerk/nextjs/server"
-import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"

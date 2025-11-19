@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { checkUserAccess } from "@/lib/user-access-check"
+import { checkUserAccess } from "@refugehouse/shared-core/user-access"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode } from "@/lib/microservice-config"
-import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@/lib/user-management"
+import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@refugehouse/shared-core/user-management"
 import { getEffectiveUser } from "@/lib/impersonation"
 import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 
