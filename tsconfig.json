@@ -31,7 +31,9 @@
       "@refugehouse/shared-core/communication": ["./packages/shared-core/lib/communication-logging.ts"],
       "@refugehouse/shared-core/continuum": ["./packages/shared-core/lib/continuum-logger.ts"],
       "@refugehouse/shared-core/components/access-guard": ["./packages/shared-core/components/access-guard.tsx"],
-      "@refugehouse/shared-core/components/ui/*": ["./packages/shared-core/components/ui/*"]
+      "@refugehouse/shared-core/components/ui/*": ["./packages/shared-core/components/ui/*"],
+      "@refugehouse/shared-core/hooks/use-permissions": ["./packages/shared-core/hooks/use-permissions.ts"],
+      "@refugehouse/shared-core/hooks/use-safe-user": ["./packages/shared-core/hooks/use-safe-user.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

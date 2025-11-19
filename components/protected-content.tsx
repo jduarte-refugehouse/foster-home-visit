@@ -1,6 +1,6 @@
 "use client"
 
-import { usePermissions } from "@/hooks/use-permissions"
+import { usePermissions } from "@refugehouse/shared-core/hooks/use-permissions"
 import type { ReactNode } from "react"
 
 interface ProtectedContentProps {

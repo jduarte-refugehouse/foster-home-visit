@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-co
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Home, Map, Users, Shield, ExternalLink, Calendar, Clock, CheckCircle2, BookOpen, AlertCircle, Phone } from "lucide-react"
-import { usePermissions } from "@/hooks/use-permissions"
+import { usePermissions } from "@refugehouse/shared-core/hooks/use-permissions"
 import { useDeviceType } from "@/hooks/use-device-type"
 import Link from "next/link"
 import { format, parseISO, isToday, isTomorrow, isSameDay } from "date-fns"
