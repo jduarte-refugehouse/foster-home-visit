@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
 
       console.log("📝 EXECUTING MICROSERVICE QUERY:")
       console.log("Query:", microserviceQuery)
-      console.log("Parameter @param0:", MICROSERVICE_CONFIG.code)
+      console.log("Parameter @param0:", microserviceCode)
 
       const microserviceResult = await connection
         .request()
