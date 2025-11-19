@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
-import { getConnection, testConnection } from "@/lib/db"
+import { getConnection, testConnection } from "@refugehouse/shared-core/db"
 
 export const dynamic = "force-dynamic"
 

@@ -1,9 +1,9 @@
 import type React from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@refugehouse/shared-core/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppHeader } from "@/components/app-header"
 import { ImpersonationBanner } from "@/components/impersonation-banner"
-import { AccessGuard } from "@/components/access-guard"
+import { AccessGuard } from "@refugehouse/shared-core/components/access-guard"
 
 export default function ProtectedLayout({
   children,

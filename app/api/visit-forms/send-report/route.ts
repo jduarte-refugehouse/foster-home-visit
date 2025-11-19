@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import sgMail from "@sendgrid/mail"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
-import { query } from "@/lib/db"
-import { getUserByClerkId } from "@/lib/user-management"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
+import { query } from "@refugehouse/shared-core/db"
+import { getUserByClerkId } from "@refugehouse/shared-core/user-management"
 import { format } from "date-fns"
 import PDFDocument from "pdfkit"
 

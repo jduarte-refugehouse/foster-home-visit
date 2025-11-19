@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { query } from "@/lib/db"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { query } from "@refugehouse/shared-core/db"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export async function GET(request: NextRequest) {
   try {

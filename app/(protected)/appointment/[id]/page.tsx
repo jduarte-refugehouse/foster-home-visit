@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@refugehouse/shared-core/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@refugehouse/shared-core/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
 import { 
   ArrowLeft, 
   Clock, 
@@ -34,8 +34,8 @@ import {
   Image,
   X
 } from "lucide-react"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@refugehouse/shared-core/components/ui/sidebar"
+import { Separator } from "@refugehouse/shared-core/components/ui/separator"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
@@ -43,7 +43,7 @@ import { CreateAppointmentDialog } from "@/components/appointments/create-appoin
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
 import { StaffTrainingSummary } from "@/components/appointments/staff-training-summary"
-import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@/lib/continuum-logger"
+import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@refugehouse/shared-core/continuum"
 
 interface Appointment {
   appointment_id: string
@@ -479,61 +479,17 @@ export default function AppointmentDetailPage() {
     }
   }
 
-  const captureLocation = (action: "start_drive" | "arrived") => {
-    return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not supported by your browser"))
-        return
-      }
-
-      setCapturingLocation(true)
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCapturingLocation(false)
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          })
-        },
-        (error) => {
-          setCapturingLocation(false)
-          
-          // Provide more descriptive error messages with iOS-specific guidance
-          let errorMessage = error.message
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              if (isIOS) {
-                errorMessage = "Location permission denied. Go to Settings → Privacy & Security → Location Services → Safari Websites, then allow location access for this site."
-              } else {
-                errorMessage = "Location permission denied. Please enable location access in your browser settings."
-              }
-              break
-            case error.POSITION_UNAVAILABLE:
-              if (isIOS) {
-                errorMessage = "Location unavailable. Check: Settings → Privacy & Security → Location Services is ON, you're outside or near a window, and Wi-Fi/Cellular is ON."
-              } else {
-                errorMessage = "Location information is unavailable. Please check your device's location settings."
-              }
-              break
-            case error.TIMEOUT:
-              errorMessage = "Location request timed out. Make sure you're outside or near a window for GPS signal, then try again."
-              break
-            default:
-              errorMessage = error.message || "Failed to capture location"
-          }
-          
-          reject(new Error(errorMessage))
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        },
-      )
-    })
+  const captureLocation = async (action: "start_drive" | "arrived") => {
+    setCapturingLocation(true)
+    try {
+      const { captureLocation: captureLocationHelper } = await import("@refugehouse/shared-core/geolocation")
+      const location = await captureLocationHelper(action)
+      setCapturingLocation(false)
+      return location
+    } catch (error: any) {
+      setCapturingLocation(false)
+      throw new Error(error.userFriendlyMessage || error.message || "Failed to capture location")
+    }
   }
 
   const handleStartDrive = async () => {

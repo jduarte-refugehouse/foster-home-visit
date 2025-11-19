@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
-import { query } from "@/lib/db"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { query } from "@refugehouse/shared-core/db"
 
 export const dynamic = "force-dynamic"
 

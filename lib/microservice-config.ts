@@ -144,6 +144,20 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
   ],
 }
 
+/**
+ * @shared-core
+ * This function should be moved to packages/shared-core/lib/microservice-config.ts
+ * Gets the microservice code from environment variable or falls back to config
+ */
+export function getMicroserviceCode(): string {
+  // Priority 1: Environment variable (for Vercel deployments)
+  if (process.env.MICROSERVICE_CODE) {
+    return process.env.MICROSERVICE_CODE
+  }
+  // Priority 2: Fall back to config (for local dev or when env var not set)
+  return MICROSERVICE_CONFIG.code
+}
+
 // Helper functions
 export function isInternalUser(email: string): boolean {
   return email.endsWith(`@${MICROSERVICE_CONFIG.organizationDomain}`)

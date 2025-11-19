@@ -1,6 +1,6 @@
-import { query } from "@/lib/db"
+import { query } from "@refugehouse/shared-core/db"
 import sgMail from "@sendgrid/mail"
-import { logCommunication } from "@/lib/communication-logging"
+import { logCommunication } from "@refugehouse/shared-core/communication"
 
 /**
  * Check if a user has access to the platform

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { query } from "@refugehouse/shared-core/db"
 import { randomUUID } from "crypto"
 import sgMail from "@sendgrid/mail"
-import { logCommunication, getMicroserviceId } from "@/lib/communication-logging"
+import { logCommunication, getMicroserviceId } from "@refugehouse/shared-core/communication"
 
 export const dynamic = "force-dynamic"
 

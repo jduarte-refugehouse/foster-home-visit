@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@refugehouse/shared-core/components/ui/table"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -12,10 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { toast } from "@/components/ui/use-toast"
+} from "@refugehouse/shared-core/components/ui/dialog"
+import { Checkbox } from "@refugehouse/shared-core/components/ui/checkbox"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { toast } from "@refugehouse/shared-core/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
 type User = {

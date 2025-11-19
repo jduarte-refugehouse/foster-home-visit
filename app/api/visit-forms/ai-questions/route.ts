@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateContextualQuestions } from "@/lib/anthropic-helper"
-import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
+import { generateContextualQuestions } from "@refugehouse/shared-core/anthropic"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"

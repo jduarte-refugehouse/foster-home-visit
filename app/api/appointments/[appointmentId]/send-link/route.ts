@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
-import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
-import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
+import { query } from "@refugehouse/shared-core/db"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@refugehouse/shared-core/communication"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"
 
@@ -163,7 +163,7 @@ export async function POST(
           const clerkUser = await clerkClient.users.getUser(recipientClerkUserId)
           if (clerkUser) {
             // Sync user from Clerk to app_users
-            const { createOrUpdateAppUser } = await import("@/lib/user-management")
+            const { createOrUpdateAppUser } = await import("@refugehouse/shared-core/user-management")
             const syncedUser = await createOrUpdateAppUser(clerkUser)
             
             // Now query again

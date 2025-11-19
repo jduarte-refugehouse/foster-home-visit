@@ -1,4 +1,4 @@
-import { query } from "./db"
+import { query } from "@refugehouse/shared-core/db"
 
 // ✅ SAFE EXTENSION FUNCTIONS - These extend functionality without modifying core connection
 // These functions use the locked db.ts connection but don't modify it

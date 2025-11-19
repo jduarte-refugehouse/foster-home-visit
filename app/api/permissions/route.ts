@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { clerkClient } from "@clerk/nextjs/server"
-import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@/lib/user-management"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (impersonatedUserId) {
       // Use impersonated user directly
       try {
-        const { query } = await import("@/lib/db")
+        const { query } = await import("@refugehouse/shared-core/db")
         const result = await query("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
         appUser = result[0] || null
       } catch (dbError) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         // Fall back to real user if impersonation lookup fails
         // If we have email, look up by email, otherwise try Clerk API
         if (clerkUserEmail) {
-          const { query } = await import("@/lib/db")
+          const { query } = await import("@refugehouse/shared-core/db")
           const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
           appUser = result[0] || null
         } else if (clerkUserId.startsWith('user_')) {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       // If we have email but no valid Clerk ID, look up by email
       if (clerkUserEmail && !clerkUserId.startsWith('user_')) {
         // clerkUserId is actually an email, look up by email
-        const { query } = await import("@/lib/db")
+        const { query } = await import("@refugehouse/shared-core/db")
         const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
         appUser = result[0] || null
       } else if (clerkUserId.startsWith('user_')) {
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
           console.error("❌ [API] Clerk error fetching user:", clerkError)
           // Fallback: try to find by email if we have it
           if (clerkUserEmail) {
-            const { query } = await import("@/lib/db")
+            const { query } = await import("@refugehouse/shared-core/db")
             const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
             appUser = result[0] || null
           } else {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         }
       } else if (clerkUserEmail) {
         // No Clerk ID but have email - look up by email
-        const { query } = await import("@/lib/db")
+        const { query } = await import("@refugehouse/shared-core/db")
         const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
         appUser = result[0] || null
       }

@@ -2,24 +2,24 @@
 
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { TextareaWithVoice } from "@refugehouse/shared-core/components/ui/textarea-with-voice"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
+import { Checkbox } from "@refugehouse/shared-core/components/ui/checkbox"
+import { Progress } from "@refugehouse/shared-core/components/ui/progress"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { ChevronRight, ChevronLeft, CheckCircle2, Edit2, Info, Sparkles, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@refugehouse/shared-core/components/ui/tooltip"
 
 // Regulatory source interface
 interface RegulatorySource {

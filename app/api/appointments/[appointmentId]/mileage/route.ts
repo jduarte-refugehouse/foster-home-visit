@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
-import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
+import { query } from "@refugehouse/shared-core/db"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"

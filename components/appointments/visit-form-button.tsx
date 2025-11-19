@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { FileText } from "lucide-react"
 import Link from "next/link"
 

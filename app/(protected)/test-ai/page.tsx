@@ -2,15 +2,15 @@
 
 import { useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { Info, CheckCircle2, XCircle } from "lucide-react"
-import { ANTHROPIC_MODELS } from "@/lib/anthropic-helper"
+import { ANTHROPIC_MODELS } from "@refugehouse/shared-core/anthropic"
 
 export default function TestAIPage() {
   const { user, isLoaded } = useUser()

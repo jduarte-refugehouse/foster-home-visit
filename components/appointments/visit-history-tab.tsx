@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { History, Navigation, MapPin, Clock, User, Home, Play, Square } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCommunicationHistory, getCommunicationStats } from "@/lib/communication-logging"
+import { getCommunicationHistory, getCommunicationStats } from "@refugehouse/shared-core/communication"
 
 export const dynamic = "force-dynamic"
 

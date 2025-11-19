@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
-import { getUserByClerkId } from "@/lib/user-management"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { query } from "@refugehouse/shared-core/db"
+import { getUserByClerkId } from "@refugehouse/shared-core/user-management"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Check if the current user has admin permissions (use real user, not effective)
     // Import hasPermission directly to bypass effective user check
-    const { hasPermission } = await import("@/lib/user-management")
+    const { hasPermission } = await import("@refugehouse/shared-core/user-management")
     const hasSystemConfig = await hasPermission(adminUser.id, "system_config", "home-visits")
     
     // Also check if user is system admin

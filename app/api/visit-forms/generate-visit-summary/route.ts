@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getClerkUserIdFromRequest } from "@/lib/clerk-auth-helper"
-import { callAnthropicAPI } from "@/lib/anthropic-helper"
-import { ANTHROPIC_MODELS } from "@/lib/anthropic-helper"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { callAnthropicAPI, ANTHROPIC_MODELS } from "@refugehouse/shared-core/anthropic"
 
 export const dynamic = "force-dynamic"
 

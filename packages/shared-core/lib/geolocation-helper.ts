@@ -1,0 +1,143 @@
+/**
+ * @shared-core
+ * Geolocation helper utilities for capturing GPS coordinates
+ * Works in both browser and mobile environments
+ */
+
+export interface LocationResult {
+  latitude: number
+  longitude: number
+  accuracy?: number
+}
+
+export interface LocationError {
+  code: number
+  message: string
+  userFriendlyMessage?: string
+}
+
+/**
+ * Capture current GPS location using browser geolocation API
+ * @param action - Optional action description for logging (e.g., "start_drive", "arrived")
+ * @returns Promise with latitude and longitude
+ */
+export function captureLocation(action?: string): Promise<LocationResult> {
+  return new Promise<LocationResult>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject({
+        code: 0,
+        message: "Geolocation is not supported by your browser",
+        userFriendlyMessage: "Your browser doesn't support location services. Please use a different device or browser.",
+      })
+      return
+    }
+
+    if (action) {
+      console.log(`📍 [LOCATION] Starting location capture for: ${action}`)
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const result: LocationResult = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }
+
+        if (action) {
+          console.log(`✅ [LOCATION] Location captured:`, {
+            lat: result.latitude,
+            lng: result.longitude,
+            accuracy: result.accuracy,
+            action,
+          })
+        }
+
+        resolve(result)
+      },
+      (error) => {
+        // Provide more descriptive error messages with iOS-specific guidance
+        let errorMessage = error.message
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+        let userFriendlyMessage: string | undefined
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied"
+            userFriendlyMessage = isIOS
+              ? "Location permission denied. Please enable location services in Settings > Privacy & Security > Location Services, then refresh the page."
+              : "Location permission denied. Please enable location access in your browser settings and refresh the page."
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable"
+            userFriendlyMessage = "Unable to determine your location. Please check that location services are enabled and try again."
+            break
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out"
+            userFriendlyMessage = "Location request took too long. Please try again in a location with better GPS signal."
+            break
+          default:
+            errorMessage = error.message || "Unknown location error"
+            userFriendlyMessage = "An error occurred while getting your location. Please try again."
+        }
+
+        const locationError: LocationError = {
+          code: error.code,
+          message: errorMessage,
+          userFriendlyMessage,
+        }
+
+        if (action) {
+          console.error(`❌ [LOCATION] Location capture failed for ${action}:`, locationError)
+        }
+
+        reject(locationError)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000, // 10 seconds
+        maximumAge: 0, // Don't use cached location
+      },
+    )
+  })
+}
+
+/**
+ * Check if geolocation is supported in the current environment
+ * @returns true if geolocation API is available
+ */
+export function isGeolocationSupported(): boolean {
+  return typeof navigator !== "undefined" && !!navigator.geolocation
+}
+
+/**
+ * Request location permission (triggers browser permission prompt)
+ * @returns Promise that resolves if permission is granted, rejects if denied
+ */
+export function requestLocationPermission(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (!isGeolocationSupported()) {
+      reject(new Error("Geolocation is not supported"))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      () => resolve(),
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          reject(new Error("Location permission denied"))
+        } else {
+          // Other errors (timeout, unavailable) still mean permission was granted
+          resolve()
+        }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: Infinity, // Use cached location if available
+      },
+    )
+  })
+}
+

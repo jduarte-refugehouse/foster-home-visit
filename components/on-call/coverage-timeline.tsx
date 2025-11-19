@@ -2,7 +2,7 @@
 
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWeekend, differenceInHours, startOfDay, addHours } from "date-fns"
 import { User, AlertTriangle } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 
 interface TimelineEvent {
   type: "assignment" | "gap"

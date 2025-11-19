@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@/lib/user-management"
+import { updateUserRoles, hasPermission, getUserByClerkId, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
-import { requireClerkAuth } from "@/lib/clerk-auth-helper"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
     }
 
     // Get microservice ID
-    const { query } = await import("@/lib/db")
+    const { query } = await import("@refugehouse/shared-core/db")
     const microservice = await query<{ id: string }>(
       "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
       [CURRENT_MICROSERVICE]

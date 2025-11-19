@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { MapPin, AlertCircle, Phone, Mail, User, ExternalLink } from "lucide-react"
 
 interface MapHome {

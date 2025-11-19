@@ -1,10 +1,18 @@
+/**
+ * @shared-core
+ * This component should be moved to packages/shared-core/components/access-guard.tsx
+ * Enhanced with microservice access checking and request functionality
+ */
+
 "use client"
 
 import { useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, Shield } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { AlertCircle, Shield, Mail } from "lucide-react"
+import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 interface AccessGuardProps {
   children: React.ReactNode
@@ -15,8 +23,12 @@ export function AccessGuard({ children }: AccessGuardProps) {
   const router = useRouter()
   const [accessChecked, setAccessChecked] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
+  const [hasMicroserviceAccess, setHasMicroserviceAccess] = useState(false)
   const [checking, setChecking] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [requesting, setRequesting] = useState(false)
+  const [requestSubmitted, setRequestSubmitted] = useState(false)
+  const [hasPendingRequest, setHasPendingRequest] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -50,8 +62,27 @@ export function AccessGuard({ children }: AccessGuardProps) {
         const data = await response.json()
 
         if (response.ok && data.success) {
-          setHasAccess(true)
           setIsAuthenticated(true)
+          setHasAccess(true)
+          setHasMicroserviceAccess(data.hasMicroserviceAccess || false)
+          
+          // Check for pending requests if user doesn't have microservice access
+          if (!data.hasMicroserviceAccess) {
+            try {
+              const requestResponse = await fetch("/api/access-requests", {
+                headers,
+                credentials: 'include',
+              })
+              const requestData = await requestResponse.json()
+              if (requestData.hasPendingRequest) {
+                setHasPendingRequest(true)
+              }
+            } catch (requestError) {
+              console.error("Error checking access requests:", requestError)
+              // Don't fail the access check if request check fails
+            }
+          }
+          
           setAccessChecked(true)
         } else if (response.status === 401) {
           // Not authenticated - redirect to Clerk sign-in
@@ -66,9 +97,10 @@ export function AccessGuard({ children }: AccessGuardProps) {
           console.log("🔐 [AccessGuard] Not authenticated, redirecting to sign-in:", signInUrl)
           router.push(signInUrl)
         } else {
-          // Access denied (403) - user is authenticated but doesn't have access
+          // Access denied (403) - user is authenticated but doesn't have platform access
           setIsAuthenticated(true)
           setHasAccess(false)
+          setHasMicroserviceAccess(false)
           setAccessChecked(true)
         }
       } catch (error) {
@@ -84,7 +116,41 @@ export function AccessGuard({ children }: AccessGuardProps) {
     // Always check access via API, even if user object is null
     // This allows mobile to authenticate via session cookies even if hooks don't work
     checkAccess()
-  }, [user, isLoaded])
+  }, [user, isLoaded, router])
+
+  const handleRequestAccess = async () => {
+    setRequesting(true)
+    try {
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      }
+      if (user?.emailAddresses?.[0]?.emailAddress) {
+        headers["x-user-email"] = user.emailAddresses[0].emailAddress
+      }
+      if (user?.id) {
+        headers["x-user-clerk-id"] = user.id
+      }
+
+      const response = await fetch("/api/access-requests", {
+        method: "POST",
+        headers,
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setRequestSubmitted(true)
+        setHasPendingRequest(true)
+      } else {
+        alert(data.message || "Failed to submit request")
+      }
+    } catch (error) {
+      console.error("Error requesting access:", error)
+      alert("Failed to submit access request")
+    } finally {
+      setRequesting(false)
+    }
+  }
 
   // Show loading state while checking
   if (!isLoaded || checking) {
@@ -102,7 +168,7 @@ export function AccessGuard({ children }: AccessGuardProps) {
   // Note: We don't check user object here because on mobile, useUser() might not work
   // The API check above verifies authentication via session cookies
 
-  // If access denied, show error page
+  // Platform access denied (external user without invitation)
   if (accessChecked && !hasAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
@@ -133,6 +199,64 @@ export function AccessGuard({ children }: AccessGuardProps) {
                   jduarte@refugehouse.org
                 </a>
                 .
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Microservice access denied (user needs permissions for this specific service)
+  if (accessChecked && hasAccess && !hasMicroserviceAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-refuge-purple/10 rounded-lg">
+                <Shield className="h-6 w-6 text-refuge-purple" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Access Required</CardTitle>
+                <CardDescription>
+                  You need permission to access {MICROSERVICE_CONFIG.name}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {requestSubmitted || hasPendingRequest ? (
+              <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <Mail className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-green-800 dark:text-green-200">
+                  <p className="font-semibold mb-1">Request Submitted</p>
+                  <p>
+                    Your access request has been submitted. A system administrator will review your request and notify you once access is granted.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  If you need access to this application, click the button below to request permissions.
+                  A system administrator will review your request.
+                </p>
+                <Button 
+                  onClick={handleRequestAccess} 
+                  disabled={requesting}
+                  className="w-full"
+                >
+                  {requesting ? "Submitting..." : "Request Access"}
+                </Button>
+              </>
+            )}
+            <div className="text-xs text-muted-foreground text-center">
+              <p>
+                Questions? Contact{" "}
+                <a href="mailto:jduarte@refugehouse.org" className="text-refuge-purple hover:underline">
+                  jduarte@refugehouse.org
+                </a>
               </p>
             </div>
           </CardContent>

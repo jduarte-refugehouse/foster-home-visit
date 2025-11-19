@@ -1,6 +1,6 @@
 "use client"
 
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarTrigger } from "@refugehouse/shared-core/components/ui/sidebar"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,8 +8,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
+} from "@refugehouse/shared-core/components/ui/breadcrumb"
+import { Separator } from "@refugehouse/shared-core/components/ui/separator"
 import { usePathname } from "next/navigation"
 
 export function AppHeader() {

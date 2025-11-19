@@ -13,12 +13,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+} from "@refugehouse/shared-core/components/ui/sidebar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@refugehouse/shared-core/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@refugehouse/shared-core/components/ui/avatar"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { SignOutButton } from "@clerk/nextjs"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@refugehouse/shared-core/components/ui/collapsible"
 import {
   Home,
   Calendar,

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Mic } from 'lucide-react'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import { Switch } from '@refugehouse/shared-core/components/ui/switch'
+import { Label } from '@refugehouse/shared-core/components/ui/label'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 import { cn } from '@/lib/utils'
 import { accumulateTranscript, addPunctuation } from '@/lib/speech-utils'

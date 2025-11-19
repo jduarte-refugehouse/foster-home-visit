@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Save, Loader2 } from "lucide-react"
 

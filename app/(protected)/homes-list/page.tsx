@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@refugehouse/shared-core/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@refugehouse/shared-core/components/ui/table"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { RefreshCw, MapPin, Phone, Mail } from "lucide-react"
 
 interface HomeData {
