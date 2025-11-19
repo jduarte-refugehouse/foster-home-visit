@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { AlertTriangle, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@refugehouse/shared-core/components/ui/alert"
 
 interface ImpersonationStatus {
   isImpersonating: boolean

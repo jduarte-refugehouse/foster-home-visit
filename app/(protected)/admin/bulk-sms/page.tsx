@@ -1,14 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Separator } from "@refugehouse/shared-core/components/ui/separator"
+import { Progress } from "@refugehouse/shared-core/components/ui/progress"
 import { AlertTriangle, MessageSquare, Send, CheckCircle, XCircle, Phone, Users, Clock } from "lucide-react"
 
 interface SMSResult {

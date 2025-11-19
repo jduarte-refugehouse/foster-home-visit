@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { TextareaWithVoice } from "@refugehouse/shared-core/components/ui/textarea-with-voice"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { Info, Mic, CheckCircle2, XCircle } from "lucide-react"
 
 export default function TestVoicePage() {

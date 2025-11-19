@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@refugehouse/shared-core/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@refugehouse/shared-core/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
 import { 
   ArrowLeft, 
   Clock, 
@@ -34,8 +34,8 @@ import {
   Image,
   X
 } from "lucide-react"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@refugehouse/shared-core/components/ui/sidebar"
+import { Separator } from "@refugehouse/shared-core/components/ui/separator"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"

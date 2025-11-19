@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Send, Loader2, CheckCircle, XCircle } from "lucide-react"
 

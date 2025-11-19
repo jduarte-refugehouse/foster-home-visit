@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { SignaturePad } from "@/components/ui/signature-pad"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { SignaturePad } from "@refugehouse/shared-core/components/ui/signature-pad"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 export default function SignaturePage() {

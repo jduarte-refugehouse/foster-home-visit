@@ -9,8 +9,8 @@
 import { useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { AlertCircle, Shield, Mail } from "lucide-react"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 

@@ -4,9 +4,9 @@ import type React from "react"
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -14,23 +14,23 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@refugehouse/shared-core/components/ui/dialog"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@refugehouse/shared-core/components/ui/tooltip"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@refugehouse/shared-core/components/ui/collapsible"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@refugehouse/shared-core/components/ui/popover"
 import { useToast } from "@/hooks/use-toast"
 import {
   Home,

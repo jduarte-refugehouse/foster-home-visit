@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { RefreshCw, Database, Key, Globe, Server, Eye, EyeOff } from "lucide-react"
 
 interface DiagnosticsData {

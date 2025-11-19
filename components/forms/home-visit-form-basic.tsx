@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { Calendar, Home, Users, FileText, User, Save, Clock, AlertCircle, CheckCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Checkbox } from "@refugehouse/shared-core/components/ui/checkbox"
 import VisitFormActions from "./visit-form-actions"
 
 interface BasicHomeVisitFormProps {

@@ -1,8 +1,8 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Card } from "@refugehouse/shared-core/components/ui/card"
 import { X } from "lucide-react"
 
 interface SignaturePadProps {

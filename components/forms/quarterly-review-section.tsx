@@ -2,17 +2,17 @@
 // Implements TAC §749.2815 requirements
 
 import React from "react"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { TextareaWithVoice } from "@/components/ui/textarea-with-voice"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { TextareaWithVoice } from "@refugehouse/shared-core/components/ui/textarea-with-voice"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Alert, AlertDescription } from "@refugehouse/shared-core/components/ui/alert"
 import { ClipboardList, Plus, X, ExternalLink } from "lucide-react"
-import { SignaturePad } from "@/components/ui/signature-pad"
+import { SignaturePad } from "@refugehouse/shared-core/components/ui/signature-pad"
 
 export const QuarterlyReviewSection = ({ formData, onChange }) => {
   const quarterly = formData.quarterlyReview || {}

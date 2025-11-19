@@ -10,14 +10,14 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+} from "@refugehouse/shared-core/components/ui/dialog"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Textarea } from "@refugehouse/shared-core/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@refugehouse/shared-core/components/ui/select"
+import { Calendar } from "@refugehouse/shared-core/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@refugehouse/shared-core/components/ui/popover"
 import { CalendarIcon, Clock, MapPin, User, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"

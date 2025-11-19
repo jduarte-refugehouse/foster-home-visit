@@ -1,6 +1,6 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@refugehouse/shared-core/components/ui/skeleton"
 import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 
 export default function UserProfileLoading() {
   return (

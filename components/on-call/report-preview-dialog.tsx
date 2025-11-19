@@ -1,18 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@refugehouse/shared-core/components/ui/dialog"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Input } from "@refugehouse/shared-core/components/ui/input"
+import { Label } from "@refugehouse/shared-core/components/ui/label"
+import { Card, CardContent } from "@refugehouse/shared-core/components/ui/card"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { Mail, X, AlertTriangle, Clock, User, Phone, Calendar as CalendarIcon } from "lucide-react"
 import { format, min, max, addDays } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { ReportTimeline } from "./report-timeline"
 import { CoverageTimeline } from "./coverage-timeline"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@refugehouse/shared-core/components/ui/tabs"
 
 interface ReportPreviewDialogProps {
   open: boolean

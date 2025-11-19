@@ -2,7 +2,7 @@
 
 import { format, differenceInHours } from "date-fns"
 import { Clock, User, Phone, AlertTriangle, CheckCircle } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 
 interface TimelineEvent {
   type: "assignment" | "gap"

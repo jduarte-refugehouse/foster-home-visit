@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useUser, useAuth } from "@clerk/nextjs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { 
   ArrowLeft, 
   Clock, 
@@ -17,7 +17,7 @@ import {
   AlertCircle,
   ExternalLink
 } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@refugehouse/shared-core/components/ui/dialog"
 import { format, parseISO } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { useDeviceType } from "@/hooks/use-device-type"
