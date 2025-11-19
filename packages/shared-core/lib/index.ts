@@ -35,3 +35,8 @@ export * from './google-speech-helper'
 export * from './speech-utils'
 export * from './environment'
 
+// Utilities
+export * from './route-calculator'
+export * from './ics-generator'
+export * from './utils'
+

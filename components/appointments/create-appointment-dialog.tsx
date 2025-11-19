@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@refugehouse/shared-cor
 import { CalendarIcon, Clock, MapPin, User, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
+import { cn } from "@refugehouse/shared-core/utils"
 
 interface Staff {
   id: string

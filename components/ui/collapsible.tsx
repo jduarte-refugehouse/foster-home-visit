@@ -4,7 +4,7 @@ import * as React from "react"
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
 import { ChevronDown } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@refugehouse/shared-core/utils"
 
 const Collapsible = CollapsiblePrimitive.Root
 

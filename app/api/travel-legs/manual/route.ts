@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { calculateDrivingDistance } from "@/lib/route-calculator"
+import { calculateDrivingDistance } from "@refugehouse/shared-core/route-calculator"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"

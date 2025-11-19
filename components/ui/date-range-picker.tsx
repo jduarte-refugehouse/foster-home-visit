@@ -5,7 +5,7 @@ import { addDays, format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@refugehouse/shared-core/utils"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Calendar } from "@refugehouse/shared-core/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@refugehouse/shared-core/components/ui/popover"
