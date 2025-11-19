@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
     }
 
     // Get microservice ID
-    const { query } = await import("@/lib/db")
+    const { query } = await import("@refugehouse/shared-core/db")
     const microservice = await query<{ id: string }>(
       "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
       [CURRENT_MICROSERVICE]
