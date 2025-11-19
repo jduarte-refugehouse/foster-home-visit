@@ -1,4 +1,4 @@
-import { query, getDbConnection } from "./db"
+import { query, getDbConnection } from "@refugehouse/shared-core/db"
 import { currentUser } from "@clerk/nextjs/server"
 import { MICROSERVICE_CONFIG, isInternalUser } from "@/lib/microservice-config"
 

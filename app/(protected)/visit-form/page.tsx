@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { logVisitEnd } from "@/lib/continuum-logger"
+import { logVisitEnd } from "@refugehouse/shared-core/continuum"
 
 export default function VisitFormPage() {
   const searchParams = useSearchParams()

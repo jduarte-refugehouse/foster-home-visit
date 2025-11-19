@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { query } from "@refugehouse/shared-core/db"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { query } from "@refugehouse/shared-core/db"
 import { checkUserAccess } from "@refugehouse/shared-core/user-access"
 
 export async function POST(request: NextRequest) {

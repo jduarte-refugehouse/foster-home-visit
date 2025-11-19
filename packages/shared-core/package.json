@@ -14,6 +14,7 @@
     "./impersonation": "./lib/impersonation.ts",
     "./communication": "./lib/communication-logging.ts",
     "./continuum": "./lib/continuum-logger.ts",
+    "./db": "./lib/db.ts",
     "./components/access-guard": "./components/access-guard.tsx",
     "./components/ui/*": "./components/ui/*",
     "./hooks/use-permissions": "./hooks/use-permissions.ts",

@@ -1,4 +1,4 @@
-import { query } from "./db"
+import { query } from "@refugehouse/shared-core/db"
 
 // Communication logging service for tracking SMS and email messages
 // Uses the locked database connection safely

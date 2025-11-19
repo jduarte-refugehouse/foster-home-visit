@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@refugehouse/shared-core/communication"
 
 interface SMSResult {
   to: string

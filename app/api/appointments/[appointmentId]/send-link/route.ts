@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
-import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
+import { query } from "@refugehouse/shared-core/db"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@refugehouse/shared-core/communication"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 
 export const runtime = "nodejs"

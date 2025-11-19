@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import sgMail from "@sendgrid/mail"
-import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@/lib/communication-logging"
+import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@refugehouse/shared-core/communication"
 
 export async function POST(request: NextRequest) {
   let logId: string | null = null

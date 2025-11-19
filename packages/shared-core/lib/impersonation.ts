@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
-import { query } from "./db"
+import { query } from "@refugehouse/shared-core/db"
 import { AppUser } from "@refugehouse/shared-core/user-management"
 
 const IMPERSONATION_COOKIE_NAME = "impersonate_user_id"

@@ -43,7 +43,7 @@ import { CreateAppointmentDialog } from "@/components/appointments/create-appoin
 import EnhancedHomeVisitForm from "@/components/forms/home-visit-form-enhanced"
 import { VisitHistoryTab } from "@/components/appointments/visit-history-tab"
 import { StaffTrainingSummary } from "@/components/appointments/staff-training-summary"
-import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@/lib/continuum-logger"
+import { logDriveStart, logDriveEnd, logVisitStart, logVisitEnd } from "@refugehouse/shared-core/continuum"
 
 interface Appointment {
   appointment_id: string

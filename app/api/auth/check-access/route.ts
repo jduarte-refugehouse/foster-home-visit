@@ -3,7 +3,7 @@ import { checkUserAccess } from "@refugehouse/shared-core/user-access"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode } from "@/lib/microservice-config"
 import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@refugehouse/shared-core/user-management"
-import { getEffectiveUser } from "@/lib/impersonation"
+import { getEffectiveUser } from "@refugehouse/shared-core/impersonation"
 import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 
 /**

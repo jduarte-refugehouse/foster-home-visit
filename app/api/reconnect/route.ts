@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getConnection, closeConnection } from "@/lib/db"
+import { getConnection, closeConnection } from "@refugehouse/shared-core/db"
 
 export async function GET() {
   try {

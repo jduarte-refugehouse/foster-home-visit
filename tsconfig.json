@@ -25,7 +25,11 @@
       "@refugehouse/shared-core/auth": ["./packages/shared-core/lib/clerk-auth-helper.ts"],
       "@refugehouse/shared-core/permissions": ["./packages/shared-core/lib/permissions-middleware.ts"],
       "@refugehouse/shared-core/user-management": ["./packages/shared-core/lib/user-management.ts"],
-      "@refugehouse/shared-core/user-access": ["./packages/shared-core/lib/user-access-check.ts"]
+      "@refugehouse/shared-core/user-access": ["./packages/shared-core/lib/user-access-check.ts"],
+      "@refugehouse/shared-core/db": ["./packages/shared-core/lib/db.ts"],
+      "@refugehouse/shared-core/impersonation": ["./packages/shared-core/lib/impersonation.ts"],
+      "@refugehouse/shared-core/communication": ["./packages/shared-core/lib/communication-logging.ts"],
+      "@refugehouse/shared-core/continuum": ["./packages/shared-core/lib/continuum-logger.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

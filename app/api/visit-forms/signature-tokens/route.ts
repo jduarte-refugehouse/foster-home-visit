@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { query } from "@/lib/db"
+import { query } from "@refugehouse/shared-core/db"
 import { randomUUID } from "crypto"
 
 export const dynamic = "force-dynamic"

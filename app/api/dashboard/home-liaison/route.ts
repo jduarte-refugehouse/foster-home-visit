@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getConnection, query } from "@/lib/db"
+import { getConnection, query } from "@refugehouse/shared-core/db"
 import { format, addDays, startOfDay, endOfDay } from "date-fns"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 

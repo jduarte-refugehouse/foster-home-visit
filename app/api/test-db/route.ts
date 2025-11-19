@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { testConnection } from "@/lib/db"
+import { testConnection } from "@refugehouse/shared-core/db"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"

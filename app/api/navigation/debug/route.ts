@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getConnection } from "@/lib/db"
+import { getConnection } from "@refugehouse/shared-core/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 import { getAuth } from "@refugehouse/shared-core/auth"
 
