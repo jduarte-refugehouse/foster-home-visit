@@ -1,5 +1,11 @@
 # Multi-Microservice Architecture Plan
 
+> **Status**: ✅ **IMPLEMENTED** - See `docs/monorepo-completion-status.md` for completion status.
+> 
+> **Quick Start**: See `docs/microservice-creation-guide.md` for creating new microservices.
+> 
+> **Reference**: See `docs/shared-core-reference.md` for complete API documentation.
+
 ## Overview
 This document outlines the plan to repurpose the current Home Visits application into a multi-microservice platform that supports multiple subdomains (placements.refugehouse.org, my.refugehouse.org, training.refugehouse.org, etc.) using a single codebase with shared core functionality.
 
