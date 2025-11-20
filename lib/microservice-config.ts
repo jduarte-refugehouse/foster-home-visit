@@ -199,6 +199,53 @@ export function isInternalUser(email: string): boolean {
   return email.endsWith(`@${MICROSERVICE_CONFIG.organizationDomain}`)
 }
 
+/**
+ * Get the deployment environment (test or production)
+ * Uses VERCEL_ENV or domain/branch detection
+ * @returns 'test' | 'production'
+ */
+export function getDeploymentEnvironment(): 'test' | 'production' {
+  // Tier 1: Explicit environment variable (highest priority)
+  if (process.env.DEPLOYMENT_ENVIRONMENT) {
+    const env = process.env.DEPLOYMENT_ENVIRONMENT.toLowerCase()
+    if (env === 'test' || env === 'production') {
+      return env as 'test' | 'production'
+    }
+  }
+
+  // Tier 2: Vercel environment detection
+  // VERCEL_ENV can be: "production", "preview", or "development"
+  if (process.env.VERCEL_ENV) {
+    if (process.env.VERCEL_ENV === 'production') {
+      return 'production'
+    }
+    // Preview and development are considered "test"
+    if (process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'development') {
+      return 'test'
+    }
+  }
+
+  // Tier 3: Branch name detection (for preview/test branches)
+  if (process.env.VERCEL_BRANCH) {
+    const branch = process.env.VERCEL_BRANCH.toLowerCase()
+    // Test branches typically have "test" in the name
+    if (branch.includes('test') || branch.includes('preview') || branch.includes('staging')) {
+      return 'test'
+    }
+    // Production branches
+    if (branch.includes('main') || branch.includes('master') || branch.includes('production')) {
+      return 'production'
+    }
+  }
+
+  // Tier 4: Domain detection (if available in request context)
+  // This would need to be passed from the request, so we'll default to production for safety
+  // In API routes, you can check request.headers.get('host')
+
+  // Default: production (safer default)
+  return 'production'
+}
+
 export function getRoleDisplayName(roleCode: string): string {
   const roleMap: Record<string, string> = {
     [MICROSERVICE_CONFIG.roles.MANAGER]: "Visit Manager",

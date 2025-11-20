@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, MICROSERVICE_CONFIG } from "@/lib/microservice-config"
+import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
@@ -35,43 +35,111 @@ export async function GET(request: NextRequest) {
         // Check for impersonation first
         const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
         
+        // Get microservice code and deployment environment
+        const microserviceCode = getMicroserviceCode()
+        const isServiceDomainAdmin = microserviceCode === 'service-domain-admin'
+        const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
+        
+        console.log(`🌍 [NAV] Deployment environment detected: ${deploymentEnv} (microservice: ${microserviceCode})`)
+        
         if (impersonatedUserId) {
           // Use impersonated user
-          userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
-            FROM app_users 
-            WHERE id = @param0
-              AND user_type = 'global_admin'
-              AND is_active = 1
-          `
+          if (isServiceDomainAdmin && deploymentEnv) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE id = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+                AND environment = @param1
+            `
+          } else if (isServiceDomainAdmin) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE id = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+            `
+          } else {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE id = @param0
+                AND is_active = 1
+            `
+          }
           queryParam = impersonatedUserId
         } else if (userClerkId) {
           // PRIORITY: Use clerk_user_id first (most reliable)
-          userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
-            FROM app_users 
-            WHERE clerk_user_id = @param0
-              AND user_type = 'global_admin'
-              AND is_active = 1
-          `
+          if (isServiceDomainAdmin && deploymentEnv) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE clerk_user_id = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+                AND environment = @param1
+            `
+          } else if (isServiceDomainAdmin) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE clerk_user_id = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+            `
+          } else {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE clerk_user_id = @param0
+                AND is_active = 1
+            `
+          }
           queryParam = userClerkId
         } else if (userEmail) {
           // Fallback: Use email only if clerk_user_id not available
-          userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
-            FROM app_users 
-            WHERE email = @param0
-              AND user_type = 'global_admin'
-              AND is_active = 1
-          `
+          if (isServiceDomainAdmin && deploymentEnv) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE email = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+                AND environment = @param1
+            `
+          } else if (isServiceDomainAdmin) {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE email = @param0
+                AND (user_type = 'global_admin' OR user_type IS NULL)
+                AND is_active = 1
+            `
+          } else {
+            userQuery = `
+              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
+              FROM app_users 
+              WHERE email = @param0
+                AND is_active = 1
+            `
+          }
           queryParam = userEmail
         }
 
         console.log("📝 EXECUTING USER QUERY:")
         console.log("Query:", userQuery)
         console.log("Parameter @param0:", queryParam)
+        if (isServiceDomainAdmin && deploymentEnv) {
+          console.log("Parameter @param1 (environment):", deploymentEnv)
+        }
 
-        const userResult = await connection.request().input("param0", queryParam).query(userQuery)
+        const userRequest = connection.request().input("param0", queryParam)
+        if (isServiceDomainAdmin && deploymentEnv) {
+          userRequest.input("param1", deploymentEnv)
+        }
+        const userResult = await userRequest.query(userQuery)
 
         console.log("📊 USER QUERY RESULT:")
         console.log("Recordset length:", userResult.recordset.length)
@@ -93,6 +161,7 @@ export async function GET(request: NextRequest) {
               AND (up.expires_at IS NULL OR up.expires_at > GETDATE())
           `
           const microserviceCode = getMicroserviceCode()
+          // microserviceCode already defined above
           console.log("📝 EXECUTING PERMISSIONS QUERY:")
           console.log("Query:", permissionsQuery)
           console.log("Parameter @param0 (user_id):", userInfo.id)
