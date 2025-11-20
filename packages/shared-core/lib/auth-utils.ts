@@ -1,5 +1,12 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 
+/**
+ * @deprecated This function uses Clerk APIs (auth()) which violates our authentication methodology.
+ * DO NOT USE - Clerk should only be used ONCE for initial authentication.
+ * After that, use stored credentials from headers and database lookups only.
+ * 
+ * Use requireClerkAuth(request) or getClerkUserIdFromRequest(request) instead.
+ */
 export async function getAuth() {
   try {
     // Get real Clerk auth data
@@ -27,7 +34,13 @@ export function isClerkEnabled(): boolean {
   return true // Enable Clerk
 }
 
-// Function that gets the current user from Clerk
+/**
+ * @deprecated This function uses Clerk APIs (currentUser()) which violates our authentication methodology.
+ * DO NOT USE - Clerk should only be used ONCE for initial authentication.
+ * After that, use stored credentials from headers and database lookups only.
+ * 
+ * Use requireClerkAuth(request) or getClerkUserIdFromRequest(request) instead.
+ */
 export async function getCurrentUser() {
   try {
     const user = await currentUser()
