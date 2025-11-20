@@ -1,5 +1,7 @@
 # Refuge House Microservice Template Setup Guide
 
+> **See also:** [Microservice Creation Guide](./microservice-creation-guide.md) for the complete step-by-step guide, and [Prompt for New Microservice](./prompt-for-new-microservice.md) for AI assistant prompts.
+
 This template provides a complete foundation for creating new Refuge House microservices with shared authentication, database connectivity, and user management.
 
 ## Quick Start

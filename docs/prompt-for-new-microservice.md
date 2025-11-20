@@ -1,5 +1,7 @@
 # Prompt for Creating a New Microservice Domain
 
+> **See also:** [Microservice Creation Guide](./microservice-creation-guide.md) for the complete step-by-step guide.
+
 Use this prompt in a new chat session to create a new microservice domain:
 
 ---

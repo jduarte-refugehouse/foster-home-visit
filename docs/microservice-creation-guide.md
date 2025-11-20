@@ -1,5 +1,7 @@
 # Guide: Creating a New Microservice Domain
 
+> **Quick Start:** Use the [Prompt for New Microservice](./prompt-for-new-microservice.md) in a new chat session, or follow this complete guide step-by-step.
+
 This guide walks you through creating a new microservice domain in the Refuge House multi-microservice platform.
 
 ## Overview
