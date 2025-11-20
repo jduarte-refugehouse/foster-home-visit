@@ -156,39 +156,8 @@ export async function POST(
         }
       }
 
-      // If still not found and it's a Clerk user ID (starts with 'user_'), try to sync from Clerk
-      if (staffUsers.length === 0 && recipientClerkUserId.startsWith('user_')) {
-        try {
-          const { clerkClient } = await import("@clerk/nextjs/server")
-          const clerkUser = await clerkClient.users.getUser(recipientClerkUserId)
-          if (clerkUser) {
-            // Sync user from Clerk to app_users
-            const { createOrUpdateAppUser } = await import("@refugehouse/shared-core/user-management")
-            const syncedUser = await createOrUpdateAppUser(clerkUser)
-            
-            // Now query again
-            staffUsers = await query(
-              `
-              SELECT 
-                u.id,
-                u.clerk_user_id,
-                u.phone,
-                u.first_name,
-                u.last_name,
-                u.email
-              FROM app_users u
-              WHERE u.clerk_user_id = @param0 AND u.is_active = 1
-            `,
-              [recipientClerkUserId],
-            )
-            
-            console.log(`✅ [SEND-LINK] Synced user ${recipientClerkUserId} from Clerk to app_users`)
-          }
-        } catch (syncError) {
-          console.error(`❌ [SEND-LINK] Error syncing user from Clerk:`, syncError)
-          // Continue to error handling below
-        }
-      }
+      // NO CLERK API CALLS - user must exist in database
+      // If user not found, return error (do not sync from Clerk)
 
       if (staffUsers.length === 0) {
         // Staff member not found - return error with details for UI to handle
