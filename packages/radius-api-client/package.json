@@ -5,11 +5,19 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./client": "./client.ts",
+    "./types": "./types.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "next": "14.2.16",
+    "react": "^18",
+    "react-dom": "^18"
+  },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "typescript": "^5"
   }
 }
