@@ -19,7 +19,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - signature (public signature pages - token-based, no auth required)
      * - sign-in, sign-up (authentication pages)
+     * - app/manifest.json (public manifest file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|signature|sign-in|sign-up).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|signature|sign-in|sign-up|app/manifest.json).*)",
   ],
 }

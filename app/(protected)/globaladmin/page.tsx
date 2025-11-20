@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
-import { Users, Settings, Globe, Shield } from "lucide-react"
+import { Users, Settings, Globe, Shield, Database } from "lucide-react"
 import Link from "next/link"
 
 export default function GlobalAdminDashboard() {
@@ -82,6 +82,20 @@ export default function GlobalAdminDashboard() {
               </CardTitle>
               <CardDescription>
                 Manage domain-level settings and cross-microservice configuration
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/diagnostics">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Diagnostics
+              </CardTitle>
+              <CardDescription>
+                View system health, database connection status, and configuration details
               </CardDescription>
             </CardHeader>
           </Card>

@@ -4,7 +4,12 @@ import { getMicroserviceCode } from "@/lib/microservice-config"
 /**
  * Public API route to serve manifest.json
  * This ensures the manifest is accessible without authentication
+ * 
+ * IMPORTANT: This route must be public and not require authentication
  */
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET() {
   const microserviceCode = getMicroserviceCode()
   

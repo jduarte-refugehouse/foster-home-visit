@@ -22,6 +22,9 @@ export interface AppUser {
   core_role: "admin" | "staff" | "external" | "foster_parent"
   department?: string
   job_title?: string
+  // Additional fields for service-domain-admin
+  user_type?: string | null
+  environment?: string | null
 }
 
 export interface MicroserviceApp {
