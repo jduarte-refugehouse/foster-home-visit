@@ -130,11 +130,18 @@ export default function ApiKeysPage() {
       if (response.ok) {
         const data = await response.json()
         setNewKey(data.apiKey)
+        // Close dialog and reset form
+        setIsCreateDialogOpen(false)
+        setMicroserviceCode("")
+        setDescription("")
+        setRateLimit("100")
+        setExpiresAt("")
         toast({
           title: "Success",
-          description: "API key created successfully",
+          description: "API key created successfully. Save it now - it won't be shown again!",
         })
-        fetchKeys()
+        // Refresh the keys list
+        await fetchKeys()
       } else {
         const error = await response.json()
         toast({
