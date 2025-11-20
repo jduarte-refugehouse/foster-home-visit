@@ -1,5 +1,6 @@
 "use client"
 
+// Rebuilt dashboard - simple, clean implementation matching working pages
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
