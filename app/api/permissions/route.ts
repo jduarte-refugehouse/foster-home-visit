@@ -98,7 +98,8 @@ export async function GET(request: NextRequest) {
         // If not found by clerk_user_id, try to sync from Clerk API (but still filter)
         if (!appUser) {
           try {
-            const clerkUser = await clerkClient.users.getUser(clerkUserId)
+            const clerk = await clerkClient()
+            const clerkUser = await clerk.users.getUser(clerkUserId)
             if (!clerkUser) {
               return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
             }
