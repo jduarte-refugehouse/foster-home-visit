@@ -20,7 +20,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { user } = useUser()
+  const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
   const permissions = usePermissions()
   const { isMobile } = useDeviceType()
@@ -30,9 +30,27 @@ export default function DashboardPage() {
   const [liaisonLoading, setLiaisonLoading] = useState(true)
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
 
-  // Check microservice code and redirect if needed
+  // Get user headers for API calls (same pattern as globaladmin and liaison dashboard)
+  const getUserHeaders = () => {
+    if (!user) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
+
+  // Check microservice code and redirect if needed (wait for user to be loaded)
   useEffect(() => {
-    fetch('/api/navigation')
+    if (!userLoaded || !user) {
+      return
+    }
+
+    fetch('/api/navigation', {
+      headers: getUserHeaders(),
+      credentials: 'include',
+    })
       .then(res => res.json())
       .then(data => {
         const code = data.metadata?.microservice?.code || 'home-visits'
@@ -45,7 +63,7 @@ export default function DashboardPage() {
         // If API fails, continue with home-visits dashboard
         setMicroserviceCode('home-visits')
       })
-  }, [router])
+  }, [userLoaded, user, router])
 
   // Don't render home-visits dashboard for service-domain-admin
   if (microserviceCode === 'service-domain-admin') {
