@@ -28,6 +28,29 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [liaisonData, setLiaisonData] = useState<any>(null)
   const [liaisonLoading, setLiaisonLoading] = useState(true)
+  const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
+
+  // Check microservice code and redirect if needed
+  useEffect(() => {
+    fetch('/api/navigation')
+      .then(res => res.json())
+      .then(data => {
+        const code = data.metadata?.microservice?.code || 'home-visits'
+        setMicroserviceCode(code)
+        if (code === 'service-domain-admin') {
+          router.replace('/globaladmin')
+        }
+      })
+      .catch(() => {
+        // If API fails, continue with home-visits dashboard
+        setMicroserviceCode('home-visits')
+      })
+  }, [router])
+
+  // Don't render home-visits dashboard for service-domain-admin
+  if (microserviceCode === 'service-domain-admin') {
+    return null
+  }
 
   // Helper: Parse SQL datetime as local time (not UTC)
   // SQL Server DATETIME2 has no timezone info, so we explicitly parse as local

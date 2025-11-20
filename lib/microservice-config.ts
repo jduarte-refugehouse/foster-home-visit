@@ -172,7 +172,10 @@ export function getMicroserviceCode(): string {
     if (branch.includes('case-management') || branch.includes('case-management')) {
       return 'case-management'
     }
-    if (branch.includes('admin') && !branch.includes('case-management')) {
+    if (branch.includes('service-domain-admin') || branch.includes('global-admin') || branch.includes('domain-admin')) {
+      return 'service-domain-admin'
+    }
+    if (branch.includes('admin') && !branch.includes('case-management') && !branch.includes('service-domain')) {
       return 'admin'
     }
     if (branch.includes('training')) {
