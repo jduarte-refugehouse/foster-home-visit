@@ -25,6 +25,10 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 
 - **[Development Workflow](./development-workflow.md)** - ⚠️ **CRITICAL: Remote testing workflow**
 - **[Vercel Branch Deployment Strategy](./vercel-branch-deployment-strategy.md)** - How to configure branch-based deployments for microservices
+- **[Vercel Preview Deployment Configuration](./vercel-preview-deployment-config.md)** - Preview deployment setup and microservice detection
+- **[Deployment URL Configuration](./deployment-url-configuration.md)** - URL detection for distributed service domain model
+- **[Environment Variables Setup](./environment-variables-setup.md)** - Complete environment variable reference
+- **[Environment Configuration](./environment-configuration.md)** - Service domain admin environment filtering
 - **[Navigation Specification](./navigation-specification.md)** - How navigation works
 - **[Refuge House Style Guide](./refuge-house-style-guide.md)** - UI/UX guidelines
 - **[Quick Reference for AI](./quick-reference-for-ai.md)** - Context for AI assistants
@@ -63,7 +67,9 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 
 ### 📝 Daily Activity Summaries
 
-- Various daily activity summaries documenting development progress
+- **[November 19, 2025](./daily-activity-summary-2025-11-19.md)** - Dashboard fixes, deployment URL system, manifest.json fixes
+- **[November 17, 2025](./daily-activity-summary-2025-11-17.md)** - Previous session summary
+- Various other daily activity summaries documenting development progress
 
 ## 🎯 Quick Links
 
@@ -106,6 +112,6 @@ For questions or issues:
 
 ---
 
-**Last Updated**: January 2025  
+**Last Updated**: November 19, 2025  
 **Status**: Production Ready
 

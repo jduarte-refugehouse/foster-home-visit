@@ -4,6 +4,8 @@
 
 The service-domain-admin microservice filters user lookups by environment (test vs production) to ensure users from the correct Clerk instance are authenticated.
 
+> **See also:** [Environment Variables Setup](./environment-variables-setup.md) for general environment variable configuration, and [Deployment URL Configuration](./deployment-url-configuration.md) for URL detection.
+
 ## How Environment Detection Works
 
 The `getDeploymentEnvironment()` function uses a tiered approach:

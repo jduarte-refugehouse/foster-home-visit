@@ -61,7 +61,11 @@ This guide explains how to configure environment variables for the Refuge House 
 - `PULSE_ENVIRONMENT_URL` - Base URL of PULSE app
 
 #### Application Configuration
-- `NEXT_PUBLIC_APP_URL` - Base URL of your application
+- `NEXT_PUBLIC_APP_URL` - **Full deployment URL** (e.g., `https://admin.test.refugehouse.app` or `https://admin.refugehouse.app`)
+  - **Critical for distributed service domain model**
+  - Used for generating links, sending notifications, and referencing resources
+  - Should be set differently for test vs production environments
+  - If not set, the system will auto-detect from Vercel or request headers
 
 ### Optional Variables
 
@@ -73,6 +77,8 @@ This guide explains how to configure environment variables for the Refuge House 
 ## Per-Microservice Configuration
 
 Each microservice needs its own `MICROSERVICE_CODE`:
+
+> **See also:** [Environment Configuration](./environment-configuration.md) for service-domain-admin specific environment filtering, and [Deployment URL Configuration](./deployment-url-configuration.md) for URL detection.
 
 - **Home Visits**: `MICROSERVICE_CODE=home-visits`
 - **Service Domain Admin**: `MICROSERVICE_CODE=service-domain-admin`

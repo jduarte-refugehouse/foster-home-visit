@@ -4,6 +4,8 @@
 
 This guide explains how to configure separate Vercel projects for each microservice, each deploying from its own dedicated branch. This prevents commits to one microservice from automatically deploying to another.
 
+> **See also:** [Vercel Preview Deployment Configuration](./vercel-preview-deployment-config.md) for preview deployment setup and automatic microservice detection.
+
 ## Strategy: One Branch Per Microservice
 
 ### Branch Naming Convention

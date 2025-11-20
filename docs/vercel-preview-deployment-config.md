@@ -4,6 +4,8 @@
 
 Preview deployments in Vercel are automatically created for every branch and pull request. This guide explains how to configure preview deployments to automatically detect which microservice they should run.
 
+> **See also:** [Vercel Branch Deployment Strategy](./vercel-branch-deployment-strategy.md) for production branch configuration and deployment isolation.
+
 ## The Problem
 
 When you push to a branch like `feature/case-management-update`, Vercel automatically creates a preview deployment. But how does it know which microservice code to use?
