@@ -180,7 +180,7 @@ Once the microservice is created, you'll need to:
 
 3. **Grant User Access**
    - Use SQL scripts or admin interface to grant roles/permissions to users
-   - Reference `scripts/grant-home-liaison-access.sql` as a template
+   - Reference `docs/sql-scripts/grant-home-liaison-access.sql` as a template
 
 4. **Test Access Control**
    - Verify users with roles can access the microservice

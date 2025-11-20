@@ -86,14 +86,14 @@ You are continuing development on a **foster home visit application** built with
 - `app/api/appointments/[appointmentId]/training-summary/route.ts` - Training summary API endpoint
 - `app/(protected)/appointment/[id]/page.tsx` - Conditional form display for staff training
 - `components/appointments/create-appointment-dialog.tsx` - Added Staff Training option
-- `scripts/add-staff-training-appointment-type.sql` - Database migration script
+- `docs/sql-scripts/add-staff-training-appointment-type.sql` - Database migration script
 
 ### Recent Changes (November 13, 2025)
 - `components/forms/home-visit-form-enhanced.tsx` - Inline image previews, PDF generation
 - `app/(protected)/appointment/[id]/page.tsx` - Attachments tab, image viewing
 - `app/api/visit-forms/[id]/attachments/route.ts` - Always include file_data, handle missing columns
 - `app/api/visit-forms/[id]/attachments/[attachmentId]/route.ts` - Graceful delete handling
-- `scripts/add-file-data-to-attachments.sql` - Database migration script
+- `docs/sql-scripts/add-file-data-to-attachments.sql` - Database migration script
 - `docs/check-attachments-data.sql` - Database verification queries
 
 ### Recent Changes (November 11, 2025)
