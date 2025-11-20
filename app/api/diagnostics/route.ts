@@ -42,6 +42,10 @@ export async function GET() {
         connectTimeout: "60000ms",
         requestTimeout: "60000ms",
       },
+      proxy: {
+        configured: !!process.env.FIXIE_SOCKS_HOST,
+        host: process.env.FIXIE_SOCKS_HOST || "Not configured",
+      },
     }
 
     const diagnostics = {
