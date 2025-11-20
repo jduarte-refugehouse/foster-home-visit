@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAuth, useUser } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs"
 
 export interface UserPermissions {
   userId: string | null
@@ -46,8 +46,7 @@ const createDefaultPermissions = (): UserPermissions => ({
 })
 
 export function usePermissions(): UserPermissions {
-  const { isSignedIn, userId } = useAuth()
-  const { user } = useUser()
+  const { isSignedIn, user, isLoaded: userLoaded } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
@@ -96,35 +95,30 @@ export function usePermissions(): UserPermissions {
   }, [])
 
   useEffect(() => {
-    if (!isSignedIn) {
+    // Wait for user to be loaded before fetching permissions
+    if (!userLoaded) {
+      return
+    }
+
+    if (!isSignedIn || !user) {
       setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
       return
     }
 
     const fetchPermissions = async () => {
       try {
-        // Build headers with user info from Clerk
+        // Send authentication headers with the request
         const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        }
-        
-        // Add authentication headers if user is available
-        if (user) {
-          if (user.id) {
-            headers["x-user-clerk-id"] = user.id
-          }
-          if (user.emailAddresses?.[0]?.emailAddress) {
-            headers["x-user-email"] = user.emailAddresses[0].emailAddress
-          }
-          if (user.firstName || user.lastName) {
-            headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
-          }
+          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+          "x-user-clerk-id": user.id,
+          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
         }
 
         const response = await fetch("/api/permissions", {
           headers,
-          credentials: 'include', // Ensure cookies are sent (fallback for mobile)
+          credentials: 'include', // Include cookies for session
         })
+
         if (!response.ok) {
           console.error("Failed to fetch permissions:", response.statusText)
           throw new Error("Failed to fetch permissions")
@@ -142,7 +136,7 @@ export function usePermissions(): UserPermissions {
     }
 
     fetchPermissions()
-  }, [isSignedIn, userId, user, constructPermissionSet])
+  }, [isSignedIn, user, userLoaded, constructPermissionSet])
 
   return permissionData
 }
