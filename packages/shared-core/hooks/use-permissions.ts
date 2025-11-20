@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs"
 
 export interface UserPermissions {
   userId: string | null
@@ -46,7 +46,7 @@ const createDefaultPermissions = (): UserPermissions => ({
 })
 
 export function usePermissions(): UserPermissions {
-  const { isSignedIn, userId } = useAuth()
+  const { isSignedIn, user, isLoaded: userLoaded } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
@@ -95,14 +95,30 @@ export function usePermissions(): UserPermissions {
   }, [])
 
   useEffect(() => {
-    if (!isSignedIn) {
+    // Wait for user to be loaded before fetching permissions
+    if (!userLoaded) {
+      return
+    }
+
+    if (!isSignedIn || !user) {
       setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
       return
     }
 
     const fetchPermissions = async () => {
       try {
-        const response = await fetch("/api/permissions")
+        // Send authentication headers with the request
+        const headers: HeadersInit = {
+          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+          "x-user-clerk-id": user.id,
+          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        }
+
+        const response = await fetch("/api/permissions", {
+          headers,
+          credentials: 'include', // Include cookies for session
+        })
+
         if (!response.ok) {
           console.error("Failed to fetch permissions:", response.statusText)
           throw new Error("Failed to fetch permissions")
@@ -120,7 +136,7 @@ export function usePermissions(): UserPermissions {
     }
 
     fetchPermissions()
-  }, [isSignedIn, userId, constructPermissionSet])
+  }, [isSignedIn, user, userLoaded, constructPermissionSet])
 
   return permissionData
 }
