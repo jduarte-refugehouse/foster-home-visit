@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Input } from "@refugehouse/shared-core/components/ui/input"
@@ -43,6 +44,7 @@ interface ApiKey {
 }
 
 export default function ApiKeysPage() {
+  const { user, isLoaded: userLoaded } = useUser()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -56,13 +58,23 @@ export default function ApiKeysPage() {
   const [rateLimit, setRateLimit] = useState("100")
   const [expiresAt, setExpiresAt] = useState("")
 
-  useEffect(() => {
-    fetchKeys()
-  }, [])
+  // Get user headers for API calls
+  const getUserHeaders = () => {
+    if (!user) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
 
   const fetchKeys = async () => {
     try {
-      const response = await fetch("/api/admin/api-keys")
+      const response = await fetch("/api/admin/api-keys", {
+        headers: getUserHeaders(),
+        credentials: 'include',
+      })
       if (response.ok) {
         const data = await response.json()
         setKeys(data.keys || [])
@@ -85,6 +97,13 @@ export default function ApiKeysPage() {
     }
   }
 
+  useEffect(() => {
+    if (userLoaded && user) {
+      fetchKeys()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLoaded, user])
+
   const handleCreateKey = async () => {
     if (!microserviceCode.trim()) {
       toast({
@@ -98,7 +117,8 @@ export default function ApiKeysPage() {
     try {
       const response = await fetch("/api/admin/api-keys", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getUserHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           microserviceCode: microserviceCode.trim(),
           description: description.trim() || null,
@@ -141,6 +161,8 @@ export default function ApiKeysPage() {
     try {
       const response = await fetch(`/api/admin/api-keys?keyId=${keyId}`, {
         method: "DELETE",
+        headers: getUserHeaders(),
+        credentials: 'include',
       })
 
       if (response.ok) {
