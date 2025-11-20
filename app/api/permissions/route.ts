@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { clerkClient } from "@clerk/nextjs/server"
-import { createOrUpdateAppUser, getUserProfile, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
+import { getUserProfile, CURRENT_MICROSERVICE } from "@refugehouse/shared-core/user-management"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode, getDeploymentEnvironment } from "@/lib/microservice-config"
 
@@ -95,52 +94,15 @@ export async function GET(request: NextRequest) {
         const result = await query(userQuery, queryParams)
         appUser = result[0] || null
         
-        // If not found by clerk_user_id, try to sync from Clerk API (but still filter)
-        if (!appUser) {
-          try {
-            const clerk = await clerkClient()
-            const clerkUser = await clerk.users.getUser(clerkUserId)
-            if (!clerkUser) {
-              return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
-            }
-            // This function syncs the Clerk user with your local app_users table
-            const syncedUser = await createOrUpdateAppUser(clerkUser)
-            // Verify the synced user has the correct user_type and environment
-            if (isServiceDomainAdmin) {
-              if ((syncedUser.user_type === 'global_admin' || syncedUser.user_type === null) 
-                  && syncedUser.is_active 
-                  && (!deploymentEnv || syncedUser.environment === deploymentEnv)) {
-                appUser = syncedUser
-              } else {
-                console.warn(`⚠️ [API] Synced user does not match requirements (type: ${syncedUser.user_type}, active: ${syncedUser.is_active}, env: ${syncedUser.environment})`)
-                appUser = null
-              }
-            } else {
-              if (syncedUser.is_active) {
-                appUser = syncedUser
-              } else {
-                console.warn(`⚠️ [API] Synced user is inactive`)
-                appUser = null
-              }
-            }
-          } catch (clerkError) {
-            console.error("❌ [API] Clerk error fetching user:", clerkError)
-            // Fallback: try to find by email if we have it
-            if (clerkUserEmail) {
-              const { query } = await import("@refugehouse/shared-core/db")
-              const [userQuery, queryParams] = buildUserQuery(
-                "SELECT * FROM app_users WHERE email = @param0",
-                [clerkUserEmail]
-              )
-              const result = await query(userQuery, queryParams)
-              appUser = result[0] || null
-            } else {
-              return NextResponse.json({ 
-                error: "Failed to fetch user from Clerk", 
-                details: clerkError instanceof Error ? clerkError.message : "Unknown error" 
-              }, { status: 500 })
-            }
-          }
+        // If not found by clerk_user_id, try email lookup (NO CLERK API CALLS)
+        if (!appUser && clerkUserEmail) {
+          const { query } = await import("@refugehouse/shared-core/db")
+          const [userQuery, queryParams] = buildUserQuery(
+            "SELECT * FROM app_users WHERE email = @param0",
+            [clerkUserEmail]
+          )
+          const result = await query(userQuery, queryParams)
+          appUser = result[0] || null
         }
       } else if (clerkUserEmail) {
         // No valid Clerk ID but have email - look up by email (fallback)
