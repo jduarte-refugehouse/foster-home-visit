@@ -24,33 +24,23 @@ export async function GET(request: NextRequest) {
     let email: string | null = null
     let name: string | null = null
 
-    // Try headers first (desktop/tablet)
+    // Get credentials from headers (stored after initial Clerk authentication)
+    // NO CLERK API CALLS - only use stored credentials
     try {
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
       email = auth.email
       name = auth.name
     } catch (authError) {
-      // Headers not available - try session cookie (mobile)
-      // Import currentUser to read from session cookie
-      const { currentUser } = await import("@clerk/nextjs/server")
-      try {
-        const user = await currentUser()
-        if (user) {
-          clerkUserId = user.id
-          email = user.emailAddresses[0]?.emailAddress || null
-          name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || null
-        }
-      } catch (sessionError) {
-        // No session either - user is not authenticated
-        return NextResponse.json(
-          {
-            error: "Unauthorized",
-            details: "Not authenticated. Please sign in.",
-          },
-          { status: 401 },
-        )
-      }
+      // Headers not available - user must send credentials in headers
+      // NO FALLBACK TO CLERK SESSION - all requests must use headers
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          details: "Missing authentication headers. Please ensure credentials are sent in x-user-clerk-id, x-user-email, and x-user-name headers.",
+        },
+        { status: 401 },
+      )
     }
 
     if (!clerkUserId || !email) {

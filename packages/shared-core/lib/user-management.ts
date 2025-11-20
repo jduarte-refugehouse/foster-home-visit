@@ -88,6 +88,13 @@ export const CORE_ROLES = {
 export const MICROSERVICE_ROLES = MICROSERVICE_CONFIG.roles
 export const MICROSERVICE_PERMISSIONS = MICROSERVICE_CONFIG.permissions
 
+/**
+ * @deprecated This function uses Clerk APIs (currentUser) which violates our authentication methodology.
+ * DO NOT USE - Clerk should only be used ONCE for initial authentication.
+ * After that, use stored credentials from headers and database lookups only.
+ * 
+ * Use getEffectiveUser(clerkUserId, request) instead, passing clerkUserId from headers.
+ */
 export async function getCurrentAppUser(): Promise<AppUser | null> {
   const user = await currentUser()
   if (!user) return null

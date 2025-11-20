@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@refugehouse/shared-core/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
-import { getAuth } from "@refugehouse/shared-core/auth"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
   console.log("🔍 Navigation Debug API called")
 
   try {
-    // Get the current authenticated user
-    const auth = await getAuth()
-    console.log("👤 Auth object:", JSON.stringify(auth, null, 2))
+    // Get credentials from headers (stored after initial Clerk authentication)
+    // NO CLERK API CALLS - only use stored credentials
+    const auth = requireClerkAuth(request)
+    console.log("👤 Auth from headers:", { clerkUserId: auth.clerkUserId, email: auth.email, name: auth.name })
 
     const connection = await getConnection()
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       FROM app_users 
       WHERE clerk_user_id = @param0
     `
-    const userResult = await connection.request().input("param0", auth.userId).query(userQuery)
+    const userResult = await connection.request().input("param0", auth.clerkUserId).query(userQuery)
     const appUser = userResult.recordset[0] || null
 
     // Get microservice info
