@@ -10,6 +10,11 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     console.log("🧪 [TEST] Testing API Hub connectivity...")
+    console.log("🧪 [TEST] Environment check:", {
+      hasApiKey: !!process.env.RADIUS_API_KEY,
+      apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
+      apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 8) || "NOT SET",
+    })
 
     // Test 1: Fetch homes
     console.log("🧪 [TEST] Fetching homes from API Hub...")
@@ -50,11 +55,20 @@ export async function GET() {
     })
   } catch (error) {
     console.error("❌ [TEST] API Hub test failed:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        stack: errorStack,
         message: "API Hub test failed. Check your environment variables and API key.",
+        environment: {
+          hasApiKey: !!process.env.RADIUS_API_KEY,
+          apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
+          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 8) || "NOT SET",
+        },
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

@@ -36,13 +36,21 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+    const errorStack = error instanceof Error ? error.stack : undefined
 
     return NextResponse.json(
       {
         success: false,
         count: 0,
         homes: [],
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: errorMessage,
+        stack: process.env.NODE_ENV === "development" ? errorStack : undefined,
+        environment: {
+          hasApiKey: !!process.env.RADIUS_API_KEY,
+          apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
+          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 8) || "NOT SET",
+        },
         timestamp: new Date().toISOString(),
       },
       { status: 500 },
