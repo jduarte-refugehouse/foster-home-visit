@@ -2,17 +2,37 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { Users, Settings, Globe, Shield, Database } from "lucide-react"
 import Link from "next/link"
 
 export default function GlobalAdminDashboard() {
+  const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
 
-  // Get microservice code from navigation API
+  // Get user headers for API calls (same pattern as liaison dashboard)
+  const getUserHeaders = () => {
+    if (!user) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
+
+  // Get microservice code from navigation API (wait for user to be loaded)
   useEffect(() => {
-    fetch('/api/navigation')
+    if (!userLoaded || !user) {
+      return
+    }
+
+    fetch('/api/navigation', {
+      headers: getUserHeaders(),
+      credentials: 'include',
+    })
       .then(res => res.json())
       .then(data => {
         const code = data.metadata?.microservice?.code || 'home-visits'
@@ -29,7 +49,24 @@ export default function GlobalAdminDashboard() {
           router.push('/dashboard')
         }
       })
-  }, [router])
+  }, [userLoaded, user, router])
+
+  // Show loading state while user is loading
+  if (!userLoaded) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!microserviceCode || microserviceCode !== 'service-domain-admin') {
     return null
