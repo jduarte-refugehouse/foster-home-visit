@@ -445,6 +445,10 @@ export async function GET(request: NextRequest) {
 function createFallbackResponse(source: string, error: string, userPermissions: string[] = [], userInfo: any = null) {
   console.log(`📋 Using ${source} navigation`)
 
+  // Get the actual detected microservice code (not the hardcoded config)
+  const actualMicroserviceCode = getMicroserviceCode()
+  console.log(`🔍 Fallback using microservice code: ${actualMicroserviceCode}`)
+
   // Filter navigation items by permissions
   const filteredNavigation = MICROSERVICE_CONFIG.defaultNavigation
     .map((section) => ({
@@ -473,7 +477,7 @@ function createFallbackResponse(source: string, error: string, userPermissions: 
       totalItems,
       visibleItems: totalItems,
       microservice: {
-        code: MICROSERVICE_CONFIG.code,
+        code: actualMicroserviceCode, // Use detected microservice code instead of hardcoded config
         name: MICROSERVICE_CONFIG.name,
         description: MICROSERVICE_CONFIG.description,
       },
