@@ -324,9 +324,9 @@ Monthly visits capture all necessary data to generate quarterly summaries:
 - `app/api/visit-forms/[id]/attachments/route.ts`: File upload and management API
 - `app/signature/[token]/page.tsx`: Public signature collection page
 - `docs/enhanced-monitoring-checklist.md`: Original requirement specifications
-- `docs/daily-activity-summary-2025-11-05.md`: Detailed changelog for version 3.2
-- `docs/daily-activity-summary-2025-11-08.md`: Detailed changelog for version 3.3
-- `docs/daily-activity-summary-2025-11-11.md`: Detailed changelog for version 3.4
+- `docs/daily-summaries/daily-activity-summary-2025-11-05.md`: Detailed changelog for version 3.2
+- `docs/daily-summaries/daily-activity-summary-2025-11-08.md`: Detailed changelog for version 3.3
+- `docs/daily-summaries/daily-activity-summary-2025-11-11.md`: Detailed changelog for version 3.4
 
 ### Key Technologies
 - React hooks for state management

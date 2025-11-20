@@ -105,9 +105,9 @@ You are continuing development on a **foster home visit application** built with
 - `app/api/visit-forms/send-report/route.ts` - Case manager signature in email
 
 ### Key Documentation
-- `docs/daily-activity-summary-2025-11-14.md` - November 14 complete changelog
-- `docs/daily-activity-summary-2025-11-13.md` - November 13 complete changelog
-- `docs/daily-activity-summary-2025-11-11.md` - November 11 complete changelog
+- `docs/daily-summaries/daily-activity-summary-2025-11-14.md` - November 14 complete changelog
+- `docs/daily-summaries/daily-activity-summary-2025-11-13.md` - November 13 complete changelog
+- `docs/daily-summaries/daily-activity-summary-2025-11-11.md` - November 11 complete changelog
 - `docs/travel-tracking-architecture.md` - Travel leg system documentation
 - `docs/enhanced-home-visit-form.md` - Form structure and features (Version 3.4)
 - `docs/database-architecture.md` - Multi-database architecture
@@ -273,14 +273,14 @@ onClick={() => {
 ### Required Migrations
 
 #### 1. File Attachments (Recommended)
-Run `scripts/add-file-data-to-attachments.sql` on Bifrost database to add:
+Run `docs/sql-scripts/add-file-data-to-attachments.sql` on Bifrost database to add:
 - `file_data` column (nvarchar(max)) - for base64 image storage
 - `is_deleted` column (bit, default 0) - for soft deletes
 
 **Note**: Code works without migration (handles missing columns gracefully), but migration is recommended for full functionality.
 
 #### 2. Staff Training Appointment Type (Required)
-Run `scripts/add-staff-training-appointment-type.sql` on Bifrost database to:
+Run `docs/sql-scripts/add-staff-training-appointment-type.sql` on Bifrost database to:
 - Update `CK_appointments_type` constraint to include `staff_training` as valid appointment type
 
 **Note**: This migration is required to create Staff Training appointments. The script is safe to run multiple times.

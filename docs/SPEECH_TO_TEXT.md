@@ -387,6 +387,6 @@ Schedule: Every 90 days
 
 ### Internal Resources
 - **Setup Guide:** `docs/setup-deepgram.md`
-- **Implementation History:** `docs/daily-activity-summary-2025-11-07-speech-to-text.md`
+- **Implementation History:** `docs/daily-summaries/daily-activity-summary-2025-11-07-speech-to-text.md`
 - **Troubleshooting:** This document (Troubleshooting section)
 

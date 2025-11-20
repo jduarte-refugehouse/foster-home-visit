@@ -214,6 +214,7 @@ The `getDeploymentUrl()` function uses tiered detection:
 - `docs/environment-configuration.md` - Environment detection for service domain admin
 - `docs/vercel-branch-deployment-strategy.md` - Branch-based deployment strategy
 - `docs/vercel-preview-deployment-config.md` - Preview deployment configuration
+- `docs/sql-scripts/` - SQL scripts for one-time setup and maintenance
 
 ---
 
