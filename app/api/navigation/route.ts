@@ -182,15 +182,17 @@ export async function GET(request: NextRequest) {
 
           // Also check role-based permissions (if role tables exist)
           try {
+            // NOTE: role_permissions table does not exist
+            // Roles don't automatically grant permissions - permissions must be granted directly via user_permissions
+            // This query is intentionally empty - permissions come from user_permissions table only
             const rolePermissionsQuery = `
               SELECT DISTINCT p.permission_code
-              FROM user_roles ur
-              INNER JOIN role_permissions rp ON ur.role_name = rp.role_name
-              INNER JOIN permissions p ON rp.permission_id = p.id
+              FROM user_permissions up
+              INNER JOIN permissions p ON up.permission_id = p.id
               INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-              WHERE ur.user_id = @param0 
+              WHERE up.user_id = @param0 
                 AND ma.app_code = @param1 
-                AND ur.is_active = 1
+                AND up.is_active = 1
             `
             console.log("📝 EXECUTING ROLE PERMISSIONS QUERY:")
             console.log("Query:", rolePermissionsQuery)
