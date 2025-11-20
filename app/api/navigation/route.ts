@@ -38,23 +38,31 @@ export async function GET(request: NextRequest) {
         if (impersonatedUserId) {
           // Use impersonated user
           userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id
+            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
             FROM app_users 
             WHERE id = @param0
+              AND user_type = 'global_admin'
+              AND is_active = 1
           `
           queryParam = impersonatedUserId
         } else if (userClerkId) {
+          // PRIORITY: Use clerk_user_id first (most reliable)
           userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id
+            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
             FROM app_users 
             WHERE clerk_user_id = @param0
+              AND user_type = 'global_admin'
+              AND is_active = 1
           `
           queryParam = userClerkId
         } else if (userEmail) {
+          // Fallback: Use email only if clerk_user_id not available
           userQuery = `
-            SELECT id, email, first_name, last_name, is_active, clerk_user_id
+            SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type
             FROM app_users 
             WHERE email = @param0
+              AND user_type = 'global_admin'
+              AND is_active = 1
           `
           queryParam = userEmail
         }
@@ -84,10 +92,11 @@ export async function GET(request: NextRequest) {
               AND up.is_active = 1 
               AND (up.expires_at IS NULL OR up.expires_at > GETDATE())
           `
+          const microserviceCode = getMicroserviceCode()
           console.log("📝 EXECUTING PERMISSIONS QUERY:")
           console.log("Query:", permissionsQuery)
           console.log("Parameter @param0 (user_id):", userInfo.id)
-            console.log("Parameter @param1 (app_code):", microserviceCode)
+          console.log("Parameter @param1 (app_code):", microserviceCode)
 
           const permissionsResult = await connection
             .request()
@@ -233,7 +242,7 @@ export async function GET(request: NextRequest) {
       console.log("🔍 PROCESSING NAVIGATION ITEMS:")
       console.log(`User has permissions: [${userPermissions.join(", ")}]`)
 
-      dbItems.forEach((item, index) => {
+      dbItems.forEach((item: any, index: number) => {
         console.log(`\n--- Processing item ${index + 1}/${dbItems.length} ---`)
         console.log("Item:", JSON.stringify(item, null, 2))
         console.log("Permission required:", item.permission_required)

@@ -32,59 +32,84 @@ export async function GET(request: NextRequest) {
       // Use impersonated user directly
       try {
         const { query } = await import("@refugehouse/shared-core/db")
-        const result = await query("SELECT * FROM app_users WHERE id = @param0", [impersonatedUserId])
+        const result = await query(
+          "SELECT * FROM app_users WHERE id = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+          [impersonatedUserId]
+        )
         appUser = result[0] || null
       } catch (dbError) {
         console.error("❌ [API] Database error fetching impersonated user:", dbError)
         // Fall back to real user if impersonation lookup fails
-        // If we have email, look up by email, otherwise try Clerk API
-        if (clerkUserEmail) {
+        // PRIORITY: Use clerk_user_id first, then email
+        if (clerkUserId.startsWith('user_')) {
           const { query } = await import("@refugehouse/shared-core/db")
-          const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
+          const result = await query(
+            "SELECT * FROM app_users WHERE clerk_user_id = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+            [clerkUserId]
+          )
           appUser = result[0] || null
-        } else if (clerkUserId.startsWith('user_')) {
-          try {
-            const clerkUser = await clerkClient.users.getUser(clerkUserId)
-            if (clerkUser) {
-              appUser = await createOrUpdateAppUser(clerkUser)
-            }
-          } catch (clerkError) {
-            console.error("❌ [API] Clerk error:", clerkError)
-          }
+        } else if (clerkUserEmail) {
+          const { query } = await import("@refugehouse/shared-core/db")
+          const result = await query(
+            "SELECT * FROM app_users WHERE email = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+            [clerkUserEmail]
+          )
+          appUser = result[0] || null
         }
       }
     } else {
       // Not impersonating - use real user
-      // If we have email but no valid Clerk ID, look up by email
-      if (clerkUserEmail && !clerkUserId.startsWith('user_')) {
-        // clerkUserId is actually an email, look up by email
+      // PRIORITY: Use clerk_user_id first (most reliable identifier)
+      if (clerkUserId.startsWith('user_')) {
+        // Valid Clerk ID - look up directly by clerk_user_id
         const { query } = await import("@refugehouse/shared-core/db")
-        const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
+        const result = await query(
+          "SELECT * FROM app_users WHERE clerk_user_id = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+          [clerkUserId]
+        )
         appUser = result[0] || null
-      } else if (clerkUserId.startsWith('user_')) {
-        // Valid Clerk ID - fetch from Clerk API and sync
-        try {
-          const clerkUser = await clerkClient.users.getUser(clerkUserId)
-          if (!clerkUser) {
-            return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
-          }
-          // This function syncs the Clerk user with your local app_users table
-          appUser = await createOrUpdateAppUser(clerkUser)
-        } catch (clerkError) {
-          console.error("❌ [API] Clerk error fetching user:", clerkError)
-          // Fallback: try to find by email if we have it
-          if (clerkUserEmail) {
-            const { query } = await import("@refugehouse/shared-core/db")
-            const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
-            appUser = result[0] || null
-          } else {
-            return NextResponse.json({ error: "Failed to fetch user from Clerk", details: clerkError instanceof Error ? clerkError.message : "Unknown error" }, { status: 500 })
+        
+        // If not found by clerk_user_id, try to sync from Clerk API (but still filter)
+        if (!appUser) {
+          try {
+            const clerkUser = await clerkClient.users.getUser(clerkUserId)
+            if (!clerkUser) {
+              return NextResponse.json({ error: "Clerk user not found." }, { status: 404 })
+            }
+            // This function syncs the Clerk user with your local app_users table
+            const syncedUser = await createOrUpdateAppUser(clerkUser)
+            // Verify the synced user has the correct user_type
+            if (syncedUser.user_type === 'global_admin' && syncedUser.is_active) {
+              appUser = syncedUser
+            } else {
+              console.warn(`⚠️ [API] Synced user does not have global_admin type or is inactive`)
+              appUser = null
+            }
+          } catch (clerkError) {
+            console.error("❌ [API] Clerk error fetching user:", clerkError)
+            // Fallback: try to find by email if we have it
+            if (clerkUserEmail) {
+              const { query } = await import("@refugehouse/shared-core/db")
+              const result = await query(
+                "SELECT * FROM app_users WHERE email = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+                [clerkUserEmail]
+              )
+              appUser = result[0] || null
+            } else {
+              return NextResponse.json({ 
+                error: "Failed to fetch user from Clerk", 
+                details: clerkError instanceof Error ? clerkError.message : "Unknown error" 
+              }, { status: 500 })
+            }
           }
         }
       } else if (clerkUserEmail) {
-        // No Clerk ID but have email - look up by email
+        // No valid Clerk ID but have email - look up by email (fallback)
         const { query } = await import("@refugehouse/shared-core/db")
-        const result = await query("SELECT * FROM app_users WHERE email = @param0", [clerkUserEmail])
+        const result = await query(
+          "SELECT * FROM app_users WHERE email = @param0 AND user_type = 'global_admin' AND is_active = 1", 
+          [clerkUserEmail]
+        )
         appUser = result[0] || null
       }
     }
