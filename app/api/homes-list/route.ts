@@ -1,15 +1,32 @@
-import { NextResponse } from "next/server"
-import { fetchHomesList } from "@/lib/db-extensions"
+import { NextResponse, NextRequest } from "next/server"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+/**
+ * GET /api/homes-list
+ * 
+ * Migrated to use API Hub instead of direct database access.
+ * This endpoint now proxies requests through the centralized API hub.
+ */
+export async function GET(request: NextRequest) {
   try {
-    console.log("🏠 [API] Homes list endpoint called")
+    console.log("🏠 [API] Homes list endpoint called (via API Hub)")
 
-    const homes = await fetchHomesList()
+    // Parse query parameters for filtering
+    const { searchParams } = new URL(request.url)
+    const unit = searchParams.get("unit") || undefined
+    const caseManager = searchParams.get("caseManager") || undefined
+    const search = searchParams.get("search") || undefined
 
-    console.log(`✅ [API] Successfully retrieved ${homes.length} homes`)
+    // Fetch homes from API Hub
+    const homes = await radiusApiClient.getHomes({
+      unit,
+      caseManager,
+      search,
+    })
+
+    console.log(`✅ [API] Successfully retrieved ${homes.length} homes from API Hub`)
 
     return NextResponse.json({
       success: true,
