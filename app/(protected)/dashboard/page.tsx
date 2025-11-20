@@ -118,17 +118,6 @@ export default function DashboardPage() {
     }
   }, [user]) // Wait for user to be loaded before fetching
 
-  // Get user headers for API calls
-  const getUserHeaders = () => {
-    if (!user) return {}
-    return {
-      "Content-Type": "application/json",
-      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-      "x-user-clerk-id": user.id,
-      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-    }
-  }
-
   const fetchLiaisonDashboardData = async () => {
     if (!user) {
       setLiaisonLoading(false)
