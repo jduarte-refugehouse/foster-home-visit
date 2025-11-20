@@ -45,6 +45,7 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 - **[Bifrost Schema](./bifrost-schema.sql)** - Main database schema
 - **[Radius Schema](./radius-radiusrhsa-schema.sql)** - Radius database schema
 - **[RHData Schema](./rhdata-schema.sql)** - RHData database schema
+- **[SQL Scripts](./sql-scripts/README.md)** - One-time setup and maintenance scripts
 
 ### 🔐 Security & Access
 
@@ -67,9 +68,8 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 
 ### 📝 Daily Activity Summaries
 
-- **[November 19, 2025](./daily-activity-summary-2025-11-19.md)** - Dashboard fixes, deployment URL system, manifest.json fixes
-- **[November 17, 2025](./daily-activity-summary-2025-11-17.md)** - Previous session summary
-- Various other daily activity summaries documenting development progress
+- **[Daily Summaries Directory](./daily-summaries/README.md)** - All daily activity summaries organized by date
+- Recent summaries include dashboard fixes, deployment URL system, and microservice setup
 
 ## 🎯 Quick Links
 

@@ -246,6 +246,80 @@ export function getDeploymentEnvironment(): 'test' | 'production' {
   return 'production'
 }
 
+/**
+ * Get the full deployment URL for the current environment
+ * This is critical for distributed service domain model where URLs need to be
+ * environment-aware (admin.test.refugehouse.app vs admin.refugehouse.app)
+ * 
+ * Priority:
+ * 1. NEXT_PUBLIC_APP_URL (explicit override - highest priority)
+ * 2. VERCEL_URL (automatically set by Vercel)
+ * 3. Request origin header (from incoming request)
+ * 4. Request host header (from incoming request)
+ * 5. Environment-based fallback (test vs production)
+ * 
+ * @param request Optional NextRequest to extract origin/host from
+ * @returns Full URL with protocol (e.g., https://admin.test.refugehouse.app)
+ */
+export function getDeploymentUrl(request?: { headers: { get: (name: string) => string | null } }): string {
+  // Tier 1: Explicit environment variable (highest priority)
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    let url = process.env.NEXT_PUBLIC_APP_URL.trim()
+    // Ensure protocol is included
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`
+    }
+    return url
+  }
+
+  // Tier 2: Vercel URL (automatically set by Vercel)
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+
+  // Tier 3: Request origin header (if available)
+  if (request) {
+    const origin = request.headers.get('origin')
+    if (origin) {
+      return origin
+    }
+
+    // Tier 4: Request host header (if available)
+    const host = request.headers.get('host')
+    if (host) {
+      // Determine protocol based on host
+      const protocol = host.includes('vercel.app') || host.includes('refugehouse.app') ? 'https' : 'http'
+      return `${protocol}://${host}`
+    }
+  }
+
+  // Tier 5: Environment-based fallback
+  const environment = getDeploymentEnvironment()
+  const microserviceCode = getMicroserviceCode()
+
+  // Map microservice codes to domain patterns
+  const domainMap: Record<string, { test: string; production: string }> = {
+    'home-visits': {
+      test: 'visit.test.refugehouse.app',
+      production: 'visit.refugehouse.app',
+    },
+    'service-domain-admin': {
+      test: 'admin.test.refugehouse.app',
+      production: 'admin.refugehouse.app',
+    },
+    'case-management': {
+      test: 'case-management.test.refugehouse.app',
+      production: 'case-management.refugehouse.app',
+    },
+    // Add more microservices as needed
+  }
+
+  const domain = domainMap[microserviceCode]?.[environment] || 
+                 (environment === 'test' ? `${microserviceCode}.test.refugehouse.app` : `${microserviceCode}.refugehouse.app`)
+
+  return `https://${domain}`
+}
+
 export function getRoleDisplayName(roleCode: string): string {
   const roleMap: Record<string, string> = {
     [MICROSERVICE_CONFIG.roles.MANAGER]: "Visit Manager",
