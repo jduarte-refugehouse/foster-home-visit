@@ -24,10 +24,6 @@ interface DiagnosticsData {
       clientId: string
       secretName: string
     }
-    proxy: {
-      configured: boolean
-      host: string
-    }
     database: {
       server: string
       database: string
@@ -51,10 +47,6 @@ interface DiagnosticsData {
       details?: any
     }
     azureKeyVault: {
-      status: string
-      message: string
-    }
-    proxyConnection: {
       status: string
       message: string
     }
@@ -326,34 +318,6 @@ export default function DiagnosticsPage() {
         </CardContent>
       </Card>
 
-      {/* Proxy Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Proxy Configuration</CardTitle>
-          <p className="text-sm text-muted-foreground">SOCKS proxy settings for database connection</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Fixie SOCKS Host</label>
-                <div className="text-sm">{maskSensitiveData(data.environment.proxy.host, showSensitive)}</div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                <div className="flex items-center gap-2">
-                  <Badge className={getStatusColor(data.components.proxyConnection.status)}>
-                    {data.environment.proxy.configured ? "✓ Configured" : "⚠ Not Configured"}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* System Components */}
       <Card>
         <CardHeader>
@@ -373,13 +337,11 @@ export default function DiagnosticsPage() {
                 <div className="flex items-center gap-3">
                   {key === "databaseConnection" && <Database className="h-5 w-5 text-muted-foreground" />}
                   {key === "azureKeyVault" && <Key className="h-5 w-5 text-muted-foreground" />}
-                  {key === "proxyConnection" && <Globe className="h-5 w-5 text-muted-foreground" />}
                   {key === "serverEnvironment" && <Server className="h-5 w-5 text-muted-foreground" />}
                   <div>
                     <div className="font-medium">
                       {key === "databaseConnection" && "Database Connection"}
                       {key === "azureKeyVault" && "Azure Key Vault"}
-                      {key === "proxyConnection" && "Proxy Connection"}
                       {key === "serverEnvironment" && "Server Environment"}
                     </div>
                     <div className="text-sm text-muted-foreground">{component.message}</div>

@@ -42,10 +42,6 @@ export async function GET() {
         connectTimeout: "60000ms",
         requestTimeout: "60000ms",
       },
-      proxy: {
-        configured: !!process.env.FIXIE_SOCKS_HOST,
-        host: process.env.FIXIE_SOCKS_HOST || "Not configured",
-      },
     }
 
     const diagnostics = {
@@ -74,10 +70,6 @@ export async function GET() {
           message: envChecks.azureKeyVault.configured
             ? "Key Vault configured and accessible"
             : "Key Vault not properly configured",
-        },
-        proxyConnection: {
-          status: envChecks.proxy.configured ? "healthy" : "warning",
-          message: envChecks.proxy.configured ? "Fixie SOCKS proxy configured" : "No proxy configured",
         },
         serverEnvironment: {
           status: "active",
