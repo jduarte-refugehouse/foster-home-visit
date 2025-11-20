@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, useUser } from "@clerk/nextjs"
 
 export interface UserPermissions {
   userId: string | null
@@ -47,6 +47,7 @@ const createDefaultPermissions = (): UserPermissions => ({
 
 export function usePermissions(): UserPermissions {
   const { isSignedIn, userId } = useAuth()
+  const { user } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
@@ -102,7 +103,28 @@ export function usePermissions(): UserPermissions {
 
     const fetchPermissions = async () => {
       try {
-        const response = await fetch("/api/permissions")
+        // Build headers with user info from Clerk
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        }
+        
+        // Add authentication headers if user is available
+        if (user) {
+          if (user.id) {
+            headers["x-user-clerk-id"] = user.id
+          }
+          if (user.emailAddresses?.[0]?.emailAddress) {
+            headers["x-user-email"] = user.emailAddresses[0].emailAddress
+          }
+          if (user.firstName || user.lastName) {
+            headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+          }
+        }
+
+        const response = await fetch("/api/permissions", {
+          headers,
+          credentials: 'include', // Ensure cookies are sent (fallback for mobile)
+        })
         if (!response.ok) {
           console.error("Failed to fetch permissions:", response.statusText)
           throw new Error("Failed to fetch permissions")
@@ -120,7 +142,7 @@ export function usePermissions(): UserPermissions {
     }
 
     fetchPermissions()
-  }, [isSignedIn, userId, constructPermissionSet])
+  }, [isSignedIn, userId, user, constructPermissionSet])
 
   return permissionData
 }
