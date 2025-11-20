@@ -73,9 +73,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.3.5",
-    "vaul": "latest",
-    "@refugehouse/radius-api-client": "*",
-    "@refugehouse/api-config": "*"
+    "vaul": "latest"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.12",
