@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { currentUser, auth } from "@clerk/nextjs/server"
+import { createClerkClient } from "@clerk/backend"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic"
  * GET - Get current user ID from authenticated Clerk session
  * 
  * This endpoint reads the user ID from the Clerk session cookie (server-side).
+ * Uses @clerk/backend directly to read cookies without requiring middleware.
  * It's the ONLY place we use Clerk APIs after authentication - just to get the user ID.
  * After this, the app never uses Clerk APIs again.
  * 
@@ -15,26 +16,34 @@ export const dynamic = "force-dynamic"
  */
 export async function GET(request: NextRequest) {
   try {
-    // First, check if there's an active session using auth()
-    // This is more lightweight and helps us distinguish between "no session" and "Clerk error"
-    let authData
-    try {
-      authData = await auth()
-    } catch (authError) {
-      console.error("❌ [AUTH] Error checking auth:", authError)
-      // If auth() fails, it might be a configuration issue
-      // Return 401 to indicate authentication is required, not a server error
-      return NextResponse.json(
-        {
-          error: "Not authenticated",
-          details: "Unable to verify authentication. Please sign in.",
-        },
-        { status: 401 }
-      )
-    }
+    // Use @clerk/backend directly to read session cookies (no middleware required)
+    const clerkClient = createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY,
+    })
 
-    // If no session, return 401 (not authenticated)
-    if (!authData || !authData.userId) {
+    // Authenticate the request using @clerk/backend
+    // This reads cookies and verifies the session without requiring middleware
+    const authState = await clerkClient.authenticateRequest({
+      headers: Object.fromEntries(request.headers.entries()),
+      cookies: Object.fromEntries(
+        request.cookies.getAll().map(cookie => [cookie.name, cookie.value])
+      ),
+    })
+
+    if (authState.status === "signed-in" && authState.toAuth().userId) {
+      const userId = authState.toAuth().userId
+      
+      // Get user details
+      const user = await clerkClient.users.getUser(userId)
+
+      return NextResponse.json({
+        success: true,
+        clerkUserId: user.id,
+        email: user.emailAddresses[0]?.emailAddress || null,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      })
+    } else {
+      // Not authenticated
       return NextResponse.json(
         {
           error: "Not authenticated",
@@ -43,47 +52,7 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    // Now get full user details
-    // Read user from Clerk session cookie (server-side, secure)
-    // This is the ONLY use of Clerk APIs after authentication
-    let user
-    try {
-      user = await currentUser()
-    } catch (userError) {
-      console.error("❌ [AUTH] Error getting current user:", userError)
-      // If currentUser() fails but auth() succeeded, we can still return basic info
-      // This provides a fallback if currentUser() has issues
-      return NextResponse.json({
-        success: true,
-        clerkUserId: authData.userId,
-        email: null,
-        name: null,
-        warning: "Limited user data available",
-      })
-    }
-    
-    if (!user) {
-      // Fallback: use auth data if currentUser() returns null
-      return NextResponse.json({
-        success: true,
-        clerkUserId: authData.userId,
-        email: null,
-        name: null,
-        warning: "Limited user data available",
-      })
-    }
-
-    // Return user ID from originally authenticated session
-    // This will be stored client-side and sent in headers for all API calls
-    return NextResponse.json({
-      success: true,
-      clerkUserId: user.id,
-      email: user.emailAddresses[0]?.emailAddress || null,
-      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-    })
   } catch (error) {
-    // Catch-all for any unexpected errors
     console.error("❌ [AUTH] Unexpected error getting session user:", error)
     console.error("❌ [AUTH] Error stack:", error instanceof Error ? error.stack : "No stack trace")
     console.error("❌ [AUTH] Error details:", {
