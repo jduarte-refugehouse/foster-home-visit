@@ -358,14 +358,12 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
         { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 9 },
       ],
     },
-    // KEEP: Administration section (consistent across microservices)
+    // NOTE: User admin and system admin items removed - centralized in service-domain-admin microservice
+    // Only microservice-specific admin items should remain here
     {
       title: "Administration",
       items: [
-        { code: "user_invitations", title: "User Invitations", url: "/admin/invitations", icon: "Users", permission: "user_management", order: 1 },
-        { code: "user_management", title: "User Management", url: "/admin/users", icon: "UserCog", permission: "user_management", order: 2 },
-        { code: "system_admin", title: "System Admin", url: "/system-admin", icon: "Settings", permission: "system_config", order: 3 },
-        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 4 },
+        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 1 },
       ],
     },
   ],
