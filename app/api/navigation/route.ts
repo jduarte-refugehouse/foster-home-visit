@@ -471,6 +471,7 @@ export async function GET(request: NextRequest) {
         url: string
         icon: string
         order: number
+        category: string
         subItems: Array<{
           code: string
           title: string
@@ -534,6 +535,7 @@ export async function GET(request: NextRequest) {
               url: item.url,
               icon: item.icon,
               order: item.order_index,
+              category: item.category || "Administration",
               subItems: [],
             })
             visibleItemCount++
@@ -581,8 +583,8 @@ export async function GET(request: NextRequest) {
       // Convert to category-based structure for backward compatibility
       const groupedNavigation: { [category: string]: any[] } = {}
       domainMap.forEach((domain) => {
-        // Use category from database, default to "Administration" for admin items
-        const category = "Administration" // You can make this dynamic if needed
+        // Use category from database item
+        const category = domain.category || "Administration"
         if (!groupedNavigation[category]) {
           groupedNavigation[category] = []
         }

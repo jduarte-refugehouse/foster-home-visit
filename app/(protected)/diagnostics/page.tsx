@@ -121,10 +121,18 @@ export default function DiagnosticsPage() {
               email: data.email,
               name: data.name,
             }))
+          } else {
+            console.error("❌ [Diagnostics] Session API returned invalid data:", data)
+            setError("Failed to authenticate. Please refresh the page.")
           }
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ [Diagnostics] Session API error:", response.status, errorData)
+          setError(errorData.details || errorData.message || `Authentication failed (${response.status})`)
         }
       } catch (error) {
-        console.error("Error fetching session user:", error)
+        console.error("❌ [Diagnostics] Error fetching session user:", error)
+        setError(error instanceof Error ? error.message : "Failed to authenticate. Please refresh the page.")
       } finally {
         setLoadingSession(false)
       }

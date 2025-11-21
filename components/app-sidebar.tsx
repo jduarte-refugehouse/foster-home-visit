@@ -409,8 +409,10 @@ export function AppSidebar() {
                       
                       if (hasSubItems) {
                         // Domain with sub-items - make it collapsible
+                        // Show first 2-3 sub-items as quick actions when collapsed
+                        const quickActions = item.subItems?.slice(0, 3) || []
                         return (
-                          <Collapsible key={item.code} className="group">
+                          <Collapsible key={item.code} className="group" defaultOpen={false}>
                             <SidebarMenuItem>
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuButton className="w-full group">
@@ -421,6 +423,34 @@ export function AppSidebar() {
                                   </div>
                                 </SidebarMenuButton>
                               </CollapsibleTrigger>
+                              {/* Quick Actions - shown when collapsed (outside CollapsibleContent) */}
+                              <div className="group-data-[state=closed]:block group-data-[state=open]:hidden">
+                                <SidebarMenu className="ml-4 mt-1 space-y-1">
+                                  {quickActions.map((subItem) => {
+                                    const SubIconComponent = iconMap[subItem.icon] || Home
+                                    return (
+                                      <SidebarMenuItem key={subItem.code}>
+                                        <SidebarMenuButton asChild>
+                                          <Link
+                                            href={subItem.url}
+                                            className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-refuge-purple hover:bg-refuge-light-purple/5 rounded transition-colors"
+                                          >
+                                            <SubIconComponent className="h-3.5 w-3.5" />
+                                            <span className="truncate">{subItem.title}</span>
+                                          </Link>
+                                        </SidebarMenuButton>
+                                      </SidebarMenuItem>
+                                    )
+                                  })}
+                                  {item.subItems && item.subItems.length > 3 && (
+                                    <SidebarMenuItem>
+                                      <div className="px-2 py-1 text-xs text-muted-foreground italic">
+                                        +{item.subItems.length - 3} more
+                                      </div>
+                                    </SidebarMenuItem>
+                                  )}
+                                </SidebarMenu>
+                              </div>
                               <CollapsibleContent>
                                 <SidebarMenu className="ml-4 mt-1 space-y-1">
                                   {/* Link to domain workspace page */}
