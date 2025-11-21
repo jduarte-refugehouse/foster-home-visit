@@ -102,6 +102,13 @@ export default function MobileAppointmentDetailPage() {
         }
       }
 
+      // Check if auth already failed (prevent infinite retries)
+      const authFailed = sessionStorage.getItem("auth_failed")
+      if (authFailed === "true") {
+        console.warn("⚠️ [Mobile Appointment] Auth failed - stopping retries")
+        return
+      }
+
       // Fetch from API (reads from Clerk session cookie server-side)
       try {
         const response = await fetch("/api/auth/get-session-user", {
@@ -123,8 +130,14 @@ export default function MobileAppointmentDetailPage() {
               email: data.email,
               name: data.name,
             }))
+            // Clear auth failed flag if we successfully authenticated
+            sessionStorage.removeItem("auth_failed")
             console.log("✅ [Mobile Appointment] User loaded from session API:", userRef.current)
           }
+        } else if (response.status === 401) {
+          // Authentication failed - stop retrying
+          console.warn("⚠️ [Mobile Appointment] Not authenticated - stopping retries")
+          sessionStorage.setItem("auth_failed", "true")
         } else {
           console.error("❌ [Mobile Appointment] Failed to get session user:", response.status)
         }

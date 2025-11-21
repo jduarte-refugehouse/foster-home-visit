@@ -173,6 +173,7 @@ export function AppSidebar() {
             }))
           }
         }
+        }
       } catch (error) {
         console.error("Error fetching session user:", error)
       } finally {
@@ -439,19 +440,19 @@ export function AppSidebar() {
             ) : (
               // User authenticated and found in database - show error info if any
               <>
-                <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
-                {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
-                {navigationMetadata?.dbError && (
-                  <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
-                )}
+            <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
+            {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
+            {navigationMetadata?.dbError && (
+              <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
+            )}
                 {/* SECURITY: Only show diagnostics link if user IS found in database */}
-                <Link
-                  href="/diagnostics"
-                  className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
-                >
-                  <Database className="w-3 h-3 mr-1" />
-                  Check diagnostics
-                </Link>
+            <Link
+              href="/diagnostics"
+              className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
+            >
+              <Database className="w-3 h-3 mr-1" />
+              Check diagnostics
+            </Link>
               </>
             )}
           </div>

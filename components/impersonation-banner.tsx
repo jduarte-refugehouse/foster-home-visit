@@ -79,6 +79,7 @@ export function ImpersonationBanner() {
             }))
           }
         }
+        }
       } catch (error) {
         console.error("Error fetching session user:", error)
       } finally {

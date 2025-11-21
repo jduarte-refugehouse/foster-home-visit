@@ -38,15 +38,32 @@ export function AccountRegistrationRequired({
       }
     }
 
+    // Check if auth already failed (prevent infinite retries)
+    const authFailed = sessionStorage.getItem("auth_failed")
+    if (authFailed === "true") {
+      return
+    }
+
     // Fetch from API if not in sessionStorage
     fetch("/api/auth/get-session-user", {
       method: "GET",
       credentials: "include",
     })
-      .then(res => res.json())
+      .then(res => {
+        if (res.ok) {
+          return res.json()
+        } else if (res.status === 401) {
+          // Authentication failed - stop retrying
+          sessionStorage.setItem("auth_failed", "true")
+          return null
+        }
+        return null
+      })
       .then(data => {
-        if (data.success && data.email) {
+        if (data && data.success && data.email) {
           setUserEmail(data.email)
+          // Clear auth failed flag if we successfully authenticated
+          sessionStorage.removeItem("auth_failed")
         }
       })
       .catch(() => {

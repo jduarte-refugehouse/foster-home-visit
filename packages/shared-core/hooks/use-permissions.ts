@@ -125,12 +125,24 @@ export function usePermissions(): UserPermissions {
 
           // If not in sessionStorage, fetch from API (uses Clerk server-side ONCE)
           if (!sessionUserRef.current) {
+            // Check if auth already failed (prevent infinite retries)
+            const authFailed = sessionStorage.getItem("auth_failed")
+            if (authFailed === "true") {
+              setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+              setIsLoading(false)
+              return
+            }
+
             const sessionResponse = await fetch("/api/auth/get-session-user", {
               method: "GET",
               credentials: "include",
             })
 
             if (!sessionResponse.ok) {
+              // If 401, mark auth as failed to prevent retries
+              if (sessionResponse.status === 401) {
+                sessionStorage.setItem("auth_failed", "true")
+              }
               setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
               setIsLoading(false)
               return
@@ -149,6 +161,8 @@ export function usePermissions(): UserPermissions {
                 email: sessionData.email,
                 name: sessionData.name,
               }))
+              // Clear auth failed flag if we successfully authenticated
+              sessionStorage.removeItem("auth_failed")
             } else {
               setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
               setIsLoading(false)
@@ -159,10 +173,10 @@ export function usePermissions(): UserPermissions {
 
         // Step 2: Fetch permissions using headers (NO Clerk hooks)
         if (!sessionUserRef.current) {
-          setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+      setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
           setIsLoading(false)
-          return
-        }
+      return
+    }
 
         const headers: HeadersInit = {
           "x-user-email": sessionUserRef.current.email,

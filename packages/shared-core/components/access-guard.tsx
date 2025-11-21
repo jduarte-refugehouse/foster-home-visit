@@ -65,7 +65,7 @@ export function AccessGuard({ children }: AccessGuardProps) {
             })
 
             if (!sessionResponse.ok) {
-              // Not authenticated - redirect to sign-in
+              // Not authenticated or server error - redirect to sign-in
               setIsAuthenticated(false)
               setHasAccess(false)
               setAccessChecked(true)

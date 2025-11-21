@@ -64,9 +64,9 @@ export function DeploymentIndicator() {
   return (
     <div className="flex items-center gap-2 text-xs">
       {branchDisplay && (
-        <Badge variant="outline" className="font-mono text-[10px] px-2 py-0.5 border-refuge-purple/30">
+      <Badge variant="outline" className="font-mono text-[10px] px-2 py-0.5 border-refuge-purple/30">
           {branchDisplay}
-        </Badge>
+      </Badge>
       )}
       <Badge className={`${getEnvColor(envDisplay)} text-white text-[10px] px-2 py-0.5 border-0`}>
         {envDisplay}

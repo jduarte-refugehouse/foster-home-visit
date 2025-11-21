@@ -123,6 +123,7 @@ export default function DiagnosticsPage() {
             }))
           }
         }
+        }
       } catch (error) {
         console.error("Error fetching session user:", error)
       } finally {
@@ -172,7 +173,7 @@ export default function DiagnosticsPage() {
 
   useEffect(() => {
     if (!loadingSession && sessionUser) {
-      fetchDiagnostics()
+    fetchDiagnostics()
     } else if (!loadingSession && !sessionUser) {
       setError("Please sign in to access diagnostics")
       setLoading(false)
