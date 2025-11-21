@@ -3,7 +3,6 @@
 // Rebuilt dashboard - simple, clean implementation matching working pages
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
 import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
@@ -11,27 +10,84 @@ import { Home, Calendar, FileText, BarChart3, Map, List, Shield, Database } from
 import Link from "next/link"
 
 export default function DashboardPage() {
-  const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Get user headers for API calls
-  const getUserHeaders = () => {
-    if (!user) return {}
-    return {
-      "Content-Type": "application/json",
-      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-      "x-user-clerk-id": user.id,
-      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-    }
-  }
+  const [sessionUser, setSessionUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [loadingSession, setLoadingSession] = useState(true)
 
   const { hasAccess: hasDatabaseAccess, userInfo, isLoading: checkingDatabaseAccess } = useDatabaseAccess()
 
+  // Get Clerk ID from session (NO Clerk hooks - follows protocol)
+  useEffect(() => {
+    const fetchSessionUser = async () => {
+      // Check sessionStorage first
+      const storedUser = sessionStorage.getItem("session_user")
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.clerkUserId) {
+            setSessionUser({
+              id: parsed.clerkUserId,
+              email: parsed.email || "",
+              name: parsed.name || "",
+            })
+            setLoadingSession(false)
+            return
+          }
+        } catch (e) {
+          // Invalid stored data, fetch fresh
+        }
+      }
+
+      // Fetch from API (uses Clerk server-side ONCE)
+      try {
+        const response = await fetch("/api/auth/get-session-user", {
+          method: "GET",
+          credentials: "include",
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.clerkUserId) {
+            const user = {
+              id: data.clerkUserId,
+              email: data.email || "",
+              name: data.name || "",
+            }
+            setSessionUser(user)
+            // Store in sessionStorage
+            sessionStorage.setItem("session_user", JSON.stringify({
+              clerkUserId: data.clerkUserId,
+              email: data.email,
+              name: data.name,
+            }))
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching session user:", error)
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    fetchSessionUser()
+  }, [])
+
+  // Get user headers for API calls (from session, NOT Clerk hooks)
+  const getUserHeaders = () => {
+    if (!sessionUser) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": sessionUser.email,
+      "x-user-clerk-id": sessionUser.id,
+      "x-user-name": sessionUser.name,
+    }
+  }
+
   // Get microservice code and handle redirects
   useEffect(() => {
-    if (!userLoaded || !user || checkingDatabaseAccess) {
+    if (loadingSession || !sessionUser || checkingDatabaseAccess) {
       return
     }
 
@@ -59,10 +115,10 @@ export default function DashboardPage() {
         setMicroserviceCode('home-visits')
         setLoading(false)
       })
-  }, [userLoaded, user, router, checkingDatabaseAccess])
+  }, [loadingSession, sessionUser, router, checkingDatabaseAccess])
 
   // Show loading state while checking access
-  if (!userLoaded || loading || checkingDatabaseAccess) {
+  if (loadingSession || loading || checkingDatabaseAccess) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="animate-pulse space-y-4">
@@ -78,13 +134,19 @@ export default function DashboardPage() {
     )
   }
 
+  // SECURITY: If no session user, redirect to sign-in
+  if (!sessionUser) {
+    router.push('/sign-in')
+    return null
+  }
+
   // Don't render if redirecting to globaladmin
   if (microserviceCode === 'service-domain-admin') {
     return null
   }
 
-  // SECURITY: If Clerk authenticated but user not found in database, show registration required
-  if (user && !hasDatabaseAccess) {
+  // SECURITY: If user is authenticated but not found in database, show registration required
+  if (!hasDatabaseAccess) {
     return (
       <AccountRegistrationRequired 
         microserviceName="Home Visits"
@@ -99,7 +161,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold">Home Visits Dashboard</h1>
         <p className="text-muted-foreground mt-2">
-          Welcome back, {user?.firstName || "User"} - Manage foster home visits and related tasks
+          Welcome back, {sessionUser?.name || "User"} - Manage foster home visits and related tasks
         </p>
       </div>
 

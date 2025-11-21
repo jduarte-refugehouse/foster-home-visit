@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
 import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
@@ -10,25 +9,82 @@ import { Users, Settings, Globe, Shield, Database } from "lucide-react"
 import Link from "next/link"
 
 export default function GlobalAdminDashboard() {
-  const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
-  const { hasAccess: hasDatabaseAccess, isLoading: checkingAccess } = useDatabaseAccess()
+  const { hasAccess: hasDatabaseAccess, userInfo, isLoading: checkingAccess } = useDatabaseAccess()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
+  const [sessionUser, setSessionUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [loadingSession, setLoadingSession] = useState(true)
 
-  // Get user headers for API calls (same pattern as liaison dashboard)
+  // Get Clerk ID from session (NO Clerk hooks - follows protocol)
+  useEffect(() => {
+    const fetchSessionUser = async () => {
+      // Check sessionStorage first
+      const storedUser = sessionStorage.getItem("session_user")
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.clerkUserId) {
+            setSessionUser({
+              id: parsed.clerkUserId,
+              email: parsed.email || "",
+              name: parsed.name || "",
+            })
+            setLoadingSession(false)
+            return
+          }
+        } catch (e) {
+          // Invalid stored data, fetch fresh
+        }
+      }
+
+      // Fetch from API (uses Clerk server-side ONCE)
+      try {
+        const response = await fetch("/api/auth/get-session-user", {
+          method: "GET",
+          credentials: "include",
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.clerkUserId) {
+            const user = {
+              id: data.clerkUserId,
+              email: data.email || "",
+              name: data.name || "",
+            }
+            setSessionUser(user)
+            // Store in sessionStorage
+            sessionStorage.setItem("session_user", JSON.stringify({
+              clerkUserId: data.clerkUserId,
+              email: data.email,
+              name: data.name,
+            }))
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching session user:", error)
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    fetchSessionUser()
+  }, [])
+
+  // Get user headers for API calls (from session, NOT Clerk hooks)
   const getUserHeaders = () => {
-    if (!user) return {}
+    if (!sessionUser) return {}
     return {
       "Content-Type": "application/json",
-      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-      "x-user-clerk-id": user.id,
-      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      "x-user-email": sessionUser.email,
+      "x-user-clerk-id": sessionUser.id,
+      "x-user-name": sessionUser.name,
     }
   }
 
   // Get microservice code from navigation API
   useEffect(() => {
-    if (!userLoaded || !user || checkingAccess) {
+    if (loadingSession || !sessionUser || checkingAccess) {
       return
     }
 
@@ -53,10 +109,10 @@ export default function GlobalAdminDashboard() {
           router.push('/dashboard')
         }
       })
-  }, [userLoaded, user, router, checkingAccess])
+  }, [loadingSession, sessionUser, router, checkingAccess])
 
   // Show loading state while checking access
-  if (!userLoaded || checkingAccess) {
+  if (loadingSession || checkingAccess) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="animate-pulse space-y-4">
@@ -72,8 +128,14 @@ export default function GlobalAdminDashboard() {
     )
   }
 
+  // SECURITY: If no session user, redirect to sign-in
+  if (!sessionUser) {
+    router.push('/sign-in')
+    return null
+  }
+
   // SECURITY: If user is authenticated but not found in database, show registration required
-  if (user && !hasDatabaseAccess) {
+  if (!hasDatabaseAccess) {
     return (
       <AccountRegistrationRequired 
         microserviceName="Domain Administration"

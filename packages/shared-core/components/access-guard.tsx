@@ -6,8 +6,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
@@ -18,8 +17,12 @@ interface AccessGuardProps {
   children: React.ReactNode
 }
 
+/**
+ * PROTOCOL: AccessGuard does NOT use Clerk hooks after authentication.
+ * It uses the session API to get Clerk ID, then uses headers for all API calls.
+ * This follows the "deaf/mute/blind" protocol for Clerk after initial authentication.
+ */
 export function AccessGuard({ children }: AccessGuardProps) {
-  const { user, isLoaded } = useUser()
   const router = useRouter()
   const [accessChecked, setAccessChecked] = useState(false)
   const [hasAccess, setHasAccess] = useState(false)
@@ -29,28 +32,88 @@ export function AccessGuard({ children }: AccessGuardProps) {
   const [requesting, setRequesting] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
   const [hasPendingRequest, setHasPendingRequest] = useState(false)
+  const sessionUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
 
   useEffect(() => {
-    if (!isLoaded) return
-
-    // Check access via API - this works even if useUser() hook doesn't work on mobile
-    // API will use session cookies to determine authentication
-    // This allows authentication to work the same way as browser, then avoids Clerk hooks
+    // PROTOCOL: Get Clerk ID from session (NO Clerk hooks)
     const checkAccess = async () => {
       try {
+        // Step 1: Get session user (if not already stored)
+        if (!sessionUserRef.current) {
+          // Check sessionStorage first
+          const storedUser = sessionStorage.getItem("session_user")
+          if (storedUser) {
+            try {
+              const parsed = JSON.parse(storedUser)
+              if (parsed.clerkUserId) {
+                sessionUserRef.current = {
+                  id: parsed.clerkUserId,
+                  email: parsed.email || "",
+                  name: parsed.name || "",
+                }
+              }
+            } catch (e) {
+              // Invalid stored data, fetch fresh
+            }
+          }
+
+          // If not in sessionStorage, fetch from API (uses Clerk server-side ONCE)
+          if (!sessionUserRef.current) {
+            const sessionResponse = await fetch("/api/auth/get-session-user", {
+              method: "GET",
+              credentials: "include",
+            })
+
+            if (!sessionResponse.ok) {
+              // Not authenticated - redirect to sign-in
+              setIsAuthenticated(false)
+              setHasAccess(false)
+              setAccessChecked(true)
+              setChecking(false)
+              
+              const currentPath = window.location.pathname + window.location.search
+              const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(currentPath)}`
+              router.push(signInUrl)
+              return
+            }
+
+            const sessionData = await sessionResponse.json()
+            if (sessionData.success && sessionData.clerkUserId) {
+              sessionUserRef.current = {
+                id: sessionData.clerkUserId,
+                email: sessionData.email || "",
+                name: sessionData.name || "",
+              }
+              // Store in sessionStorage
+              sessionStorage.setItem("session_user", JSON.stringify({
+                clerkUserId: sessionData.clerkUserId,
+                email: sessionData.email,
+                name: sessionData.name,
+              }))
+            } else {
+              // Not authenticated
+              setIsAuthenticated(false)
+              setHasAccess(false)
+              setAccessChecked(true)
+              setChecking(false)
+              
+              const currentPath = window.location.pathname + window.location.search
+              const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(currentPath)}`
+              router.push(signInUrl)
+              return
+            }
+          }
+        }
+
+        // Step 2: Check access using headers (NO Clerk hooks)
         const headers: HeadersInit = {
           "Content-Type": "application/json",
         }
 
-        // Set headers if available (desktop), but API will use session cookies as fallback (mobile)
-        if (user?.emailAddresses?.[0]?.emailAddress) {
-          headers["x-user-email"] = user.emailAddresses[0].emailAddress
-        }
-        if (user?.id) {
-          headers["x-user-clerk-id"] = user.id
-        }
-        if (user?.firstName || user?.lastName) {
-          headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+        if (sessionUserRef.current) {
+          headers["x-user-email"] = sessionUserRef.current.email
+          headers["x-user-clerk-id"] = sessionUserRef.current.id
+          headers["x-user-name"] = sessionUserRef.current.name
         }
 
         const response = await fetch("/api/auth/check-access", {
@@ -85,10 +148,13 @@ export function AccessGuard({ children }: AccessGuardProps) {
           
           setAccessChecked(true)
         } else if (response.status === 401) {
-          // Not authenticated - redirect to Clerk sign-in
+          // Not authenticated - redirect to sign-in
           setIsAuthenticated(false)
           setHasAccess(false)
           setAccessChecked(true)
+          
+          // Clear session storage
+          sessionStorage.removeItem("session_user")
           
           // Get current path to redirect back after sign-in
           const currentPath = window.location.pathname + window.location.search
@@ -113,10 +179,9 @@ export function AccessGuard({ children }: AccessGuardProps) {
       }
     }
 
-    // Always check access via API, even if user object is null
-    // This allows mobile to authenticate via session cookies even if hooks don't work
+    // Check access via API using session (NO Clerk hooks)
     checkAccess()
-  }, [user, isLoaded, router])
+  }, [router])
 
   const handleRequestAccess = async () => {
     setRequesting(true)
@@ -124,11 +189,10 @@ export function AccessGuard({ children }: AccessGuardProps) {
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       }
-      if (user?.emailAddresses?.[0]?.emailAddress) {
-        headers["x-user-email"] = user.emailAddresses[0].emailAddress
-      }
-      if (user?.id) {
-        headers["x-user-clerk-id"] = user.id
+      if (sessionUserRef.current) {
+        headers["x-user-email"] = sessionUserRef.current.email
+        headers["x-user-clerk-id"] = sessionUserRef.current.id
+        headers["x-user-name"] = sessionUserRef.current.name
       }
 
       const response = await fetch("/api/access-requests", {
@@ -187,7 +251,7 @@ export function AccessGuard({ children }: AccessGuardProps) {
               <div className="text-sm text-amber-800 dark:text-amber-200">
                 <p className="font-semibold mb-1">External users require an invitation</p>
                 <p>
-                  Your account ({user?.emailAddresses?.[0]?.emailAddress || "unknown"}) does not have access to this platform.
+                  Your account ({sessionUserRef.current?.email || "unknown"}) does not have access to this platform.
                   Please contact an administrator to request access.
                 </p>
               </div>

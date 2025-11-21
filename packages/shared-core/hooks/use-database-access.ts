@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useState, useEffect, useRef } from "react"
 
 interface DatabaseAccessResult {
   hasAccess: boolean
@@ -11,7 +10,14 @@ interface DatabaseAccessResult {
 }
 
 /**
- * SECURITY: Hook to check if user is authenticated with Clerk AND found in database.
+ * SECURITY: Hook to check if user is authenticated AND found in database.
+ * 
+ * PROTOCOL: Does NOT use Clerk hooks after authentication. Instead:
+ * 1. Gets Clerk ID from session API (server-side, one-time use of Clerk)
+ * 2. Stores in sessionStorage for reuse
+ * 3. Uses headers (x-user-clerk-id, x-user-email) to check database access
+ * 4. Never uses Clerk hooks/APIs after initial authentication
+ * 
  * This should be used by all protected pages to ensure users have database-level permissions
  * before showing any protected content.
  * 
@@ -22,51 +28,112 @@ interface DatabaseAccessResult {
  * - error: error message if check fails
  */
 export function useDatabaseAccess(): DatabaseAccessResult {
-  const { user, isLoaded } = useUser()
   const [hasAccess, setHasAccess] = useState(false)
   const [userInfo, setUserInfo] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const userRef = useRef<{ id: string; email: string; name: string } | null>(null)
 
   useEffect(() => {
-    if (!isLoaded || !user) {
-      setIsLoading(false)
-      setHasAccess(false)
-      setUserInfo(null)
-      return
-    }
+    const checkDatabaseAccess = async () => {
+      setIsLoading(true)
+      setError(null)
 
-    setIsLoading(true)
-    setError(null)
+      try {
+        // Step 1: Get Clerk ID from session (if not already stored)
+        if (!userRef.current) {
+          // Check sessionStorage first
+          const storedUser = sessionStorage.getItem("session_user")
+          if (storedUser) {
+            try {
+              const parsed = JSON.parse(storedUser)
+              if (parsed.clerkUserId) {
+                userRef.current = {
+                  id: parsed.clerkUserId,
+                  email: parsed.email || "",
+                  name: parsed.name || "",
+                }
+              }
+            } catch (e) {
+              // Invalid stored data, fetch fresh
+            }
+          }
 
-    const headers: HeadersInit = {
-      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-      "x-user-clerk-id": user.id,
-      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-    }
+          // If not in sessionStorage, fetch from API (uses Clerk server-side ONCE)
+          if (!userRef.current) {
+            const sessionResponse = await fetch("/api/auth/get-session-user", {
+              method: "GET",
+              credentials: "include",
+            })
 
-    // Check navigation API to see if user is found in database
-    fetch("/api/navigation", {
-      headers,
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
+            if (!sessionResponse.ok) {
+              setIsLoading(false)
+              setHasAccess(false)
+              setUserInfo(null)
+              setError("Not authenticated")
+              return
+            }
+
+            const sessionData = await sessionResponse.json()
+            if (sessionData.success && sessionData.clerkUserId) {
+              userRef.current = {
+                id: sessionData.clerkUserId,
+                email: sessionData.email || "",
+                name: sessionData.name || "",
+              }
+              // Store in sessionStorage for future use
+              sessionStorage.setItem("session_user", JSON.stringify({
+                clerkUserId: sessionData.clerkUserId,
+                email: sessionData.email,
+                name: sessionData.name,
+              }))
+            } else {
+              setIsLoading(false)
+              setHasAccess(false)
+              setUserInfo(null)
+              setError("Not authenticated")
+              return
+            }
+          }
+        }
+
+        // Step 2: Use stored Clerk ID to check database access (NO Clerk hooks/APIs)
+        if (!userRef.current) {
+          setIsLoading(false)
+          setHasAccess(false)
+          setUserInfo(null)
+          return
+        }
+
+        const headers: HeadersInit = {
+          "x-user-email": userRef.current.email,
+          "x-user-clerk-id": userRef.current.id,
+          "x-user-name": userRef.current.name,
+        }
+
+        // Check navigation API to see if user is found in database
+        const response = await fetch("/api/navigation", {
+          headers,
+          credentials: "include",
+        })
+
+        const data = await response.json()
         const found = data.metadata?.userInfo !== null && data.metadata?.userInfo !== undefined
         setHasAccess(found)
         setUserInfo(data.metadata?.userInfo || null)
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error checking database access:", err)
-        setError(err.message || "Failed to check database access")
+        setError(err instanceof Error ? err.message : "Failed to check database access")
         // Fail securely - assume no access on error
         setHasAccess(false)
         setUserInfo(null)
-      })
-      .finally(() => {
+      } finally {
         setIsLoading(false)
-      })
-  }, [isLoaded, user])
+      }
+    }
+
+    checkDatabaseAccess()
+  }, []) // Empty deps - only run once on mount
 
   return { hasAccess, userInfo, isLoading, error }
 }

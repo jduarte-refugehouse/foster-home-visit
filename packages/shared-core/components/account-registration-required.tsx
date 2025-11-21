@@ -1,6 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { Shield, Mail } from "lucide-react"
 
@@ -10,9 +10,10 @@ interface AccountRegistrationRequiredProps {
 }
 
 /**
- * SECURITY: Standard component to display when user is authenticated with Clerk
- * but not found in the database. This prevents showing any protected content
- * or navigation links when user lacks database-level permissions.
+ * SECURITY: Standard component to display when user is authenticated but not found in the database.
+ * This prevents showing any protected content or navigation links when user lacks database-level permissions.
+ * 
+ * PROTOCOL: Does NOT use Clerk hooks. Gets user info from sessionStorage or session API.
  * 
  * This component should be used consistently across ALL microservices.
  */
@@ -20,7 +21,38 @@ export function AccountRegistrationRequired({
   microserviceName = "this application",
   contactEmail = "jduarte@refugehouse.org"
 }: AccountRegistrationRequiredProps) {
-  const { user } = useUser()
+  const [userEmail, setUserEmail] = useState<string>("User")
+
+  // Get user email from session (NO Clerk hooks)
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem("session_user")
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser)
+        if (parsed.email) {
+          setUserEmail(parsed.email)
+          return
+        }
+      } catch (e) {
+        // Invalid stored data
+      }
+    }
+
+    // Fetch from API if not in sessionStorage
+    fetch("/api/auth/get-session-user", {
+      method: "GET",
+      credentials: "include",
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.email) {
+          setUserEmail(data.email)
+        }
+      })
+      .catch(() => {
+        // Ignore errors
+      })
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
@@ -42,9 +74,9 @@ export function AccountRegistrationRequired({
           <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
             <Mail className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-800 dark:text-amber-200">
-              <p className="font-semibold mb-1">Clerk Authentication Successful</p>
+              <p className="font-semibold mb-1">Authentication Successful</p>
               <p>
-                You are signed in as <strong>{user?.emailAddresses?.[0]?.emailAddress || "User"}</strong>
+                You are signed in as <strong>{userEmail}</strong>
               </p>
               <p className="mt-2">
                 However, your account is not yet registered in the system database. 
