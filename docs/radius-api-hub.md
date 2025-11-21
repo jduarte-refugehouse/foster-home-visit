@@ -11,6 +11,18 @@ The Radius API Hub is a centralized API service that provides access to RadiusBi
 - Other microservices call admin APIs via HTTP (no static IPs needed)
 - All requests are authenticated via API keys
 
+## ⚠️ Important: Vercel Deployment Protection
+
+**CRITICAL**: The admin microservice's API routes (`/api/radius/*`) must be accessible without browser authentication. If you're getting HTML authentication pages instead of JSON responses, Vercel's deployment protection is blocking access.
+
+### Solution
+
+1. **Go to Vercel Dashboard** → Your Admin Microservice Project → **Settings** → **Deployment Protection**
+2. **Disable protection for preview deployments** (or configure it to allow unauthenticated access to API routes)
+3. **Alternative**: Configure protection to allow public access to `/api/radius/*` paths
+
+**Why this is needed**: API-to-API communication requires unauthenticated HTTP access. The API key authentication happens at the application level, not via Vercel's browser-based protection.
+
 ## Quick Start
 
 ### For Other Microservices (Consumers)
