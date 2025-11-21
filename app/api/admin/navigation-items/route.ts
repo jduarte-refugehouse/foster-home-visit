@@ -119,25 +119,32 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      navigationItems: navigationItems.map((item) => ({
-        id: item.id,
-        code: item.code,
-        title: item.title,
-        url: item.url,
-        icon: item.icon,
-        permission_required: item.permission_code,
-        permissionId: item.permission_required,
-        category: item.category,
-        subcategory: item.subcategory,
-        order_index: item.order_index,
-        is_active: item.is_active === 1,
-        is_collapsible: item.is_collapsible === 1,
-        item_type: item.item_type,
-        parent_navigation_id: item.parent_navigation_id,
-        parent_title: item.parent_title,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      })),
+      navigationItems: navigationItems.map((item) => {
+        // Convert BIT fields (1/0) to proper booleans
+        // SQL Server returns BIT as number (1 or 0), convert to boolean
+        const isActive = Boolean(item.is_active === 1 || item.is_active === true)
+        const isCollapsible = Boolean(item.is_collapsible === 1 || item.is_collapsible === true)
+        
+        return {
+          id: item.id,
+          code: item.code,
+          title: item.title,
+          url: item.url,
+          icon: item.icon,
+          permission_required: item.permission_code,
+          permissionId: item.permission_required,
+          category: item.category,
+          subcategory: item.subcategory,
+          order_index: item.order_index,
+          is_active: isActive,
+          is_collapsible: isCollapsible,
+          item_type: item.item_type,
+          parent_navigation_id: item.parent_navigation_id,
+          parent_title: item.parent_title,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        }
+      }),
     })
   } catch (error) {
     console.error("❌ [API] Error fetching navigation items:", error)
