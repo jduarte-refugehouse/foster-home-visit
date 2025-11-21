@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useEffect, useState, useRef } from "react"
 import { AlertTriangle, X } from "lucide-react"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@refugehouse/shared-core/components/ui/alert"
@@ -20,23 +19,90 @@ interface ImpersonationStatus {
   }
 }
 
+/**
+ * PROTOCOL: Does NOT use Clerk hooks after authentication.
+ * Gets Clerk ID from session API, then uses headers for API calls.
+ */
 export function ImpersonationBanner() {
-  const { user, isLoaded } = useUser()
   const [status, setStatus] = useState<ImpersonationStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionUser, setSessionUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [loadingSession, setLoadingSession] = useState(true)
+  const sessionUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
+
+  // Get Clerk ID from session (NO Clerk hooks)
+  useEffect(() => {
+    const fetchSessionUser = async () => {
+      // Check sessionStorage first
+      const storedUser = sessionStorage.getItem("session_user")
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.clerkUserId) {
+            const user = {
+              id: parsed.clerkUserId,
+              email: parsed.email || "",
+              name: parsed.name || "",
+            }
+            setSessionUser(user)
+            sessionUserRef.current = user
+            setLoadingSession(false)
+            return
+          }
+        } catch (e) {
+          // Invalid stored data, fetch fresh
+        }
+      }
+
+      // Fetch from API (uses Clerk server-side ONCE)
+      try {
+        const response = await fetch("/api/auth/get-session-user", {
+          method: "GET",
+          credentials: "include",
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.clerkUserId) {
+            const user = {
+              id: data.clerkUserId,
+              email: data.email || "",
+              name: data.name || "",
+            }
+            setSessionUser(user)
+            sessionUserRef.current = user
+            // Store in sessionStorage
+            sessionStorage.setItem("session_user", JSON.stringify({
+              clerkUserId: data.clerkUserId,
+              email: data.email,
+              name: data.name,
+            }))
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching session user:", error)
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    fetchSessionUser()
+  }, [])
 
   useEffect(() => {
-    if (isLoaded && user) {
+    if (!loadingSession && sessionUser) {
       fetchImpersonationStatus()
+    } else if (!loadingSession && !sessionUser) {
+      setLoading(false)
     }
-  }, [isLoaded, user])
+  }, [loadingSession, sessionUser])
 
   const getAuthHeaders = (): HeadersInit => {
-    if (!user) return {}
+    if (!sessionUser) return {}
     return {
-      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-      "x-user-clerk-id": user.id,
-      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      "x-user-email": sessionUser.email,
+      "x-user-clerk-id": sessionUser.id,
+      "x-user-name": sessionUser.name,
     }
   }
 
