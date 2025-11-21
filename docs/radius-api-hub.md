@@ -51,6 +51,19 @@ The Radius API Hub is a centralized API service that provides access to RadiusBi
    })
    ```
 
+## Adding New Endpoints
+
+Need to add a new endpoint? See the comprehensive guide: **[Adding New Endpoints Guide](./radius-api-hub-adding-endpoints.md)**
+
+Quick summary:
+1. Create query function in `lib/db-extensions.ts`
+2. Create API endpoint in `app/api/radius/[name]/route.ts`
+3. Add types in `packages/radius-api-client/types.ts`
+4. Add client method in `packages/radius-api-client/client.ts`
+5. Export types from `packages/radius-api-client/index.ts`
+
+Templates are available in `docs/templates/` for quick copy-paste.
+
 ## Available Endpoints
 
 ### GET /api/radius/homes
