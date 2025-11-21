@@ -99,37 +99,15 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
     {
       title: "Administration",
       items: [
-        {
-          code: "user_invitations",
-          title: "User Invitations",
-          url: "/admin/invitations",
-          icon: "Users",
-          permission: "user_management",
-          order: 1,
-        },
-        {
-          code: "user_management",
-          title: "User Management",
-          url: "/admin/users",
-          icon: "UserCog",
-          permission: "user_management",
-          order: 2,
-        },
-        {
-          code: "system_admin",
-          title: "System Admin",
-          url: "/system-admin",
-          icon: "Settings",
-          permission: "system_config",
-          order: 3,
-        },
+        // NOTE: User admin and system admin items removed - centralized in service-domain-admin microservice
+        // Only microservice-specific admin items should remain here
         {
           code: "diagnostics",
           title: "Diagnostics",
           url: "/diagnostics",
           icon: "Database",
           permission: "view_diagnostics",
-          order: 4,
+          order: 1,
         },
         {
           code: "feature_development",
@@ -137,7 +115,7 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
           url: "/admin/feature-development",
           icon: "Plus",
           permission: "system_config",
-          order: 5,
+          order: 2,
         },
       ],
     },
