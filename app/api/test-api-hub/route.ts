@@ -58,8 +58,14 @@ export async function GET() {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     const errorStack = error instanceof Error ? error.stack : undefined
     
-    // Extract response data from the error if available
-    const responseData = (error as any)?.responseData || {}
+    const rawApiKey = process.env.RADIUS_API_KEY
+    const trimmedApiKey = rawApiKey?.trim()
+    const hasApiKey = !!rawApiKey
+    const apiKeyPrefix = hasApiKey ? trimmedApiKey?.substring(0, 12) : "N/A"
+    const apiHubUrl = process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)"
+    const hadWhitespace = rawApiKey && rawApiKey !== trimmedApiKey
+    
+    // In development/preview, show full API key for debugging
     const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
     
     return NextResponse.json(
@@ -69,14 +75,15 @@ export async function GET() {
         stack: errorStack,
         message: "API Hub test failed. Check your environment variables and API key.",
         environment: {
-          hasApiKey: !!process.env.RADIUS_API_KEY,
-          apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
-          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 12) || "NOT SET",
-          // Show full API key in development/preview
-          apiKey: isDevelopment ? process.env.RADIUS_API_KEY?.trim() : undefined,
+          hasApiKey,
+          apiHubUrl,
+          apiKeyPrefix,
+          // Show full API key in development/preview for debugging
+          apiKey: isDevelopment ? trimmedApiKey : undefined,
+          apiKeyLength: trimmedApiKey?.length,
+          rawApiKeyLength: rawApiKey?.length,
+          hadWhitespace,
         },
-        // Include the full error response from the API hub for debugging
-        apiHubErrorResponse: responseData,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
