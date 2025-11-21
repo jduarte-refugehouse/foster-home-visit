@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { validateApiKey } from "@/lib/api-auth"
+import { validateApiKey, hashApiKey } from "@/lib/api-auth"
+import { query } from "@refugehouse/shared-core/db"
 import { fetchHomesList, type ListHome } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
@@ -45,6 +46,22 @@ export async function GET(request: NextRequest) {
       console.warn(`🚫 [RADIUS-API] API key length: ${apiKey?.length}`)
       console.warn(`🚫 [RADIUS-API] Raw API key length: ${apiKeyRaw?.length}, trimmed: ${apiKey?.length}`)
       
+      // Calculate hash of received key for comparison
+      const receivedHash = apiKey ? hashApiKey(apiKey) : null
+      
+      // Get all active keys for comparison
+      const allActiveKeys = await query<{
+        api_key_prefix: string
+        api_key_hash: string
+        microservice_code: string
+        is_active: boolean
+      }>(
+        `SELECT api_key_prefix, api_key_hash, microservice_code, is_active
+         FROM api_keys 
+         WHERE is_active = 1
+         ORDER BY created_at DESC`
+      )
+      
       // Return detailed error information
       return NextResponse.json(
         {
@@ -57,6 +74,13 @@ export async function GET(request: NextRequest) {
             rawApiKeyLength: apiKeyRaw?.length,
             hasApiKey: !!apiKey,
             validationError: validation.error,
+            receivedKeyHash: receivedHash ? `${receivedHash.substring(0, 16)}...` : null,
+            allActiveKeysInDatabase: allActiveKeys.map(k => ({
+              prefix: k.api_key_prefix,
+              hash: `${k.api_key_hash.substring(0, 16)}...`,
+              microservice: k.microservice_code,
+              isActive: k.is_active,
+            })),
           },
         },
         { status: 401 }
