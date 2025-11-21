@@ -117,7 +117,6 @@ export function AppSidebar() {
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
-  const [usersOpen, setUsersOpen] = useState(false)
   const [systemOpen, setSystemOpen] = useState(false)
 
   // Load navigation items
@@ -295,48 +294,8 @@ export function AppSidebar() {
   const navigationGroups = navigationItems.filter((group) => group.title !== "Administration")
   const administrationGroup = navigationItems.find((group) => group.title === "Administration")
 
-  // Group Administration items into "Users" and "System" domains
-  // If collapsibleItems exist, use those instead of administrationGroup items
-  const groupAdministrationItems = (items: NavigationItem[]) => {
-    const userItems: NavigationItem[] = []
-    const systemItems: NavigationItem[] = []
-
-    items.forEach((item) => {
-      // User-related items
-      if (
-        item.code === "user_invitations" ||
-        item.code === "user_management"
-      ) {
-        userItems.push(item)
-      }
-      // System-related items
-      else if (
-        item.code === "system_admin" ||
-        item.code === "diagnostics" ||
-        item.code === "feature_development" ||
-        item.code === "bulk_sms" ||
-        item.code === "test_logging" ||
-        item.code === "communication_history"
-      ) {
-        systemItems.push(item)
-      }
-      // Default to system if not categorized
-      else {
-        systemItems.push(item)
-      }
-    })
-
-    return {
-      users: userItems.sort((a, b) => a.order - b.order),
-      system: systemItems.sort((a, b) => a.order - b.order),
-    }
-  }
-
-  // Use collapsibleItems if available, otherwise use administrationGroup items
-  const itemsToShow = collapsibleItems.length > 0 ? collapsibleItems : (administrationGroup?.items || [])
-  const grouped = groupAdministrationItems(itemsToShow)
-  // Show section if user has collapsible items OR if there's an administration group with items
-  const showCollapsibleSection = collapsibleItems.length > 0 || (administrationGroup && itemsToShow.length > 0)
+  // Show collapsible section if user has collapsible items OR if there's an administration group with items
+  const showCollapsibleSection = collapsibleItems.length > 0 || (administrationGroup && administrationGroup.items.length > 0)
   const sectionLabel = collapsibleItems.length > 0 ? "MORE..." : (administrationGroup?.title || "ADMINISTRATION")
 
   return (
@@ -440,55 +399,52 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Collapsible Items Section - Anchored to Bottom */}
-      {showCollapsibleSection && (() => {
-        // Use collapsibleItems from database, sorted by order
-        const itemsToDisplay = collapsibleItems.length > 0 
-          ? collapsibleItems.sort((a, b) => a.order - b.order)
-          : (administrationGroup?.items || []).sort((a, b) => a.order - b.order)
-
-        return (
-          <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
-            <SidebarGroup>
-              <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
-                <CollapsibleTrigger asChild>
-                  <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2 cursor-pointer hover:text-refuge-magenta transition-colors">
-                    <Shield className="h-3 w-3" />
-                    {sectionLabel}
-                    {/* Chevron points down when open (menu opens from bottom) */}
-                    {systemOpen ? (
-                      <ChevronDown className="h-3 w-3 ml-auto" />
-                    ) : (
-                      <ChevronUp className="h-3 w-3 ml-auto" />
-                    )}
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="space-y-1">
-                      {itemsToDisplay.map((item) => {
-                        const IconComponent = iconMap[item.icon] || Settings
-                        return (
-                          <SidebarMenuItem key={item.code}>
-                            <SidebarMenuButton asChild className="group">
-                              <Link
-                                href={item.url}
-                                className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                              >
-                                <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
-                                <span className="text-sm font-medium">{item.title}</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        )
-                      })}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </SidebarGroup>
-          </div>
-        )
-      })()}
+      {showCollapsibleSection && (
+        <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
+          <SidebarGroup>
+            <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
+              <CollapsibleTrigger asChild>
+                <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2 cursor-pointer hover:text-refuge-magenta transition-colors w-full">
+                  <Shield className="h-3 w-3" />
+                  {sectionLabel}
+                  {/* Chevron points up when open (menu expanded, can collapse), down when closed (can expand) */}
+                  {systemOpen ? (
+                    <ChevronUp className="h-3 w-3 ml-auto" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 ml-auto" />
+                  )}
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {/* Use collapsibleItems from database if available, otherwise use administrationGroup items */}
+                    {(collapsibleItems.length > 0 
+                      ? collapsibleItems.sort((a, b) => a.order - b.order)
+                      : (administrationGroup?.items || []).sort((a, b) => a.order - b.order)
+                    ).map((item) => {
+                      const IconComponent = iconMap[item.icon] || Settings
+                      return (
+                        <SidebarMenuItem key={item.code}>
+                          <SidebarMenuButton asChild className="group">
+                            <Link
+                              href={item.url}
+                              className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                            >
+                              <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
+                              <span className="text-sm font-medium">{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        </div>
+      )}
 
       <SidebarFooter className="p-4 border-t bg-gradient-to-r from-gray-50 to-refuge-light-purple/10">
         <SidebarMenu>
