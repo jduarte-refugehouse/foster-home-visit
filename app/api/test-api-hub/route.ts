@@ -65,6 +65,9 @@ export async function GET() {
     const apiHubUrl = process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)"
     const hadWhitespace = rawApiKey && rawApiKey !== trimmedApiKey
     
+    // In development/preview, show full API key for debugging
+    const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
+    
     return NextResponse.json(
       {
         success: false,
@@ -75,6 +78,8 @@ export async function GET() {
           hasApiKey,
           apiHubUrl,
           apiKeyPrefix,
+          // Show full API key in development/preview for debugging
+          apiKey: isDevelopment ? trimmedApiKey : undefined,
           apiKeyLength: trimmedApiKey?.length,
           rawApiKeyLength: rawApiKey?.length,
           hadWhitespace,
