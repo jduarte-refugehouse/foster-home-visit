@@ -49,9 +49,15 @@ export async function validateApiKey(apiKey: string | null): Promise<{
   }
 
   try {
+    // Trim whitespace from API key (common issue with environment variables)
+    const trimmedKey = apiKey.trim()
+    if (trimmedKey !== apiKey) {
+      console.log(`⚠️ [API-AUTH] API key had whitespace - trimmed from ${apiKey.length} to ${trimmedKey.length} chars`)
+    }
+    
     // Hash the provided key
-    const hashed = hashApiKey(apiKey)
-    const keyPrefix = apiKey.substring(0, 12)
+    const hashed = hashApiKey(trimmedKey)
+    const keyPrefix = trimmedKey.substring(0, 12)
     console.log(`🔍 [API-AUTH] Validating API key with prefix: ${keyPrefix}...`)
 
     // Look up the key in the database

@@ -22,9 +22,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. Validate API key
-    const apiKey = request.headers.get("x-api-key")
+    const apiKeyRaw = request.headers.get("x-api-key")
+    const apiKey = apiKeyRaw?.trim() || null // Trim whitespace from header value
     console.log(`🔍 [RADIUS-API] Received API key request, prefix: ${apiKey?.substring(0, 12)}...`)
     console.log(`🔍 [RADIUS-API] API key length: ${apiKey?.length}, has value: ${!!apiKey}`)
+    console.log(`🔍 [RADIUS-API] Raw API key length: ${apiKeyRaw?.length}, trimmed length: ${apiKey?.length}`)
     
     const validation = await validateApiKey(apiKey)
 
