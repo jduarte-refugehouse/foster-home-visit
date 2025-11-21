@@ -173,7 +173,6 @@ export function AppSidebar() {
             }))
           }
         }
-        }
       } catch (error) {
         console.error("Error fetching session user:", error)
       } finally {

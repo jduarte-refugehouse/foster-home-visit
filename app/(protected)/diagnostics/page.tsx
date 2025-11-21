@@ -123,7 +123,6 @@ export default function DiagnosticsPage() {
             }))
           }
         }
-        }
       } catch (error) {
         console.error("Error fetching session user:", error)
       } finally {
