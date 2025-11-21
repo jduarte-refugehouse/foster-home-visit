@@ -217,7 +217,7 @@ export function AccessGuard({ children }: AccessGuardProps) {
   }
 
   // Show loading state while checking
-  if (!isLoaded || checking) {
+  if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
