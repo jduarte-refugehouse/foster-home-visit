@@ -58,6 +58,10 @@ export async function GET() {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     const errorStack = error instanceof Error ? error.stack : undefined
     
+    // Extract response data from the error if available
+    const responseData = (error as any)?.responseData || {}
+    const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
+    
     return NextResponse.json(
       {
         success: false,
@@ -67,8 +71,12 @@ export async function GET() {
         environment: {
           hasApiKey: !!process.env.RADIUS_API_KEY,
           apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
-          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 8) || "NOT SET",
+          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 12) || "NOT SET",
+          // Show full API key in development/preview
+          apiKey: isDevelopment ? process.env.RADIUS_API_KEY?.trim() : undefined,
         },
+        // Include the full error response from the API hub for debugging
+        apiHubErrorResponse: responseData,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
