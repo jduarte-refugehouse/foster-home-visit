@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { MICROSERVICE_CONFIG } from "@/lib/microservice-config"
 
@@ -6,9 +6,13 @@ export const dynamic = "force-dynamic"
 
 const CURRENT_MICROSERVICE_CODE = MICROSERVICE_CONFIG.code
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.log(`🔍 Fetching permissions for ${CURRENT_MICROSERVICE_CODE} microservice...`)
+    // Get microservice from query parameter or use current
+    const { searchParams } = new URL(request.url)
+    const microserviceCode = searchParams.get("microservice") || CURRENT_MICROSERVICE_CODE
+
+    console.log(`🔍 Fetching permissions for ${microserviceCode} microservice...`)
 
     // Use the same query pattern as system-status for permissions
     const permissions = await query(
@@ -26,7 +30,7 @@ export async function GET() {
       WHERE ma.app_code = @param0
       ORDER BY p.category, p.permission_name
     `,
-      [CURRENT_MICROSERVICE_CODE],
+      [microserviceCode],
     )
 
     console.log(`✅ Found ${permissions.length} permissions for ${CURRENT_MICROSERVICE_CODE} microservice`)

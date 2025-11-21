@@ -35,21 +35,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Permission check failed", details: permError instanceof Error ? permError.message : "Unknown error" }, { status: 500 })
     }
 
+    // Get microservice from query parameter or use current
+    const { searchParams } = new URL(request.url)
+    const microserviceCode = searchParams.get("microservice") || CURRENT_MICROSERVICE
+
     // Get microservice ID
     const microservice = await query<{ id: string; app_code: string; app_name: string }>(
       "SELECT id, app_code, app_name FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
-      [CURRENT_MICROSERVICE]
+      [microserviceCode]
     )
 
     if (microservice.length === 0) {
-      console.error(`❌ [API] Microservice not found for code: ${CURRENT_MICROSERVICE}`)
+      console.error(`❌ [API] Microservice not found for code: ${microserviceCode}`)
       return NextResponse.json({ error: "Microservice not found" }, { status: 404 })
     }
 
     const microserviceId = microservice[0].id
-    console.log(`🔍 [API] Fetching navigation items for microservice: ${CURRENT_MICROSERVICE} (${microservice[0].app_name}, ID: ${microserviceId})`)
+    console.log(`🔍 [API] Fetching navigation items for microservice: ${microserviceCode} (${microservice[0].app_name}, ID: ${microserviceId})`)
 
-    // Fetch navigation items with permission info
+    // Fetch navigation items with permission info and parent info
     const navigationItems = await query<{
       id: string
       code: string
@@ -59,8 +63,13 @@ export async function GET(request: NextRequest) {
       permission_required: string | null
       permission_code: string | null
       category: string
+      subcategory: string | null
       order_index: number
       is_active: number
+      is_collapsible: number
+      item_type: string
+      parent_navigation_id: string | null
+      parent_title: string | null
       created_at: string
       updated_at: string
     }>(
@@ -74,12 +83,18 @@ export async function GET(request: NextRequest) {
         ni.permission_required,
         p.permission_code,
         ni.category,
+        ni.subcategory,
         ni.order_index,
         ni.is_active,
+        ISNULL(ni.is_collapsible, 0) as is_collapsible,
+        ISNULL(ni.item_type, 'domain') as item_type,
+        ni.parent_navigation_id,
+        parent.title as parent_title,
         ni.created_at,
         ni.updated_at
       FROM navigation_items ni
       LEFT JOIN permissions p ON ni.permission_required = p.permission_code AND p.microservice_id = ni.microservice_id
+      LEFT JOIN navigation_items parent ON ni.parent_navigation_id = parent.id
       WHERE ni.microservice_id = @param0
       ORDER BY ni.category, ni.order_index
     `,
@@ -110,11 +125,16 @@ export async function GET(request: NextRequest) {
         title: item.title,
         url: item.url,
         icon: item.icon,
-        permissionRequired: item.permission_code,
+        permission_required: item.permission_code,
         permissionId: item.permission_required,
         category: item.category,
-        orderIndex: item.order_index,
-        isActive: item.is_active === 1,
+        subcategory: item.subcategory,
+        order_index: item.order_index,
+        is_active: item.is_active === 1,
+        is_collapsible: item.is_collapsible === 1,
+        item_type: item.item_type,
+        parent_navigation_id: item.parent_navigation_id,
+        parent_title: item.parent_title,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
       })),
@@ -168,30 +188,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { code, title, url, icon, permissionRequired, category, orderIndex } = body
+    const { 
+      code, 
+      title, 
+      url, 
+      icon, 
+      permission_required, 
+      category, 
+      subcategory,
+      order_index, 
+      is_active,
+      is_collapsible,
+      item_type,
+      parent_navigation_id,
+      microservice
+    } = body
 
     if (!code || !title || !url || !icon || !category) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Get microservice ID
-    const microservice = await query<{ id: string }>(
+    // Get microservice ID (from body or use current)
+    const microserviceCode = microservice || CURRENT_MICROSERVICE
+    const microserviceResult = await query<{ id: string }>(
       "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
-      [CURRENT_MICROSERVICE]
+      [microserviceCode]
     )
 
-    if (microservice.length === 0) {
+    if (microserviceResult.length === 0) {
       return NextResponse.json({ error: "Microservice not found" }, { status: 404 })
     }
 
-    const microserviceId = microservice[0].id
+    const microserviceId = microserviceResult[0].id
 
     // Get permission ID if permission code provided
     let permissionId: string | null = null
-    if (permissionRequired) {
+    if (permission_required) {
       const permission = await query<{ id: string }>(
         "SELECT id FROM permissions WHERE permission_code = @param0 AND microservice_id = @param1",
-        [permissionRequired, microserviceId]
+        [permission_required, microserviceId]
       )
       if (permission.length > 0) {
         permissionId = permission[0].id
@@ -220,8 +255,12 @@ export async function POST(request: NextRequest) {
         icon,
         permission_required,
         category,
+        subcategory,
         order_index,
         is_active,
+        is_collapsible,
+        item_type,
+        parent_navigation_id,
         created_at,
         updated_at
       )
@@ -236,7 +275,11 @@ export async function POST(request: NextRequest) {
         @param5,
         @param6,
         @param7,
-        1,
+        @param8,
+        @param9,
+        @param10,
+        @param11,
+        @param12,
         GETDATE(),
         GETDATE()
       )
@@ -249,7 +292,12 @@ export async function POST(request: NextRequest) {
         icon,
         permissionId,
         category,
-        orderIndex || 0,
+        subcategory || null,
+        order_index || 0,
+        is_active !== false ? 1 : 0,
+        is_collapsible ? 1 : 0,
+        item_type || 'domain',
+        parent_navigation_id || null,
       ]
     )
 
@@ -261,10 +309,14 @@ export async function POST(request: NextRequest) {
         title,
         url,
         icon,
-        permissionRequired,
+        permission_required,
         category,
-        orderIndex: orderIndex || 0,
-        isActive: true,
+        subcategory,
+        order_index: order_index || 0,
+        is_active: is_active !== false,
+        is_collapsible: is_collapsible || false,
+        item_type: item_type || 'domain',
+        parent_navigation_id: parent_navigation_id || null,
       },
     })
   } catch (error) {

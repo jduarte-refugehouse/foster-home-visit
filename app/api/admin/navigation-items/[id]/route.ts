@@ -7,8 +7,8 @@ import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-// PATCH - Update navigation item
-export async function PATCH(
+// PUT - Update navigation item
+export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -19,7 +19,7 @@ export async function PATCH(
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
     } catch (authError) {
-      console.error("❌ [API] Auth error in navigation-items PATCH:", authError)
+      console.error("❌ [API] Auth error in navigation-items PUT:", authError)
       return NextResponse.json({ 
         error: "Authentication failed", 
         details: authError instanceof Error ? authError.message : "Missing authentication headers" 
@@ -39,11 +39,23 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, url, icon, permissionRequired, category, orderIndex, isActive } = body
+    const { 
+      title, 
+      url, 
+      icon, 
+      permission_required, 
+      category, 
+      subcategory,
+      order_index, 
+      is_active,
+      is_collapsible,
+      item_type,
+      parent_navigation_id
+    } = body
 
     // Get permission ID if permission code provided
     let permissionId: string | null = null
-    if (permissionRequired) {
+    if (permission_required) {
       const microservice = await query<{ id: string }>(
         "SELECT id FROM microservice_apps WHERE app_code = @param0 AND is_active = 1",
         [CURRENT_MICROSERVICE]
@@ -51,7 +63,7 @@ export async function PATCH(
       if (microservice.length > 0) {
         const permission = await query<{ id: string }>(
           "SELECT id FROM permissions WHERE permission_code = @param0 AND microservice_id = @param1",
-          [permissionRequired, microservice[0].id]
+          [permission_required, microservice[0].id]
         )
         if (permission.length > 0) {
           permissionId = permission[0].id
@@ -61,42 +73,62 @@ export async function PATCH(
 
     // Build update query dynamically
     const updates: string[] = []
-    const params: any[] = []
+    const updateParams: any[] = []
     let paramIndex = 0
 
     if (title !== undefined) {
       updates.push(`title = @param${paramIndex}`)
-      params.push(title)
+      updateParams.push(title)
       paramIndex++
     }
     if (url !== undefined) {
       updates.push(`url = @param${paramIndex}`)
-      params.push(url)
+      updateParams.push(url)
       paramIndex++
     }
     if (icon !== undefined) {
       updates.push(`icon = @param${paramIndex}`)
-      params.push(icon)
+      updateParams.push(icon)
       paramIndex++
     }
-    if (permissionRequired !== undefined) {
+    if (permission_required !== undefined) {
       updates.push(`permission_required = @param${paramIndex}`)
-      params.push(permissionId)
+      updateParams.push(permissionId)
       paramIndex++
     }
     if (category !== undefined) {
       updates.push(`category = @param${paramIndex}`)
-      params.push(category)
+      updateParams.push(category)
       paramIndex++
     }
-    if (orderIndex !== undefined) {
+    if (subcategory !== undefined) {
+      updates.push(`subcategory = @param${paramIndex}`)
+      updateParams.push(subcategory || null)
+      paramIndex++
+    }
+    if (order_index !== undefined) {
       updates.push(`order_index = @param${paramIndex}`)
-      params.push(orderIndex)
+      updateParams.push(order_index)
       paramIndex++
     }
-    if (isActive !== undefined) {
+    if (is_active !== undefined) {
       updates.push(`is_active = @param${paramIndex}`)
-      params.push(isActive ? 1 : 0)
+      updateParams.push(is_active ? 1 : 0)
+      paramIndex++
+    }
+    if (is_collapsible !== undefined) {
+      updates.push(`is_collapsible = @param${paramIndex}`)
+      updateParams.push(is_collapsible ? 1 : 0)
+      paramIndex++
+    }
+    if (item_type !== undefined) {
+      updates.push(`item_type = @param${paramIndex}`)
+      updateParams.push(item_type)
+      paramIndex++
+    }
+    if (parent_navigation_id !== undefined) {
+      updates.push(`parent_navigation_id = @param${paramIndex}`)
+      updateParams.push(parent_navigation_id || null)
       paramIndex++
     }
 
@@ -106,7 +138,7 @@ export async function PATCH(
 
     updates.push(`updated_at = GETDATE()`)
     const whereParamIndex = paramIndex
-    params.push(params.id)
+    updateParams.push(params.id)
 
     const updateQuery = `
       UPDATE navigation_items
@@ -114,7 +146,7 @@ export async function PATCH(
       WHERE id = @param${whereParamIndex}
     `
 
-    await query(updateQuery, params)
+    await query(updateQuery, updateParams)
 
     return NextResponse.json({
       success: true,
