@@ -23,12 +23,8 @@ export async function GET(request: NextRequest) {
 
     // Authenticate the request using @clerk/backend
     // This reads cookies and verifies the session without requiring middleware
-    const authState = await clerkClient.authenticateRequest({
-      headers: Object.fromEntries(request.headers.entries()),
-      cookies: Object.fromEntries(
-        request.cookies.getAll().map(cookie => [cookie.name, cookie.value])
-      ),
-    })
+    // authenticateRequest expects a Request object or a URL string
+    const authState = await clerkClient.authenticateRequest(request)
 
     if (authState.status === "signed-in" && authState.toAuth().userId) {
       const userId = authState.toAuth().userId
