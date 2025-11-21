@@ -383,7 +383,7 @@ export async function GET(request: NextRequest) {
       const microserviceId = microserviceResult.recordset[0].id
       console.log(`✅ Found microservice ID: ${microserviceId}`)
 
-      // Get navigation items from database (with hierarchy support)
+      // Get navigation items from database (with is_collapsible support)
       const navigationQuery = `
         SELECT 
           ni.id,
@@ -395,21 +395,18 @@ export async function GET(request: NextRequest) {
           ni.category,
           ni.subcategory,
           ni.order_index,
-          ni.parent_navigation_id,
+          ISNULL(ni.is_collapsible, 0) as is_collapsible,
+          ISNULL(ni.item_type, 'domain') as item_type,
           ma.app_name,
           ma.app_code,
-          ma.description,
-          parent.code as parent_code,
-          parent.title as parent_title,
-          parent.url as parent_url
+          ma.description
         FROM navigation_items ni
         INNER JOIN microservice_apps ma ON ni.microservice_id = ma.id
-        LEFT JOIN navigation_items parent ON ni.parent_navigation_id = parent.id
         WHERE ni.microservice_id = @param0 
           AND ni.is_active = 1
           AND ma.is_active = 1
         ORDER BY 
-          CASE WHEN ni.parent_navigation_id IS NULL THEN 0 ELSE 1 END,
+          ni.is_collapsible,
           ni.category, 
           ni.order_index, 
           ni.subcategory
@@ -464,23 +461,9 @@ export async function GET(request: NextRequest) {
         return createFallbackResponse("config_fallback", "No navigation items in database", userPermissions, userInfo)
       }
 
-      // Build hierarchical structure (domains with sub-items)
-      const domainMap = new Map<string, {
-        code: string
-        title: string
-        url: string
-        icon: string
-        order: number
-        category: string
-        subItems: Array<{
-          code: string
-          title: string
-          url: string
-          icon: string
-          order: number
-          subcategory?: string
-        }>
-      }>()
+      // Separate items into fixed and collapsible based on is_collapsible flag
+      const fixedItems: any[] = []
+      const collapsibleItems: any[] = []
       let visibleItemCount = 0
       let filteredItemCount = 0
 
@@ -518,86 +501,65 @@ export async function GET(request: NextRequest) {
         return hasPermission
       }
 
-      // First pass: Create domain entries (items without parents) and check permissions
+      // Process all items and separate by is_collapsible flag
       dbItems.forEach((item: any) => {
-        if (!item.parent_navigation_id) {
-          // This is a domain (parent item)
-          if (!checkPermission(item)) {
-            console.log(`🔒 FILTERING OUT domain '${item.title}' - requires permission: '${item.permission_required}'`)
-            filteredItemCount++
-            return
-          }
-
-          if (!domainMap.has(item.code)) {
-            domainMap.set(item.code, {
-              code: item.code,
-              title: item.title,
-              url: item.url,
-              icon: item.icon,
-              order: item.order_index,
-              category: item.category || "Administration",
-              subItems: [],
-            })
-            visibleItemCount++
-            console.log(`✅ INCLUDING domain '${item.title}' in category '${item.category}'`)
-          }
+        if (!checkPermission(item)) {
+          console.log(`🔒 FILTERING OUT '${item.title}' - requires permission: '${item.permission_required}'`)
+          filteredItemCount++
+          return
         }
-      })
 
-      // Second pass: Add sub-items to their parents (sub-items inherit parent permission)
-      dbItems.forEach((item: any) => {
-        if (item.parent_navigation_id && item.parent_code) {
-          const parent = domainMap.get(item.parent_code)
-          if (parent) {
-            // Sub-items inherit permission from parent, but we still check if explicitly set
-            if (!checkPermission(item)) {
-              console.log(`🔒 FILTERING OUT sub-item '${item.title}' - requires permission: '${item.permission_required}'`)
-              filteredItemCount++
-              return
-            }
-
-            parent.subItems.push({
-              code: item.code,
-              title: item.title,
-              url: item.url,
-              icon: item.icon,
-              order: item.order_index,
-              subcategory: item.subcategory || null,
-            })
-            visibleItemCount++
-            console.log(`✅ INCLUDING sub-item '${item.title}' under domain '${parent.title}'`)
-          }
+        const navItem = {
+          code: item.code,
+          title: item.title,
+          url: item.url,
+          icon: item.icon,
+          order: item.order_index,
+          category: item.category || "Administration",
+          item_type: item.item_type || "domain",
         }
+
+        // Separate based on is_collapsible flag
+        if (item.is_collapsible === 1 || item.is_collapsible === true) {
+          collapsibleItems.push(navItem)
+          console.log(`✅ INCLUDING collapsible item '${item.title}' in category '${item.category}'`)
+        } else {
+          fixedItems.push(navItem)
+          console.log(`✅ INCLUDING fixed item '${item.title}' in category '${item.category}'`)
+        }
+
+        visibleItemCount++
       })
 
-      // Sort sub-items within each domain
-      domainMap.forEach((domain) => {
-        domain.subItems.sort((a, b) => a.order - b.order)
-      })
+      // Sort items within each group
+      fixedItems.sort((a, b) => a.order - b.order)
+      collapsibleItems.sort((a, b) => a.order - b.order)
 
       console.log(`\n📊 FILTERING SUMMARY:`)
       console.log(`Total items from DB: ${dbItems.length}`)
       console.log(`Items filtered out: ${filteredItemCount}`)
-      console.log(`Items included: ${visibleItemCount}`)
+      console.log(`Fixed items included: ${fixedItems.length}`)
+      console.log(`Collapsible items included: ${collapsibleItems.length}`)
+      console.log(`Total items included: ${visibleItemCount}`)
 
-      // Convert to category-based structure for backward compatibility
-      const groupedNavigation: { [category: string]: any[] } = {}
-      domainMap.forEach((domain) => {
-        // Use category from database item
-        const category = domain.category || "Administration"
-        if (!groupedNavigation[category]) {
-          groupedNavigation[category] = []
+      // Group fixed items by category for backward compatibility
+      const fixedByCategory: { [category: string]: any[] } = {}
+      fixedItems.forEach((item) => {
+        if (!fixedByCategory[item.category]) {
+          fixedByCategory[item.category] = []
         }
-        groupedNavigation[category].push(domain)
+        fixedByCategory[item.category].push(item)
       })
 
       // Convert to array format
-      const navigation = Object.entries(groupedNavigation).map(([category, items]) => ({
+      const navigation = Object.entries(fixedByCategory).map(([category, items]) => ({
         title: category,
         items: items.sort((a, b) => a.order - b.order),
       }))
 
       console.log(`✅ Successfully loaded ${visibleItemCount} visible navigation items from database`)
+      console.log(`   - Fixed items: ${fixedItems.length}`)
+      console.log(`   - Collapsible items: ${collapsibleItems.length}`)
       console.log("🗄️ Navigation loaded from: database")
       console.log("📋 Final navigation structure:", JSON.stringify(navigation, null, 2))
 
@@ -611,10 +573,13 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         navigation,
+        collapsibleItems: collapsibleItems.length > 0 ? collapsibleItems : undefined,
         metadata: {
           source: "database",
           totalItems: dbItems.length,
           visibleItems: visibleItemCount,
+          fixedItems: fixedItems.length,
+          collapsibleItems: collapsibleItems.length,
           filteredItems: filteredItemCount,
           microservice,
           timestamp: new Date().toISOString(),

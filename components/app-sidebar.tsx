@@ -113,6 +113,7 @@ const EMERGENCY_NAVIGATION: NavigationCategory[] = [
 export function AppSidebar() {
   const { user, isLoaded } = useUser()
   const [navigationItems, setNavigationItems] = useState<NavigationCategory[]>([])
+  const [collapsibleItems, setCollapsibleItems] = useState<NavigationItem[]>([])
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
@@ -158,6 +159,7 @@ export function AppSidebar() {
           console.log("📥 Navigation API response:", data.metadata)
 
           setNavigationItems(data.navigation || [])
+          setCollapsibleItems(data.collapsibleItems || [])
           setNavigationMetadata(data.metadata)
           setNavError(null)
 
@@ -395,7 +397,7 @@ export function AppSidebar() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Regular Navigation Groups */}
+            {/* Fixed Navigation Groups - Always visible */}
             {navigationGroups.map((group, groupIndex) => (
               <SidebarGroup key={group.title}>
                 <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -405,108 +407,69 @@ export function AppSidebar() {
                   <SidebarMenu className="space-y-1">
                     {group.items.map((item) => {
                       const IconComponent = iconMap[item.icon] || Home
-                      const hasSubItems = item.subItems && item.subItems.length > 0
-                      
-                      if (hasSubItems) {
-                        // Domain with sub-items - make it collapsible
-                        // Show first 2-3 sub-items as quick actions when collapsed
-                        const quickActions = item.subItems?.slice(0, 3) || []
-                        return (
-                          <Collapsible key={item.code} className="group" defaultOpen={false}>
-                            <SidebarMenuItem>
-                              <CollapsibleTrigger asChild>
-                                <SidebarMenuButton className="w-full group">
-                                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm">
-                                    <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
-                                    <span className="font-medium flex-1 text-left">{item.title}</span>
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                                  </div>
-                                </SidebarMenuButton>
-                              </CollapsibleTrigger>
-                              {/* Quick Actions - shown when collapsed (outside CollapsibleContent) */}
-                              <div className="group-data-[state=closed]:block group-data-[state=open]:hidden">
-                                <SidebarMenu className="ml-4 mt-1 space-y-1">
-                                  {quickActions.map((subItem) => {
-                                    const SubIconComponent = iconMap[subItem.icon] || Home
-                                    return (
-                                      <SidebarMenuItem key={subItem.code}>
-                                        <SidebarMenuButton asChild>
-                                          <Link
-                                            href={subItem.url}
-                                            className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-refuge-purple hover:bg-refuge-light-purple/5 rounded transition-colors"
-                                          >
-                                            <SubIconComponent className="h-3.5 w-3.5" />
-                                            <span className="truncate">{subItem.title}</span>
-                                          </Link>
-                                        </SidebarMenuButton>
-                                      </SidebarMenuItem>
-                                    )
-                                  })}
-                                  {item.subItems && item.subItems.length > 3 && (
-                                    <SidebarMenuItem>
-                                      <div className="px-2 py-1 text-xs text-muted-foreground italic">
-                                        +{item.subItems.length - 3} more
-                                      </div>
-                                    </SidebarMenuItem>
-                                  )}
-                                </SidebarMenu>
-                              </div>
-                              <CollapsibleContent>
-                                <SidebarMenu className="ml-4 mt-1 space-y-1">
-                                  {/* Link to domain workspace page */}
-                                  <SidebarMenuItem>
-                                    <SidebarMenuButton asChild>
-                                      <Link
-                                        href={item.url}
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-refuge-purple"
-                                      >
-                                        <span>Overview</span>
-                                      </Link>
-                                    </SidebarMenuButton>
-                                  </SidebarMenuItem>
-                                  {/* Sub-items */}
-                                  {item.subItems?.map((subItem) => {
-                                    const SubIconComponent = iconMap[subItem.icon] || Home
-                                    return (
-                                      <SidebarMenuItem key={subItem.code}>
-                                        <SidebarMenuButton asChild>
-                                          <Link
-                                            href={subItem.url}
-                                            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-refuge-purple"
-                                          >
-                                            <SubIconComponent className="h-4 w-4" />
-                                            <span>{subItem.title}</span>
-                                          </Link>
-                                        </SidebarMenuButton>
-                                      </SidebarMenuItem>
-                                    )
-                                  })}
-                                </SidebarMenu>
-                              </CollapsibleContent>
-                            </SidebarMenuItem>
-                          </Collapsible>
-                        )
-                      } else {
-                        // Regular item without sub-items
-                        return (
-                          <SidebarMenuItem key={item.code}>
-                            <SidebarMenuButton asChild className="group">
-                              <Link
-                                href={item.url}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                              >
-                                <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
-                                <span className="font-medium">{item.title}</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        )
-                      }
+                      // Fixed items are always direct navigation links
+                      return (
+                        <SidebarMenuItem key={item.code}>
+                          <SidebarMenuButton asChild className="group">
+                            <Link
+                              href={item.url}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                            >
+                              <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
+                              <span className="font-medium">{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )
                     })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
             ))}
+
+            {/* Collapsible Menu Section - Only shown if user has collapsible items */}
+            {collapsibleItems.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  More
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <Collapsible className="group" defaultOpen={false}>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton className="w-full group">
+                          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm">
+                            <Settings className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
+                            <span className="font-medium flex-1 text-left">System</span>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                          </div>
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenu className="ml-4 mt-1 space-y-1">
+                          {collapsibleItems.map((item) => {
+                            const IconComponent = iconMap[item.icon] || Home
+                            return (
+                              <SidebarMenuItem key={item.code}>
+                                <SidebarMenuButton asChild>
+                                  <Link
+                                    href={item.url}
+                                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-refuge-purple"
+                                  >
+                                    <IconComponent className="h-4 w-4" />
+                                    <span>{item.title}</span>
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            )
+                          })}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </div>
         )}
       </SidebarContent>
