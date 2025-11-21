@@ -130,14 +130,28 @@ export default function MenuManagementPage() {
       if (response.ok) {
         const data = await response.json()
         const items = (data.navigationItems || []).map((item: any) => {
-          // Convert to boolean - API should return boolean, but handle all cases
-          // Check for true, 1, or "1" (handles boolean, number, or string)
-          // Debug: Log the actual value to see what we're getting
+          // Convert to boolean - API should return boolean (true/false), but handle edge cases
+          // The API does: item.is_active === 1, which converts number to boolean
+          // So we should receive boolean, but handle if it's still a number or string
+          const isActive = Boolean(
+            item.is_active === true || 
+            item.is_active === 1 || 
+            item.is_active === "1" || 
+            String(item.is_active).toLowerCase() === "true"
+          )
+          const isCollapsible = Boolean(
+            item.is_collapsible === true || 
+            item.is_collapsible === 1 || 
+            item.is_collapsible === "1" || 
+            String(item.is_collapsible).toLowerCase() === "true"
+          )
+          
+          // Debug logging in development to track conversion
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[Menu Management] Item ${item.code}: is_active =`, item.is_active, typeof item.is_active)
+            if (item.is_active !== isActive) {
+              console.log(`[Menu Management] Item ${item.code}: is_active converted from`, item.is_active, `(type: ${typeof item.is_active}) to`, isActive)
+            }
           }
-          const isActive = item.is_active === true || item.is_active === 1 || item.is_active === "1" || item.is_active === "true"
-          const isCollapsible = item.is_collapsible === true || item.is_collapsible === 1 || item.is_collapsible === "1" || item.is_collapsible === "true"
           
           return {
             id: item.id,
