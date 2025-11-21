@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { apiKey } = body
 
-    if (!apiKey) {
+    if (apiKey) {
       const hashed = hashApiKey(apiKey)
       const prefix = apiKey.substring(0, 12)
 
