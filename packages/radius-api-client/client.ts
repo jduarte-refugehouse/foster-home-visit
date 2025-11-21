@@ -12,7 +12,8 @@ import type {
 
 const API_BASE_URL =
   process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app"
-const API_KEY = process.env.RADIUS_API_KEY
+// Trim whitespace from API key (common issue with environment variables)
+const API_KEY = process.env.RADIUS_API_KEY?.trim()
 
 /**
  * Make an authenticated API request to the Radius API Hub
