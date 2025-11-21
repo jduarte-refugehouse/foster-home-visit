@@ -4,6 +4,7 @@ This directory contains daily activity summaries documenting development progres
 
 ## Recent Summaries
 
+- **[November 20, 2025](./daily-activity-summary-2025-11-20.md)** - Enhanced API catalog with explainer sections, statistics dashboard, and getting started guide
 - **[November 19, 2025](./daily-activity-summary-2025-11-19.md)** - Dashboard fixes, deployment URL system, manifest.json fixes
 - **[November 17, 2025](./daily-activity-summary-2025-11-17.md)** - Previous session summary
 - **[November 14, 2025](./daily-activity-summary-2025-11-14.md)** - Previous session summary

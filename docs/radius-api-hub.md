@@ -250,7 +250,20 @@ try {
 
 Revoked keys cannot be used for new requests.
 
-## API Health Monitoring
+## API Catalog and Management
+
+### API Catalog Dashboard
+
+Visit `/admin/apis` for a comprehensive overview of the API Hub:
+
+- **Explainer Section**: Learn what the API Hub is, why it exists, and how it works
+- **Statistics Dashboard**: View total endpoints, categories, active API keys, and total requests
+- **Quick Links**: Direct access to API key management, health monitoring, and documentation
+- **What's Been Developed**: Complete overview of all available endpoints organized by category
+- **Getting Started Guide**: Step-by-step instructions with code examples for new users
+- **Searchable Catalog**: Browse and filter all available API endpoints with detailed documentation
+
+### API Health Monitoring
 
 View API health and statistics at `/admin/apis/health`:
 
