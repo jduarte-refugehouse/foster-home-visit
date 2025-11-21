@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. Validate API key
-    const apiKey = request.headers.get("x-api-key")
+    const apiKeyRaw = request.headers.get("x-api-key")
+    const apiKey = apiKeyRaw?.trim() || null // Trim whitespace from header value
     const validation = await validateApiKey(apiKey)
 
     if (!validation.valid) {
