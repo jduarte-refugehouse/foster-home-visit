@@ -129,17 +129,30 @@ export default function MenuManagementPage() {
       const response = await fetch(`/api/admin/navigation-items?microservice=${selectedMicroservice}`, { headers })
       if (response.ok) {
         const data = await response.json()
-        const items = (data.navigationItems || []).map((item: any) => ({
-          ...item,
-          orderIndex: item.order_index,
-          isActive: item.is_active,
-          isCollapsible: item.is_collapsible,
-          itemType: item.item_type,
-          parentNavigationId: item.parent_navigation_id,
-          parentTitle: item.parent_title,
-          subcategory: item.subcategory,
-          permissionRequired: item.permission_required,
-        }))
+        const items = (data.navigationItems || []).map((item: any) => {
+          // Convert number (1/0) to boolean (true/false)
+          const isActive = Boolean(item.is_active === 1 || item.is_active === true)
+          const isCollapsible = Boolean(item.is_collapsible === 1 || item.is_collapsible === true)
+          
+          return {
+            ...item,
+            order_index: item.order_index,
+            orderIndex: item.order_index,
+            is_active: isActive,
+            isActive: isActive,
+            is_collapsible: isCollapsible,
+            isCollapsible: isCollapsible,
+            item_type: item.item_type,
+            itemType: item.item_type,
+            parent_navigation_id: item.parent_navigation_id,
+            parentNavigationId: item.parent_navigation_id,
+            parent_title: item.parent_title,
+            parentTitle: item.parent_title,
+            subcategory: item.subcategory,
+            permission_required: item.permission_required,
+            permissionRequired: item.permission_required,
+          }
+        })
         setNavigationItems(items)
       } else {
         throw new Error("Failed to fetch navigation items")
