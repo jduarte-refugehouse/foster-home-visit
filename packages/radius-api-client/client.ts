@@ -52,6 +52,9 @@ async function apiRequest<T>(
       errorData,
       apiKeyPrefix: API_KEY?.substring(0, 12),
       apiKeyLength: API_KEY?.length,
+      headers: {
+        'x-api-key': API_KEY ? `${API_KEY.substring(0, 12)}...` : 'MISSING',
+      },
     })
     
     throw new Error(errorMessage)
