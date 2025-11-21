@@ -446,30 +446,20 @@ export function AppSidebar() {
         return showCollapsibleSection ? (
           <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Shield className="h-3 w-3" />
-                {sectionLabel}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="space-y-1">
-                  {/* Users Domain */}
-                  {grouped.users.length > 0 && (
-                    <Collapsible open={usersOpen} onOpenChange={setUsersOpen}>
-                      <CollapsibleTrigger asChild>
-                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            <span>Users</span>
-                          </div>
-                          {usersOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronUp className="h-4 w-4" />
-                          )}
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenu className="space-y-1 mt-1 ml-4">
+              <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
+                <CollapsibleTrigger asChild>
+                  <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2 cursor-pointer hover:text-refuge-magenta transition-colors">
+                    <Shield className="h-3 w-3" />
+                    {sectionLabel}
+                    <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${systemOpen ? 'rotate-180' : ''}`} />
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    <div className="space-y-1">
+                      {/* Users Domain */}
+                      {grouped.users.length > 0 && (
+                        <SidebarMenu className="space-y-1">
                           {grouped.users.map((item) => {
                             const IconComponent = iconMap[item.icon] || Settings
                             return (
@@ -487,28 +477,11 @@ export function AppSidebar() {
                             )
                           })}
                         </SidebarMenu>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
+                      )}
 
-                  {/* System Domain */}
-                  {grouped.system.length > 0 && (
-                    <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
-                      <CollapsibleTrigger asChild>
-                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Settings className="h-4 w-4" />
-                            <span>System</span>
-                          </div>
-                          {systemOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronUp className="h-4 w-4" />
-                          )}
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenu className="space-y-1 mt-1 ml-4">
+                      {/* System Domain */}
+                      {grouped.system.length > 0 && (
+                        <SidebarMenu className="space-y-1">
                           {grouped.system.map((item) => {
                             const IconComponent = iconMap[item.icon] || Settings
                             return (
@@ -526,11 +499,11 @@ export function AppSidebar() {
                             )
                           })}
                         </SidebarMenu>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-                </div>
-              </SidebarGroupContent>
+                      )}
+                    </div>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </Collapsible>
             </SidebarGroup>
           </div>
         ) : null
