@@ -439,11 +439,14 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      {/* Administration Section - Anchored to Bottom */}
-      {administrationGroup && administrationGroup.items.length > 0 && (() => {
-        const grouped = groupAdministrationItems(administrationGroup.items)
+      {/* Collapsible Items Section - Anchored to Bottom */}
+      {showCollapsibleSection && (() => {
+        // Use collapsibleItems from database, sorted by order
+        const itemsToDisplay = collapsibleItems.length > 0 
+          ? collapsibleItems.sort((a, b) => a.order - b.order)
+          : (administrationGroup?.items || []).sort((a, b) => a.order - b.order)
 
-        return showCollapsibleSection ? (
+        return (
           <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
             <SidebarGroup>
               <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
@@ -451,62 +454,40 @@ export function AppSidebar() {
                   <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2 cursor-pointer hover:text-refuge-magenta transition-colors">
                     <Shield className="h-3 w-3" />
                     {sectionLabel}
-                    <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${systemOpen ? 'rotate-180' : ''}`} />
+                    {/* Chevron points down when open (menu opens from bottom) */}
+                    {systemOpen ? (
+                      <ChevronDown className="h-3 w-3 ml-auto" />
+                    ) : (
+                      <ChevronUp className="h-3 w-3 ml-auto" />
+                    )}
                   </SidebarGroupLabel>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarGroupContent>
-                    <div className="space-y-1">
-                      {/* Users Domain */}
-                      {grouped.users.length > 0 && (
-                        <SidebarMenu className="space-y-1">
-                          {grouped.users.map((item) => {
-                            const IconComponent = iconMap[item.icon] || Settings
-                            return (
-                              <SidebarMenuItem key={item.code}>
-                                <SidebarMenuButton asChild className="group">
-                                  <Link
-                                    href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                                  >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
-                                    <span className="text-sm font-medium">{item.title}</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            )
-                          })}
-                        </SidebarMenu>
-                      )}
-
-                      {/* System Domain */}
-                      {grouped.system.length > 0 && (
-                        <SidebarMenu className="space-y-1">
-                          {grouped.system.map((item) => {
-                            const IconComponent = iconMap[item.icon] || Settings
-                            return (
-                              <SidebarMenuItem key={item.code}>
-                                <SidebarMenuButton asChild className="group">
-                                  <Link
-                                    href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                                  >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
-                                    <span className="text-sm font-medium">{item.title}</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            )
-                          })}
-                        </SidebarMenu>
-                      )}
-                    </div>
+                    <SidebarMenu className="space-y-1">
+                      {itemsToDisplay.map((item) => {
+                        const IconComponent = iconMap[item.icon] || Settings
+                        return (
+                          <SidebarMenuItem key={item.code}>
+                            <SidebarMenuButton asChild className="group">
+                              <Link
+                                href={item.url}
+                                className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                              >
+                                <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
+                                <span className="text-sm font-medium">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        )
+                      })}
+                    </SidebarMenu>
                   </SidebarGroupContent>
                 </CollapsibleContent>
               </Collapsible>
             </SidebarGroup>
           </div>
-        ) : null
+        )
       })()}
 
       <SidebarFooter className="p-4 border-t bg-gradient-to-r from-gray-50 to-refuge-light-purple/10">
