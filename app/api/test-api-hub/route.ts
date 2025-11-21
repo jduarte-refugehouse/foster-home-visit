@@ -58,6 +58,13 @@ export async function GET() {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     const errorStack = error instanceof Error ? error.stack : undefined
     
+    const rawApiKey = process.env.RADIUS_API_KEY
+    const trimmedApiKey = rawApiKey?.trim()
+    const hasApiKey = !!rawApiKey
+    const apiKeyPrefix = hasApiKey ? trimmedApiKey?.substring(0, 12) : "N/A"
+    const apiHubUrl = process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)"
+    const hadWhitespace = rawApiKey && rawApiKey !== trimmedApiKey
+    
     return NextResponse.json(
       {
         success: false,
@@ -65,9 +72,12 @@ export async function GET() {
         stack: errorStack,
         message: "API Hub test failed. Check your environment variables and API key.",
         environment: {
-          hasApiKey: !!process.env.RADIUS_API_KEY,
-          apiHubUrl: process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app (default)",
-          apiKeyPrefix: process.env.RADIUS_API_KEY?.substring(0, 8) || "NOT SET",
+          hasApiKey,
+          apiHubUrl,
+          apiKeyPrefix,
+          apiKeyLength: trimmedApiKey?.length,
+          rawApiKeyLength: rawApiKey?.length,
+          hadWhitespace,
         },
         timestamp: new Date().toISOString(),
       },
