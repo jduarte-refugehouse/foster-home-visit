@@ -4,12 +4,15 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
+import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
+import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
 import { Users, Settings, Globe, Shield, Database } from "lucide-react"
 import Link from "next/link"
 
 export default function GlobalAdminDashboard() {
   const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
+  const { hasAccess: hasDatabaseAccess, isLoading: checkingAccess } = useDatabaseAccess()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
 
   // Get user headers for API calls (same pattern as liaison dashboard)
@@ -23,9 +26,9 @@ export default function GlobalAdminDashboard() {
     }
   }
 
-  // Get microservice code from navigation API (wait for user to be loaded)
+  // Get microservice code from navigation API
   useEffect(() => {
-    if (!userLoaded || !user) {
+    if (!userLoaded || !user || checkingAccess) {
       return
     }
 
@@ -37,6 +40,7 @@ export default function GlobalAdminDashboard() {
       .then(data => {
         const code = data.metadata?.microservice?.code || 'home-visits'
         setMicroserviceCode(code)
+        
         if (code !== 'service-domain-admin') {
           router.push('/dashboard')
         }
@@ -49,10 +53,10 @@ export default function GlobalAdminDashboard() {
           router.push('/dashboard')
         }
       })
-  }, [userLoaded, user, router])
+  }, [userLoaded, user, router, checkingAccess])
 
-  // Show loading state while user is loading
-  if (!userLoaded) {
+  // Show loading state while checking access
+  if (!userLoaded || checkingAccess) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="animate-pulse space-y-4">
@@ -65,6 +69,16 @@ export default function GlobalAdminDashboard() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // SECURITY: If user is authenticated but not found in database, show registration required
+  if (user && !hasDatabaseAccess) {
+    return (
+      <AccountRegistrationRequired 
+        microserviceName="Domain Administration"
+        contactEmail="jduarte@refugehouse.org"
+      />
     )
   }
 
