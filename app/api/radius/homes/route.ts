@@ -19,6 +19,15 @@ export const dynamic = "force-dynamic"
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
+  
+  // Log that the endpoint was called
+  console.log(`🔵 [RADIUS-API] /api/radius/homes endpoint called at ${new Date().toISOString()}`)
+  console.log(`🔵 [RADIUS-API] Request URL: ${request.url}`)
+  console.log(`🔵 [RADIUS-API] Request headers:`, {
+    'x-api-key': request.headers.get("x-api-key") ? `${request.headers.get("x-api-key")?.substring(0, 12)}...` : 'MISSING',
+    'user-agent': request.headers.get("user-agent"),
+    'origin': request.headers.get("origin"),
+  })
 
   try {
     // 1. Validate API key
