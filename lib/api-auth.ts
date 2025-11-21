@@ -44,12 +44,15 @@ export async function validateApiKey(apiKey: string | null): Promise<{
   error?: string
 }> {
   if (!apiKey) {
+    console.warn("🚫 [API-AUTH] No API key provided")
     return { valid: false, error: "API key is required" }
   }
 
   try {
     // Hash the provided key
     const hashed = hashApiKey(apiKey)
+    const keyPrefix = apiKey.substring(0, 12)
+    console.log(`🔍 [API-AUTH] Validating API key with prefix: ${keyPrefix}...`)
 
     // Look up the key in the database
     const keys = await query<ApiKey>(
@@ -62,7 +65,26 @@ export async function validateApiKey(apiKey: string | null): Promise<{
       [hashed]
     )
 
+    console.log(`🔍 [API-AUTH] Database lookup result: ${keys.length} key(s) found`)
+
     if (keys.length === 0) {
+      // Try to find by prefix to see if key exists but hash doesn't match
+      const keysByPrefix = await query<ApiKey>(
+        `SELECT 
+          id, microservice_code, api_key_hash, api_key_prefix,
+          created_at, created_by_user_id, expires_at, is_active,
+          rate_limit_per_minute, last_used_at, usage_count, description
+        FROM api_keys 
+        WHERE api_key_prefix = @param0`,
+        [keyPrefix]
+      )
+      
+      if (keysByPrefix.length > 0) {
+        console.error(`❌ [API-AUTH] Key prefix matches but hash doesn't! Prefix: ${keyPrefix}, Found keys: ${keysByPrefix.length}`)
+        return { valid: false, error: "Invalid API key (hash mismatch)" }
+      }
+      
+      console.warn(`🚫 [API-AUTH] No API key found with hash or prefix: ${keyPrefix}`)
       return { valid: false, error: "Invalid API key" }
     }
 

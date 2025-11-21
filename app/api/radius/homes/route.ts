@@ -27,11 +27,16 @@ export async function GET(request: NextRequest) {
 
     if (!validation.valid) {
       console.warn(`🚫 [RADIUS-API] Invalid API key attempt: ${validation.error}`)
+      console.warn(`🚫 [RADIUS-API] API key prefix received: ${apiKey?.substring(0, 12)}...`)
       return NextResponse.json(
         {
           success: false,
           error: "Unauthorized",
           details: validation.error || "Invalid API key",
+          debug: {
+            apiKeyPrefix: apiKey?.substring(0, 12),
+            hasApiKey: !!apiKey,
+          },
         },
         { status: 401 }
       )
