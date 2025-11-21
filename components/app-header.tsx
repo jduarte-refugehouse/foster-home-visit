@@ -11,6 +11,7 @@ import {
 } from "@refugehouse/shared-core/components/ui/breadcrumb"
 import { Separator } from "@refugehouse/shared-core/components/ui/separator"
 import { usePathname } from "next/navigation"
+import { DeploymentIndicator } from "@/components/deployment-indicator"
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -134,7 +135,8 @@ export function AppHeader() {
       </div>
 
       {/* Page Title - Right Aligned */}
-      <div className="ml-auto pr-4">
+      <div className="ml-auto pr-4 flex items-center gap-4">
+        <DeploymentIndicator />
         <h1 className="text-2xl font-bold bg-gradient-to-r from-refuge-purple to-refuge-magenta bg-clip-text text-transparent">
           {pageTitle}
         </h1>

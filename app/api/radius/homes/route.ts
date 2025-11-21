@@ -63,21 +63,28 @@ export async function GET(request: NextRequest) {
       )
       
       // Return detailed error information
+      // NOTE: In development/testing, we show the full API key for debugging
+      const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
+      
       return NextResponse.json(
         {
           success: false,
           error: "Unauthorized",
           details: validation.error || "Invalid API key",
           debug: {
+            // Show full API key in development/preview for debugging
+            apiKey: isDevelopment ? apiKey : undefined,
             apiKeyPrefix: apiKey?.substring(0, 12),
             apiKeyLength: apiKey?.length,
             rawApiKeyLength: apiKeyRaw?.length,
             hasApiKey: !!apiKey,
             validationError: validation.error,
             receivedKeyHash: receivedHash ? `${receivedHash.substring(0, 16)}...` : null,
+            fullReceivedKeyHash: isDevelopment ? receivedHash : undefined,
             allActiveKeysInDatabase: allActiveKeys.map(k => ({
               prefix: k.api_key_prefix,
               hash: `${k.api_key_hash.substring(0, 16)}...`,
+              fullHash: isDevelopment ? k.api_key_hash : undefined,
               microservice: k.microservice_code,
               isActive: k.is_active,
             })),
