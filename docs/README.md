@@ -62,6 +62,9 @@ Welcome to the Refuge House multi-microservice platform documentation. This mono
 ### 🔌 Integrations
 
 - **[Radius API Hub](./radius-api-hub.md)** - Centralized API hub for RadiusBifrost access
+  - **[Adding New Endpoints Guide](./radius-api-hub-adding-endpoints.md)** - Step-by-step guide for adding new API endpoints
+  - **[Quick Reference](./templates/QUICK_REFERENCE.md)** - Quick checklist for adding endpoints
+  - **[Templates](./templates/)** - Ready-to-use code templates
 - **[Google Cloud Speech Setup](./google-cloud-speech-setup.md)** - Google Speech-to-Text
 - **[Deepgram Setup](./setup-deepgram.md)** - Deepgram integration
 - **[Pulse App API Key Setup](./pulse-app-api-key-setup.md)** - Pulse integration
