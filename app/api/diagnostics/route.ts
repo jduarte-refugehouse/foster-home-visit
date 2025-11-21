@@ -1,10 +1,8 @@
-import { NextResponse } from "next/server"
-import { testConnection } from "@refugehouse/shared-core/db"
-
 import { NextRequest, NextResponse } from "next/server"
+import { testConnection } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/lib/clerk-auth-helper"
 import { getConnection } from "@refugehouse/shared-core/lib/db"
-import { testConnection } from "@refugehouse/shared-core/db"
+import { getDeploymentEnvironment, getMicroserviceCode } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
@@ -58,6 +56,30 @@ export async function GET(request: NextRequest) {
     // Test database connection
     const dbTest = await testConnection()
 
+    // Get deployment environment info
+    const deploymentEnv = getDeploymentEnvironment()
+    const microserviceCode = getMicroserviceCode()
+    
+    // Collect environment variables (non-sensitive ones)
+    const envVars = {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      VERCEL_URL: process.env.VERCEL_URL,
+      VERCEL_BRANCH: process.env.VERCEL_BRANCH,
+      VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF,
+      DEPLOYMENT_ENVIRONMENT: process.env.DEPLOYMENT_ENVIRONMENT,
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+      MICROSERVICE_CODE: process.env.MICROSERVICE_CODE,
+      // Database connection (already in envChecks, but include here for completeness)
+      DATABASE_SERVER: process.env.DATABASE_SERVER,
+      DATABASE_NAME: process.env.DATABASE_NAME,
+      DATABASE_USER: process.env.DATABASE_USER,
+      // Azure Key Vault (names only, not secrets)
+      AZURE_KEY_VAULT_NAME: process.env.AZURE_KEY_VAULT_NAME,
+      AZURE_TENANT_ID: process.env.AZURE_TENANT_ID ? "••••••••" : undefined,
+      AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID ? "••••••••" : undefined,
+    }
+
     // Environment checks
     const envChecks = {
       azureKeyVault: {
@@ -94,6 +116,13 @@ export async function GET(request: NextRequest) {
 
     const diagnostics = {
       timestamp: new Date().toISOString(),
+      deployment: {
+        environment: deploymentEnv,
+        microserviceCode,
+        vercelEnv: process.env.VERCEL_ENV,
+        branch: process.env.VERCEL_GIT_COMMIT_REF,
+        url: process.env.VERCEL_URL || process.env.NEXT_PUBLIC_APP_URL,
+      },
       database: {
         status: dbTest.success ? "connected" : "disconnected",
         message: dbTest.message,
@@ -102,6 +131,7 @@ export async function GET(request: NextRequest) {
         passwordError: dbTest.passwordError,
       },
       environment: envChecks,
+      environmentVariables: envVars,
       system: {
         nodeVersion: process.version,
         platform: process.platform,
@@ -121,7 +151,7 @@ export async function GET(request: NextRequest) {
         },
         serverEnvironment: {
           status: "active",
-          message: `production environment on ${process.platform}`,
+          message: `${deploymentEnv} environment on ${process.platform}`,
         },
       },
     }

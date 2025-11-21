@@ -9,6 +9,13 @@ import { RefreshCw, Database, Key, Globe, Server, Eye, EyeOff } from "lucide-rea
 
 interface DiagnosticsData {
   timestamp: string
+  deployment?: {
+    environment: string
+    microserviceCode: string
+    vercelEnv?: string
+    branch?: string
+    url?: string
+  }
   database: {
     status: string
     message: string
@@ -36,6 +43,7 @@ interface DiagnosticsData {
       requestTimeout: string
     }
   }
+  environmentVariables?: Record<string, string | undefined>
   system: {
     nodeVersion: string
     platform: string
@@ -341,6 +349,83 @@ export default function DiagnosticsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Deployment Information */}
+      {data.deployment && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Deployment Information
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Current deployment environment and configuration</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Deployment Environment</label>
+                  <div className="text-sm font-semibold">{data.deployment.environment}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Microservice Code</label>
+                  <div className="text-sm">{data.deployment.microserviceCode}</div>
+                </div>
+                {data.deployment.branch && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Git Branch</label>
+                    <div className="text-sm">{data.deployment.branch}</div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                {data.deployment.vercelEnv && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Vercel Environment</label>
+                    <div className="text-sm">{data.deployment.vercelEnv}</div>
+                  </div>
+                )}
+                {data.deployment.url && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Deployment URL</label>
+                    <div className="text-sm break-all">{data.deployment.url}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Environment Variables */}
+      {data.environmentVariables && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <Server className="h-5 w-5" />
+              Environment Variables
+              <Button variant="ghost" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
+                {showSensitive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">System environment variables (sensitive values masked)</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(data.environmentVariables)
+                .filter(([_, value]) => value !== undefined)
+                .map(([key, value]) => (
+                  <div key={key} className="flex flex-col">
+                    <label className="text-xs font-medium text-muted-foreground mb-1">{key}</label>
+                    <div className="text-sm font-mono break-all">
+                      {showSensitive ? value : (value && value.length > 0 ? maskSensitiveData(String(value), false) : "Not set")}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* System Components */}
       <Card>
