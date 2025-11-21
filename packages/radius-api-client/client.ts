@@ -45,6 +45,7 @@ async function apiRequest<T>(
     const errorMessage = `API request failed: ${response.statusText}. ${errorData.error || ""} ${errorData.details || ""}`
     
     // Log detailed error information for debugging
+    const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
     console.error("❌ [RADIUS-API-CLIENT] Request failed:", {
       status: response.status,
       statusText: response.statusText,
@@ -52,12 +53,18 @@ async function apiRequest<T>(
       errorData,
       apiKeyPrefix: API_KEY?.substring(0, 12),
       apiKeyLength: API_KEY?.length,
+      // Show full API key in development/preview
+      apiKey: isDevelopment ? API_KEY : undefined,
       headers: {
         'x-api-key': API_KEY ? `${API_KEY.substring(0, 12)}...` : 'MISSING',
       },
     })
     
-    throw new Error(errorMessage)
+    // Include full error data in the error message for debugging
+    const enhancedError = new Error(errorMessage)
+    ;(enhancedError as any).responseData = errorData
+    ;(enhancedError as any).status = response.status
+    throw enhancedError
   }
 
   return response.json()
