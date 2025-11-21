@@ -4,6 +4,23 @@ import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG } fr
 
 export const dynamic = "force-dynamic"
 
+/**
+ * TEMPORARY: Helper function to generate readable SQL for debugging
+ * This substitutes parameters into the query for SSMS testing
+ * WARNING: This is for debugging only - never use this for actual queries (SQL injection risk)
+ */
+function generateReadableSQL(query: string, params: Record<string, any>): string {
+  let readableSQL = query
+  // Replace @param0, @param1, etc. with actual values
+  Object.entries(params).forEach(([key, value]) => {
+    const paramName = key.startsWith('param') ? `@${key}` : key
+    // Escape single quotes in string values
+    const escapedValue = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value
+    readableSQL = readableSQL.replace(new RegExp(`@${key}\\b`, 'g'), String(escapedValue))
+  })
+  return readableSQL
+}
+
 export async function GET(request: NextRequest) {
   console.log("🔍 Navigation API called")
 
@@ -131,9 +148,19 @@ export async function GET(request: NextRequest) {
         console.log("📝 EXECUTING USER QUERY:")
         console.log("Query:", userQuery)
         console.log("Parameter @param0:", queryParam)
+        const userParams: Record<string, any> = { param0: queryParam }
         if (isServiceDomainAdmin && deploymentEnv) {
           console.log("Parameter @param1 (environment):", deploymentEnv)
+          userParams.param1 = deploymentEnv
         }
+        
+        // TEMPORARY: Generate readable SQL for SSMS testing
+        const readableUserSQL = generateReadableSQL(userQuery, userParams)
+        console.log("═══════════════════════════════════════════════════════════")
+        console.log("📋 READABLE SQL FOR SSMS TESTING (USER QUERY):")
+        console.log("═══════════════════════════════════════════════════════════")
+        console.log(readableUserSQL)
+        console.log("═══════════════════════════════════════════════════════════")
 
         const userRequest = connection.request().input("param0", queryParam)
         if (isServiceDomainAdmin && deploymentEnv) {
@@ -166,6 +193,17 @@ export async function GET(request: NextRequest) {
           console.log("Query:", permissionsQuery)
           console.log("Parameter @param0 (user_id):", userInfo.id)
           console.log("Parameter @param1 (app_code):", microserviceCode)
+          
+          // TEMPORARY: Generate readable SQL for SSMS testing
+          const readablePermissionsSQL = generateReadableSQL(permissionsQuery, {
+            param0: userInfo.id,
+            param1: microserviceCode
+          })
+          console.log("═══════════════════════════════════════════════════════════")
+          console.log("📋 READABLE SQL FOR SSMS TESTING (PERMISSIONS QUERY):")
+          console.log("═══════════════════════════════════════════════════════════")
+          console.log(readablePermissionsSQL)
+          console.log("═══════════════════════════════════════════════════════════")
 
           const permissionsResult = await connection
             .request()
@@ -196,6 +234,19 @@ export async function GET(request: NextRequest) {
             `
             console.log("📝 EXECUTING ROLE PERMISSIONS QUERY:")
             console.log("Query:", rolePermissionsQuery)
+            console.log("Parameter @param0 (user_id):", userInfo.id)
+            console.log("Parameter @param1 (app_code):", microserviceCode)
+            
+            // TEMPORARY: Generate readable SQL for SSMS testing
+            const readableRolePermissionsSQL = generateReadableSQL(rolePermissionsQuery, {
+              param0: userInfo.id,
+              param1: microserviceCode
+            })
+            console.log("═══════════════════════════════════════════════════════════")
+            console.log("📋 READABLE SQL FOR SSMS TESTING (ROLE PERMISSIONS QUERY):")
+            console.log("═══════════════════════════════════════════════════════════")
+            console.log(readableRolePermissionsSQL)
+            console.log("═══════════════════════════════════════════════════════════")
 
             const rolePermissionsResult = await connection
               .request()
@@ -284,6 +335,16 @@ export async function GET(request: NextRequest) {
       console.log("📝 EXECUTING MICROSERVICE QUERY:")
       console.log("Query:", microserviceQuery)
       console.log("Parameter @param0:", microserviceCode)
+      
+      // TEMPORARY: Generate readable SQL for SSMS testing
+      const readableMicroserviceSQL = generateReadableSQL(microserviceQuery, {
+        param0: microserviceCode
+      })
+      console.log("═══════════════════════════════════════════════════════════")
+      console.log("📋 READABLE SQL FOR SSMS TESTING (MICROSERVICE QUERY):")
+      console.log("═══════════════════════════════════════════════════════════")
+      console.log(readableMicroserviceSQL)
+      console.log("═══════════════════════════════════════════════════════════")
 
       const microserviceResult = await connection
         .request()
@@ -352,6 +413,16 @@ export async function GET(request: NextRequest) {
       console.log("📝 EXECUTING NAVIGATION QUERY:")
       console.log("Query:", navigationQuery)
       console.log("Parameter @param0 (microservice_id):", microserviceId)
+      
+      // TEMPORARY: Generate readable SQL for SSMS testing
+      const readableNavigationSQL = generateReadableSQL(navigationQuery, {
+        param0: microserviceId
+      })
+      console.log("═══════════════════════════════════════════════════════════")
+      console.log("📋 READABLE SQL FOR SSMS TESTING (NAVIGATION QUERY):")
+      console.log("═══════════════════════════════════════════════════════════")
+      console.log(readableNavigationSQL)
+      console.log("═══════════════════════════════════════════════════════════")
 
       const navigationResult = await connection.request().input("param0", microserviceId).query(navigationQuery)
 

@@ -529,7 +529,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200">
                   <Avatar className="h-8 w-8 ring-2 ring-refuge-light-purple/30">
-                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarImage src={user?.imageUrl} />
                     <AvatarFallback className="bg-gradient-to-br from-refuge-purple to-refuge-magenta text-white text-xs font-semibold">
                       {userInitials}
                     </AvatarFallback>
