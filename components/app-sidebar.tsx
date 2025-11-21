@@ -356,20 +356,34 @@ export function AppSidebar() {
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-refuge-light-purple/20 to-refuge-magenta/20 rounded-full flex items-center justify-center">
               <Database className="w-8 h-8 text-refuge-purple" />
             </div>
-            {/* SECURITY: Show access denied message when user is not authenticated */}
-            {navError && navError.includes("Access denied") ? (
+            {/* SECURITY: Show different messages based on authentication state */}
+            {!user ? (
+              // Clerk authentication failed - show nothing
               <>
                 <p className="text-sm font-medium text-foreground mb-2">Access Denied</p>
-                <p className="text-xs text-muted-foreground mb-3">{navError}</p>
-                <p className="text-xs text-muted-foreground">Please sign in to continue.</p>
+                <p className="text-xs text-muted-foreground mb-3">Please sign in to continue.</p>
+              </>
+            ) : !navigationMetadata?.userInfo ? (
+              // Clerk authenticated but user not found in database
+              <>
+                <p className="text-sm font-medium text-foreground mb-2">Account Registration Required</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  You are signed in as {user?.emailAddresses?.[0]?.emailAddress || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Your account needs to be registered in the system to access navigation.
+                </p>
+                {/* SECURITY: No links shown when user not found in database */}
               </>
             ) : (
+              // User authenticated and found in database - show error info if any
               <>
                 <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
                 {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
                 {navigationMetadata?.dbError && (
                   <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
                 )}
+                {/* SECURITY: Only show diagnostics link if user IS found in database */}
                 <Link
                   href="/diagnostics"
                   className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"

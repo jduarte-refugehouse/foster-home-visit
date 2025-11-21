@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
@@ -58,19 +59,37 @@ interface DiagnosticsData {
 }
 
 export default function DiagnosticsPage() {
+  const { user, isLoaded } = useUser()
   const [data, setData] = useState<DiagnosticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSensitive, setShowSensitive] = useState(false)
 
   const fetchDiagnostics = async () => {
+    if (!user) {
+      setError("Please sign in to access diagnostics")
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch("/api/diagnostics")
+      const headers: HeadersInit = {
+        "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+        "x-user-clerk-id": user.id,
+        "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      }
+
+      const response = await fetch("/api/diagnostics", { 
+        headers,
+        credentials: 'include',
+      })
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const result = await response.json()
@@ -84,8 +103,13 @@ export default function DiagnosticsPage() {
   }
 
   useEffect(() => {
-    fetchDiagnostics()
-  }, [])
+    if (isLoaded && user) {
+      fetchDiagnostics()
+    } else if (isLoaded && !user) {
+      setError("Please sign in to access diagnostics")
+      setLoading(false)
+    }
+  }, [isLoaded, user])
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

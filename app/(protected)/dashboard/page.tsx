@@ -25,6 +25,9 @@ export default function DashboardPage() {
     }
   }
 
+  const [userInfo, setUserInfo] = useState<any>(null)
+  const [hasDatabaseAccess, setHasDatabaseAccess] = useState(false)
+
   // Get microservice code and handle redirects
   useEffect(() => {
     if (!userLoaded || !user) {
@@ -42,6 +45,11 @@ export default function DashboardPage() {
         const code = data.metadata?.microservice?.code || 'home-visits'
         setMicroserviceCode(code)
         
+        // SECURITY: Check if user is found in database
+        const userFound = data.metadata?.userInfo !== null && data.metadata?.userInfo !== undefined
+        setUserInfo(data.metadata?.userInfo)
+        setHasDatabaseAccess(userFound)
+        
         // Redirect service-domain-admin to its own dashboard
         if (code === 'service-domain-admin') {
           router.replace('/globaladmin')
@@ -52,7 +60,8 @@ export default function DashboardPage() {
       })
       .catch((error) => {
         console.error('Error fetching navigation:', error)
-        // Fallback to home-visits
+        // SECURITY: On error, assume no database access
+        setHasDatabaseAccess(false)
         setMicroserviceCode('home-visits')
         setLoading(false)
       })
@@ -80,7 +89,35 @@ export default function DashboardPage() {
     return null
   }
 
-  // Simple, clean dashboard for home-visits
+  // SECURITY: If Clerk authenticated but user not found in database, show limited view
+  if (user && !hasDatabaseAccess) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div>
+          <h1 className="text-3xl font-bold">Access Required</h1>
+          <p className="text-muted-foreground mt-2">
+            You are signed in as {user?.emailAddresses?.[0]?.emailAddress || user?.firstName || "User"}
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Registration Required</CardTitle>
+            <CardDescription>
+              Your account needs to be registered in the system to access this application.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Please contact an administrator to request access. Your Clerk authentication is working, 
+              but your account is not yet registered in the database.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Simple, clean dashboard for home-visits (only shown if user found in database)
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>

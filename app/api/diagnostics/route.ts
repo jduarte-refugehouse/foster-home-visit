@@ -1,10 +1,58 @@
 import { NextResponse } from "next/server"
 import { testConnection } from "@refugehouse/shared-core/db"
 
+import { NextRequest, NextResponse } from "next/server"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/lib/clerk-auth-helper"
+import { getConnection } from "@refugehouse/shared-core/lib/db"
+import { testConnection } from "@refugehouse/shared-core/db"
+
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Check if user is authenticated and found in database
+    const { clerkUserId, email } = getClerkUserIdFromRequest(request)
+    
+    if (!clerkUserId && !email) {
+      return NextResponse.json(
+        { error: "Authentication required", message: "Please sign in to access diagnostics" },
+        { status: 401 }
+      )
+    }
+
+    // Check if user exists in database
+    let userFound = false
+    try {
+      const connection = await getConnection()
+      let userQuery = ""
+      let queryParam = ""
+      
+      if (clerkUserId) {
+        userQuery = "SELECT id FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1"
+        queryParam = clerkUserId
+      } else if (email) {
+        userQuery = "SELECT id FROM app_users WHERE email = @param0 AND is_active = 1"
+        queryParam = email
+      }
+      
+      if (queryParam) {
+        const userResult = await connection.request().input("param0", queryParam).query(userQuery)
+        userFound = userResult.recordset.length > 0
+      }
+    } catch (dbError) {
+      console.error("Error checking user in database:", dbError)
+    }
+
+    if (!userFound) {
+      return NextResponse.json(
+        { 
+          error: "Access denied", 
+          message: "Your account is not registered in the system. Please contact an administrator." 
+        },
+        { status: 403 }
+      )
+    }
+
     console.log("🔍 [Diagnostics] Running system diagnostics...")
 
     // Test database connection
