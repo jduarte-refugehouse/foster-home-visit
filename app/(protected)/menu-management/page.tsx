@@ -130,12 +130,24 @@ export default function MenuManagementPage() {
       if (response.ok) {
         const data = await response.json()
         const items = (data.navigationItems || []).map((item: any) => {
-          // Convert number (1/0) to boolean (true/false)
-          const isActive = Boolean(item.is_active === 1 || item.is_active === true)
-          const isCollapsible = Boolean(item.is_collapsible === 1 || item.is_collapsible === true)
+          // Convert to boolean - API should return boolean, but handle all cases
+          // Check for true, 1, or "1" (handles boolean, number, or string)
+          // Debug: Log the actual value to see what we're getting
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Menu Management] Item ${item.code}: is_active =`, item.is_active, typeof item.is_active)
+          }
+          const isActive = item.is_active === true || item.is_active === 1 || item.is_active === "1" || item.is_active === "true"
+          const isCollapsible = item.is_collapsible === true || item.is_collapsible === 1 || item.is_collapsible === "1" || item.is_collapsible === "true"
           
           return {
-            ...item,
+            id: item.id,
+            code: item.code,
+            title: item.title,
+            url: item.url,
+            icon: item.icon,
+            permission_required: item.permission_required,
+            category: item.category,
+            subcategory: item.subcategory,
             order_index: item.order_index,
             orderIndex: item.order_index,
             is_active: isActive,
@@ -148,9 +160,8 @@ export default function MenuManagementPage() {
             parentNavigationId: item.parent_navigation_id,
             parent_title: item.parent_title,
             parentTitle: item.parent_title,
-            subcategory: item.subcategory,
-            permission_required: item.permission_required,
-            permissionRequired: item.permission_required,
+            created_at: item.createdAt || item.created_at,
+            updated_at: item.updatedAt || item.updated_at,
           }
         })
         setNavigationItems(items)
@@ -210,6 +221,10 @@ export default function MenuManagementPage() {
 
   const handleEdit = (item: NavigationItem) => {
     setEditingItem(item)
+    // Ensure boolean values are properly set
+    const isActive = item.is_active === true || item.is_active === 1 || item.is_active === "1"
+    const isCollapsible = item.is_collapsible === true || item.is_collapsible === 1 || item.is_collapsible === "1"
+    
     setFormData({
       code: item.code,
       title: item.title,
@@ -219,8 +234,8 @@ export default function MenuManagementPage() {
       category: item.category,
       subcategory: item.subcategory || "",
       order_index: item.order_index,
-      is_active: item.is_active,
-      is_collapsible: item.is_collapsible,
+      is_active: isActive,
+      is_collapsible: isCollapsible,
       item_type: item.item_type,
       parent_navigation_id: item.parent_navigation_id || "",
     })
