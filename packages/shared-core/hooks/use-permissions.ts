@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { useUser } from "@clerk/nextjs"
 
 export interface UserPermissions {
   userId: string | null
@@ -44,15 +45,10 @@ const createDefaultPermissions = (): UserPermissions => ({
   getPermissionsForMicroservice: () => [],
 })
 
-/**
- * PROTOCOL: Does NOT use Clerk hooks after authentication.
- * Gets Clerk ID from session API, then uses headers for API calls.
- * Follows "deaf/mute/blind" protocol for Clerk after initial authentication.
- */
 export function usePermissions(): UserPermissions {
+  const { user, isLoaded } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
   const [isLoading, setIsLoading] = useState(true)
-  const sessionUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
     const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
@@ -104,84 +100,23 @@ export function usePermissions(): UserPermissions {
       setIsLoading(true)
 
       try {
-        // Step 1: Get Clerk ID from session (NO Clerk hooks)
-        if (!sessionUserRef.current) {
-          // Check sessionStorage first
-          const storedUser = sessionStorage.getItem("session_user")
-          if (storedUser) {
-            try {
-              const parsed = JSON.parse(storedUser)
-              if (parsed.clerkUserId) {
-                sessionUserRef.current = {
-                  id: parsed.clerkUserId,
-                  email: parsed.email || "",
-                  name: parsed.name || "",
-                }
-              }
-            } catch (e) {
-              // Invalid stored data, fetch fresh
-            }
-          }
-
-          // If not in sessionStorage, fetch from API (uses Clerk server-side ONCE)
-          if (!sessionUserRef.current) {
-            // Check if auth already failed (prevent infinite retries)
-            const authFailed = sessionStorage.getItem("auth_failed")
-            if (authFailed === "true") {
-              setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
-              setIsLoading(false)
-              return
-            }
-
-            const sessionResponse = await fetch("/api/auth/get-session-user", {
-              method: "GET",
-              credentials: "include",
-            })
-
-            if (!sessionResponse.ok) {
-              // If 401, mark auth as failed to prevent retries
-              if (sessionResponse.status === 401) {
-                sessionStorage.setItem("auth_failed", "true")
-              }
-              setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
-              setIsLoading(false)
-              return
-            }
-
-            const sessionData = await sessionResponse.json()
-            if (sessionData.success && sessionData.clerkUserId) {
-              sessionUserRef.current = {
-                id: sessionData.clerkUserId,
-                email: sessionData.email || "",
-                name: sessionData.name || "",
-              }
-              // Store in sessionStorage
-              sessionStorage.setItem("session_user", JSON.stringify({
-                clerkUserId: sessionData.clerkUserId,
-                email: sessionData.email,
-                name: sessionData.name,
-              }))
-              // Clear auth failed flag if we successfully authenticated
-              sessionStorage.removeItem("auth_failed")
-            } else {
-              setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
-              setIsLoading(false)
-              return
-            }
-          }
+        // Wait for Clerk to load
+        if (!isLoaded) {
+          return
         }
 
-        // Step 2: Fetch permissions using headers (NO Clerk hooks)
-        if (!sessionUserRef.current) {
-      setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+        // If not authenticated, return default permissions
+        if (!user) {
+          setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
           setIsLoading(false)
-      return
-    }
+          return
+        }
 
+        // Fetch permissions using headers from Clerk user
         const headers: HeadersInit = {
-          "x-user-email": sessionUserRef.current.email,
-          "x-user-clerk-id": sessionUserRef.current.id,
-          "x-user-name": sessionUserRef.current.name,
+          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+          "x-user-clerk-id": user.id,
+          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
         }
 
         const response = await fetch("/api/permissions", {
@@ -208,7 +143,7 @@ export function usePermissions(): UserPermissions {
     }
 
     fetchPermissions()
-  }, [constructPermissionSet]) // Empty deps - only run once on mount
+  }, [isLoaded, user, constructPermissionSet])
 
   return permissionData
 }
