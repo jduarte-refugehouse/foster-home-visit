@@ -12,8 +12,6 @@ import type {
 
 const API_BASE_URL =
   process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app"
-// Trim whitespace from API key (common issue with environment variables)
-const API_KEY = process.env.RADIUS_API_KEY?.trim()
 
 /**
  * Make an authenticated API request to the Radius API Hub
@@ -22,6 +20,10 @@ async function apiRequest<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
+  // Read the API key at runtime, not at module load time
+  // This ensures environment variables are available when the function executes
+  const API_KEY = process.env.RADIUS_API_KEY?.trim()
+  
   if (!API_KEY) {
     throw new Error(
       "RADIUS_API_KEY environment variable is required. Please configure it in your Vercel project settings."
