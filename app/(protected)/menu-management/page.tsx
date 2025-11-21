@@ -606,14 +606,14 @@ export default function MenuManagementPage() {
             <div>
               <Label htmlFor="parent_navigation_id">Parent Item</Label>
               <Select
-                value={formData.parent_navigation_id}
-                onValueChange={(value) => setFormData({ ...formData, parent_navigation_id: value })}
+                value={formData.parent_navigation_id || "__none__"}
+                onValueChange={(value) => setFormData({ ...formData, parent_navigation_id: value === "__none__" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None (top-level item)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (top-level item)</SelectItem>
+                  <SelectItem value="__none__">None (top-level item)</SelectItem>
                   {parentItems.map((parent) => (
                     <SelectItem key={parent.id} value={parent.id}>
                       {parent.title} ({parent.code})
@@ -626,14 +626,14 @@ export default function MenuManagementPage() {
             <div>
               <Label htmlFor="permission_required">Permission Required</Label>
               <Select
-                value={formData.permission_required}
-                onValueChange={(value) => setFormData({ ...formData, permission_required: value })}
+                value={formData.permission_required || "__none__"}
+                onValueChange={(value) => setFormData({ ...formData, permission_required: value === "__none__" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="No permission required" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No permission required</SelectItem>
+                  <SelectItem value="__none__">No permission required</SelectItem>
                   {permissions.map((perm) => (
                     <SelectItem key={perm.id} value={perm.permission_code}>
                       {perm.permission_name} ({perm.permission_code})
