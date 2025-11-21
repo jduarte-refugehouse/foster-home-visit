@@ -225,6 +225,47 @@ export async function GET(request: NextRequest) {
       }
     } else {
       console.log("👤 No user identity found in request headers")
+      // SECURITY: If no user identity, return empty navigation (fail securely)
+      console.log("🔒 SECURITY: No user identity - returning empty navigation")
+      return NextResponse.json({
+        navigation: [],
+        metadata: {
+          source: "auth_required",
+          totalItems: 0,
+          visibleItems: 0,
+          microservice: {
+            code: getMicroserviceCode(),
+            name: MICROSERVICE_CONFIG.name,
+            description: MICROSERVICE_CONFIG.description,
+          },
+          timestamp: new Date().toISOString(),
+          error: "User identity required",
+          userPermissions: [],
+          userInfo: null,
+        },
+      })
+    }
+
+    // SECURITY: If user lookup failed (userInfo is null), return empty navigation
+    if (!userInfo) {
+      console.log("🔒 SECURITY: User not found in database - returning empty navigation")
+      return NextResponse.json({
+        navigation: [],
+        metadata: {
+          source: "user_not_found",
+          totalItems: 0,
+          visibleItems: 0,
+          microservice: {
+            code: getMicroserviceCode(),
+            name: MICROSERVICE_CONFIG.name,
+            description: MICROSERVICE_CONFIG.description,
+          },
+          timestamp: new Date().toISOString(),
+          error: "User not found in system",
+          userPermissions: [],
+          userInfo: null,
+        },
+      })
     }
 
     const microserviceCode = getMicroserviceCode()
@@ -254,7 +295,28 @@ export async function GET(request: NextRequest) {
       console.log("Records:", JSON.stringify(microserviceResult.recordset, null, 2))
 
       if (microserviceResult.recordset.length === 0) {
-        console.log(`⚠️ Microservice '${microserviceCode}' not found in database, using config fallback`)
+        console.log(`⚠️ Microservice '${microserviceCode}' not found in database`)
+        // SECURITY: Only return fallback if user is authenticated
+        if (!userInfo) {
+          console.log("🔒 SECURITY: User not authenticated - returning empty navigation")
+          return NextResponse.json({
+            navigation: [],
+            metadata: {
+              source: "auth_required",
+              totalItems: 0,
+              visibleItems: 0,
+              microservice: {
+                code: microserviceCode,
+                name: MICROSERVICE_CONFIG.name,
+                description: MICROSERVICE_CONFIG.description,
+              },
+              timestamp: new Date().toISOString(),
+              error: "Microservice not registered and user not authenticated",
+              userPermissions: [],
+              userInfo: null,
+            },
+          })
+        }
         return createFallbackResponse(
           "config_fallback",
           "Microservice not registered in database",
@@ -301,7 +363,28 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Found ${dbItems.length} navigation items in database`)
 
       if (dbItems.length === 0) {
-        console.log("⚠️ No navigation items found in database, using config fallback")
+        console.log("⚠️ No navigation items found in database")
+        // SECURITY: Only return fallback if user is authenticated
+        if (!userInfo) {
+          console.log("🔒 SECURITY: User not authenticated - returning empty navigation")
+          return NextResponse.json({
+            navigation: [],
+            metadata: {
+              source: "auth_required",
+              totalItems: 0,
+              visibleItems: 0,
+              microservice: {
+                code: microserviceCode,
+                name: MICROSERVICE_CONFIG.name,
+                description: MICROSERVICE_CONFIG.description,
+              },
+              timestamp: new Date().toISOString(),
+              error: "No navigation items and user not authenticated",
+              userPermissions: [],
+              userInfo: null,
+            },
+          })
+        }
         return createFallbackResponse("config_fallback", "No navigation items in database", userPermissions, userInfo)
       }
 
@@ -445,10 +528,33 @@ export async function GET(request: NextRequest) {
 function createFallbackResponse(source: string, error: string, userPermissions: string[] = [], userInfo: any = null) {
   console.log(`📋 Using ${source} navigation`)
 
+  // SECURITY: If user is not authenticated/found, return empty navigation (fail securely)
+  if (!userInfo) {
+    console.log("🔒 SECURITY: No user info in fallback - returning empty navigation")
+    return NextResponse.json({
+      navigation: [],
+      metadata: {
+        source: "auth_required",
+        totalItems: 0,
+        visibleItems: 0,
+        microservice: {
+          code: getMicroserviceCode(),
+          name: MICROSERVICE_CONFIG.name,
+          description: MICROSERVICE_CONFIG.description,
+        },
+        timestamp: new Date().toISOString(),
+        dbError: error,
+        userPermissions: [],
+        userInfo: null,
+      },
+    })
+  }
+
   // Get the actual detected microservice code (not the hardcoded config)
   const actualMicroserviceCode = getMicroserviceCode()
   console.log(`🔍 Fallback using microservice code: ${actualMicroserviceCode}`)
 
+  // Only show fallback navigation if user IS authenticated (userInfo exists)
   // Filter navigation items by permissions
   const filteredNavigation = MICROSERVICE_CONFIG.defaultNavigation
     .map((section) => ({

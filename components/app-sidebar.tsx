@@ -121,10 +121,18 @@ export function AppSidebar() {
   // Load navigation items
   useEffect(() => {
     const loadNavigation = async () => {
-      if (!isLoaded || !user) return
+      if (!isLoaded || !user) {
+        console.log("⏳ [NAV] Waiting for user:", { isLoaded, hasUser: !!user })
+        return
+      }
 
       try {
         console.log("🔄 Loading navigation from API...")
+        console.log("👤 [NAV] User object:", {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress,
+          hasEmail: !!user.emailAddresses?.[0]?.emailAddress,
+        })
 
         // Create headers with user identity
         const headers: HeadersInit = {
@@ -133,7 +141,16 @@ export function AppSidebar() {
           "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
         }
 
-        const response = await fetch("/api/navigation", { headers })
+        console.log("📤 [NAV] Headers being sent:", {
+          "x-user-email": headers["x-user-email"],
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-name": headers["x-user-name"],
+        })
+
+        const response = await fetch("/api/navigation", { 
+          headers,
+          credentials: 'include', // Ensure cookies are sent
+        })
 
         if (response.ok) {
           const data = await response.json()
@@ -174,12 +191,39 @@ export function AppSidebar() {
             }
           }
         } else {
-          console.error("❌ Failed to load navigation from API, using emergency fallback")
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ Failed to load navigation from API")
+          
+          // SECURITY: If user is not authenticated/found, show nothing (fail securely)
+          const isAuthRequired = errorData.metadata?.source === "auth_required" || 
+                                 errorData.metadata?.source === "user_not_found" ||
+                                 !errorData.metadata?.userInfo
+          
+          if (!user || isAuthRequired) {
+            console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
+            setNavigationItems([])
+            setNavError("Access denied. Please sign in.")
+            return
+          }
+          
+          // Only show emergency fallback if user IS authenticated but API failed
+          console.error("⚠️ API failed but user is authenticated - using emergency fallback")
           setNavigationItems(EMERGENCY_NAVIGATION)
           setNavError(`API Error: ${response.status}`)
         }
       } catch (error) {
         console.error("❌ Error loading navigation:", error)
+        
+        // SECURITY: If user is not authenticated, show nothing (fail securely)
+        if (!user) {
+          console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
+          setNavigationItems([])
+          setNavError("Access denied. Please sign in.")
+          return
+        }
+        
+        // Only show emergency fallback if user IS authenticated but error occurred
+        console.error("⚠️ Error occurred but user is authenticated - using emergency fallback")
         setNavigationItems(EMERGENCY_NAVIGATION)
         setNavError(error.message)
       } finally {
@@ -312,18 +356,29 @@ export function AppSidebar() {
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-refuge-light-purple/20 to-refuge-magenta/20 rounded-full flex items-center justify-center">
               <Database className="w-8 h-8 text-refuge-purple" />
             </div>
-            <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
-            {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
-            {navigationMetadata?.dbError && (
-              <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
+            {/* SECURITY: Show access denied message when user is not authenticated */}
+            {navError && navError.includes("Access denied") ? (
+              <>
+                <p className="text-sm font-medium text-foreground mb-2">Access Denied</p>
+                <p className="text-xs text-muted-foreground mb-3">{navError}</p>
+                <p className="text-xs text-muted-foreground">Please sign in to continue.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
+                {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
+                {navigationMetadata?.dbError && (
+                  <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
+                )}
+                <Link
+                  href="/diagnostics"
+                  className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
+                >
+                  <Database className="w-3 h-3 mr-1" />
+                  Check diagnostics
+                </Link>
+              </>
             )}
-            <Link
-              href="/diagnostics"
-              className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
-            >
-              <Database className="w-3 h-3 mr-1" />
-              Check diagnostics
-            </Link>
           </div>
         ) : (
           <div className="space-y-6">
