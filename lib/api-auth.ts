@@ -59,6 +59,7 @@ export async function validateApiKey(apiKey: string | null): Promise<{
     const hashed = hashApiKey(trimmedKey)
     const keyPrefix = trimmedKey.substring(0, 12)
     console.log(`🔍 [API-AUTH] Validating API key with prefix: ${keyPrefix}...`)
+    console.log(`🔍 [API-AUTH] API key length: ${trimmedKey.length}, hash: ${hashed.substring(0, 16)}...`)
 
     // Look up the key in the database
     const keys = await query<ApiKey>(
@@ -72,6 +73,9 @@ export async function validateApiKey(apiKey: string | null): Promise<{
     )
 
     console.log(`🔍 [API-AUTH] Database lookup result: ${keys.length} key(s) found`)
+    if (keys.length > 0) {
+      console.log(`✅ [API-AUTH] Found key for microservice: ${keys[0].microservice_code}, ID: ${keys[0].id}`)
+    }
 
     if (keys.length === 0) {
       // Try to find by prefix to see if key exists but hash doesn't match
@@ -86,12 +90,17 @@ export async function validateApiKey(apiKey: string | null): Promise<{
       )
       
       if (keysByPrefix.length > 0) {
-        console.error(`❌ [API-AUTH] Key prefix matches but hash doesn't! Prefix: ${keyPrefix}, Found keys: ${keysByPrefix.length}`)
-        return { valid: false, error: "Invalid API key (hash mismatch)" }
+        const foundKey = keysByPrefix[0]
+        console.error(`❌ [API-AUTH] Key prefix matches but hash doesn't! Prefix: ${keyPrefix}`)
+        console.error(`❌ [API-AUTH] Expected hash: ${hashed.substring(0, 16)}...`)
+        console.error(`❌ [API-AUTH] Found hash in DB: ${foundKey.api_key_hash.substring(0, 16)}...`)
+        console.error(`❌ [API-AUTH] Key status: is_active=${foundKey.is_active}, microservice=${foundKey.microservice_code}`)
+        return { valid: false, error: "Invalid API key (hash mismatch - key may have been regenerated)" }
       }
       
       console.warn(`🚫 [API-AUTH] No API key found with hash or prefix: ${keyPrefix}`)
-      return { valid: false, error: "Invalid API key" }
+      console.warn(`🚫 [API-AUTH] Searched hash: ${hashed.substring(0, 16)}...`)
+      return { valid: false, error: "Invalid API key (not found in database)" }
     }
 
     const key = keys[0]
