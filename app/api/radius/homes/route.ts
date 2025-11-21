@@ -23,11 +23,15 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Validate API key
     const apiKey = request.headers.get("x-api-key")
+    console.log(`🔍 [RADIUS-API] Received API key request, prefix: ${apiKey?.substring(0, 12)}...`)
+    console.log(`🔍 [RADIUS-API] API key length: ${apiKey?.length}, has value: ${!!apiKey}`)
+    
     const validation = await validateApiKey(apiKey)
 
     if (!validation.valid) {
       console.warn(`🚫 [RADIUS-API] Invalid API key attempt: ${validation.error}`)
       console.warn(`🚫 [RADIUS-API] API key prefix received: ${apiKey?.substring(0, 12)}...`)
+      console.warn(`🚫 [RADIUS-API] API key length: ${apiKey?.length}`)
       return NextResponse.json(
         {
           success: false,
@@ -35,6 +39,7 @@ export async function GET(request: NextRequest) {
           details: validation.error || "Invalid API key",
           debug: {
             apiKeyPrefix: apiKey?.substring(0, 12),
+            apiKeyLength: apiKey?.length,
             hasApiKey: !!apiKey,
           },
         },
