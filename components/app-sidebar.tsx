@@ -1,7 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -109,36 +108,102 @@ const EMERGENCY_NAVIGATION: NavigationCategory[] = [
   },
 ]
 
+/**
+ * PROTOCOL: AppSidebar does NOT use Clerk hooks after authentication.
+ * Gets Clerk ID from session API, then uses headers for API calls.
+ * Follows "deaf/mute/blind" protocol for Clerk after initial authentication.
+ */
 export function AppSidebar() {
-  const { user, isLoaded } = useUser()
   const [navigationItems, setNavigationItems] = useState<NavigationCategory[]>([])
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
   const [usersOpen, setUsersOpen] = useState(false)
   const [systemOpen, setSystemOpen] = useState(false)
+  const [sessionUser, setSessionUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [loadingSession, setLoadingSession] = useState(true)
+  const sessionUserRef = useRef<{ id: string; email: string; name: string } | null>(null)
+
+  // Get Clerk ID from session (NO Clerk hooks)
+  useEffect(() => {
+    const fetchSessionUser = async () => {
+      // Check sessionStorage first
+      const storedUser = sessionStorage.getItem("session_user")
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.clerkUserId) {
+            const user = {
+              id: parsed.clerkUserId,
+              email: parsed.email || "",
+              name: parsed.name || "",
+            }
+            setSessionUser(user)
+            sessionUserRef.current = user
+            setLoadingSession(false)
+            return
+          }
+        } catch (e) {
+          // Invalid stored data, fetch fresh
+        }
+      }
+
+      // Fetch from API (uses Clerk server-side ONCE)
+      try {
+        const response = await fetch("/api/auth/get-session-user", {
+          method: "GET",
+          credentials: "include",
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.clerkUserId) {
+            const user = {
+              id: data.clerkUserId,
+              email: data.email || "",
+              name: data.name || "",
+            }
+            setSessionUser(user)
+            sessionUserRef.current = user
+            // Store in sessionStorage
+            sessionStorage.setItem("session_user", JSON.stringify({
+              clerkUserId: data.clerkUserId,
+              email: data.email,
+              name: data.name,
+            }))
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching session user:", error)
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    fetchSessionUser()
+  }, [])
 
   // Load navigation items
   useEffect(() => {
     const loadNavigation = async () => {
-      if (!isLoaded || !user) {
-        console.log("⏳ [NAV] Waiting for user:", { isLoaded, hasUser: !!user })
+      if (loadingSession || !sessionUser) {
+        console.log("⏳ [NAV] Waiting for session user:", { loadingSession, hasUser: !!sessionUser })
         return
       }
 
       try {
         console.log("🔄 Loading navigation from API...")
-        console.log("👤 [NAV] User object:", {
-          id: user.id,
-          email: user.emailAddresses[0]?.emailAddress,
-          hasEmail: !!user.emailAddresses?.[0]?.emailAddress,
+        console.log("👤 [NAV] Session user:", {
+          id: sessionUser.id,
+          email: sessionUser.email,
+          hasEmail: !!sessionUser.email,
         })
 
-        // Create headers with user identity
+        // Create headers with user identity (from session, NOT Clerk hooks)
         const headers: HeadersInit = {
-          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
-          "x-user-clerk-id": user.id,
-          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+          "x-user-email": sessionUser.email,
+          "x-user-clerk-id": sessionUser.id,
+          "x-user-name": sessionUser.name,
         }
 
         console.log("📤 [NAV] Headers being sent:", {
@@ -199,7 +264,7 @@ export function AppSidebar() {
                                  errorData.metadata?.source === "user_not_found" ||
                                  !errorData.metadata?.userInfo
           
-          if (!user || isAuthRequired) {
+          if (!sessionUser || isAuthRequired) {
             console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
             setNavigationItems([])
             setNavError("Access denied. Please sign in.")
@@ -215,7 +280,7 @@ export function AppSidebar() {
         console.error("❌ Error loading navigation:", error)
         
         // SECURITY: If user is not authenticated, show nothing (fail securely)
-        if (!user) {
+        if (!sessionUser) {
           console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
           setNavigationItems([])
           setNavError("Access denied. Please sign in.")
@@ -225,16 +290,16 @@ export function AppSidebar() {
         // Only show emergency fallback if user IS authenticated but error occurred
         console.error("⚠️ Error occurred but user is authenticated - using emergency fallback")
         setNavigationItems(EMERGENCY_NAVIGATION)
-        setNavError(error.message)
+        setNavError(error instanceof Error ? error.message : "Unknown error")
       } finally {
         setIsLoadingNav(false)
       }
     }
 
     loadNavigation()
-  }, [isLoaded, user])
+  }, [loadingSession, sessionUser])
 
-  if (!isLoaded || isLoadingNav) {
+  if (loadingSession || isLoadingNav) {
     return (
       <Sidebar>
         <SidebarHeader className="h-20 p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -257,15 +322,11 @@ export function AppSidebar() {
     )
   }
 
-  const userInitials =
-    user?.firstName && user?.lastName
-      ? `${user.firstName[0]}${user.lastName[0]}`
-      : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"
+  const userInitials = sessionUser?.name
+    ? sessionUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+    : sessionUser?.email?.[0]?.toUpperCase() || "U"
 
-  const displayName =
-    user?.firstName && user?.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user?.emailAddresses?.[0]?.emailAddress || "User"
+  const displayName = sessionUser?.name || sessionUser?.email || "User"
 
   // Check if user has admin permissions
   const isAdmin = navigationMetadata?.userPermissions?.some((p) => p.includes("admin") || p.includes("system")) || false
@@ -357,18 +418,18 @@ export function AppSidebar() {
               <Database className="w-8 h-8 text-refuge-purple" />
             </div>
             {/* SECURITY: Show different messages based on authentication state */}
-            {!user ? (
-              // Clerk authentication failed - show nothing
+            {!sessionUser ? (
+              // Authentication failed - show nothing
               <>
                 <p className="text-sm font-medium text-foreground mb-2">Access Denied</p>
                 <p className="text-xs text-muted-foreground mb-3">Please sign in to continue.</p>
               </>
             ) : !navigationMetadata?.userInfo ? (
-              // Clerk authenticated but user not found in database
+              // Authenticated but user not found in database
               <>
                 <p className="text-sm font-medium text-foreground mb-2">Account Registration Required</p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  You are signed in as {user?.emailAddresses?.[0]?.emailAddress || "User"}
+                  You are signed in as {sessionUser?.email || "User"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Your account needs to be registered in the system to access navigation.
@@ -532,7 +593,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200">
                   <Avatar className="h-8 w-8 ring-2 ring-refuge-light-purple/30">
-                    <AvatarImage src={user?.imageUrl || "/placeholder.svg"} />
+                    <AvatarImage src="/placeholder.svg" />
                     <AvatarFallback className="bg-gradient-to-br from-refuge-purple to-refuge-magenta text-white text-xs font-semibold">
                       {userInitials}
                     </AvatarFallback>
