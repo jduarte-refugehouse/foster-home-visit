@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClerkClient } from "@clerk/backend"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic"
  * GET - Get current user ID from authenticated Clerk session
  * 
  * This endpoint reads the user ID from the Clerk session cookie (server-side).
- * Uses @clerk/backend directly to read cookies without requiring middleware.
  * It's the ONLY place we use Clerk APIs after authentication - just to get the user ID.
  * After this, the app never uses Clerk APIs again.
  * 
@@ -16,30 +15,11 @@ export const dynamic = "force-dynamic"
  */
 export async function GET(request: NextRequest) {
   try {
-    // Use @clerk/backend directly to read session cookies (no middleware required)
-    const clerkClient = createClerkClient({
-      secretKey: process.env.CLERK_SECRET_KEY,
-    })
-
-    // Authenticate the request using @clerk/backend
-    // This reads cookies and verifies the session without requiring middleware
-    // authenticateRequest expects a Request object or a URL string
-    const authState = await clerkClient.authenticateRequest(request)
-
-    if (authState.status === "signed-in" && authState.toAuth().userId) {
-      const userId = authState.toAuth().userId
-      
-      // Get user details
-      const user = await clerkClient.users.getUser(userId)
-
-      return NextResponse.json({
-        success: true,
-        clerkUserId: user.id,
-        email: user.emailAddresses[0]?.emailAddress || null,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-      })
-    } else {
-      // Not authenticated
+    // Read user from Clerk session cookie (server-side, secure)
+    // This is the ONLY use of Clerk APIs after authentication
+    const user = await currentUser()
+    
+    if (!user) {
       return NextResponse.json(
         {
           error: "Not authenticated",
@@ -48,22 +28,23 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
-  } catch (error) {
-    console.error("❌ [AUTH] Unexpected error getting session user:", error)
-    console.error("❌ [AUTH] Error stack:", error instanceof Error ? error.stack : "No stack trace")
-    console.error("❌ [AUTH] Error details:", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      type: error?.constructor?.name,
+
+    // Return user ID from originally authenticated session
+    // This will be stored client-side and sent in headers for all API calls
+    return NextResponse.json({
+      success: true,
+      clerkUserId: user.id,
+      email: user.emailAddresses[0]?.emailAddress || null,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
     })
-    
-    // Return 401 instead of 500 for authentication-related errors
-    // This prevents infinite loops and allows the app to handle "not authenticated" gracefully
+  } catch (error) {
+    console.error("❌ [AUTH] Error getting session user:", error)
     return NextResponse.json(
       {
-        error: "Not authenticated",
-        details: error instanceof Error ? error.message : "Unable to verify authentication. Please sign in.",
+        error: "Failed to get user from session",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 401 }
+      { status: 500 }
     )
   }
 }
