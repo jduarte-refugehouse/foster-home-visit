@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@refugehouse/shared-core/components/ui/table"
@@ -78,6 +79,16 @@ interface NavigationItem {
 }
 
 export default function SystemAdminPage() {
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams.get('section') || null
+  
+  // Map section parameter to tab value
+  const getDefaultTab = (): string => {
+    if (sectionParam === 'user-admin') return 'users'
+    if (sectionParam === 'system-config') return 'navigation'
+    return 'users' // Default to users tab
+  }
+  
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -300,7 +311,7 @@ export default function SystemAdminPage() {
       </Card>
 
       {/* Data Tables */}
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue={getDefaultTab()} className="space-y-4">
         <TabsList>
           <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
           <TabsTrigger value="roles">Roles ({roles.length})</TabsTrigger>
@@ -767,12 +778,21 @@ function NavigationItemDialog({
   onClose: () => void
   onSave: () => void
 }) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    code: string
+    title: string
+    url: string
+    icon: string
+    permissionRequired: string | null
+    category: string
+    orderIndex: number
+    isActive: boolean
+  }>({
     code: item?.code || "",
     title: item?.title || "",
     url: item?.url || "",
     icon: item?.icon || "",
-    permissionRequired: item?.permissionRequired || "",
+    permissionRequired: item?.permissionRequired || null,
     category: item?.category || "Navigation",
     orderIndex: item?.orderIndex || 0,
     isActive: item?.isActive ?? true,
@@ -890,7 +910,7 @@ function NavigationItemDialog({
           <Label htmlFor="permissionRequired">Permission Required</Label>
           <Select
             value={formData.permissionRequired || ""}
-            onValueChange={(value) => setFormData({ ...formData, permissionRequired: value || null })}
+            onValueChange={(value) => setFormData({ ...formData, permissionRequired: value === "" ? null : value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select a permission (optional)" />

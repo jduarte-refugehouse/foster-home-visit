@@ -69,6 +69,8 @@ interface NavigationItem {
   url: string
   icon: string
   order: number
+  subItems?: NavigationItem[]  // Add sub-items support for hierarchical navigation
+  subcategory?: string
 }
 
 interface NavigationCategory {
@@ -403,19 +405,73 @@ export function AppSidebar() {
                   <SidebarMenu className="space-y-1">
                     {group.items.map((item) => {
                       const IconComponent = iconMap[item.icon] || Home
-                      return (
-                        <SidebarMenuItem key={item.code}>
-                          <SidebarMenuButton asChild className="group">
-                            <Link
-                              href={item.url}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                            >
-                              <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
-                              <span className="font-medium">{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      )
+                      const hasSubItems = item.subItems && item.subItems.length > 0
+                      
+                      if (hasSubItems) {
+                        // Domain with sub-items - make it collapsible
+                        return (
+                          <Collapsible key={item.code} className="group">
+                            <SidebarMenuItem>
+                              <CollapsibleTrigger asChild>
+                                <SidebarMenuButton className="w-full group">
+                                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm">
+                                    <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
+                                    <span className="font-medium flex-1 text-left">{item.title}</span>
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                  </div>
+                                </SidebarMenuButton>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <SidebarMenu className="ml-4 mt-1 space-y-1">
+                                  {/* Link to domain workspace page */}
+                                  <SidebarMenuItem>
+                                    <SidebarMenuButton asChild>
+                                      <Link
+                                        href={item.url}
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-refuge-purple"
+                                      >
+                                        <span>Overview</span>
+                                      </Link>
+                                    </SidebarMenuButton>
+                                  </SidebarMenuItem>
+                                  {/* Sub-items */}
+                                  {item.subItems?.map((subItem) => {
+                                    const SubIconComponent = iconMap[subItem.icon] || Home
+                                    return (
+                                      <SidebarMenuItem key={subItem.code}>
+                                        <SidebarMenuButton asChild>
+                                          <Link
+                                            href={subItem.url}
+                                            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-refuge-purple"
+                                          >
+                                            <SubIconComponent className="h-4 w-4" />
+                                            <span>{subItem.title}</span>
+                                          </Link>
+                                        </SidebarMenuButton>
+                                      </SidebarMenuItem>
+                                    )
+                                  })}
+                                </SidebarMenu>
+                              </CollapsibleContent>
+                            </SidebarMenuItem>
+                          </Collapsible>
+                        )
+                      } else {
+                        // Regular item without sub-items
+                        return (
+                          <SidebarMenuItem key={item.code}>
+                            <SidebarMenuButton asChild className="group">
+                              <Link
+                                href={item.url}
+                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                              >
+                                <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-refuge-purple dark:group-hover:text-refuge-light-purple transition-colors" />
+                                <span className="font-medium">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        )
+                      }
                     })}
                   </SidebarMenu>
                 </SidebarGroupContent>

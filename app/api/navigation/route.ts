@@ -383,25 +383,36 @@ export async function GET(request: NextRequest) {
       const microserviceId = microserviceResult.recordset[0].id
       console.log(`✅ Found microservice ID: ${microserviceId}`)
 
-      // Get navigation items from database
+      // Get navigation items from database (with hierarchy support)
       const navigationQuery = `
         SELECT 
+          ni.id,
           ni.code,
           ni.title,
           ni.url,
           ni.icon,
           ni.permission_required,
           ni.category,
+          ni.subcategory,
           ni.order_index,
+          ni.parent_navigation_id,
           ma.app_name,
           ma.app_code,
-          ma.description
+          ma.description,
+          parent.code as parent_code,
+          parent.title as parent_title,
+          parent.url as parent_url
         FROM navigation_items ni
         INNER JOIN microservice_apps ma ON ni.microservice_id = ma.id
+        LEFT JOIN navigation_items parent ON ni.parent_navigation_id = parent.id
         WHERE ni.microservice_id = @param0 
           AND ni.is_active = 1
           AND ma.is_active = 1
-        ORDER BY ni.category, ni.order_index
+        ORDER BY 
+          CASE WHEN ni.parent_navigation_id IS NULL THEN 0 ELSE 1 END,
+          ni.category, 
+          ni.order_index, 
+          ni.subcategory
       `
 
       console.log("📝 EXECUTING NAVIGATION QUERY:")
@@ -453,79 +464,130 @@ export async function GET(request: NextRequest) {
         return createFallbackResponse("config_fallback", "No navigation items in database", userPermissions, userInfo)
       }
 
-      // Group items by category and filter by permissions
-      const groupedNavigation: { [category: string]: any[] } = {}
+      // Build hierarchical structure (domains with sub-items)
+      const domainMap = new Map<string, {
+        code: string
+        title: string
+        url: string
+        icon: string
+        order: number
+        subItems: Array<{
+          code: string
+          title: string
+          url: string
+          icon: string
+          order: number
+          subcategory?: string
+        }>
+      }>()
       let visibleItemCount = 0
       let filteredItemCount = 0
 
       console.log("🔍 PROCESSING NAVIGATION ITEMS:")
       console.log(`User has permissions: [${userPermissions.join(", ")}]`)
 
-      dbItems.forEach((item: any, index: number) => {
-        console.log(`\n--- Processing item ${index + 1}/${dbItems.length} ---`)
-        console.log("Item:", JSON.stringify(item, null, 2))
-        console.log("Permission required:", item.permission_required)
+      // Helper function to check permissions
+      const checkPermission = (item: any): boolean => {
+        if (!item.permission_required || item.permission_required.trim() === "") {
+          return true // No permission required
+        }
 
-        // Check if user has required permission (if any)
-        // Items with NULL or empty permission_required should be visible to everyone
-        if (item.permission_required && item.permission_required.trim() !== "") {
-          // Map the actual permission codes from your database
-          const hasPermission = userPermissions.some((userPerm) => {
-            // Direct match
-            if (userPerm === item.permission_required) return true
+        const hasPermission = userPermissions.some((userPerm) => {
+          // Direct match
+          if (userPerm === item.permission_required) return true
 
-            // Check for admin permissions that should grant access
-            if (item.permission_required === "admin" && userPerm === "system_admin") return true
-            if (
-              item.permission_required === "user_manage" &&
-              (userPerm === "manage_users" || userPerm === "system_admin")
-            )
-              return true
-            if (
-              item.permission_required === "admin.view" &&
-              (userPerm === "system_admin" || userPerm === "manage_users")
-            )
-              return true
-            if (item.permission_required === "system_config" && userPerm === "system_admin") return true
-
-            return false
-          })
-
-          if (!hasPermission) {
-            console.log(`🔒 FILTERING OUT '${item.title}' - requires permission: '${item.permission_required}'`)
-            console.log(`🔒 User permissions: [${userPermissions.join(", ")}]`)
-            filteredItemCount++
-            return
-          } else {
-            console.log(`✅ Permission check passed for '${item.title}' - user has required access`)
-          }
-        } else {
-          console.log(
-            `✅ No permission required for '${item.title}' (permission_required: '${item.permission_required}')`,
+          // Check for admin permissions that should grant access
+          if (item.permission_required === "admin" && userPerm === "system_admin") return true
+          if (
+            item.permission_required === "user_manage" &&
+            (userPerm === "manage_users" || userPerm === "system_admin")
           )
-        }
+            return true
+          if (
+            item.permission_required === "admin.view" &&
+            (userPerm === "system_admin" || userPerm === "manage_users")
+          )
+            return true
+          if (item.permission_required === "system_config" && userPerm === "system_admin") return true
+          if (item.permission_required === "system_admin_access" && userPerm === "system_admin_access") return true
 
-        if (!groupedNavigation[item.category]) {
-          groupedNavigation[item.category] = []
-        }
-
-        groupedNavigation[item.category].push({
-          code: item.code,
-          title: item.title,
-          url: item.url,
-          icon: item.icon,
-          permission: item.permission_required,
-          order: item.order_index,
+          return false
         })
 
-        visibleItemCount++
-        console.log(`✅ INCLUDING '${item.title}' in category '${item.category}'`)
+        return hasPermission
+      }
+
+      // First pass: Create domain entries (items without parents) and check permissions
+      dbItems.forEach((item: any) => {
+        if (!item.parent_navigation_id) {
+          // This is a domain (parent item)
+          if (!checkPermission(item)) {
+            console.log(`🔒 FILTERING OUT domain '${item.title}' - requires permission: '${item.permission_required}'`)
+            filteredItemCount++
+            return
+          }
+
+          if (!domainMap.has(item.code)) {
+            domainMap.set(item.code, {
+              code: item.code,
+              title: item.title,
+              url: item.url,
+              icon: item.icon,
+              order: item.order_index,
+              subItems: [],
+            })
+            visibleItemCount++
+            console.log(`✅ INCLUDING domain '${item.title}' in category '${item.category}'`)
+          }
+        }
+      })
+
+      // Second pass: Add sub-items to their parents (sub-items inherit parent permission)
+      dbItems.forEach((item: any) => {
+        if (item.parent_navigation_id && item.parent_code) {
+          const parent = domainMap.get(item.parent_code)
+          if (parent) {
+            // Sub-items inherit permission from parent, but we still check if explicitly set
+            if (!checkPermission(item)) {
+              console.log(`🔒 FILTERING OUT sub-item '${item.title}' - requires permission: '${item.permission_required}'`)
+              filteredItemCount++
+              return
+            }
+
+            parent.subItems.push({
+              code: item.code,
+              title: item.title,
+              url: item.url,
+              icon: item.icon,
+              order: item.order_index,
+              subcategory: item.subcategory || null,
+            })
+            visibleItemCount++
+            console.log(`✅ INCLUDING sub-item '${item.title}' under domain '${parent.title}'`)
+          }
+        }
+      })
+
+      // Sort sub-items within each domain
+      domainMap.forEach((domain) => {
+        domain.subItems.sort((a, b) => a.order - b.order)
       })
 
       console.log(`\n📊 FILTERING SUMMARY:`)
       console.log(`Total items from DB: ${dbItems.length}`)
       console.log(`Items filtered out: ${filteredItemCount}`)
       console.log(`Items included: ${visibleItemCount}`)
+
+      // Convert to category-based structure for backward compatibility
+      const groupedNavigation: { [category: string]: any[] } = {}
+      domainMap.forEach((domain) => {
+        // Use category from database, default to "Administration" for admin items
+        const category = "Administration" // You can make this dynamic if needed
+        if (!groupedNavigation[category]) {
+          groupedNavigation[category] = []
+        }
+        groupedNavigation[category].push(domain)
+      })
 
       // Convert to array format
       const navigation = Object.entries(groupedNavigation).map(([category, items]) => ({
