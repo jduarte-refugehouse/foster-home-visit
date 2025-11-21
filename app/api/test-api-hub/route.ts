@@ -60,6 +60,8 @@ export async function GET() {
     
     // Extract response data from the error if available
     const responseData = (error as any)?.responseData || {}
+    const responseText = (error as any)?.responseText || ""
+    const responseStatus = (error as any)?.status || null
     const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
     const rawApiKey = process.env.RADIUS_API_KEY
     const trimmedApiKey = rawApiKey?.trim()
@@ -78,7 +80,11 @@ export async function GET() {
           apiKey: isDevelopment ? trimmedApiKey : undefined,
         },
         // Include the full error response from the API hub for debugging
-        apiHubErrorResponse: responseData,
+        apiHubErrorResponse: {
+          status: responseStatus,
+          data: responseData,
+          rawText: responseText || undefined,
+        },
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

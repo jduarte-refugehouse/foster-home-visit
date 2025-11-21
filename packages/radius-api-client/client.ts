@@ -41,7 +41,24 @@ async function apiRequest<T>(
   })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
+    // Try to get the response body as text first, then parse as JSON
+    let errorData: any = {}
+    let responseText = ""
+    
+    try {
+      responseText = await response.text()
+      if (responseText) {
+        try {
+          errorData = JSON.parse(responseText)
+        } catch (parseError) {
+          // If JSON parsing fails, use the raw text
+          errorData = { rawResponse: responseText }
+        }
+      }
+    } catch (textError) {
+      console.error("❌ [RADIUS-API-CLIENT] Failed to read response body:", textError)
+    }
+    
     const errorMessage = `API request failed: ${response.statusText}. ${errorData.error || ""} ${errorData.details || ""}`
     
     // Log detailed error information for debugging
@@ -51,6 +68,7 @@ async function apiRequest<T>(
       statusText: response.statusText,
       url,
       errorData,
+      responseText: responseText.substring(0, 500), // First 500 chars of response
       apiKeyPrefix: API_KEY?.substring(0, 12),
       apiKeyLength: API_KEY?.length,
       // Show full API key in development/preview
@@ -63,6 +81,7 @@ async function apiRequest<T>(
     // Include full error data in the error message for debugging
     const enhancedError = new Error(errorMessage)
     ;(enhancedError as any).responseData = errorData
+    ;(enhancedError as any).responseText = responseText
     ;(enhancedError as any).status = response.status
     throw enhancedError
   }
