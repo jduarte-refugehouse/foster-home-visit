@@ -89,16 +89,8 @@ export async function GET(request: NextRequest) {
           queryParam = impersonatedUserId
         } else if (userClerkId) {
           // PRIORITY: Use clerk_user_id first (most reliable)
-          if (isServiceDomainAdmin && deploymentEnv) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE clerk_user_id = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-                AND environment = @param1
-            `
-          } else if (isServiceDomainAdmin) {
+          // NOTE: clerk_user_id is unique, so we don't need to filter by environment
+          if (isServiceDomainAdmin) {
             userQuery = `
               SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
               FROM app_users 
@@ -149,7 +141,8 @@ export async function GET(request: NextRequest) {
         console.log("Query:", userQuery)
         console.log("Parameter @param0:", queryParam)
         const userParams: Record<string, any> = { param0: queryParam }
-        if (isServiceDomainAdmin && deploymentEnv) {
+        // Only add environment param if NOT using clerk_user_id (clerk_user_id is unique, no env filter needed)
+        if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
           console.log("Parameter @param1 (environment):", deploymentEnv)
           userParams.param1 = deploymentEnv
         }
@@ -163,7 +156,8 @@ export async function GET(request: NextRequest) {
         console.log("═══════════════════════════════════════════════════════════")
 
         const userRequest = connection.request().input("param0", queryParam)
-        if (isServiceDomainAdmin && deploymentEnv) {
+        // Only add environment param if NOT using clerk_user_id (clerk_user_id is unique, no env filter needed)
+        if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
           userRequest.input("param1", deploymentEnv)
         }
         const userResult = await userRequest.query(userQuery)
