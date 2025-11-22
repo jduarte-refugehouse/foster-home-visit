@@ -102,19 +102,30 @@ export default function DashboardPage() {
     // Always fetch home liaison dashboard data (removed role check for testing)
     setLoadingLiaisonData(true)
     
-    fetch('/api/dashboard/home-liaison', {
-      headers: getUserHeaders(),
-      credentials: 'include',
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          console.error('Error fetching home liaison data:', data.error)
-          setHomeLiaisonData(null)
-        } else {
-          setHomeLiaisonData(data)
-        }
+      fetch('/api/dashboard/home-liaison', {
+        headers: getUserHeaders(),
+        credentials: 'include',
       })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error || !data.success) {
+            console.error('Error fetching home liaison data:', data.error || 'Unknown error')
+            setHomeLiaisonData(null)
+          } else if (data.data) {
+            // Map API response structure to dashboard expected structure
+            setHomeLiaisonData({
+              appointments: data.data.upcomingAppointments || [],
+              stats: {
+                upcoming: data.data.upcomingAppointments?.length || 0,
+                today: data.data.stats?.todayCount || 0,
+                thisWeek: data.data.stats?.weekCount || 0,
+                pendingForms: data.data.stats?.pendingVisits || 0,
+              }
+            })
+          } else {
+            setHomeLiaisonData(null)
+          }
+        })
       .catch((error) => {
         console.error('Error fetching home liaison dashboard:', error)
         setHomeLiaisonData(null)
@@ -180,19 +191,21 @@ export default function DashboardPage() {
       )
     }
 
-    if (homeLiaisonData) {
+    if (homeLiaisonData && homeLiaisonData.appointments) {
       const today = new Date()
       const todayStart = new Date(today.setHours(0, 0, 0, 0))
       const todayEnd = new Date(today.setHours(23, 59, 59, 999))
       const weekEnd = new Date(today)
       weekEnd.setDate(today.getDate() + 7)
 
-      const todayAppointments = homeLiaisonData.appointments.filter(apt => {
+      const todayAppointments = (homeLiaisonData.appointments || []).filter(apt => {
+        if (!apt || !apt.start_datetime) return false
         const aptDate = new Date(apt.start_datetime)
         return aptDate >= todayStart && aptDate <= todayEnd
       })
 
-      const thisWeekAppointments = homeLiaisonData.appointments.filter(apt => {
+      const thisWeekAppointments = (homeLiaisonData.appointments || []).filter(apt => {
+        if (!apt || !apt.start_datetime) return false
         const aptDate = new Date(apt.start_datetime)
         return aptDate >= todayStart && aptDate <= weekEnd
       })
@@ -313,7 +326,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {homeLiaisonData.appointments.length === 0 ? (
+              {!homeLiaisonData.appointments || homeLiaisonData.appointments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No upcoming visits scheduled.</p>
               ) : (
                 <div className="space-y-3">
