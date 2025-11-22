@@ -93,38 +93,36 @@ export default function DashboardPage() {
       })
   }, [isLoaded, user, router, checkingDatabaseAccess])
 
-  // Fetch home liaison dashboard data if user has home_liaison role
+  // Fetch home liaison dashboard data (always show for now - testing)
   useEffect(() => {
-    if (!isLoaded || !user || checkingDatabaseAccess || !permissions.isLoaded) {
+    if (!isLoaded || !user || checkingDatabaseAccess) {
       return
     }
 
-    // Check if user has home_liaison role
-    if (permissions.hasRole('home_liaison', 'home-visits')) {
-      setLoadingLiaisonData(true)
-      
-      fetch('/api/dashboard/home-liaison', {
-        headers: getUserHeaders(),
-        credentials: 'include',
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) {
-            console.error('Error fetching home liaison data:', data.error)
-            setHomeLiaisonData(null)
-          } else {
-            setHomeLiaisonData(data)
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching home liaison dashboard:', error)
+    // Always fetch home liaison dashboard data (removed role check for testing)
+    setLoadingLiaisonData(true)
+    
+    fetch('/api/dashboard/home-liaison', {
+      headers: getUserHeaders(),
+      credentials: 'include',
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          console.error('Error fetching home liaison data:', data.error)
           setHomeLiaisonData(null)
-        })
-        .finally(() => {
-          setLoadingLiaisonData(false)
-        })
-    }
-  }, [isLoaded, user, checkingDatabaseAccess, permissions.isLoaded, permissions.hasRole])
+        } else {
+          setHomeLiaisonData(data)
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching home liaison dashboard:', error)
+        setHomeLiaisonData(null)
+      })
+      .finally(() => {
+        setLoadingLiaisonData(false)
+      })
+  }, [isLoaded, user, checkingDatabaseAccess])
 
   // Show loading state while checking access
   if (!isLoaded || loading || checkingDatabaseAccess) {
@@ -164,8 +162,8 @@ export default function DashboardPage() {
     )
   }
 
-  // Show home liaison dashboard if user has home_liaison role
-  if (permissions.isLoaded && permissions.hasRole('home_liaison', 'home-visits')) {
+  // Always show home liaison dashboard (for testing - removed role check)
+  if (true) {
     if (loadingLiaisonData) {
       return (
         <div className="flex flex-col gap-6 p-6">
