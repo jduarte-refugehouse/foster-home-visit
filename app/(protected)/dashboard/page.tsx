@@ -12,6 +12,7 @@ import { Home, Calendar, FileText, BarChart3, Map, List, Shield, Database, Clock
 import Link from "next/link"
 import { format } from "date-fns"
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
+import { Button } from "@refugehouse/shared-core/components/ui/button"
 
 interface HomeLiaisonAppointment {
   appointment_id: string
@@ -34,11 +35,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [homeLiaisonData, setHomeLiaisonData] = useState<{
     appointments: HomeLiaisonAppointment[]
+    onCall?: any[]
+    currentOnCall?: any | null
     stats: {
-      upcoming: number
       today: number
       thisWeek: number
-      pendingForms: number
+      pendingVisits: number
+      onCallShifts: number
+      isCurrentlyOnCall?: boolean
     }
   } | null>(null)
   const [loadingLiaisonData, setLoadingLiaisonData] = useState(false)
@@ -107,25 +111,28 @@ export default function DashboardPage() {
         credentials: 'include',
       })
         .then(res => res.json())
-        .then(data => {
-          if (data.error || !data.success) {
-            console.error('Error fetching home liaison data:', data.error || 'Unknown error')
-            setHomeLiaisonData(null)
-          } else if (data.data) {
-            // Map API response structure to dashboard expected structure
-            setHomeLiaisonData({
-              appointments: data.data.upcomingAppointments || [],
-              stats: {
-                upcoming: data.data.upcomingAppointments?.length || 0,
-                today: data.data.stats?.todayCount || 0,
-                thisWeek: data.data.stats?.weekCount || 0,
-                pendingForms: data.data.stats?.pendingVisits || 0,
-              }
-            })
-          } else {
-            setHomeLiaisonData(null)
-          }
-        })
+      .then(data => {
+        if (data.error || !data.success) {
+          console.error('Error fetching home liaison data:', data.error || 'Unknown error')
+          setHomeLiaisonData(null)
+        } else if (data.data) {
+          // Map API response structure to match original dashboard format
+          setHomeLiaisonData({
+            appointments: data.data.upcomingAppointments || [],
+            onCall: data.data.upcomingOnCall || [],
+            currentOnCall: data.data.currentOnCall || null,
+            stats: {
+              today: data.data.stats?.todayCount || 0,
+              thisWeek: data.data.stats?.weekCount || 0,
+              pendingVisits: data.data.stats?.pendingVisits || 0,
+              onCallShifts: data.data.stats?.upcomingOnCallCount || 0,
+              isCurrentlyOnCall: data.data.stats?.isCurrentlyOnCall || false,
+            }
+          })
+        } else {
+          setHomeLiaisonData(null)
+        }
+      })
       .catch((error) => {
         console.error('Error fetching home liaison dashboard:', error)
         setHomeLiaisonData(null)
@@ -212,117 +219,75 @@ export default function DashboardPage() {
 
       return (
         <div className="flex flex-col gap-6 p-6">
-          <div>
-            <h1 className="text-3xl font-bold">Home Liaison Dashboard</h1>
-            <p className="text-muted-foreground mt-2">
-              Welcome back, {user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "User" : "User"}
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Welcome back, {user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "User" : "User"}</h1>
+              <p className="text-muted-foreground mt-2">
+                Manage your schedule, on-call assignments, and upcoming home visits
+              </p>
+            </div>
+            <Link href="/home-visit-guide">
+              <Button className="bg-refuge-purple hover:bg-refuge-purple/90">
+                <FileText className="h-4 w-4 mr-2" />
+                Home Visit Guide
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Visits</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{homeLiaisonData.stats.upcoming}</div>
-                <p className="text-xs text-muted-foreground">Next 30 days</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{homeLiaisonData.stats.today}</div>
-                <p className="text-xs text-muted-foreground">Scheduled visits</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{homeLiaisonData.stats.thisWeek}</div>
-                <p className="text-xs text-muted-foreground">Next 7 days</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Forms</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{homeLiaisonData.stats.pendingForms}</div>
-                <p className="text-xs text-muted-foreground">Awaiting completion</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Today's Appointments */}
-          {todayAppointments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-refuge-purple" />
                   Today's Visits
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {todayAppointments.map((apt) => (
-                    <Link key={apt.appointment_id} href={`/appointment/${apt.appointment_id}`}>
-                      <div className="flex items-start gap-4 p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold">{apt.title}</h3>
-                            <Badge variant={apt.status === 'completed' ? 'default' : 'secondary'}>
-                              {apt.status}
-                            </Badge>
-                            {apt.priority && (
-                              <Badge variant={apt.priority === 'high' ? 'destructive' : 'outline'}>
-                                {apt.priority}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <HomeIcon className="h-4 w-4" />
-                              {apt.home_name || 'Unknown Home'}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {format(new Date(apt.start_datetime), 'h:mm a')}
-                            </div>
-                            {apt.location_address && (
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {apt.location_address}
-                              </div>
-                            )}
-                          </div>
-                          {apt.form_status && (
-                            <div className="mt-2">
-                              <Badge variant={apt.form_status === 'completed' ? 'default' : 'outline'}>
-                                Form: {apt.form_status}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                <div className="text-2xl font-bold">{homeLiaisonData.stats.today}</div>
               </CardContent>
             </Card>
-          )}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-pink-600" />
+                  This Week
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{homeLiaisonData.stats.thisWeek}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-yellow-600" />
+                  Pending Visits
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{homeLiaisonData.stats.pendingVisits}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-500" />
+                  On-Call Shifts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{homeLiaisonData.stats.onCallShifts}</div>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* Upcoming Appointments */}
+          {/* Upcoming Home Visits */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Upcoming Visits (Next 30 Days)
+                <Calendar className="h-5 w-5 text-refuge-purple" />
+                Upcoming Home Visits
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -330,7 +295,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">No upcoming visits scheduled.</p>
               ) : (
                 <div className="space-y-3">
-                  {homeLiaisonData.appointments.slice(0, 10).map((apt) => (
+                  {homeLiaisonData.appointments.slice(0, 5).map((apt) => (
                     <Link key={apt.appointment_id} href={`/appointment/${apt.appointment_id}`}>
                       <div className="flex items-start gap-4 p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
                         <div className="flex-1">
@@ -354,17 +319,94 @@ export default function DashboardPage() {
                       </div>
                     </Link>
                   ))}
-                  {homeLiaisonData.appointments.length > 10 && (
-                    <Link href="/visits-calendar">
-                      <div className="text-center p-3 text-sm text-muted-foreground hover:text-foreground">
-                        View all {homeLiaisonData.appointments.length} appointments →
-                      </div>
-                    </Link>
-                  )}
                 </div>
               )}
+              <div className="mt-4">
+                <Link href="/visits-calendar">
+                  <Button variant="outline" className="w-full">
+                    View All Visits
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Upcoming On-Call Shifts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-500" />
+                Upcoming On-Call Shifts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!homeLiaisonData.onCall || homeLiaisonData.onCall.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No upcoming on-call shifts scheduled.</p>
+              ) : (
+                <div className="space-y-3">
+                  {homeLiaisonData.onCall.slice(0, 5).map((shift: any, index: number) => (
+                    <div key={index} className="flex items-start gap-4 p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">On-Call Shift</h3>
+                          {homeLiaisonData.currentOnCall && index === 0 && (
+                            <Badge variant="default">Current</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {shift.start_datetime && format(new Date(shift.start_datetime), 'MMM d, h:mm a')} - {shift.end_datetime && format(new Date(shift.end_datetime), 'h:mm a')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-4">
+                <Link href="/on-call-schedule">
+                  <Button variant="outline" className="w-full">
+                    Manage On-Call Schedule
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/visits-calendar">
+              <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-refuge-purple" />
+                    View Calendar
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/visits-list">
+              <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-pink-600" />
+                    Visits List
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href="/on-call-schedule">
+              <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-blue-500" />
+                    On-Call Schedule
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </Link>
+          </div>
         </div>
       )
     }
