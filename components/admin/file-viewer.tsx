@@ -7,6 +7,7 @@ import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Loader2, Download, FileText, File, AlertCircle } from 'lucide-react'
 import { cn } from '@refugehouse/shared-core/utils'
 import mammoth from 'mammoth'
+import 'highlight.js/styles/github.css'
 
 // Dynamically import PDF viewer components to avoid SSR issues
 const PDFViewer = dynamic(
