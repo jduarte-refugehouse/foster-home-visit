@@ -148,7 +148,7 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
           </Button>
         </div>
         <div className="flex-1 overflow-hidden">
-          <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+          <Worker workerUrl="/pdf.worker.min.js">
             <Viewer
               fileUrl={pdfUrl}
               plugins={[defaultLayoutPluginInstance]}
