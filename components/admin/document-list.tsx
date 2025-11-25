@@ -201,55 +201,42 @@ export function DocumentList({ userId }: DocumentListProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search documents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex flex-col gap-4">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="policies" className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline">Policies</span>
+                </TabsTrigger>
+                <TabsTrigger value="procedures" className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4" />
+                  <span className="hidden sm:inline">Procedures</span>
+                </TabsTrigger>
+                <TabsTrigger value="regulatory" className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  <span className="hidden sm:inline">Regulatory</span>
+                </TabsTrigger>
+                <TabsTrigger value="supporting" className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4" />
+                  <span className="hidden sm:inline">Supporting</span>
+                </TabsTrigger>
+                <TabsTrigger value="historical" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">Historical</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search documents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="policy">Policies</SelectItem>
-                <SelectItem value="procedure">Procedures</SelectItem>
-                <SelectItem value="combined">Combined</SelectItem>
-                <SelectItem value="package-specific">Package-Specific</SelectItem>
-                <SelectItem value="regulatory">Regulatory</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending-approval">Pending Approval</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="operational">Operational</SelectItem>
-                <SelectItem value="regulatory-reference">Regulatory Reference</SelectItem>
-                <SelectItem value="historical">Historical</SelectItem>
-                <SelectItem value="supporting">Supporting</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          </Tabs>
         </CardContent>
       </Card>
 
