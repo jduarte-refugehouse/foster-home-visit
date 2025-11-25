@@ -78,3 +78,52 @@
     width: 100%;
   }
 }
+
+/* Print styles for document viewing */
+@layer utilities {
+  @media print {
+    @page {
+      margin: 1in;
+      size: letter;
+    }
+    
+    body {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+    
+    /* Hide UI elements when printing */
+    .print\\:hidden {
+      display: none !important;
+    }
+    
+    /* Ensure proper page breaks */
+    .print\\:break-inside-avoid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Adjust spacing for print */
+    .print\\:p-8 {
+      padding: 2rem;
+    }
+    
+    /* Smaller text for print */
+    .print\\:prose-sm {
+      font-size: 0.875rem;
+      line-height: 1.7142857;
+    }
+    
+    /* Ensure tables don't break across pages */
+    table {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Ensure images fit on page */
+    img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  }
+}

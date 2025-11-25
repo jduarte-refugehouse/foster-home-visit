@@ -163,11 +163,11 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
     )
   }
 
-  // DOCX Viewer using mammoth.js
+  // DOCX Viewer using mammoth.js with enhanced styling
   if (fileType === 'docx' && docxHtml) {
     return (
       <div className="h-full flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="p-4 border-b flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-muted-foreground" />
             <span className="text-sm font-medium">{fileName}</span>
@@ -178,9 +178,28 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          <div className="p-6 print:p-8">
             <article 
-              className="prose prose-slate dark:prose-invert max-w-none"
+              className="prose prose-slate dark:prose-invert max-w-none
+                prose-headings:font-bold prose-headings:text-foreground
+                prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-6
+                prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-5
+                prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
+                prose-p:my-4 prose-p:leading-relaxed prose-p:text-foreground
+                prose-ul:my-4 prose-ol:my-4
+                prose-li:my-2 prose-li:leading-relaxed
+                prose-strong:font-semibold prose-strong:text-foreground
+                prose-em:italic
+                prose-table:w-full prose-table:my-4 prose-table:border-collapse
+                prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-2 prose-th:font-semibold
+                prose-td:border prose-td:border-border prose-td:p-2
+                print:prose-sm print:prose-headings:break-inside-avoid print:prose-p:break-inside-avoid
+                [&_p]:mb-4 [&_p]:leading-relaxed
+                [&_table]:w-full [&_table]:my-4 [&_table]:border-collapse
+                [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:font-semibold
+                [&_td]:border [&_td]:border-border [&_td]:p-2
+                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-4
+                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-4"
               dangerouslySetInnerHTML={{ __html: docxHtml }}
             />
           </div>
@@ -189,15 +208,38 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
     )
   }
 
-  // Markdown Viewer
+  // Markdown Viewer with react-markdown
   if (fileType === 'markdown' && content) {
     return (
       <div className="h-full overflow-y-auto">
-        <div className="p-6">
-          <article 
-            className="markdown-content prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-ul:my-4 prose-ol:my-4 prose-li:my-2 prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-a:text-primary prose-a:underline"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-          />
+        <div className="p-6 print:p-8">
+          <article className="prose prose-slate dark:prose-invert max-w-none 
+            prose-headings:font-bold 
+            prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-6
+            prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-5
+            prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
+            prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-3
+            prose-p:my-4 prose-p:leading-relaxed
+            prose-ul:my-4 prose-ol:my-4
+            prose-li:my-2 prose-li:leading-relaxed
+            prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-[''] prose-code:after:content-['']
+            prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
+            prose-a:text-primary prose-a:underline prose-a:font-medium hover:prose-a:text-primary/80
+            prose-strong:font-semibold prose-strong:text-foreground
+            prose-em:italic
+            prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-4
+            prose-table:w-full prose-table:my-4 prose-table:border-collapse
+            prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-2 prose-th:font-semibold prose-th:text-left
+            prose-td:border prose-td:border-border prose-td:p-2
+            prose-hr:my-8 prose-hr:border-t prose-hr:border-border
+            print:prose-sm print:prose-headings:break-inside-avoid print:prose-p:break-inside-avoid">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw, rehypeHighlight]}
+            >
+              {content}
+            </ReactMarkdown>
+          </article>
         </div>
       </div>
     )
@@ -237,73 +279,3 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
   )
 }
 
-// Enhanced markdown to HTML converter
-function renderMarkdown(markdown: string): string {
-  let html = markdown
-  
-  // Code blocks (must come before inline code)
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/gim, (match, lang, code) => {
-    const escaped = escapeHtml(code.trim())
-    return `<pre><code class="language-${lang || 'text'}">${escaped}</code></pre>`
-  })
-  
-  // Inline code
-  html = html.replace(/`([^`\n]+)`/gim, '<code>$1</code>')
-  
-  // Headers (must come before other formatting)
-  html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>')
-  html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>')
-  html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
-  
-  // Horizontal rules
-  html = html.replace(/^---$/gim, '<hr>')
-  html = html.replace(/^\*\*\*$/gim, '<hr>')
-  
-  // Bold and italic (bold first, then italic)
-  html = html.replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>')
-  html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-  html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>')
-  
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-  
-  // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1" />')
-  
-  // Lists (unordered)
-  html = html.replace(/^[\*\-\+] (.+)$/gim, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>\n?)+/gim, '<ul>$&</ul>')
-  
-  // Lists (ordered)
-  html = html.replace(/^\d+\. (.+)$/gim, '<li>$1</li>')
-  
-  // Blockquotes
-  html = html.replace(/^> (.+)$/gim, '<blockquote>$1</blockquote>')
-  
-  // Paragraphs (split by double newlines)
-  const paragraphs = html.split(/\n\n+/)
-  html = paragraphs.map(p => {
-    p = p.trim()
-    if (!p || p.startsWith('<')) return p
-    return `<p>${p}</p>`
-  }).join('\n')
-  
-  // Single line breaks
-  html = html.replace(/\n(?!<)/g, '<br>')
-  
-  return html
-}
-
-function escapeHtml(text: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  }
-  return text.replace(/[&<>"']/g, m => map[m])
-}
