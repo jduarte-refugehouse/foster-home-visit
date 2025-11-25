@@ -5,6 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@refugehouse/shared-co
 import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Loader2, Download, FileText, File, AlertCircle } from 'lucide-react'
 import { cn } from '@refugehouse/shared-core/utils'
+import { Viewer, Worker } from '@react-pdf-viewer/core'
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout'
+import '@react-pdf-viewer/core/lib/styles/index.css'
+import '@react-pdf-viewer/default-layout/lib/styles/index.css'
+import mammoth from 'mammoth'
 
 interface FileViewerProps {
   owner: string
@@ -19,6 +24,7 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [docxHtml, setDocxHtml] = useState<string | null>(null)
 
   useEffect(() => {
     const loadFile = async () => {
@@ -42,15 +48,32 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
         }
       } else if (extension === 'pdf') {
         setFileType('pdf')
-        // For PDF, we'll create a URL to the API endpoint
-        setPdfUrl(`/api/policies/file?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(filePath)}&download=true`)
+        // For PDF, create URL to the API endpoint
+        setPdfUrl(`/api/policies/file?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(filePath)}`)
         setLoading(false)
         return
       } else if (extension === 'docx') {
         setFileType('docx')
-        // DOCX files will show download option
-        setLoading(false)
-        return
+        try {
+          // Fetch DOCX file as blob
+          const response = await fetch(`/api/policies/file?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(filePath)}&download=true`)
+          if (!response.ok) {
+            throw new Error('Failed to fetch DOCX file')
+          }
+          const blob = await response.blob()
+          
+          // Convert DOCX to HTML using mammoth
+          const arrayBuffer = await blob.arrayBuffer()
+          const result = await mammoth.convertToHtml({ arrayBuffer })
+          setDocxHtml(result.value)
+          
+          // Log any warnings
+          if (result.messages.length > 0) {
+            console.warn('DOCX conversion warnings:', result.messages)
+          }
+        } catch (err: any) {
+          setError(err.message || 'Failed to load DOCX file')
+        }
       } else if (extension === 'html') {
         setFileType('html')
         try {
@@ -108,8 +131,10 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
     )
   }
 
-  // PDF Viewer
+  // PDF Viewer using @react-pdf-viewer/core
   if (fileType === 'pdf' && pdfUrl) {
+    const defaultLayoutPluginInstance = defaultLayoutPlugin()
+    
     return (
       <div className="h-full flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
@@ -123,33 +148,39 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
           </Button>
         </div>
         <div className="flex-1 overflow-hidden">
-          <iframe
-            src={pdfUrl}
-            className="w-full h-full border-0"
-            title={fileName}
-          />
+          <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+            <Viewer
+              fileUrl={pdfUrl}
+              plugins={[defaultLayoutPluginInstance]}
+            />
+          </Worker>
         </div>
       </div>
     )
   }
 
-  // DOCX Viewer - Show download option
-  if (fileType === 'docx') {
+  // DOCX Viewer using mammoth.js
+  if (fileType === 'docx' && docxHtml) {
     return (
-      <div className="p-4">
-        <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
-          <File className="w-8 h-8 text-muted-foreground shrink-0" />
-          <div className="flex-1">
-            <p className="font-medium">{fileName}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              DOCX files cannot be previewed in the browser. Please download the file to view it.
-            </p>
+      <div className="h-full flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-muted-foreground" />
+            <span className="text-sm font-medium">{fileName}</span>
+          </div>
+          <Button onClick={handleDownload} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Download
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            <article 
+              className="prose prose-slate dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: docxHtml }}
+            />
           </div>
         </div>
-        <Button onClick={handleDownload} className="mt-4" size="lg">
-          <Download className="w-4 h-4 mr-2" />
-          Download DOCX File
-        </Button>
       </div>
     )
   }
@@ -272,4 +303,3 @@ function escapeHtml(text: string): string {
   }
   return text.replace(/[&<>"']/g, m => map[m])
 }
-
