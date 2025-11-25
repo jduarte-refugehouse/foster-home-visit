@@ -1,15 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@refugehouse/shared-core/components/ui/card'
 import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Loader2, Download, FileText, File, AlertCircle } from 'lucide-react'
 import { cn } from '@refugehouse/shared-core/utils'
-import { Viewer, Worker } from '@react-pdf-viewer/core'
-import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout'
-import '@react-pdf-viewer/core/lib/styles/index.css'
-import '@react-pdf-viewer/default-layout/lib/styles/index.css'
 import mammoth from 'mammoth'
+
+// Dynamically import PDF viewer components to avoid SSR issues
+const PDFViewer = dynamic(
+  () => import('./pdf-viewer-wrapper').then(mod => ({ default: mod.PDFViewer })),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <div className="text-xs text-muted-foreground">Loading PDF viewer...</div>
+      </div>
+    )
+  }
+)
 
 interface FileViewerProps {
   owner: string
@@ -133,8 +144,6 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
 
   // PDF Viewer using @react-pdf-viewer/core
   if (fileType === 'pdf' && pdfUrl) {
-    const defaultLayoutPluginInstance = defaultLayoutPlugin()
-    
     return (
       <div className="h-full flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
@@ -148,12 +157,7 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
           </Button>
         </div>
         <div className="flex-1 overflow-hidden">
-          <Worker workerUrl="/pdf.worker.min.js">
-            <Viewer
-              fileUrl={pdfUrl}
-              plugins={[defaultLayoutPluginInstance]}
-            />
-          </Worker>
+          <PDFViewer fileUrl={pdfUrl} />
         </div>
       </div>
     )
