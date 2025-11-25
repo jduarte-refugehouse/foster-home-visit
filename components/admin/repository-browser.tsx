@@ -6,7 +6,8 @@ import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Input } from '@refugehouse/shared-core/components/ui/input'
 import { File, Folder, ChevronRight, ChevronDown, Search, RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '@refugehouse/shared-core/utils'
-import { fetchRepositoryContents, fetchFileContent } from '@/app/actions/github-actions'
+import { fetchRepositoryContents } from '@/app/actions/github-actions'
+import { FileViewer } from './file-viewer'
 
 interface FileNode {
   name: string
@@ -27,7 +28,7 @@ export function RepositoryBrowser({ owner, repo }: RepositoryBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedFile, setSelectedFile] = useState<{ path: string; content: string } | null>(null)
+  const [selectedFile, setSelectedFile] = useState<{ path: string; name: string } | null>(null)
   const [loadingFile, setLoadingFile] = useState(false)
 
   const loadFiles = async (path = '') => {
@@ -101,13 +102,10 @@ export function RepositoryBrowser({ owner, repo }: RepositoryBrowserProps) {
     }
 
     setLoadingFile(true)
+    setError(null)
     try {
-      const result = await fetchFileContent(owner, repo, file.path)
-      if (result.success && result.content) {
-        setSelectedFile({ path: file.path, content: result.content })
-      } else {
-        setError(result.error || 'Failed to load file content')
-      }
+      // Set selected file - FileViewer will handle loading
+      setSelectedFile({ path: file.path, name: file.name })
     } catch (err: any) {
       setError(err.message || 'Failed to load file')
     } finally {
@@ -212,28 +210,24 @@ export function RepositoryBrowser({ owner, repo }: RepositoryBrowserProps) {
       <Card className="flex flex-col">
         <CardHeader>
           <CardTitle className="text-lg">
-            {selectedFile ? selectedFile.path : 'File Preview'}
+            {selectedFile ? selectedFile.name : 'File Preview'}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden p-0">
-          <div className="h-full overflow-y-auto">
-            <div className="p-4">
-              {loadingFile ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  <div className="text-xs text-muted-foreground">Loading file...</div>
-                </div>
-              ) : selectedFile ? (
-                <pre className="text-sm whitespace-pre-wrap font-mono bg-muted p-4 rounded-lg overflow-auto">
-                  {selectedFile.content}
-                </pre>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  Select a file to view its contents
-                </div>
-              )}
+          {selectedFile ? (
+            <FileViewer
+              owner={owner}
+              repo={repo}
+              filePath={selectedFile.path}
+              fileName={selectedFile.name}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                Select a file to view its contents
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
