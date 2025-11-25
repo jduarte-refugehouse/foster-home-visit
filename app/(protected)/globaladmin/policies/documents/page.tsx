@@ -6,6 +6,8 @@ import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
 import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
 import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
+import { DocumentList } from "@/components/admin/document-list"
+import { SyncDocumentsButton } from "@/components/admin/sync-documents-button"
 
 export default function DocumentsPage() {
   const router = useRouter()
@@ -80,23 +82,16 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">Document Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage policy documents and track revisions
-        </p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Document management functionality will be available here. This will allow you to manage policy 
-            documents, track revisions, view document history, and monitor document status.
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Document Management</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage policy documents and track revisions
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <SyncDocumentsButton userId={user.id} />
+      </div>
+      <DocumentList userId={user.id} />
     </div>
   )
 }
