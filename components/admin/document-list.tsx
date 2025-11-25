@@ -188,20 +188,20 @@ export function DocumentList({ userId }: DocumentListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Documents</CardTitle>
-            <Button size="sm" variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Document
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <div className="flex flex-col gap-4">
+        {/* Tabs and Search */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Documents</CardTitle>
+              <Button size="sm" variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Document
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
             <div className="flex flex-col gap-4">
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="policies" className="flex items-center gap-2">
@@ -236,14 +236,12 @@ export function DocumentList({ userId }: DocumentListProps) {
                 />
               </div>
             </div>
-          </Tabs>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Documents List */}
-      <Card>
-        <CardContent className="p-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {/* Documents List */}
+        <Card>
+          <CardContent className="p-0">
             <TabsContent value={activeTab} className="mt-0">
               {filteredDocuments.length === 0 ? (
                 <div className="p-12 text-center text-muted-foreground">
@@ -254,68 +252,70 @@ export function DocumentList({ userId }: DocumentListProps) {
               ) : (
                 <div className="divide-y">
                   {filteredDocuments.map((doc) => (
-                <div key={doc.document_id} className="p-4 hover:bg-accent/50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <Link 
-                          href={`/globaladmin/policies/documents/${doc.document_id}`}
-                          className="font-medium hover:underline truncate"
-                        >
-                          {doc.document_name}
-                        </Link>
-                        {doc.document_number && (
-                          <Badge variant="outline" className="text-xs">
-                            {doc.document_number}
-                          </Badge>
-                        )}
-                        {getStatusBadge(doc.status)}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <span>{getTypeLabel(doc.document_type)}</span>
-                        {doc.effective_date && (
-                          <span>Effective: {format(new Date(doc.effective_date), 'MMM d, yyyy')}</span>
-                        )}
-                        {doc.next_review_date && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>
-                              Review: {format(new Date(doc.next_review_date), 'MMM d, yyyy')}
-                            </span>
-                            {isReviewOverdue(doc.next_review_date) && (
-                              <Badge variant="destructive" className="ml-1 text-xs">Overdue</Badge>
+                    <div key={doc.document_id} className="p-4 hover:bg-accent/50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Link 
+                              href={`/globaladmin/policies/documents/${doc.document_id}`}
+                              className="font-medium hover:underline truncate"
+                            >
+                              {doc.document_name}
+                            </Link>
+                            {doc.document_number && (
+                              <Badge variant="outline" className="text-xs">
+                                {doc.document_number}
+                              </Badge>
                             )}
-                            {isReviewDueSoon(doc.next_review_date) && (
-                              <Badge variant="outline" className="ml-1 text-xs">Due Soon</Badge>
+                            {getStatusBadge(doc.status)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                            <span>{getTypeLabel(doc.document_type)}</span>
+                            {doc.effective_date && (
+                              <span>Effective: {format(new Date(doc.effective_date), 'MMM d, yyyy')}</span>
+                            )}
+                            {doc.next_review_date && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>
+                                  Review: {format(new Date(doc.next_review_date), 'MMM d, yyyy')}
+                                </span>
+                                {isReviewOverdue(doc.next_review_date) && (
+                                  <Badge variant="destructive" className="ml-1 text-xs">Overdue</Badge>
+                                )}
+                                {isReviewDueSoon(doc.next_review_date) && (
+                                  <Badge variant="outline" className="ml-1 text-xs">Due Soon</Badge>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1 truncate">
-                        {doc.git_path}
+                          <div className="text-xs text-muted-foreground mt-1 truncate">
+                            {doc.git_path}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Link href={`/globaladmin/policies/documents/${doc.document_id}`}>
+                            <Button variant="ghost" size="icon">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          {doc.status === 'active' && (
+                            <Button variant="ghost" size="icon" title="Send for Approval">
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Link href={`/globaladmin/policies/documents/${doc.document_id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      {doc.status === 'active' && (
-                        <Button variant="ghost" size="icon" title="Send for Approval">
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              )}
+            </TabsContent>
+          </CardContent>
+        </Card>
+      </div>
+    </Tabs>
   )
 }
 
