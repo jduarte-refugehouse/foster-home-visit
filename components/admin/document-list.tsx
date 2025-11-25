@@ -5,25 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@refugehouse/shared-co
 import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Input } from '@refugehouse/shared-core/components/ui/input'
 import { Badge } from '@refugehouse/shared-core/components/ui/badge'
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@refugehouse/shared-core/components/ui/select'
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@refugehouse/shared-core/components/ui/tabs'
 import { 
   FileText, 
   Search, 
-  Filter, 
   Plus, 
-  Archive, 
   Clock, 
   CheckCircle, 
   AlertCircle,
   Loader2,
   Eye,
-  Edit
+  Shield,
+  BookOpen,
+  FolderOpen,
+  FileCheck
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -52,24 +52,17 @@ export function DocumentList({ userId }: DocumentListProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<string>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<string>('policies')
 
   useEffect(() => {
     loadDocuments()
-  }, [filterType, filterStatus, filterCategory])
+  }, [])
 
   const loadDocuments = async () => {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams()
-      if (filterType !== 'all') params.append('documentType', filterType)
-      if (filterStatus !== 'all') params.append('status', filterStatus)
-      if (filterCategory !== 'all') params.append('category', filterCategory)
-
-      const response = await fetch(`/api/policies/documents?${params.toString()}`)
+      const response = await fetch('/api/policies/documents')
       if (!response.ok) {
         throw new Error('Failed to fetch documents')
       }
@@ -120,13 +113,54 @@ export function DocumentList({ userId }: DocumentListProps) {
     return daysUntilReview <= 30 && daysUntilReview > 0
   }
 
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = 
-      doc.document_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.document_number && doc.document_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      doc.git_path.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSearch
-  })
+  // Filter documents based on active tab
+  const getFilteredDocuments = (tab: string) => {
+    let filtered = documents
+
+    // Filter by document type based on tab
+    switch (tab) {
+      case 'policies':
+        // Show policies and combined policy-procedures
+        filtered = documents.filter(doc => 
+          doc.document_type === 'policy' || doc.document_type === 'combined'
+        )
+        break
+      case 'procedures':
+        // Show procedures and combined policy-procedures
+        filtered = documents.filter(doc => 
+          doc.document_type === 'procedure' || doc.document_type === 'combined'
+        )
+        break
+      case 'regulatory':
+        filtered = documents.filter(doc => doc.document_type === 'regulatory')
+        break
+      case 'supporting':
+        filtered = documents.filter(doc => 
+          ['guide', 'job-description', 'plan', 'model'].includes(doc.document_type)
+        )
+        break
+      case 'historical':
+        filtered = documents.filter(doc => doc.document_type === 'historical')
+        break
+      default:
+        filtered = documents
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((doc) => {
+        return (
+          doc.document_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (doc.document_number && doc.document_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          doc.git_path.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      })
+    }
+
+    return filtered
+  }
+
+  const filteredDocuments = getFilteredDocuments(activeTab)
 
   if (loading) {
     return (
@@ -222,15 +256,17 @@ export function DocumentList({ userId }: DocumentListProps) {
       {/* Documents List */}
       <Card>
         <CardContent className="p-0">
-          {filteredDocuments.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No documents found</p>
-              {searchQuery && <p className="text-sm mt-2">Try adjusting your search or filters</p>}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {filteredDocuments.map((doc) => (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsContent value={activeTab} className="mt-0">
+              {filteredDocuments.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No documents found</p>
+                  {searchQuery && <p className="text-sm mt-2">Try adjusting your search</p>}
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredDocuments.map((doc) => (
                 <div key={doc.document_id} className="p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
