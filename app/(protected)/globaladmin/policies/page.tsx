@@ -1,18 +1,18 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
 import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
 import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
-import { Users, Settings, Globe, Shield, Database, FolderGit } from "lucide-react"
+import { FolderGit, Search, Shield, FileText, BookOpen, CheckCircle } from "lucide-react"
 import Link from "next/link"
 
-export default function GlobalAdminDashboard() {
+export default function PoliciesPage() {
   const router = useRouter()
   const { user, isLoaded } = useUser()
-  const { hasAccess: hasDatabaseAccess, userInfo, isLoading: checkingAccess } = useDatabaseAccess()
+  const { hasAccess: hasDatabaseAccess, isLoading: checkingAccess } = useDatabaseAccess()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
 
   // Get user headers for API calls (from Clerk user)
@@ -99,78 +99,92 @@ export default function GlobalAdminDashboard() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Domain Administration</h1>
+        <h1 className="text-3xl font-bold">Policy Management</h1>
         <p className="text-muted-foreground mt-2">
-          Manage users, microservices, and domain configuration across the platform
+          Manage policies, procedures, and regulatory documentation for Refuge House
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link href="/globaladmin/users">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Admin
-              </CardTitle>
-              <CardDescription>
-                Manage users across all microservices, including roles and permissions
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link href="/globaladmin/microservices">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Microservice Configuration
-              </CardTitle>
-              <CardDescription>
-                Configure microservices, navigation items, and service settings
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link href="/globaladmin/domains">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Domain Admin
-              </CardTitle>
-              <CardDescription>
-                Manage domain-level settings and cross-microservice configuration
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link href="/diagnostics">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Diagnostics
-              </CardTitle>
-              <CardDescription>
-                View system health, database connection status, and configuration details
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        <Link href="/globaladmin/policies">
+        <Link href="/globaladmin/policies/repository">
           <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FolderGit className="h-5 w-5" />
-                Policy Management
+                Repository Browser
               </CardTitle>
               <CardDescription>
-                Manage policies, procedures, and regulatory documentation
+                Browse and view files from the policies and procedures repository
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies/search">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Policy Search
+              </CardTitle>
+              <CardDescription>
+                Search policies, procedures, and regulatory documents by keyword or topic
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies/compliance">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Compliance Checking
+              </CardTitle>
+              <CardDescription>
+                Verify feature implementations against policy requirements and regulatory standards
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies/documents">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Document Management
+              </CardTitle>
+              <CardDescription>
+                Manage policy documents, track revisions, and view document history
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies/references">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Regulatory References
+              </CardTitle>
+              <CardDescription>
+                Access T3C Blueprint, TAC Chapter 749, and RCC Contract documentation
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies/validation">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Policy Validation
+              </CardTitle>
+              <CardDescription>
+                Validate policy documents for completeness and regulatory alignment
               </CardDescription>
             </CardHeader>
           </Card>
@@ -179,15 +193,13 @@ export default function GlobalAdminDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            System Overview
-          </CardTitle>
+          <CardTitle>Policy Management Overview</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Welcome to the Refuge House Microservice Domain Administration portal.
-            Use the cards above to access different administration areas.
+            The Policy Management section provides comprehensive tools for managing Refuge House policies, 
+            procedures, and regulatory documentation. Use the tools above to browse, search, validate, and 
+            ensure compliance with all organizational and regulatory requirements.
           </p>
         </CardContent>
       </Card>
