@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import rehypeHighlight from 'rehype-highlight'
 import { Card, CardContent, CardHeader, CardTitle } from '@refugehouse/shared-core/components/ui/card'
 import { Button } from '@refugehouse/shared-core/components/ui/button'
 import { Loader2, Download, FileText, File, AlertCircle } from 'lucide-react'
