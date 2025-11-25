@@ -10,9 +10,23 @@ export async function POST(request: NextRequest) {
     const pool = await getConnection()
 
     // Delete in order to respect foreign key constraints
-    await pool.request().query('DELETE FROM policy_document_approvals')
-    await pool.request().query('DELETE FROM policy_document_versions')
-    await pool.request().query('DELETE FROM policy_documents')
+    // Use TRUNCATE if possible (faster, but requires ALTER permission)
+    // Otherwise use DELETE
+    try {
+      // Try TRUNCATE first (requires ALTER permission, but is faster)
+      await pool.request().query('TRUNCATE TABLE policy_document_approvals')
+      await pool.request().query('TRUNCATE TABLE policy_document_versions')
+      await pool.request().query('TRUNCATE TABLE policy_documents')
+    } catch (truncateError: any) {
+      // If TRUNCATE fails (no permission), fall back to DELETE
+      if (truncateError.message?.includes('permission') || truncateError.message?.includes('denied')) {
+        await pool.request().query('DELETE FROM policy_document_approvals')
+        await pool.request().query('DELETE FROM policy_document_versions')
+        await pool.request().query('DELETE FROM policy_documents')
+      } else {
+        throw truncateError
+      }
+    }
 
     // Get counts to verify
     const counts = await pool.request().query(`
