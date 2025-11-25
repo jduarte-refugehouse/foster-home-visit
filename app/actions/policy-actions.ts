@@ -58,13 +58,48 @@ export async function syncDocumentFromGit(
     const pool = await getConnection()
     
     // Extract metadata from document header
-    const documentNumberMatch = content.match(/\*\*POLICY NUMBER\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([A-Z0-9-]+)/i) ||
-                               content.match(/POLICY NUMBER.*?([A-Z0-9-]+)/i)
-    const documentNumber = documentNumberMatch ? documentNumberMatch[1].trim() : null
+    // Try multiple patterns for document number
+    let documentNumber: string | null = null
+    const numberPatterns = [
+      /\*\*POLICY NUMBER\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([A-Z0-9-]+)/i,
+      /POLICY NUMBER.*?\|.*?\|.*?\n.*?\|.*?\|.*?([A-Z0-9-]+)/i,
+      /POLICY NUMBER[:\s]+([A-Z0-9-]+)/i,
+      /FC[-\s]?([A-Z0-9-]+)/i,
+    ]
+    for (const pattern of numberPatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        documentNumber = match[1].trim()
+        break
+      }
+    }
     
-    const documentNameMatch = content.match(/\*\*POLICY NAME\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([^\n|]+)/i) ||
-                                content.match(/#\s+([^\n]+)/)
-    const documentName = documentNameMatch ? documentNameMatch[1].trim() : 'Unknown Document'
+    // Try multiple patterns for document name
+    let documentName: string = 'Unknown Document'
+    const namePatterns = [
+      /\*\*POLICY NAME\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([^\n|]+)/i,
+      /POLICY NAME.*?\|.*?\|.*?\n.*?\|.*?\|.*?([^\n|]+)/i,
+      /^#\s+([^\n]+)/m,  // First H1 heading
+      /^##\s+([^\n]+)/m, // First H2 heading
+    ]
+    for (const pattern of namePatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        const candidate = match[1].trim()
+        // Filter out obviously bad matches (too short, contains only special chars, etc.)
+        if (candidate.length > 3 && !/^[^a-zA-Z0-9]+$/.test(candidate)) {
+          documentName = candidate
+          break
+        }
+      }
+    }
+    
+    // Fallback: use filename if we couldn't extract a good name
+    if (documentName === 'Unknown Document' || documentName.length < 3) {
+      const fileName = gitPath.split('/').pop() || 'Unknown Document'
+      // Remove extension and clean up
+      documentName = fileName.replace(/\.(md|markdown|pdf|docx|html)$/i, '').replace(/[-_]/g, ' ')
+    }
     
     // Determine document type from path
     let documentType: DocumentMetadata['documentType'] = 'policy'
@@ -102,10 +137,22 @@ export async function syncDocumentFromGit(
       category = 'supporting'
     }
     
-    // Extract effective date
-    const effectiveDateMatch = content.match(/\*\*EFFECTIVE DATE\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([^\n|]+)/i) ||
-                            content.match(/EFFECTIVE DATE.*?([0-9\/]+)/i)
-    const effectiveDate = effectiveDateMatch ? effectiveDateMatch[1].trim() : null
+    // Extract effective date - skip for binary files (DOCX, PDF)
+    let effectiveDate: string | null = null
+    if (!gitPath.toLowerCase().endsWith('.docx') && !gitPath.toLowerCase().endsWith('.pdf')) {
+      const datePatterns = [
+        /\*\*EFFECTIVE DATE\*\*.*?\|.*?\|.*?\n.*?\|.*?\|.*?([0-9\/\-]+)/i,
+        /EFFECTIVE DATE.*?\|.*?\|.*?\n.*?\|.*?\|.*?([0-9\/\-]+)/i,
+        /EFFECTIVE DATE[:\s]+([0-9\/\-]+)/i,
+      ]
+      for (const pattern of datePatterns) {
+        const match = content.match(pattern)
+        if (match && match[1]) {
+          effectiveDate = match[1].trim()
+          break
+        }
+      }
+    }
     
     // Check if document already exists
     const existingDoc = await pool.request()

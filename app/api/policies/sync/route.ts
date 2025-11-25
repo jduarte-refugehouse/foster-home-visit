@@ -25,7 +25,8 @@ async function findAllDocuments(
     for (const item of result.items) {
       if (item.type === 'file') {
         const extension = item.name.toLowerCase().split('.').pop()
-        if (['md', 'markdown', 'pdf', 'docx', 'html'].includes(extension || '')) {
+        // Only sync markdown and HTML files for now - DOCX/PDF need special handling
+        if (['md', 'markdown', 'html'].includes(extension || '')) {
           documents.push({ path: item.path, name: item.name })
         }
       } else if (item.type === 'dir') {
@@ -75,6 +76,13 @@ export async function POST(request: NextRequest) {
     for (const doc of allDocuments) {
       try {
         // Fetch file content to extract metadata
+        // Skip binary files - they'll need special handling later
+        const extension = doc.path.toLowerCase().split('.').pop()
+        if (['docx', 'pdf'].includes(extension || '')) {
+          // For now, skip binary files - we can add support later
+          continue
+        }
+        
         const fileResult = await fetchFileContent(owner, repo, doc.path)
         
         if (!fileResult.success || !fileResult.content) {
