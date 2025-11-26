@@ -67,7 +67,7 @@ export function DocumentMetadataEditor({ documentId, document, onSave }: Documen
   const [t3cPackages, setT3cPackages] = useState<string[]>(
     document.t3c_packages ? JSON.parse(document.t3c_packages) : []
   )
-  const [domain, setDomain] = useState(document.domain || '')
+  const [domain, setDomain] = useState(document.domain || '__none__')
   const [tags, setTags] = useState<string[]>(
     document.tags ? JSON.parse(document.tags) : []
   )
@@ -107,7 +107,7 @@ export function DocumentMetadataEditor({ documentId, document, onSave }: Documen
           documentName,
           documentNumber: documentNumber || null,
           t3cPackages: t3cPackages.length > 0 ? t3cPackages : null,
-          domain: domain || null,
+          domain: domain === '__none__' ? null : domain || null,
           tags: tags.length > 0 ? tags : null,
         }),
       })
@@ -171,7 +171,7 @@ export function DocumentMetadataEditor({ documentId, document, onSave }: Documen
               <SelectValue placeholder="Select domain" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value="__none__">None</SelectItem>
               {DOMAINS.map((d) => (
                 <SelectItem key={d} value={d}>
                   {d}
