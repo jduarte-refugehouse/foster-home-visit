@@ -8,7 +8,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight'
 import { Card, CardContent, CardHeader, CardTitle } from '@refugehouse/shared-core/components/ui/card'
 import { Button } from '@refugehouse/shared-core/components/ui/button'
-import { Loader2, Download, FileText, File, AlertCircle } from 'lucide-react'
+import { Loader2, Download, FileText, File, AlertCircle, Printer, FileDown } from 'lucide-react'
 import { cn } from '@refugehouse/shared-core/utils'
 import mammoth from 'mammoth'
 import 'highlight.js/styles/github.css'
@@ -120,6 +120,54 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
     window.open(url, '_blank')
   }
 
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const handleExportPDF = async () => {
+    if (fileType !== 'markdown' || !content) return
+    
+    try {
+      // Dynamically import html2pdf.js to avoid SSR issues
+      const html2pdf = (await import('html2pdf.js')).default
+      
+      // Get the markdown content element
+      const element = document.querySelector('.markdown-content-wrapper')
+      if (!element) {
+        alert('Could not find content to export. Please try again.')
+        return
+      }
+
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: `${fileName.replace(/\.(md|markdown)$/i, '')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          logging: false,
+          letterRendering: true
+        },
+        jsPDF: { 
+          unit: 'in', 
+          format: 'letter', 
+          orientation: 'portrait' 
+        },
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy'],
+          before: '.page-break-before',
+          after: '.page-break-after',
+          avoid: ['table', 'tr', 'h1', 'h2', 'h3']
+        }
+      }
+
+      await html2pdf().set(opt).from(element).save()
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      alert('Failed to export PDF. Please try printing instead.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -216,35 +264,111 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
   // Markdown Viewer with react-markdown
   if (fileType === 'markdown' && content) {
     return (
-      <div className="h-full overflow-y-auto">
-        <div className="p-6 print:p-8">
-          <article className="prose prose-slate dark:prose-invert max-w-none 
-            prose-headings:font-bold 
-            prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-6
-            prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-5
-            prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
-            prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-3
-            prose-p:my-4 prose-p:leading-relaxed
-            prose-ul:my-4 prose-ol:my-4
-            prose-li:my-2 prose-li:leading-relaxed
-            prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-[''] prose-code:after:content-['']
-            prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
-            prose-a:text-primary prose-a:underline prose-a:font-medium hover:prose-a:text-primary/80
-            prose-strong:font-semibold prose-strong:text-foreground
-            prose-em:italic
-            prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-4
-            prose-table:w-full prose-table:my-4 prose-table:border-collapse
-            prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-2 prose-th:font-semibold prose-th:text-left
-            prose-td:border prose-td:border-border prose-td:p-2
-            prose-hr:my-8 prose-hr:border-t prose-hr:border-border
-            print:prose-sm print:prose-headings:break-inside-avoid print:prose-p:break-inside-avoid">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeHighlight]}
-            >
-              {content}
-            </ReactMarkdown>
-          </article>
+      <div className="h-full flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-muted-foreground" />
+            <span className="text-sm font-medium">{fileName}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={handlePrint} variant="outline" size="sm">
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </Button>
+            <Button onClick={handleExportPDF} variant="outline" size="sm">
+              <FileDown className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button onClick={handleDownload} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 print:p-8 markdown-content-wrapper">
+            <article className="prose prose-slate dark:prose-invert max-w-none 
+              prose-headings:font-bold prose-headings:text-foreground
+              prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8 prose-h1:border-b prose-h1:border-border prose-h1:pb-2
+              prose-h2:text-2xl prose-h2:mb-4 prose-h2:mt-6 prose-h2:border-b prose-h2:border-border prose-h2:pb-1
+              prose-h3:text-xl prose-h3:mb-3 prose-h3:mt-5
+              prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4
+              prose-h5:text-base prose-h5:mb-2 prose-h5:mt-3
+              prose-h6:text-sm prose-h6:mb-2 prose-h6:mt-2
+              prose-p:my-4 prose-p:leading-relaxed prose-p:text-foreground prose-p:text-base
+              prose-ul:my-4 prose-ol:my-4 prose-ul:pl-6 prose-ol:pl-6
+              prose-li:my-2 prose-li:leading-relaxed prose-li:text-foreground
+              prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:before:content-[''] prose-code:after:content-['']
+              prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:border prose-pre:border-border
+              prose-a:text-primary prose-a:underline prose-a:font-medium hover:prose-a:text-primary/80
+              prose-strong:font-semibold prose-strong:text-foreground
+              prose-em:italic prose-em:text-foreground
+              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-4 prose-blockquote:bg-muted/50 prose-blockquote:py-2
+              prose-table:w-full prose-table:my-6 prose-table:border-collapse prose-table:border prose-table:border-border
+              prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-3 prose-th:font-semibold prose-th:text-left prose-th:text-foreground prose-th:align-top
+              prose-td:border prose-td:border-border prose-td:p-3 prose-td:text-foreground prose-td:align-top
+              prose-thead:border-b-2 prose-thead:border-border
+              prose-tbody:prose-tr:border-b prose-tbody:prose-tr:border-border
+              prose-hr:my-8 prose-hr:border-t-2 prose-hr:border-border
+              prose-img:rounded-lg prose-img:my-4 prose-img:border prose-img:border-border
+              print:prose-sm print:prose-headings:break-inside-avoid print:prose-p:break-inside-avoid print:prose-table:break-inside-avoid">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                components={{
+                  table: ({ children, ...props }) => (
+                    <div className="overflow-x-auto my-6">
+                      <table className="w-full border-collapse border border-border" {...props}>
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children, ...props }) => (
+                    <thead className="border-b-2 border-border bg-muted" {...props}>
+                      {children}
+                    </thead>
+                  ),
+                  tbody: ({ children, ...props }) => (
+                    <tbody {...props}>
+                      {children}
+                    </tbody>
+                  ),
+                  tr: ({ children, ...props }) => (
+                    <tr className="border-b border-border hover:bg-muted/50 transition-colors" {...props}>
+                      {children}
+                    </tr>
+                  ),
+                  th: ({ children, ...props }) => (
+                    <th className="border border-border bg-muted p-3 font-semibold text-left align-top" {...props}>
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children, ...props }) => (
+                    <td className="border border-border p-3 align-top" {...props}>
+                      {children}
+                    </td>
+                  ),
+                  h1: ({ children, ...props }) => (
+                    <h1 className="text-3xl font-bold mb-6 mt-8 border-b border-border pb-2" {...props}>
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ children, ...props }) => (
+                    <h2 className="text-2xl font-bold mb-4 mt-6 border-b border-border pb-1" {...props}>
+                      {children}
+                    </h2>
+                  ),
+                  p: ({ children, ...props }) => (
+                    <p className="my-4 leading-relaxed text-base" {...props}>
+                      {children}
+                    </p>
+                  ),
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </article>
+          </div>
         </div>
       </div>
     )
