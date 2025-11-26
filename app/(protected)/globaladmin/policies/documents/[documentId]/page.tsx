@@ -337,7 +337,7 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
 
-        <Card>
+          <Card>
           <CardHeader>
             <CardTitle className="text-lg">Review Information</CardTitle>
           </CardHeader>
@@ -368,7 +368,8 @@ export default function DocumentDetailsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Document Content */}
       <Card className="flex flex-col" style={{ height: 'calc(100vh - 24rem)' }}>
