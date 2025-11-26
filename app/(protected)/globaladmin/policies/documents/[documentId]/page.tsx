@@ -10,6 +10,7 @@ import { AccountRegistrationRequired } from "@refugehouse/shared-core/components
 import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
 import { VersionHistory } from "@/components/admin/version-history"
 import { FileViewer } from "@/components/admin/file-viewer"
+import { DocumentMetadataEditor } from "@/components/admin/document-metadata-editor"
 import { 
   Loader2, 
   ArrowLeft, 
@@ -19,7 +20,6 @@ import {
   FileText,
   Edit
 } from "lucide-react"
-import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { format } from "date-fns"
 import Link from "next/link"
 
