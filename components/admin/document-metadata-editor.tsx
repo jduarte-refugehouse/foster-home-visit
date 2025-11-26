@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@refugehouse/shared-core/components/ui/select'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Pencil } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface DocumentMetadataEditorProps {
@@ -138,7 +138,7 @@ export function DocumentMetadataEditor({ documentId, document, onSave }: Documen
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <Edit className="w-5 h-5" />
+          <Pencil className="w-5 h-5" />
           Edit Metadata
         </CardTitle>
       </CardHeader>

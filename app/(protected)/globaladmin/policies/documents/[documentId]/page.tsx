@@ -58,7 +58,8 @@ export default function DocumentDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditor, setShowEditor] = useState(false)
-  const [metadataExpanded, setMetadataExpanded] = useState(false)
+  const [documentInfoExpanded, setDocumentInfoExpanded] = useState(false) // Default to collapsed
+  const [reviewInfoExpanded, setReviewInfoExpanded] = useState(false) // Default to collapsed
   const [copyingContent, setCopyingContent] = useState(false)
   const { toast } = useToast()
 
@@ -307,22 +308,23 @@ export default function DocumentDetailsPage() {
           }}
         />
       ) : (
-        <div 
-          className="relative"
-          onMouseEnter={() => setMetadataExpanded(true)}
-          onMouseLeave={() => setMetadataExpanded(false)}
-        >
-          <div className={`grid gap-4 md:grid-cols-2 transition-all duration-200 ${metadataExpanded ? 'opacity-100' : 'opacity-60'}`}>
-            <Card className={metadataExpanded ? 'shadow-md' : ''}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center justify-between">
-                  Document Information
-                  {metadataExpanded && (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-            <CardContent className="space-y-3">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader 
+              className="cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => setDocumentInfoExpanded(!documentInfoExpanded)}
+            >
+              <CardTitle className="text-lg flex items-center justify-between">
+                Document Information
+                {documentInfoExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            {documentInfoExpanded && (
+              <CardContent className="space-y-3">
               <div>
                 <div className="text-sm text-muted-foreground">Name</div>
                 <div className="font-medium">{document.document_name}</div>
@@ -377,19 +379,26 @@ export default function DocumentDetailsPage() {
                 <div className="text-sm text-muted-foreground">Path</div>
                 <div className="font-mono text-sm break-all">{document.git_path}</div>
               </div>
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
 
-          <Card className={metadataExpanded ? 'shadow-md' : ''}>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center justify-between">
-              Review Information
-              {metadataExpanded && (
-                <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <Card>
+            <CardHeader 
+              className="cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => setReviewInfoExpanded(!reviewInfoExpanded)}
+            >
+              <CardTitle className="text-lg flex items-center justify-between">
+                Review Information
+                {reviewInfoExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            {reviewInfoExpanded && (
+              <CardContent className="space-y-3">
             {document.next_review_date ? (
               <>
                 <div>
@@ -414,9 +423,9 @@ export default function DocumentDetailsPage() {
             ) : (
               <div className="text-sm text-muted-foreground">No review date set</div>
             )}
-          </CardContent>
-        </Card>
-          </div>
+              </CardContent>
+            )}
+          </Card>
         </div>
       )}
 
