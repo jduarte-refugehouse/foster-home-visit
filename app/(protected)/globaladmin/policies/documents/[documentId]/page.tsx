@@ -16,8 +16,10 @@ import {
   CheckCircle, 
   Clock, 
   AlertCircle,
-  FileText
+  FileText,
+  Edit
 } from "lucide-react"
+import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { format } from "date-fns"
 import Link from "next/link"
 
@@ -33,6 +35,9 @@ interface Document {
   effective_date: string | null
   next_review_date: string | null
   review_frequency_months: number | null
+  t3c_packages: string | null // JSON string
+  domain: string | null
+  tags: string | null // JSON string
   created_at: string
   updated_at: string
   created_by_user_id: string | null
@@ -48,6 +53,7 @@ export default function DocumentDetailsPage() {
   const [document, setDocument] = useState<Document | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showEditor, setShowEditor] = useState(false)
 
   const getUserHeaders = (): HeadersInit => {
     if (!user) {
@@ -243,41 +249,93 @@ export default function DocumentDetailsPage() {
             </div>
           </div>
         </div>
-        {document.status === 'active' && (
-          <Button onClick={handleRequestApproval} variant="outline">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            {getApprovalButtonLabel(document.document_type)}
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowEditor(!showEditor)} variant="outline">
+            <Edit className="w-4 h-4 mr-2" />
+            Edit Metadata
           </Button>
-        )}
+          {document.status === 'active' && (
+            <Button onClick={handleRequestApproval} variant="outline">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {getApprovalButtonLabel(document.document_type)}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Metadata */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Document Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <div className="text-sm text-muted-foreground">Type</div>
-              <div className="font-medium">{document.document_type}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Category</div>
-              <div className="font-medium">{document.category}</div>
-            </div>
-            {document.effective_date && (
+      {/* Metadata Editor or Display */}
+      {showEditor ? (
+        <DocumentMetadataEditor
+          documentId={documentId}
+          document={document}
+          onSave={() => {
+            setShowEditor(false)
+            loadDocument()
+          }}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Document Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <div>
-                <div className="text-sm text-muted-foreground">Effective Date</div>
-                <div className="font-medium">{format(new Date(document.effective_date), 'MMM d, yyyy')}</div>
+                <div className="text-sm text-muted-foreground">Name</div>
+                <div className="font-medium">{document.document_name}</div>
               </div>
-            )}
-            <div>
-              <div className="text-sm text-muted-foreground">Path</div>
-              <div className="font-mono text-sm">{document.git_path}</div>
-            </div>
-          </CardContent>
-        </Card>
+              {document.document_number && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Number</div>
+                  <div className="font-medium">{document.document_number}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-sm text-muted-foreground">Type</div>
+                <div className="font-medium">{document.document_type}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Category</div>
+                <div className="font-medium">{document.category}</div>
+              </div>
+              {document.domain && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Domain</div>
+                  <div className="font-medium">{document.domain}</div>
+                </div>
+              )}
+              {document.t3c_packages && (
+                <div>
+                  <div className="text-sm text-muted-foreground">T3C Packages</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {JSON.parse(document.t3c_packages).map((pkg: string, idx: number) => (
+                      <Badge key={idx} variant="outline" className="text-xs">{pkg}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {document.tags && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Tags</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {JSON.parse(document.tags).map((tag: string, idx: number) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {document.effective_date && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Effective Date</div>
+                  <div className="font-medium">{format(new Date(document.effective_date), 'MMM d, yyyy')}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-sm text-muted-foreground">Path</div>
+                <div className="font-mono text-sm break-all">{document.git_path}</div>
+              </div>
+            </CardContent>
+          </Card>
 
         <Card>
           <CardHeader>

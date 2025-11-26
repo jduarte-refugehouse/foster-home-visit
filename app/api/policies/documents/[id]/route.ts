@@ -29,6 +29,9 @@ export async function GET(
           effective_date,
           next_review_date,
           review_frequency_months,
+          t3c_packages,
+          domain,
+          tags,
           created_at,
           updated_at,
           created_by_user_id
@@ -61,6 +64,16 @@ export async function PUT(
     const updates: string[] = []
     const request = pool.request().input('documentId', documentId)
 
+    if (body.documentName) {
+      updates.push('document_name = @documentName')
+      request.input('documentName', body.documentName)
+    }
+
+    if (body.documentNumber !== undefined) {
+      updates.push('document_number = @documentNumber')
+      request.input('documentNumber', body.documentNumber || null)
+    }
+
     if (body.status) {
       updates.push('status = @status')
       request.input('status', body.status)
@@ -74,6 +87,21 @@ export async function PUT(
     if (body.reviewFrequencyMonths !== undefined) {
       updates.push('review_frequency_months = @reviewFrequencyMonths')
       request.input('reviewFrequencyMonths', body.reviewFrequencyMonths)
+    }
+
+    if (body.t3cPackages !== undefined) {
+      updates.push('t3c_packages = @t3cPackages')
+      request.input('t3cPackages', body.t3cPackages ? JSON.stringify(body.t3cPackages) : null)
+    }
+
+    if (body.domain !== undefined) {
+      updates.push('domain = @domain')
+      request.input('domain', body.domain || null)
+    }
+
+    if (body.tags !== undefined) {
+      updates.push('tags = @tags')
+      request.input('tags', body.tags ? JSON.stringify(body.tags) : null)
     }
 
     if (updates.length === 0) {

@@ -9,12 +9,15 @@ CREATE TABLE [dbo].[policy_documents] (
     [document_name] NVARCHAR(500) NOT NULL,
     [document_type] NVARCHAR(50) NOT NULL, -- 'policy', 'procedure', 'combined', 'package-specific', 'regulatory', 'guide', 'job-description', 'plan', 'model', 'historical'
     [category] NVARCHAR(100) NOT NULL, -- 'operational', 'regulatory-reference', 'historical', 'supporting'
-    [git_path] NVARCHAR(1000) NOT NULL, -- Full path in repository (relative to submodule root)
+    [git_path] NVARCHAR(1000) NOT NULL, -- Full path in repository (relative to submodule root) - THIS IS THE PRIMARY LINK
     [git_sha] NVARCHAR(40) NULL, -- Current Git commit SHA
     [status] NVARCHAR(50) NOT NULL DEFAULT 'active', -- 'active', 'draft', 'pending-approval', 'archived'
     [effective_date] DATE NULL,
     [next_review_date] DATE NULL, -- For compliance tracking
     [review_frequency_months] INT NULL DEFAULT 12, -- Default review schedule in months
+    [t3c_packages] NVARCHAR(MAX) NULL, -- JSON array of applicable T3C packages (e.g., ["T3C Basic", "Mental & Behavioral Health", "IDD/Autism"])
+    [domain] NVARCHAR(100) NULL, -- Functional domain (e.g., "Intake", "Discharge", "Service Planning", "Direct Care")
+    [tags] NVARCHAR(MAX) NULL, -- JSON array of tags for flexible categorization
     [created_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
     [updated_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
     [created_by_user_id] NVARCHAR(255) NULL,

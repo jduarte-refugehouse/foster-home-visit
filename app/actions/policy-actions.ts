@@ -11,6 +11,9 @@ interface DocumentMetadata {
   gitSha?: string
   effectiveDate?: string
   reviewFrequencyMonths?: number
+  t3cPackages?: string[] // Array of T3C package names
+  domain?: string // Functional domain
+  tags?: string[] // Array of tags
 }
 
 interface DocumentVersion {
@@ -153,6 +156,65 @@ export async function syncDocumentFromGit(
         }
       }
     }
+
+    // Extract T3C packages from document content
+    const t3cPackages: string[] = []
+    const packagePatterns = [
+      /T3C Basic/i,
+      /Mental & Behavioral Health/i,
+      /IDD.*Autism|Autism.*IDD|Intellectual.*Developmental.*Disability/i,
+      /Substance Use/i,
+      /Short-Term Assessment/i,
+      /Sexual Aggression|Sex Offender/i,
+      /Complex Medical|Medically Fragile/i,
+      /Human Trafficking/i,
+      /Treatment Foster Family Care/i,
+      /Transition Support/i,
+      /Kinship Caregiver/i,
+      /Pregnant.*Parenting/i,
+    ]
+    
+    for (const pattern of packagePatterns) {
+      if (pattern.test(content)) {
+        // Map patterns to standard names
+        if (pattern.source.includes('Basic')) t3cPackages.push('T3C Basic')
+        else if (pattern.source.includes('Mental')) t3cPackages.push('Mental & Behavioral Health')
+        else if (pattern.source.includes('IDD') || pattern.source.includes('Autism')) t3cPackages.push('IDD/Autism')
+        else if (pattern.source.includes('Substance')) t3cPackages.push('Substance Use')
+        else if (pattern.source.includes('Short-Term')) t3cPackages.push('Short-Term Assessment')
+        else if (pattern.source.includes('Sexual') || pattern.source.includes('Sex Offender')) t3cPackages.push('Sexual Aggression/Sex Offender')
+        else if (pattern.source.includes('Medical') || pattern.source.includes('Fragile')) t3cPackages.push('Complex Medical Needs')
+        else if (pattern.source.includes('Trafficking')) t3cPackages.push('Human Trafficking')
+        else if (pattern.source.includes('Treatment')) t3cPackages.push('T3C Treatment Foster Family Care')
+        else if (pattern.source.includes('Transition')) t3cPackages.push('Transition Support Services')
+        else if (pattern.source.includes('Kinship')) t3cPackages.push('Kinship Caregiver Support')
+        else if (pattern.source.includes('Pregnant') || pattern.source.includes('Parenting')) t3cPackages.push('Pregnant & Parenting Youth')
+      }
+    }
+
+    // Extract domain from document number or content
+    // Common domains: Intake, Discharge, Service Planning, Direct Care, Credentialing, etc.
+    let domain: string | null = null
+    const domainPatterns = [
+      { pattern: /FC2-01|Admission|Intake/i, domain: 'Intake' },
+      { pattern: /FC14-01|Discharge|Permanency/i, domain: 'Discharge' },
+      { pattern: /FC3-01|Service Planning|Individual Service/i, domain: 'Service Planning' },
+      { pattern: /FC-T3C-01|Basic.*Support|Direct Care/i, domain: 'Direct Care' },
+      { pattern: /Credentialing|Re-credentialing/i, domain: 'Credentialing' },
+      { pattern: /Recruitment|Retention/i, domain: 'Recruitment & Retention' },
+      { pattern: /Home Study|Home Studies/i, domain: 'Home Studies' },
+      { pattern: /Family.*Connection|Family.*Engagement/i, domain: 'Family Engagement' },
+      { pattern: /Health.*Care|Physical.*Mental/i, domain: 'Health Care' },
+      { pattern: /Aftercare/i, domain: 'Aftercare' },
+      { pattern: /Crisis.*Management/i, domain: 'Crisis Management' },
+    ]
+    
+    for (const { pattern, domain: domainName } of domainPatterns) {
+      if (pattern.test(content) || pattern.test(gitPath)) {
+        domain = domainName
+        break
+      }
+    }
     
     // Check if document already exists
     const existingDoc = await pool.request()
@@ -162,12 +224,18 @@ export async function syncDocumentFromGit(
     if (existingDoc.recordset.length > 0) {
       // Update existing document
       const docId = existingDoc.recordset[0].document_id
+      const t3cPackagesJson = t3cPackages.length > 0 ? JSON.stringify(t3cPackages) : null
+      const tagsJson = null // Tags will be manually added, not extracted
+      
       await pool.request()
         .input('documentId', docId)
         .input('gitSha', gitSha)
         .input('documentNumber', documentNumber)
         .input('documentName', documentName)
         .input('effectiveDate', effectiveDate ? new Date(effectiveDate) : null)
+        .input('t3cPackages', t3cPackagesJson)
+        .input('domain', domain)
+        .input('tags', tagsJson)
         .input('updatedAt', new Date())
         .query(`
           UPDATE policy_documents 
@@ -175,6 +243,9 @@ export async function syncDocumentFromGit(
               document_number = COALESCE(@documentNumber, document_number),
               document_name = COALESCE(@documentName, document_name),
               effective_date = COALESCE(@effectiveDate, effective_date),
+              t3c_packages = COALESCE(@t3cPackages, t3c_packages),
+              domain = COALESCE(@domain, domain),
+              tags = COALESCE(@tags, tags),
               updated_at = @updatedAt
           WHERE document_id = @documentId
         `)
@@ -182,6 +253,9 @@ export async function syncDocumentFromGit(
       return { success: true, documentId: docId, action: 'updated' }
     } else {
       // Create new document
+      const t3cPackagesJson = t3cPackages.length > 0 ? JSON.stringify(t3cPackages) : null
+      const tagsJson = null // Tags will be manually added, not extracted
+      
       const result = await pool.request()
         .input('documentNumber', documentNumber)
         .input('documentName', documentName)
@@ -191,14 +265,17 @@ export async function syncDocumentFromGit(
         .input('gitSha', gitSha)
         .input('effectiveDate', effectiveDate ? new Date(effectiveDate) : null)
         .input('reviewFrequencyMonths', 12)
+        .input('t3cPackages', t3cPackagesJson)
+        .input('domain', domain)
+        .input('tags', tagsJson)
         .input('createdByUserId', userId)
         .query(`
           INSERT INTO policy_documents 
           (document_number, document_name, document_type, category, git_path, git_sha, 
-           effective_date, review_frequency_months, created_by_user_id)
+           effective_date, review_frequency_months, t3c_packages, domain, tags, created_by_user_id)
           OUTPUT INSERTED.document_id
           VALUES (@documentNumber, @documentName, @documentType, @category, @gitPath, @gitSha,
-                  @effectiveDate, @reviewFrequencyMonths, @createdByUserId)
+                  @effectiveDate, @reviewFrequencyMonths, @t3cPackages, @domain, @tags, @createdByUserId)
         `)
       
       const docId = result.recordset[0].document_id
