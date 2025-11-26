@@ -62,46 +62,46 @@ export async function PUT(
 
     // Build update query dynamically based on provided fields
     const updates: string[] = []
-    const request = pool.request().input('documentId', documentId)
+    const dbRequest = pool.request().input('documentId', documentId)
 
     if (body.documentName) {
       updates.push('document_name = @documentName')
-      request.input('documentName', body.documentName)
+      dbRequest.input('documentName', body.documentName)
     }
 
     if (body.documentNumber !== undefined) {
       updates.push('document_number = @documentNumber')
-      request.input('documentNumber', body.documentNumber || null)
+      dbRequest.input('documentNumber', body.documentNumber || null)
     }
 
     if (body.status) {
       updates.push('status = @status')
-      request.input('status', body.status)
+      dbRequest.input('status', body.status)
     }
 
     if (body.nextReviewDate) {
       updates.push('next_review_date = @nextReviewDate')
-      request.input('nextReviewDate', new Date(body.nextReviewDate))
+      dbRequest.input('nextReviewDate', new Date(body.nextReviewDate))
     }
 
     if (body.reviewFrequencyMonths !== undefined) {
       updates.push('review_frequency_months = @reviewFrequencyMonths')
-      request.input('reviewFrequencyMonths', body.reviewFrequencyMonths)
+      dbRequest.input('reviewFrequencyMonths', body.reviewFrequencyMonths)
     }
 
     if (body.t3cPackages !== undefined) {
       updates.push('t3c_packages = @t3cPackages')
-      request.input('t3cPackages', body.t3cPackages ? JSON.stringify(body.t3cPackages) : null)
+      dbRequest.input('t3cPackages', body.t3cPackages ? JSON.stringify(body.t3cPackages) : null)
     }
 
     if (body.domain !== undefined) {
       updates.push('domain = @domain')
-      request.input('domain', body.domain || null)
+      dbRequest.input('domain', body.domain || null)
     }
 
     if (body.tags !== undefined) {
       updates.push('tags = @tags')
-      request.input('tags', body.tags ? JSON.stringify(body.tags) : null)
+      dbRequest.input('tags', body.tags ? JSON.stringify(body.tags) : null)
     }
 
     if (updates.length === 0) {
@@ -110,7 +110,7 @@ export async function PUT(
 
     updates.push('updated_at = GETUTCDATE()')
 
-    await request.query(`
+    await dbRequest.query(`
       UPDATE policy_documents 
       SET ${updates.join(', ')}
       WHERE document_id = @documentId
