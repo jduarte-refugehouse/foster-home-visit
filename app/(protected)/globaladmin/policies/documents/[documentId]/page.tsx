@@ -18,10 +18,14 @@ import {
   Clock, 
   AlertCircle,
   FileText,
-  Edit
+  Pencil,
+  Copy,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { format } from "date-fns"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 interface Document {
   document_id: string
@@ -54,6 +58,9 @@ export default function DocumentDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditor, setShowEditor] = useState(false)
+  const [metadataExpanded, setMetadataExpanded] = useState(false)
+  const [copyingContent, setCopyingContent] = useState(false)
+  const { toast } = useToast()
 
   const getUserHeaders = (): HeadersInit => {
     if (!user) {
@@ -163,6 +170,32 @@ export default function DocumentDetailsPage() {
     return new Date(reviewDate) < new Date()
   }
 
+  const handleCopyMarkdown = async () => {
+    if (!document) return
+    
+    setCopyingContent(true)
+    try {
+      const response = await fetch(`/api/policies/file?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(document.git_path)}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch document content')
+      }
+      const data = await response.json()
+      await navigator.clipboard.writeText(data.content || '')
+      toast({
+        title: 'Copied to clipboard',
+        description: 'Document content has been copied to your clipboard.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Copy failed',
+        description: err.message || 'Failed to copy document content',
+        variant: 'destructive',
+      })
+    } finally {
+      setCopyingContent(false)
+    }
+  }
+
   if (!isLoaded || checkingAccess) {
     return (
       <div className="flex flex-col gap-6 p-6">
@@ -251,7 +284,7 @@ export default function DocumentDetailsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => setShowEditor(!showEditor)} variant="outline">
-            <Edit className="w-4 h-4 mr-2" />
+            <Pencil className="w-4 h-4 mr-2" />
             Edit Metadata
           </Button>
           {document.status === 'active' && (
@@ -274,11 +307,21 @@ export default function DocumentDetailsPage() {
           }}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Document Information</CardTitle>
-            </CardHeader>
+        <div 
+          className="relative"
+          onMouseEnter={() => setMetadataExpanded(true)}
+          onMouseLeave={() => setMetadataExpanded(false)}
+        >
+          <div className={`grid gap-4 md:grid-cols-2 transition-all duration-200 ${metadataExpanded ? 'opacity-100' : 'opacity-60'}`}>
+            <Card className={metadataExpanded ? 'shadow-md' : ''}>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  Document Information
+                  {metadataExpanded && (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </CardTitle>
+              </CardHeader>
             <CardContent className="space-y-3">
               <div>
                 <div className="text-sm text-muted-foreground">Name</div>
@@ -337,9 +380,14 @@ export default function DocumentDetailsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={metadataExpanded ? 'shadow-md' : ''}>
           <CardHeader>
-            <CardTitle className="text-lg">Review Information</CardTitle>
+            <CardTitle className="text-lg flex items-center justify-between">
+              Review Information
+              {metadataExpanded && (
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {document.next_review_date ? (
@@ -368,16 +416,37 @@ export default function DocumentDetailsPage() {
             )}
           </CardContent>
         </Card>
+          </div>
         </div>
       )}
 
       {/* Document Content */}
       <Card className="flex flex-col" style={{ height: 'calc(100vh - 24rem)' }}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Document Content
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Document Content
+            </CardTitle>
+            <Button 
+              onClick={handleCopyMarkdown} 
+              variant="outline" 
+              size="sm"
+              disabled={copyingContent || !document.git_path.toLowerCase().endsWith('.md')}
+            >
+              {copyingContent ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Copying...
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Markdown
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden p-0">
           <FileViewer
