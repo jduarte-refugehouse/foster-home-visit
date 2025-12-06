@@ -15,6 +15,16 @@ const nextConfig = {
   // Force dynamic rendering for all pages
   output: 'standalone',
   trailingSlash: false,
+  webpack: (config, { isServer }) => {
+    // Ignore canvas module for client-side builds (used by pdfjs-dist)
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+      }
+    }
+    return config
+  },
 }
 
 export default nextConfig
