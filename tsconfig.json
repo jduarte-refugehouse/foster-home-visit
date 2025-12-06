@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "target": "ES6",
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "@refugehouse/shared-core/*": ["./packages/shared-core/*"],
+      "@refugehouse/shared-core/system-admin": ["./packages/shared-core/lib/system-admin-check.ts"],
+      "@refugehouse/shared-core/auth": ["./packages/shared-core/lib/clerk-auth-helper.ts"],
+      "@refugehouse/shared-core/permissions": ["./packages/shared-core/lib/permissions-middleware.ts"],
+      "@refugehouse/shared-core/user-management": ["./packages/shared-core/lib/user-management.ts"],
+      "@refugehouse/shared-core/user-access": ["./packages/shared-core/lib/user-access-check.ts"],
+      "@refugehouse/shared-core/db": ["./packages/shared-core/lib/db.ts"],
+      "@refugehouse/shared-core/impersonation": ["./packages/shared-core/lib/impersonation.ts"],
+      "@refugehouse/shared-core/communication": ["./packages/shared-core/lib/communication-logging.ts"],
+      "@refugehouse/shared-core/continuum": ["./packages/shared-core/lib/continuum-logger.ts"],
+      "@refugehouse/shared-core/sms": ["./packages/shared-core/lib/sms-helper.ts"],
+      "@refugehouse/shared-core/email": ["./packages/shared-core/lib/email-helper.ts"],
+      "@refugehouse/shared-core/anthropic": ["./packages/shared-core/lib/anthropic-helper.ts"],
+      "@refugehouse/shared-core/deepgram": ["./packages/shared-core/lib/deepgram-streaming.ts"],
+      "@refugehouse/shared-core/google-speech": ["./packages/shared-core/lib/google-speech-helper.ts"],
+      "@refugehouse/shared-core/speech-utils": ["./packages/shared-core/lib/speech-utils.ts"],
+      "@refugehouse/shared-core/environment": ["./packages/shared-core/lib/environment.ts"],
+      "@refugehouse/shared-core/route-calculator": ["./packages/shared-core/lib/route-calculator.ts"],
+      "@refugehouse/shared-core/geolocation": ["./packages/shared-core/lib/geolocation-helper.ts"],
+      "@refugehouse/shared-core/ics-generator": ["./packages/shared-core/lib/ics-generator.ts"],
+      "@refugehouse/shared-core/utils": ["./packages/shared-core/lib/utils.ts"],
+      "@refugehouse/shared-core/components/access-guard": ["./packages/shared-core/components/access-guard.tsx"],
+      "@refugehouse/shared-core/components/ui/*": ["./packages/shared-core/components/ui/*"],
+      "@refugehouse/shared-core/hooks/use-permissions": ["./packages/shared-core/hooks/use-permissions.ts"],
+      "@refugehouse/shared-core/hooks/use-safe-user": ["./packages/shared-core/hooks/use-safe-user.ts"],
+      "@refugehouse/radius-api-client": ["./packages/radius-api-client/index.ts"],
+      "@refugehouse/api-config": ["./packages/api-config/index.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
