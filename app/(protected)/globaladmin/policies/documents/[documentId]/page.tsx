@@ -63,6 +63,10 @@ export default function DocumentDetailsPage() {
   const [copyingContent, setCopyingContent] = useState(false)
   const { toast } = useToast()
 
+  // GitHub repository configuration - defined early for use in functions
+  const owner = process.env.NEXT_PUBLIC_GITHUB_OWNER!
+  const repo = process.env.NEXT_PUBLIC_GITHUB_REPO!
+
   const getUserHeaders = (): HeadersInit => {
     if (!user) {
       return { "Content-Type": "application/json" }
@@ -259,8 +263,6 @@ export default function DocumentDetailsPage() {
     )
   }
 
-  const owner = process.env.NEXT_PUBLIC_GITHUB_OWNER!
-  const repo = process.env.NEXT_PUBLIC_GITHUB_REPO!
   const fileName = document.git_path.split('/').pop() || 'document'
 
   return (
