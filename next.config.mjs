@@ -22,6 +22,13 @@ const nextConfig = {
         ...config.resolve.fallback,
         canvas: false,
       }
+      // Also add to externals to prevent webpack from trying to bundle it
+      config.externals = config.externals || []
+      if (Array.isArray(config.externals)) {
+        config.externals.push('canvas')
+      } else if (typeof config.externals === 'object') {
+        config.externals.canvas = false
+      }
     }
     return config
   },
