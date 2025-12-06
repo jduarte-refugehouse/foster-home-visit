@@ -193,10 +193,12 @@ export default function DashboardPage() {
 
     if (homeLiaisonData && homeLiaisonData.appointments) {
       const today = new Date()
-      const todayStart = new Date(today.setHours(0, 0, 0, 0))
-      const todayEnd = new Date(today.setHours(23, 59, 59, 999))
+      const todayStart = new Date(today)
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(today)
+      todayEnd.setHours(23, 59, 59, 999)
       const weekEnd = new Date(today)
-      weekEnd.setDate(today.getDate() + 7)
+      weekEnd.setDate(weekEnd.getDate() + 7)
 
       const todayAppointments = (homeLiaisonData.appointments || []).filter(apt => {
         if (!apt || !apt.start_datetime) return false
