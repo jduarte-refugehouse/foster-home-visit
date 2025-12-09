@@ -12,6 +12,7 @@ import { Loader2, Download, FileText, File, AlertCircle, Printer, FileDown } fro
 import { cn } from '@refugehouse/shared-core/utils'
 import mammoth from 'mammoth'
 import 'highlight.js/styles/github.css'
+import 'github-markdown-css/github-markdown.css'
 
 // Dynamically import PDF viewer components to avoid SSR issues
 const PDFViewer = dynamic(
@@ -286,84 +287,36 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6 print:p-8 markdown-content-wrapper">
-            <article className="prose prose-slate dark:prose-invert max-w-none 
-              prose-headings:font-bold prose-headings:text-foreground
-              prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8 prose-h1:border-b prose-h1:border-border prose-h1:pb-2
-              prose-h2:text-2xl prose-h2:mb-4 prose-h2:mt-6 prose-h2:border-b prose-h2:border-border prose-h2:pb-1
-              prose-h3:text-xl prose-h3:mb-3 prose-h3:mt-5
-              prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4
-              prose-h5:text-base prose-h5:mb-2 prose-h5:mt-3
-              prose-h6:text-sm prose-h6:mb-2 prose-h6:mt-2
-              prose-p:my-4 prose-p:leading-relaxed prose-p:text-foreground prose-p:text-base
-              prose-ul:my-4 prose-ol:my-4 prose-ul:pl-6 prose-ol:pl-6
-              prose-li:my-2 prose-li:leading-relaxed prose-li:text-foreground
-              prose-code:bg-muted prose-code:text-foreground prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:before:content-[''] prose-code:after:content-['']
-              prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-pre:border prose-pre:border-border
-              prose-a:text-primary prose-a:underline prose-a:font-medium hover:prose-a:text-primary/80
-              prose-strong:font-semibold prose-strong:text-foreground
-              prose-em:italic prose-em:text-foreground
-              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-4 prose-blockquote:bg-muted/50 prose-blockquote:py-2
-              prose-table:w-full prose-table:my-6 prose-table:border-collapse prose-table:border prose-table:border-border
-              prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-3 prose-th:font-semibold prose-th:text-left prose-th:text-foreground prose-th:align-top
-              prose-td:border prose-td:border-border prose-td:p-3 prose-td:text-foreground prose-td:align-top
-              prose-thead:border-b-2 prose-thead:border-border
-              prose-tbody:prose-tr:border-b prose-tbody:prose-tr:border-border
-              prose-hr:my-8 prose-hr:border-t-2 prose-hr:border-border
-              prose-img:rounded-lg prose-img:my-4 prose-img:border prose-img:border-border
-              print:prose-sm print:prose-headings:break-inside-avoid print:prose-p:break-inside-avoid print:prose-table:break-inside-avoid">
+          <style dangerouslySetInnerHTML={{ __html: `
+            .markdown-content-wrapper {
+              padding: 45px;
+              max-width: 980px;
+              margin: 0 auto;
+              box-sizing: border-box;
+              min-width: 200px;
+            }
+            @media (max-width: 767px) {
+              .markdown-content-wrapper {
+                padding: 15px;
+              }
+            }
+            /* Ensure GitHub markdown styles work with our theme */
+            .markdown-body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+              font-size: 16px;
+              line-height: 1.5;
+              word-wrap: break-word;
+            }
+            /* Dark mode support - GitHub markdown CSS handles this, but ensure compatibility */
+            .dark .markdown-body {
+              color-scheme: dark;
+            }
+          `}} />
+          <div className="markdown-content-wrapper">
+            <article className="markdown-body">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, rehypeHighlight]}
-                components={{
-                  table: ({ children, ...props }) => (
-                    <div className="overflow-x-auto my-6">
-                      <table className="w-full border-collapse border border-border" {...props}>
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  thead: ({ children, ...props }) => (
-                    <thead className="border-b-2 border-border bg-muted" {...props}>
-                      {children}
-                    </thead>
-                  ),
-                  tbody: ({ children, ...props }) => (
-                    <tbody {...props}>
-                      {children}
-                    </tbody>
-                  ),
-                  tr: ({ children, ...props }) => (
-                    <tr className="border-b border-border hover:bg-muted/50 transition-colors" {...props}>
-                      {children}
-                    </tr>
-                  ),
-                  th: ({ children, ...props }) => (
-                    <th className="border border-border bg-muted p-3 font-semibold text-left align-top" {...props}>
-                      {children}
-                    </th>
-                  ),
-                  td: ({ children, ...props }) => (
-                    <td className="border border-border p-3 align-top" {...props}>
-                      {children}
-                    </td>
-                  ),
-                  h1: ({ children, ...props }) => (
-                    <h1 className="text-3xl font-bold mb-6 mt-8 border-b border-border pb-2" {...props}>
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children, ...props }) => (
-                    <h2 className="text-2xl font-bold mb-4 mt-6 border-b border-border pb-1" {...props}>
-                      {children}
-                    </h2>
-                  ),
-                  p: ({ children, ...props }) => (
-                    <p className="my-4 leading-relaxed text-base" {...props}>
-                      {children}
-                    </p>
-                  ),
-                }}
               >
                 {content}
               </ReactMarkdown>

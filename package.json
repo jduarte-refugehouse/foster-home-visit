@@ -54,6 +54,7 @@
     "crypto": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
+    "github-markdown-css": "^5.8.1",
     "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.12.1",
