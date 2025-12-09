@@ -307,6 +307,42 @@ export function FileViewer({ owner, repo, filePath, fileName }: FileViewerProps)
               line-height: 1.5;
               word-wrap: break-word;
             }
+            /* Explicitly ensure lists display with bullets and numbers */
+            .markdown-body ul,
+            .markdown-body ol {
+              padding-left: 2em !important;
+              margin-top: 0;
+              margin-bottom: 16px;
+            }
+            .markdown-body ul {
+              list-style-type: disc !important;
+            }
+            .markdown-body ol {
+              list-style-type: decimal !important;
+            }
+            .markdown-body ul ul {
+              list-style-type: circle !important;
+            }
+            .markdown-body ul ul ul {
+              list-style-type: square !important;
+            }
+            .markdown-body ol ol {
+              list-style-type: lower-alpha !important;
+            }
+            .markdown-body ol ol ol {
+              list-style-type: lower-roman !important;
+            }
+            .markdown-body li {
+              display: list-item !important;
+              margin-top: 0.25em;
+              margin-bottom: 0.25em;
+            }
+            .markdown-body li > p {
+              margin-top: 16px;
+            }
+            .markdown-body li + li {
+              margin-top: 0.25em;
+            }
             /* Dark mode support - GitHub markdown CSS handles this, but ensure compatibility */
             .dark .markdown-body {
               color-scheme: dark;
