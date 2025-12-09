@@ -15,16 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@refugehouse/shared-core/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@refugehouse/shared-core/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@refugehouse/shared-core/components/ui/tabs'
 import { 
   FileText, 
@@ -467,13 +457,13 @@ export function JobDescriptionBrowser({ owner, repo }: JobDescriptionBrowserProp
       </Card>
 
       {/* Archive Confirmation Dialog */}
-      <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+      <Dialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {archiveAction === 'archive' ? 'Archive Job Description?' : 'Restore Job Description?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               {archiveAction === 'archive' ? (
                 <>
                   This will move <strong>{archiveTarget?.name && formatJobTitle(archiveTarget.name)}</strong> to the archived folder.
@@ -484,11 +474,13 @@ export function JobDescriptionBrowser({ owner, repo }: JobDescriptionBrowserProp
                   This will restore <strong>{archiveTarget?.name && formatJobTitle(archiveTarget.name)}</strong> to the active job descriptions.
                 </>
               )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={archiving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleArchive} disabled={archiving}>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveTarget(null)} disabled={archiving}>
+              Cancel
+            </Button>
+            <Button onClick={handleArchive} disabled={archiving}>
               {archiving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -497,10 +489,10 @@ export function JobDescriptionBrowser({ owner, repo }: JobDescriptionBrowserProp
               ) : (
                 archiveAction === 'archive' ? 'Archive' : 'Restore'
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
