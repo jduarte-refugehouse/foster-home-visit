@@ -139,3 +139,162 @@ export interface ApiResponse<T> {
   error?: string
 }
 
+// ============================================
+// Auth Types
+// ============================================
+
+export interface AppUser {
+  id: string
+  clerk_user_id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  is_active: boolean
+  core_role: "admin" | "staff" | "external" | "foster_parent" | string
+  department: string | null
+  job_title: string | null
+  user_type: string | null
+  environment: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface UserRole {
+  id: string
+  user_id: string
+  microservice_id: string
+  role_name: string
+  granted_by: string
+  granted_at: Date
+  is_active: boolean
+  microservice_code: string
+  microservice_name: string
+  // Computed fields
+  role_display_name: string
+  role_level: number
+}
+
+export interface Permission {
+  id: string
+  microservice_id: string
+  permission_code: string
+  permission_name: string
+  description: string | null
+  category: string | null
+  microservice_code: string
+  microservice_name: string
+}
+
+export interface UserLookupOptions {
+  clerkUserId?: string
+  email?: string
+  microserviceCode?: string
+}
+
+export interface UserLookupResponse {
+  success: boolean
+  found: boolean
+  user: AppUser | null
+  roles: UserRole[]
+  permissions: Permission[]
+  timestamp: string
+  duration_ms: number
+  error?: string
+}
+
+export interface UserCreateData {
+  clerkUserId: string
+  email: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  microserviceCode?: string
+}
+
+export interface UserCreateResponse {
+  success: boolean
+  user: AppUser | null
+  roles: UserRole[]
+  permissions: Permission[]
+  isNewUser: boolean
+  timestamp: string
+  duration_ms: number
+  error?: string
+}
+
+// ============================================
+// Permissions Types
+// ============================================
+
+export interface PermissionsOptions {
+  userId: string
+  microserviceCode?: string
+}
+
+export interface PermissionsResponse {
+  success: boolean
+  userId: string
+  email: string
+  coreRole: string
+  microserviceCode: string
+  roles: UserRole[]
+  permissions: Permission[]
+  permissionCodes: string[]
+  roleNames: string[]
+  timestamp: string
+  duration_ms: number
+  error?: string
+}
+
+// ============================================
+// Navigation Types
+// ============================================
+
+export interface NavigationItem {
+  code: string
+  title: string
+  url: string
+  icon: string
+  order: number
+  category: string
+  item_type: string
+}
+
+export interface NavigationGroup {
+  title: string
+  items: NavigationItem[]
+}
+
+export interface NavigationOptions {
+  userId?: string
+  microserviceCode?: string
+  userPermissions?: string[]
+}
+
+export interface NavigationMetadata {
+  source: string
+  totalItems: number
+  visibleItems: number
+  fixedItems: number
+  collapsibleItems: number
+  filteredItems: number
+  microservice: {
+    code: string
+    name: string
+    description: string
+  }
+  userPermissions: string[]
+  error?: string
+}
+
+export interface NavigationResponse {
+  success: boolean
+  navigation: NavigationGroup[]
+  collapsibleItems?: NavigationItem[]
+  metadata: NavigationMetadata
+  timestamp: string
+  duration_ms: number
+  error?: string
+}
+

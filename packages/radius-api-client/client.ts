@@ -8,6 +8,20 @@ import type {
   User,
   UserOptions,
   ApiResponse,
+  // Auth types
+  AppUser,
+  UserRole,
+  Permission,
+  UserLookupOptions,
+  UserLookupResponse,
+  UserCreateData,
+  UserCreateResponse,
+  // Permissions types
+  PermissionsOptions,
+  PermissionsResponse,
+  // Navigation types
+  NavigationOptions,
+  NavigationResponse,
 } from "./types"
 
 const API_BASE_URL =
@@ -169,6 +183,108 @@ export const radiusApiClient = {
 
     const response = await apiRequest<any>(endpoint)
     return response.users || response.data || []
+  },
+
+  // ============================================
+  // Auth Methods
+  // ============================================
+
+  /**
+   * Look up a user by clerk_user_id or email
+   * Returns user with roles and permissions for the specified microservice
+   */
+  async lookupUser(options: UserLookupOptions): Promise<UserLookupResponse> {
+    const params = new URLSearchParams()
+    if (options.clerkUserId) params.append("clerkUserId", options.clerkUserId)
+    if (options.email) params.append("email", options.email)
+    if (options.microserviceCode) params.append("microserviceCode", options.microserviceCode)
+
+    const queryString = params.toString()
+    const endpoint = `auth/user-lookup?${queryString}`
+
+    return await apiRequest<UserLookupResponse>(endpoint)
+  },
+
+  /**
+   * Create a new user with default roles for the microservice
+   * If user already exists, updates their information
+   */
+  async createUser(data: UserCreateData): Promise<UserCreateResponse> {
+    return await apiRequest<UserCreateResponse>("auth/user-create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Look up user and create if not found
+   * Convenience method that combines lookupUser and createUser
+   */
+  async getOrCreateUser(options: UserCreateData): Promise<UserLookupResponse | UserCreateResponse> {
+    // First try to look up the user
+    const lookupResult = await this.lookupUser({
+      clerkUserId: options.clerkUserId,
+      email: options.email,
+      microserviceCode: options.microserviceCode,
+    })
+
+    if (lookupResult.found && lookupResult.user) {
+      return lookupResult
+    }
+
+    // User not found, create them
+    return await this.createUser(options)
+  },
+
+  // ============================================
+  // Permissions Methods
+  // ============================================
+
+  /**
+   * Get user permissions and roles for a microservice
+   */
+  async getPermissions(options: PermissionsOptions): Promise<PermissionsResponse> {
+    const params = new URLSearchParams()
+    params.append("userId", options.userId)
+    if (options.microserviceCode) params.append("microserviceCode", options.microserviceCode)
+
+    const queryString = params.toString()
+    const endpoint = `permissions?${queryString}`
+
+    return await apiRequest<PermissionsResponse>(endpoint)
+  },
+
+  /**
+   * Check if a user has a specific permission
+   * Convenience method that fetches permissions and checks
+   */
+  async hasPermission(userId: string, permissionCode: string, microserviceCode?: string): Promise<boolean> {
+    try {
+      const permissions = await this.getPermissions({ userId, microserviceCode })
+      return permissions.permissionCodes.includes(permissionCode)
+    } catch (error) {
+      console.error("Error checking permission:", error)
+      return false
+    }
+  },
+
+  // ============================================
+  // Navigation Methods
+  // ============================================
+
+  /**
+   * Get navigation items for a microservice, filtered by user permissions
+   */
+  async getNavigation(options: NavigationOptions): Promise<NavigationResponse> {
+    const params = new URLSearchParams()
+    if (options.userId) params.append("userId", options.userId)
+    if (options.microserviceCode) params.append("microserviceCode", options.microserviceCode)
+    if (options.userPermissions) params.append("userPermissions", JSON.stringify(options.userPermissions))
+
+    const queryString = params.toString()
+    const endpoint = `navigation?${queryString}`
+
+    return await apiRequest<NavigationResponse>(endpoint)
   },
 }
 
