@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Get user info
     const userResult = await query<any>(
-      `SELECT id, email, first_name, last_name, core_role, is_active
+      `SELECT id, email, first_name, last_name, user_type, is_active
        FROM app_users 
        WHERE id = @param0 AND is_active = 1`,
       [userId]
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
       success: true,
       userId,
       email: user.email,
-      coreRole: user.core_role,
+      userType: user.user_type,
       microserviceCode,
       roles,
       permissions: permissionsResult,

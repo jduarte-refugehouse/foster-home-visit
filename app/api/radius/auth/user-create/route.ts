@@ -111,14 +111,14 @@ export async function POST(request: NextRequest) {
       const coreRole = determineCoreRole(email)
 
       const newUserResult = await query<{ id: string }>(
-        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, core_role, is_active, created_at, updated_at)
+        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, phone, is_active, created_at, updated_at)
          OUTPUT INSERTED.id
-         VALUES (@param0, @param1, @param2, @param3, @param4, @param5, 1, GETDATE(), GETDATE())`,
-        [clerkUserId, email, firstName || "", lastName || "", phone || null, coreRole]
+         VALUES (@param0, @param1, @param2, @param3, @param4, 1, GETDATE(), GETDATE())`,
+        [clerkUserId, email, firstName || "", lastName || "", phone || null]
       )
 
       userId = newUserResult[0].id
-      console.log(`🆕 [RADIUS-API] Created new user: ${email} (${userId}) with core_role=${coreRole}`)
+      console.log(`🆕 [RADIUS-API] Created new user: ${email} (${userId})`)
 
       // Assign default roles for the microservice
       if (targetMicroservice) {
@@ -127,15 +127,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Fetch the complete user with roles and permissions
-    const user = await query<any>(
-      `SELECT 
-        id, clerk_user_id, email, first_name, last_name, phone,
-        is_active, core_role, department, job_title,
-        user_type, environment, created_at, updated_at
+      const user = await query<any>(
+        `SELECT 
+          id, clerk_user_id, email, first_name, last_name, phone,
+          is_active, user_type, environment, created_at, updated_at
       FROM app_users 
       WHERE id = @param0`,
-      [userId]
-    )
+        [userId]
+      )
 
     // Get roles
     let roles: any[] = []

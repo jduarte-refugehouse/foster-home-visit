@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
       const result = await query<any>(
         `SELECT 
           id, clerk_user_id, email, first_name, last_name, phone,
-          is_active, core_role, department, job_title,
-          user_type, environment, created_at, updated_at
+          is_active, user_type, environment, created_at, updated_at
         FROM app_users 
         WHERE clerk_user_id = @param0 AND is_active = 1`,
         [clerkUserId]
@@ -83,8 +82,7 @@ export async function GET(request: NextRequest) {
       const result = await query<any>(
         `SELECT 
           id, clerk_user_id, email, first_name, last_name, phone,
-          is_active, core_role, department, job_title,
-          user_type, environment, created_at, updated_at
+          is_active, user_type, environment, created_at, updated_at
         FROM app_users 
         WHERE email = @param0 AND is_active = 1`,
         [email]

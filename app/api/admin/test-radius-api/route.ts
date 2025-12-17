@@ -67,8 +67,7 @@ export async function POST(request: NextRequest) {
           const result = await query<any>(
             `SELECT 
               id, clerk_user_id, email, first_name, last_name, phone,
-              is_active, core_role, department, job_title,
-              user_type, environment, created_at, updated_at
+              is_active, user_type, environment, created_at, updated_at
             FROM app_users 
             WHERE clerk_user_id = @param0 AND is_active = 1`,
             [clerkUserId]
@@ -80,8 +79,7 @@ export async function POST(request: NextRequest) {
           const result = await query<any>(
             `SELECT 
               id, clerk_user_id, email, first_name, last_name, phone,
-              is_active, core_role, department, job_title,
-              user_type, environment, created_at, updated_at
+              is_active, user_type, environment, created_at, updated_at
             FROM app_users 
             WHERE email = @param0 AND is_active = 1`,
             [email]
@@ -168,7 +166,7 @@ export async function POST(request: NextRequest) {
 
         // Get user info
         const userResult = await query<any>(
-          `SELECT id, email, first_name, last_name, core_role, is_active
+          `SELECT id, email, first_name, last_name, user_type, is_active
            FROM app_users 
            WHERE id = @param0 AND is_active = 1`,
           [userId]
@@ -226,7 +224,7 @@ export async function POST(request: NextRequest) {
           success: true,
           userId,
           email: user.email,
-          coreRole: user.core_role,
+          userType: user.user_type,
           microserviceCode,
           roles,
           permissions: permissionsResult,
