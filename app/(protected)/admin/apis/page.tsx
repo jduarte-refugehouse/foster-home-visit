@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refu
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Input } from "@refugehouse/shared-core/components/ui/input"
-import { Search, Copy, CheckCircle, Key, Activity, BookOpen, ArrowRight, Info, Zap, Shield, Database, Link2 } from "lucide-react"
+import { Search, Copy, CheckCircle, Key, Activity, BookOpen, ArrowRight, Info, Zap, Shield, Database, Link2, TestTube } from "lucide-react"
 import { API_ENDPOINTS, getCategories } from "@refugehouse/api-config"
 import type { ApiEndpoint } from "@refugehouse/api-config"
 import Link from "next/link"
@@ -249,6 +249,13 @@ export default function ApisPage() {
               <Button variant="outline" className="w-full justify-start">
                 <Activity className="h-4 w-4 mr-2" />
                 Health Monitoring
+                <ArrowRight className="h-4 w-4 ml-auto" />
+              </Button>
+            </Link>
+            <Link href="/admin/apis/test">
+              <Button variant="outline" className="w-full justify-start">
+                <TestTube className="h-4 w-4 mr-2" />
+                Test Endpoints
                 <ArrowRight className="h-4 w-4 ml-auto" />
               </Button>
             </Link>
