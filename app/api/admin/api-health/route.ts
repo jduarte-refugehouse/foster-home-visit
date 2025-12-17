@@ -42,6 +42,11 @@ export async function GET(request: NextRequest) {
       "/api/radius/appointments": { status: "healthy", lastChecked: new Date().toISOString() },
       "/api/radius/visit-forms": { status: "healthy", lastChecked: new Date().toISOString() },
       "/api/radius/users": { status: "healthy", lastChecked: new Date().toISOString() },
+      // Phase 1: Auth endpoints
+      "/api/radius/auth/user-lookup": { status: "healthy", lastChecked: new Date().toISOString() },
+      "/api/radius/auth/user-create": { status: "healthy", lastChecked: new Date().toISOString() },
+      "/api/radius/permissions": { status: "healthy", lastChecked: new Date().toISOString() },
+      "/api/radius/navigation": { status: "healthy", lastChecked: new Date().toISOString() },
     }
 
     return NextResponse.json({

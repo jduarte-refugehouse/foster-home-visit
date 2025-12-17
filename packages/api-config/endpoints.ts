@@ -220,6 +220,216 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       duration_ms: 80,
     },
   },
+  // Phase 1: Authentication & Authorization Endpoints
+  {
+    path: "/api/radius/auth/user-lookup",
+    method: "GET",
+    category: "Authentication",
+    description: "Look up a user by clerk_user_id or email, returns user with roles and permissions",
+    parameters: [
+      {
+        name: "clerkUserId",
+        type: "string",
+        required: false,
+        description: "Clerk user ID to look up",
+        example: "user_abc123",
+      },
+      {
+        name: "email",
+        type: "string",
+        required: false,
+        description: "User email to look up",
+        example: "user@refugehouse.org",
+      },
+      {
+        name: "microserviceCode",
+        type: "string",
+        required: false,
+        description: "Microservice code to filter roles/permissions (defaults to calling microservice)",
+        example: "home-visits",
+      },
+    ],
+    responseType: "UserLookupResponse",
+    exampleRequest: {
+      url: "/api/radius/auth/user-lookup?clerkUserId=user_abc123&microserviceCode=home-visits",
+    },
+    exampleResponse: {
+      success: true,
+      found: true,
+      user: {
+        id: "guid-here",
+        clerk_user_id: "user_abc123",
+        email: "user@refugehouse.org",
+        first_name: "John",
+        last_name: "Doe",
+      },
+      roles: [],
+      permissions: [],
+    },
+  },
+  {
+    path: "/api/radius/auth/user-create",
+    method: "POST",
+    category: "Authentication",
+    description: "Create a new user with default roles for the microservice, or update existing user",
+    parameters: [
+      {
+        name: "clerkUserId",
+        type: "string",
+        required: true,
+        description: "Clerk user ID",
+        example: "user_abc123",
+      },
+      {
+        name: "email",
+        type: "string",
+        required: true,
+        description: "User email",
+        example: "user@refugehouse.org",
+      },
+      {
+        name: "firstName",
+        type: "string",
+        required: false,
+        description: "User first name",
+        example: "John",
+      },
+      {
+        name: "lastName",
+        type: "string",
+        required: false,
+        description: "User last name",
+        example: "Doe",
+      },
+      {
+        name: "phone",
+        type: "string",
+        required: false,
+        description: "User phone number",
+        example: "+15125551234",
+      },
+      {
+        name: "microserviceCode",
+        type: "string",
+        required: false,
+        description: "Microservice code to assign roles for (defaults to calling microservice)",
+        example: "home-visits",
+      },
+    ],
+    responseType: "UserCreateResponse",
+    exampleRequest: {
+      body: {
+        clerkUserId: "user_abc123",
+        email: "user@refugehouse.org",
+        firstName: "John",
+        lastName: "Doe",
+        microserviceCode: "home-visits",
+      },
+    },
+    exampleResponse: {
+      success: true,
+      user: {
+        id: "guid-here",
+        clerk_user_id: "user_abc123",
+        email: "user@refugehouse.org",
+      },
+      roles: [],
+      permissions: [],
+      isNewUser: true,
+    },
+  },
+  {
+    path: "/api/radius/permissions",
+    method: "GET",
+    category: "Authentication",
+    description: "Get user permissions and roles for a specific microservice",
+    parameters: [
+      {
+        name: "userId",
+        type: "string",
+        required: true,
+        description: "App user ID (from app_users table)",
+        example: "user-guid-here",
+      },
+      {
+        name: "microserviceCode",
+        type: "string",
+        required: false,
+        description: "Microservice code (defaults to calling microservice)",
+        example: "home-visits",
+      },
+    ],
+    responseType: "PermissionsResponse",
+    exampleRequest: {
+      url: "/api/radius/permissions?userId=user-guid-here&microserviceCode=home-visits",
+    },
+    exampleResponse: {
+      success: true,
+      userId: "user-guid-here",
+      email: "user@refugehouse.org",
+      coreRole: "staff",
+      microserviceCode: "home-visits",
+      roles: [],
+      permissions: [],
+      permissionCodes: ["view_homes", "view_appointments"],
+      roleNames: ["staff"],
+    },
+  },
+  {
+    path: "/api/radius/navigation",
+    method: "GET",
+    category: "Authentication",
+    description: "Get navigation items for a microservice, filtered by user permissions",
+    parameters: [
+      {
+        name: "userId",
+        type: "string",
+        required: false,
+        description: "App user ID (for permission filtering)",
+        example: "user-guid-here",
+      },
+      {
+        name: "microserviceCode",
+        type: "string",
+        required: false,
+        description: "Microservice code (defaults to calling microservice)",
+        example: "home-visits",
+      },
+      {
+        name: "userPermissions",
+        type: "string (JSON array)",
+        required: false,
+        description: "JSON array of permission codes (alternative to userId for filtering)",
+        example: '["view_homes", "view_appointments"]',
+      },
+    ],
+    responseType: "NavigationResponse",
+    exampleRequest: {
+      url: "/api/radius/navigation?userId=user-guid-here&microserviceCode=home-visits",
+    },
+    exampleResponse: {
+      success: true,
+      navigation: [
+        {
+          title: "Main",
+          items: [
+            {
+              code: "dashboard",
+              title: "Dashboard",
+              url: "/dashboard",
+              icon: "LayoutDashboard",
+              order: 1,
+            },
+          ],
+        },
+      ],
+      metadata: {
+        source: "database",
+        totalItems: 10,
+        visibleItems: 8,
+      },
+    },
+  },
 ]
 
 /**
