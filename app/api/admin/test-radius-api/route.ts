@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireClerkAuth } from "@refugehouse/shared-core/auth"
+import { currentUser } from "@clerk/nextjs/server"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -12,8 +12,11 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication (for admin dashboard)
-    const auth = requireClerkAuth(request)
+    // Require authentication (for admin dashboard) - use Clerk's server-side currentUser
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      return NextResponse.json({ error: "Unauthorized - please sign in" }, { status: 401 })
+    }
 
     const body = await request.json()
     const { endpoint, method, params, requestBody } = body
