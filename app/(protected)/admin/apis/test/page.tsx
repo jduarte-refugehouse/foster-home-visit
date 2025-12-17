@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@refugehouse/shared-core/components/ui/card"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Input } from "@refugehouse/shared-core/components/ui/input"
@@ -13,9 +14,21 @@ import { Loader2, CheckCircle, XCircle, Copy, TestTube } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ApiTestPage() {
+  const { user } = useUser()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<Record<string, any>>({})
+
+  // Get user headers for API calls (following the correct pattern - Clerk identity only)
+  const getUserHeaders = () => {
+    if (!user) return {}
+    return {
+      "Content-Type": "application/json",
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
 
   // User Lookup
   const [lookupEmail, setLookupEmail] = useState("")
@@ -46,11 +59,10 @@ export default function ApiTestPage() {
     setLoading(true)
     try {
       // Use the proxy endpoint that handles API key authentication
+      // Set Clerk identity headers (identity only - authorization happens in database)
       const response = await fetch("/api/admin/test-radius-api", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getUserHeaders(),
         body: JSON.stringify({
           endpoint,
           method,

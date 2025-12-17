@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { currentUser } from "@clerk/nextjs/server"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -9,13 +9,28 @@ export const dynamic = "force-dynamic"
  * 
  * Proxy endpoint for testing Radius API Hub endpoints
  * Uses server-side API key authentication
+ * 
+ * CORRECT PATTERN: Uses requireClerkAuth which reads identity from headers
+ * (set by client-side Clerk). Authorization happens via database lookup.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication (for admin dashboard) - use Clerk's server-side currentUser
-    const clerkUser = await currentUser()
-    if (!clerkUser) {
-      return NextResponse.json({ error: "Unauthorized - please sign in" }, { status: 401 })
+    // CORRECT: Get Clerk identity from headers (identity only - no Clerk authorization)
+    let auth
+    try {
+      auth = requireClerkAuth(request)
+    } catch (authError) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          details: authError instanceof Error ? authError.message : "Missing authentication headers",
+        },
+        { status: 401 }
+      )
+    }
+
+    if (!auth.clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
