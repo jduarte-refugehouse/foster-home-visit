@@ -322,9 +322,11 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`🔍 Attempting to load navigation for microservice: ${microserviceCode}`)
+    console.log(`🔍 [NAV] useApiClient check result: ${useApiClient} (microservice: ${microserviceCode})`)
 
     // Use API client for non-admin microservices, direct DB for admin
     if (useApiClient) {
+      console.log(`✅ [NAV] Using API client path for microservice: ${microserviceCode}`)
       try {
         // First, get user ID from user lookup (we already have userInfo, but need to get userId)
         let userId: string | null = null
@@ -419,7 +421,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(response)
       } catch (apiError) {
         console.error("❌ [NAV] Error fetching navigation from Radius API Hub:", apiError)
-        // Fall back to config if API fails
+        console.error("❌ [NAV] Error details:", apiError instanceof Error ? apiError.stack : apiError)
+        // Fall back to config if API fails (don't fall back to DB - that defeats the purpose)
         return createFallbackResponse(
           "api_error",
           apiError instanceof Error ? apiError.message : "Unknown API error",
@@ -428,6 +431,7 @@ export async function GET(request: NextRequest) {
         )
       }
     } else {
+      console.log(`⚠️ [NAV] Using direct DB access (admin microservice or useApiClient=false)`)
       // Admin microservice: use direct DB access (existing code)
       // Try to load from database first
       try {
