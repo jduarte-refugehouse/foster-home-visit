@@ -178,6 +178,21 @@ export function isInternalUser(email: string): boolean {
 }
 
 /**
+ * Determines if the current microservice should use the Radius API Hub client
+ * instead of direct database access.
+ * 
+ * The admin microservice (service-domain-admin) has direct DB access,
+ * so it should NOT use the API client. All other microservices should use it.
+ * 
+ * @returns true if should use API client, false if should use direct DB access
+ */
+export function shouldUseRadiusApiClient(): boolean {
+  const microserviceCode = getMicroserviceCode()
+  // Admin microservice has direct DB access - don't use API client
+  return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+}
+
+/**
  * Get the deployment environment (test or production)
  * Uses VERCEL_ENV or domain/branch detection
  * @returns 'test' | 'production'
