@@ -20,20 +20,17 @@ import { radiusApiClient } from "@refugehouse/radius-api-client"
 export async function GET(request: NextRequest) {
   try {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'check-access/route.ts:20',message:'GET endpoint entry',data:{url:request.url,hasHeaders:!!request.headers.get('x-user-clerk-id')||!!request.headers.get('x-user-email')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    const headerClerkId = request.headers.get("x-user-clerk-id");
+    const headerEmail = request.headers.get("x-user-email");
+    const headerName = request.headers.get("x-user-name");
+    const allHeaders = Array.from(request.headers.entries()).map(([k, v]) => ({ k, v: k.toLowerCase().includes('auth') || k.toLowerCase().includes('user') ? v.substring(0, 20) + '...' : v }));
+    console.log("🔍 [DEBUG] check-access GET entry:", JSON.stringify({ url: request.url, hasClerkId: !!headerClerkId, hasEmail: !!headerEmail, hasName: !!headerName, headers: allHeaders }, null, 2));
     // #endregion
     // Get Clerk user info from headers OR session cookies
     // This allows mobile to work where headers might not be sent
     let clerkUserId: string | null = null
     let email: string | null = null
     let name: string | null = null
-
-    // #region agent log
-    const headerClerkId = request.headers.get("x-user-clerk-id");
-    const headerEmail = request.headers.get("x-user-email");
-    const headerName = request.headers.get("x-user-name");
-    fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'check-access/route.ts:28',message:'Headers extracted',data:{clerkId:headerClerkId,email:headerEmail,name:headerName,allHeaders:Array.from(request.headers.entries()).map(([k,v])=>({k,v}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
 
     // Get credentials from headers (stored after initial Clerk authentication)
     // NO CLERK API CALLS - only use stored credentials
@@ -43,11 +40,12 @@ export async function GET(request: NextRequest) {
       email = auth.email
       name = auth.name
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'check-access/route.ts:35',message:'requireClerkAuth success',data:{clerkUserId,email,name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      console.log("✅ [DEBUG] requireClerkAuth success:", JSON.stringify({ clerkUserId: clerkUserId?.substring(0, 20) + '...', email, name }, null, 2));
       // #endregion
     } catch (authError) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'check-access/route.ts:37',message:'requireClerkAuth failed',data:{error:authError instanceof Error?authError.message:String(authError),stack:authError instanceof Error?authError.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      console.error("❌ [DEBUG] requireClerkAuth failed:", authError instanceof Error ? authError.message : String(authError));
+      console.error("❌ [DEBUG] Headers received:", JSON.stringify({ clerkId: headerClerkId, email: headerEmail, name: headerName }, null, 2));
       // #endregion
       // Headers not available - user must send credentials in headers
       // NO FALLBACK TO CLERK SESSION - all requests must use headers
