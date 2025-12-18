@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG } from "@/lib/microservice-config"
+import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -291,6 +293,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Get microservice code and check if we should use API client
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    console.log(`🌍 [NAV] Microservice: ${microserviceCode}, useApiClient: ${useApiClient}`)
+
     // SECURITY: If user lookup failed (userInfo is null), return empty navigation
     if (!userInfo) {
       console.log("🔒 SECURITY: User not found in database - returning empty navigation")
@@ -313,12 +321,117 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const microserviceCode = getMicroserviceCode()
-    console.log(`🔍 Attempting to load navigation from database for microservice: ${microserviceCode}`)
+    console.log(`🔍 Attempting to load navigation for microservice: ${microserviceCode}`)
 
-    // Try to load from database first
-    try {
-      const connection = await getConnection()
+    // Use API client for non-admin microservices, direct DB for admin
+    if (useApiClient) {
+      try {
+        // First, get user ID from user lookup (we already have userInfo, but need to get userId)
+        let userId: string | null = null
+        
+        // Get user via API client to ensure we have the correct userId
+        try {
+          const auth = requireClerkAuth(request)
+          const lookupResult = await radiusApiClient.lookupUser({
+            clerkUserId: auth.clerkUserId,
+            email: auth.email || undefined,
+            microserviceCode: microserviceCode,
+          })
+
+          if (lookupResult.found && lookupResult.user) {
+            userId = lookupResult.user.id
+          } else {
+            console.error("❌ [NAV] User not found via API client")
+            return NextResponse.json({
+              navigation: [],
+              metadata: {
+                source: "user_not_found",
+                totalItems: 0,
+                visibleItems: 0,
+                microservice: {
+                  code: microserviceCode,
+                  name: MICROSERVICE_CONFIG.name,
+                  description: MICROSERVICE_CONFIG.description,
+                },
+                timestamp: new Date().toISOString(),
+                error: "User not found in system",
+                userPermissions: [],
+                userInfo: null,
+              },
+            })
+          }
+        } catch (lookupError) {
+          console.error("❌ [NAV] Error looking up user from API Hub:", lookupError)
+          return NextResponse.json({
+            navigation: [],
+            metadata: {
+              source: "api_error",
+              totalItems: 0,
+              visibleItems: 0,
+              microservice: {
+                code: microserviceCode,
+                name: MICROSERVICE_CONFIG.name,
+                description: MICROSERVICE_CONFIG.description,
+              },
+              timestamp: new Date().toISOString(),
+              error: "Failed to look up user",
+              userPermissions: [],
+              userInfo: null,
+            },
+          })
+        }
+
+        // Get permissions first (needed for filtering)
+        let userPermissionsForNav: string[] = []
+        try {
+          const permissionsResponse = await radiusApiClient.getPermissions({
+            userId,
+            microserviceCode: microserviceCode,
+          })
+          userPermissionsForNav = permissionsResponse.permissionCodes
+        } catch (permError) {
+          console.warn("⚠️ [NAV] Could not fetch permissions, proceeding without permission filtering")
+        }
+
+        // Get navigation from API Hub
+        const navigationResponse = await radiusApiClient.getNavigation({
+          userId,
+          microserviceCode: microserviceCode,
+          userPermissions: userPermissionsForNav,
+        })
+
+        // Transform API response to match expected format
+        const response = {
+          navigation: navigationResponse.navigation,
+          collapsibleItems: navigationResponse.collapsibleItems || [],
+          metadata: {
+            ...navigationResponse.metadata,
+            userInfo: {
+              id: userId,
+              email: userInfo?.email || "",
+              first_name: userInfo?.first_name || "",
+              last_name: userInfo?.last_name || "",
+            },
+          },
+        }
+
+        console.log(`✅ [NAV] Navigation loaded from API Hub: ${navigationResponse.metadata.visibleItems} items`)
+        return NextResponse.json(response)
+      } catch (apiError) {
+        console.error("❌ [NAV] Error fetching navigation from Radius API Hub:", apiError)
+        // Fall back to config if API fails
+        return createFallbackResponse(
+          "api_error",
+          apiError instanceof Error ? apiError.message : "Unknown API error",
+          userPermissions,
+          userInfo,
+        )
+      }
+    } else {
+      // Admin microservice: use direct DB access (existing code)
+      // Try to load from database first
+      try {
+        const connection = await getConnection()
 
       // First, get the microservice ID
       const microserviceQuery = `
@@ -610,6 +723,7 @@ export async function GET(request: NextRequest) {
 
       console.log("⚠️ Database error, falling back to config")
       return createFallbackResponse("config_fallback", errorMessage, userPermissions, userInfo)
+      }
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
