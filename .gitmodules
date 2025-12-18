@@ -1,0 +1,3 @@
+[submodule "policies-repo"]
+	path = policies-repo
+	url = https://github.com/jduarte-refugehouse/refuge-house-knowbase.git

@@ -123,8 +123,8 @@ export function RepositoryBrowser({ owner, repo }: RepositoryBrowserProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-12rem)]">
-      <Card className="flex flex-col">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
+      <Card className="flex flex-col lg:col-span-1">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Repository Contents</CardTitle>
@@ -207,7 +207,7 @@ export function RepositoryBrowser({ owner, repo }: RepositoryBrowserProps) {
         </CardContent>
       </Card>
 
-      <Card className="flex flex-col">
+      <Card className="flex flex-col lg:col-span-2">
         <CardHeader>
           <CardTitle className="text-lg">
             {selectedFile ? selectedFile.name : 'File Preview'}

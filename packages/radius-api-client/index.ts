@@ -25,11 +25,30 @@
  * 
  * // Get users
  * const users = await radiusApiClient.getUsers({ microserviceCode: 'home-visits' })
+ * 
+ * // Auth: Look up or create user
+ * const userResult = await radiusApiClient.lookupUser({ 
+ *   clerkUserId: 'user_123', 
+ *   microserviceCode: 'home-visits' 
+ * })
+ * 
+ * // Permissions: Get user permissions
+ * const permissions = await radiusApiClient.getPermissions({
+ *   userId: 'user-guid',
+ *   microserviceCode: 'home-visits'
+ * })
+ * 
+ * // Navigation: Get filtered navigation items
+ * const nav = await radiusApiClient.getNavigation({
+ *   userId: 'user-guid',
+ *   microserviceCode: 'home-visits'
+ * })
  * ```
  */
 
 export { radiusApiClient } from "./client"
 export type {
+  // Data types
   ListHome,
   HomeFilters,
   Appointment,
@@ -39,5 +58,22 @@ export type {
   User,
   UserOptions,
   ApiResponse,
+  // Auth types
+  AppUser,
+  UserRole,
+  Permission,
+  UserLookupOptions,
+  UserLookupResponse,
+  UserCreateData,
+  UserCreateResponse,
+  // Permissions types
+  PermissionsOptions,
+  PermissionsResponse,
+  // Navigation types
+  NavigationItem,
+  NavigationGroup,
+  NavigationOptions,
+  NavigationMetadata,
+  NavigationResponse,
 } from "./types"
 
