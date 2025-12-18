@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -7,7 +9,7 @@ export const runtime = "nodejs"
 // GET - Fetch appointments with optional filtering
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 [API] Fetching appointments (no auth middleware)")
+    console.log("🔍 [API] Fetching appointments")
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get("startDate")
@@ -24,135 +26,169 @@ export async function GET(request: NextRequest) {
       appointmentType,
     })
 
-    // Build dynamic query based on filters
-    const whereConditions = ["a.is_deleted = 0"]
-    const params: any[] = []
-    let paramIndex = 0
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (startDate) {
-      whereConditions.push(`a.start_datetime >= @param${paramIndex}`)
-      params.push(new Date(startDate))
-      paramIndex++
+    let appointments: any[]
+
+    if (useApiClient) {
+      // Use Radius API client for non-admin microservices
+      console.log(`✅ [API] Using API client for appointments (microservice: ${microserviceCode})`)
+      
+      const apiAppointments = await radiusApiClient.getAppointments({
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        assignedTo: assignedTo || undefined,
+        status: status || undefined,
+        type: appointmentType || undefined,
+      })
+
+      // Filter out deleted appointments (API should handle this, but ensure it)
+      appointments = apiAppointments.filter((apt: any) => !apt.is_deleted)
+      
+      // Sort by start_datetime ASC (API returns DESC, so reverse)
+      appointments.sort((a, b) => {
+        const aDate = new Date(a.start_datetime).getTime()
+        const bDate = new Date(b.start_datetime).getTime()
+        return aDate - bDate
+      })
+    } else {
+      // Direct database access for admin microservice
+      console.log(`⚠️ [API] Using direct DB access for appointments (admin microservice)`)
+      
+      // Build dynamic query based on filters
+      const whereConditions = ["a.is_deleted = 0"]
+      const params: any[] = []
+      let paramIndex = 0
+
+      if (startDate) {
+        whereConditions.push(`a.start_datetime >= @param${paramIndex}`)
+        params.push(new Date(startDate))
+        paramIndex++
+      }
+
+      if (endDate) {
+        whereConditions.push(`a.end_datetime <= @param${paramIndex}`)
+        params.push(new Date(endDate))
+        paramIndex++
+      }
+
+      if (assignedTo) {
+        whereConditions.push(`a.assigned_to_user_id = @param${paramIndex}`)
+        params.push(assignedTo)
+        paramIndex++
+      }
+
+      if (status) {
+        whereConditions.push(`a.status = @param${paramIndex}`)
+        params.push(status)
+        paramIndex++
+      }
+
+      if (appointmentType) {
+        whereConditions.push(`a.appointment_type = @param${paramIndex}`)
+        params.push(appointmentType)
+        paramIndex++
+      }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+      appointments = await query(
+        `
+        SELECT 
+          a.appointment_id,
+          a.title,
+          a.description,
+          a.appointment_type,
+          a.start_datetime,
+          a.end_datetime,
+          a.duration_minutes,
+          a.status,
+          a.home_xref,
+          a.location_address,
+          a.location_notes,
+          a.assigned_to_user_id,
+          a.assigned_to_name,
+          a.assigned_to_role,
+          a.created_by_user_id,
+          a.created_by_name,
+          a.priority,
+          a.is_recurring,
+          a.recurring_pattern,
+          a.parent_appointment_id,
+          a.preparation_notes,
+          a.completion_notes,
+          a.outcome,
+          a.created_at,
+          a.updated_at,
+          -- Include complete home details from SyncActiveHomes
+          h.HomeName as home_name,
+          h.Street,
+          h.City,
+          h.State,
+          h.Zip,
+          h.Unit,
+          h.CaseManager,
+          h.HomePhone,
+          h.CaseManagerEmail,
+          h.CaseManagerPhone,
+          h.Latitude,
+          h.Longitude
+        FROM appointments a
+        LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+        ${whereClause}
+        ORDER BY a.start_datetime ASC
+      `,
+        params,
+      )
     }
-
-    if (endDate) {
-      whereConditions.push(`a.end_datetime <= @param${paramIndex}`)
-      params.push(new Date(endDate))
-      paramIndex++
-    }
-
-    if (assignedTo) {
-      whereConditions.push(`a.assigned_to_user_id = @param${paramIndex}`)
-      params.push(assignedTo)
-      paramIndex++
-    }
-
-    if (status) {
-      whereConditions.push(`a.status = @param${paramIndex}`)
-      params.push(status)
-      paramIndex++
-    }
-
-    if (appointmentType) {
-      whereConditions.push(`a.appointment_type = @param${paramIndex}`)
-      params.push(appointmentType)
-      paramIndex++
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-    const appointments = await query(
-      `
-      SELECT 
-        a.appointment_id,
-        a.title,
-        a.description,
-        a.appointment_type,
-        a.start_datetime,
-        a.end_datetime,
-        a.duration_minutes,
-        a.status,
-        a.home_xref,
-        a.location_address,
-        a.location_notes,
-        a.assigned_to_user_id,
-        a.assigned_to_name,
-        a.assigned_to_role,
-        a.created_by_user_id,
-        a.created_by_name,
-        a.priority,
-        a.is_recurring,
-        a.recurring_pattern,
-        a.parent_appointment_id,
-        a.preparation_notes,
-        a.completion_notes,
-        a.outcome,
-        a.created_at,
-        a.updated_at,
-        -- Include complete home details from SyncActiveHomes
-        h.HomeName as home_name,
-        h.Street,
-        h.City,
-        h.State,
-        h.Zip,
-        h.Unit,
-        h.CaseManager,
-        h.HomePhone,
-        h.CaseManagerEmail,
-        h.CaseManagerPhone,
-        h.Latitude,
-        h.Longitude
-      FROM appointments a
-      LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
-      ${whereClause}
-      ORDER BY a.start_datetime ASC
-    `,
-      params,
-    )
 
     console.log(`✅ [API] Retrieved ${appointments.length} appointments`)
 
+    // Transform appointments to include home_info (for both API client and direct DB responses)
+    const transformedAppointments = appointments.map((appointment) => ({
+      ...appointment,
+      home_info: appointment.home_xref
+        ? {
+            xref: appointment.home_xref,
+            name: appointment.home_name,
+            address:
+              `${appointment.Street || ""}, ${appointment.City || ""}, ${appointment.State || ""} ${appointment.Zip || ""}`
+                .trim()
+                .replace(/^,\s*/, ""),
+            fullAddress: {
+              street: appointment.Street,
+              city: appointment.City,
+              state: appointment.State,
+              zip: appointment.Zip,
+            },
+            unit: appointment.Unit,
+            caseManager: appointment.CaseManager,
+            phone: appointment.HomePhone,
+            caseManagerEmail: appointment.CaseManagerEmail,
+            caseManagerPhone: appointment.CaseManagerPhone,
+            coordinates:
+              appointment.Latitude && appointment.Longitude
+                ? {
+                    lat: Number.parseFloat(appointment.Latitude),
+                    lng: Number.parseFloat(appointment.Longitude),
+                  }
+                : null,
+          }
+        : null,
+      // Return datetime strings WITHOUT timezone conversion
+      // SQL Server DATETIME2 has no timezone, so we return as-is (local time)
+      // The calendar will parse these as local time using parseLocalDatetime
+      start_datetime: appointment.start_datetime,
+      end_datetime: appointment.end_datetime,
+      created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
+      updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
+    }))
+
     return NextResponse.json({
       success: true,
-      count: appointments.length,
-      appointments: appointments.map((appointment) => ({
-        ...appointment,
-        home_info: appointment.home_xref
-          ? {
-              xref: appointment.home_xref,
-              name: appointment.home_name,
-              address:
-                `${appointment.Street || ""}, ${appointment.City || ""}, ${appointment.State || ""} ${appointment.Zip || ""}`
-                  .trim()
-                  .replace(/^,\s*/, ""),
-              fullAddress: {
-                street: appointment.Street,
-                city: appointment.City,
-                state: appointment.State,
-                zip: appointment.Zip,
-              },
-              unit: appointment.Unit,
-              caseManager: appointment.CaseManager,
-              phone: appointment.HomePhone,
-              caseManagerEmail: appointment.CaseManagerEmail,
-              caseManagerPhone: appointment.CaseManagerPhone,
-              coordinates:
-                appointment.Latitude && appointment.Longitude
-                  ? {
-                      lat: Number.parseFloat(appointment.Latitude),
-                      lng: Number.parseFloat(appointment.Longitude),
-                    }
-                  : null,
-            }
-          : null,
-        // Return datetime strings WITHOUT timezone conversion
-        // SQL Server DATETIME2 has no timezone, so we return as-is (local time)
-        // The calendar will parse these as local time using parseLocalDatetime
-        start_datetime: appointment.start_datetime,
-        end_datetime: appointment.end_datetime,
-        created_at: appointment.created_at ? new Date(appointment.created_at).toISOString() : null,
-        updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
-      })),
+      count: transformedAppointments.length,
+      appointments: transformedAppointments,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

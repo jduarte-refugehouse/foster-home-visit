@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { checkUserAccess } from "@refugehouse/shared-core/user-access"
+import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
+
+export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,47 +28,53 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists
-    const existingUser = await query<{
-      id: string
-      clerk_user_id: string
-      email: string
-      first_name: string
-      last_name: string
-      is_active: boolean
-      created_at: Date
-      updated_at: Date
-    }>("SELECT * FROM app_users WHERE clerk_user_id = @param0 OR email = @param1", [clerkUserId, email])
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
 
     let appUser
+    let userRoles: Array<{ role_name: string; app_name: string }> = []
+    let userPermissions: Array<{ permission_code: string; permission_name: string; app_name: string }> = []
 
-    if (existingUser.length > 0) {
-      // Update existing user
-      await query(
-        `UPDATE app_users 
-         SET email = @param1, first_name = @param2, last_name = @param3, updated_at = GETDATE()
-         WHERE clerk_user_id = @param0 OR email = @param1`,
-        [clerkUserId, email, firstName || "", lastName || ""],
-      )
-      appUser = existingUser[0]
+    if (useApiClient) {
+      // Use Radius API client for non-admin microservices
+      const userResult = await radiusApiClient.getOrCreateUser({
+        clerkUserId,
+        email,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        microserviceCode: microserviceCode,
+      })
+
+      if (!userResult.user) {
+        return NextResponse.json({ error: "Failed to create or retrieve user" }, { status: 500 })
+      }
+
+      appUser = {
+        id: userResult.user.id,
+        clerk_user_id: userResult.user.clerkUserId,
+        email: userResult.user.email,
+        first_name: userResult.user.firstName || "",
+        last_name: userResult.user.lastName || "",
+        is_active: userResult.user.isActive ?? true,
+        created_at: userResult.user.createdAt ? new Date(userResult.user.createdAt) : new Date(),
+        updated_at: userResult.user.updatedAt ? new Date(userResult.user.updatedAt) : new Date(),
+      }
+
+      // Map roles and permissions from API response
+      userRoles = userResult.roles.map((r) => ({
+        role_name: r.roleName,
+        app_name: r.appName || microserviceCode || "home-visits",
+      }))
+
+      userPermissions = userResult.permissions.map((p) => ({
+        permission_code: p.permissionCode,
+        permission_name: p.permissionName || p.permissionCode,
+        app_name: p.appName || microserviceCode || "home-visits",
+      }))
     } else {
-      // User has access (via invitation or refugehouse.org), create new user
-
-      // Create new user
-      const newUserResult = await query<{ id: string }>(
-        `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, is_active, created_at, updated_at)
-         OUTPUT INSERTED.id
-         VALUES (@param0, @param1, @param2, @param3, 1, GETDATE(), GETDATE())`,
-        [clerkUserId, email, firstName || "", lastName || ""],
-      )
-
-      const userId = newUserResult[0].id
-
-      // Assign roles and permissions based on email and specific user rules
-      await assignUserRolesAndPermissions(userId, email)
-
-      // Get the created user
-      const createdUser = await query<{
+      // Direct database access for admin microservice
+      // Check if user already exists
+      const existingUser = await query<{
         id: string
         clerk_user_id: string
         email: string
@@ -73,29 +83,67 @@ export async function POST(request: NextRequest) {
         is_active: boolean
         created_at: Date
         updated_at: Date
-      }>("SELECT * FROM app_users WHERE id = @param0", [userId])
+      }>("SELECT * FROM app_users WHERE clerk_user_id = @param0 OR email = @param1", [clerkUserId, email])
 
-      appUser = createdUser[0]
+      if (existingUser.length > 0) {
+        // Update existing user
+        await query(
+          `UPDATE app_users 
+           SET email = @param1, first_name = @param2, last_name = @param3, updated_at = GETDATE()
+           WHERE clerk_user_id = @param0 OR email = @param1`,
+          [clerkUserId, email, firstName || "", lastName || ""],
+        )
+        appUser = existingUser[0]
+      } else {
+        // User has access (via invitation or refugehouse.org), create new user
+
+        // Create new user
+        const newUserResult = await query<{ id: string }>(
+          `INSERT INTO app_users (clerk_user_id, email, first_name, last_name, is_active, created_at, updated_at)
+           OUTPUT INSERTED.id
+           VALUES (@param0, @param1, @param2, @param3, 1, GETDATE(), GETDATE())`,
+          [clerkUserId, email, firstName || "", lastName || ""],
+        )
+
+        const userId = newUserResult[0].id
+
+        // Assign roles and permissions based on email and specific user rules
+        await assignUserRolesAndPermissions(userId, email)
+
+        // Get the created user
+        const createdUser = await query<{
+          id: string
+          clerk_user_id: string
+          email: string
+          first_name: string
+          last_name: string
+          is_active: boolean
+          created_at: Date
+          updated_at: Date
+        }>("SELECT * FROM app_users WHERE id = @param0", [userId])
+
+        appUser = createdUser[0]
+      }
+
+      // Get user roles and permissions
+      userRoles = await query<{ role_name: string; app_name: string }>(
+        `SELECT ur.role_name, ma.app_name
+         FROM user_roles ur
+         INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
+         WHERE ur.user_id = @param0 AND ur.is_active = 1`,
+        [appUser.id],
+      )
+
+      userPermissions = await query<{ permission_code: string; permission_name: string; app_name: string }>(
+        `SELECT p.permission_code, p.permission_name, ma.app_name
+         FROM user_permissions up
+         INNER JOIN permissions p ON up.permission_id = p.id
+         INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
+         WHERE up.user_id = @param0 AND up.is_active = 1 
+         AND (up.expires_at IS NULL OR up.expires_at > GETDATE())`,
+        [appUser.id],
+      )
     }
-
-    // Get user roles and permissions
-    const userRoles = await query<{ role_name: string; app_name: string }>(
-      `SELECT ur.role_name, ma.app_name
-       FROM user_roles ur
-       INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
-       WHERE ur.user_id = @param0 AND ur.is_active = 1`,
-      [appUser.id],
-    )
-
-    const userPermissions = await query<{ permission_code: string; permission_name: string; app_name: string }>(
-      `SELECT p.permission_code, p.permission_name, ma.app_name
-       FROM user_permissions up
-       INNER JOIN permissions p ON up.permission_id = p.id
-       INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-       WHERE up.user_id = @param0 AND up.is_active = 1 
-       AND (up.expires_at IS NULL OR up.expires_at > GETDATE())`,
-      [appUser.id],
-    )
 
     return NextResponse.json({
       appUser,
