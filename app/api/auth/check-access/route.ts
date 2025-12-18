@@ -7,6 +7,8 @@ import { getEffectiveUser } from "@refugehouse/shared-core/impersonation"
 import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
+export const dynamic = "force-dynamic"
+
 /**
  * @shared-core
  * This API route should be moved to packages/shared-core/app/api/auth/check-access/route.ts
