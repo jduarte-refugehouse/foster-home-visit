@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workforce MVP Mockup - Refuge House</title>
+    <title>Workforce MVP Mockup - Time Blocks - Refuge House</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -206,96 +206,6 @@
             50% { opacity: 0.5; }
         }
 
-        /* Quick Actions */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .quick-action {
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 12px;
-            padding: 12px 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .quick-action:hover {
-            border-color: var(--primary);
-            background: #eff6ff;
-        }
-
-        .quick-action .icon {
-            font-size: 24px;
-            margin-bottom: 4px;
-        }
-
-        .quick-action .label {
-            font-size: 10px;
-            color: var(--gray-600);
-            line-height: 1.2;
-        }
-
-        /* Activity List */
-        .activity-item {
-            display: flex;
-            align-items: flex-start;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--gray-100);
-        }
-
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-
-        .activity-icon {
-            width: 36px;
-            height: 36px;
-            background: var(--gray-100);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            font-size: 18px;
-        }
-
-        .activity-icon.travel { background: #dbeafe; }
-        .activity-icon.visit { background: #dcfce7; }
-        .activity-icon.meeting { background: #fef3c7; }
-        .activity-icon.break { background: var(--gray-200); }
-
-        .activity-details {
-            flex: 1;
-        }
-
-        .activity-name {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--gray-800);
-        }
-
-        .activity-meta {
-            font-size: 12px;
-            color: var(--gray-500);
-            margin-top: 2px;
-        }
-
-        .activity-time {
-            text-align: right;
-            font-size: 12px;
-            color: var(--gray-500);
-        }
-
-        .activity-duration {
-            font-weight: 600;
-            color: var(--gray-700);
-        }
-
         /* Buttons */
         .btn {
             display: inline-flex;
@@ -317,10 +227,6 @@
             color: white;
         }
 
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
         .btn-success {
             background: var(--success);
             color: white;
@@ -335,11 +241,6 @@
             background: white;
             border: 2px solid var(--gray-300);
             color: var(--gray-700);
-        }
-
-        .btn-outline:hover {
-            border-color: var(--primary);
-            color: var(--primary);
         }
 
         /* SMS Mockup */
@@ -391,231 +292,6 @@
             margin: 16px 0;
         }
 
-        /* Activity Selection */
-        .activity-category {
-            margin-bottom: 20px;
-        }
-
-        .category-header {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-            padding-left: 4px;
-        }
-
-        .activity-option {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .activity-option:hover {
-            border-color: var(--primary);
-            background: #eff6ff;
-        }
-
-        .activity-option .icon {
-            font-size: 20px;
-            margin-right: 12px;
-        }
-
-        .activity-option .name {
-            font-size: 14px;
-            color: var(--gray-800);
-        }
-
-        /* Home Selection */
-        .home-option {
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .home-option:hover {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .home-option.selected {
-            border-color: var(--primary);
-            background: #eff6ff;
-        }
-
-        .home-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--gray-800);
-            margin-bottom: 8px;
-        }
-
-        .child-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .child-tag {
-            font-size: 12px;
-            padding: 4px 10px;
-            background: var(--gray-100);
-            border-radius: 16px;
-            color: var(--gray-600);
-        }
-
-        .child-tag.intensive { background: #fee2e2; color: #b91c1c; }
-        .child-tag.moderate { background: #fef3c7; color: #b45309; }
-        .child-tag.basic { background: #dcfce7; color: #15803d; }
-
-        /* Active Activity */
-        .active-activity {
-            background: linear-gradient(135deg, var(--success), #15803d);
-            color: white;
-            padding: 24px;
-            border-radius: 16px;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        .active-activity .timer {
-            font-size: 48px;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            margin: 16px 0;
-        }
-
-        .active-activity .activity-type {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .active-activity .activity-target {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        /* Allocation */
-        .allocation-row {
-            display: flex;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--gray-100);
-        }
-
-        .allocation-name {
-            flex: 1;
-            font-size: 14px;
-            color: var(--gray-700);
-        }
-
-        .allocation-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .allocation-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            border: 1px solid var(--gray-300);
-            background: white;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .allocation-btn:hover {
-            background: var(--gray-100);
-        }
-
-        .allocation-time {
-            width: 60px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .progress-bar {
-            height: 8px;
-            background: var(--gray-200);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 16px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--primary);
-            transition: width 0.3s;
-        }
-
-        .progress-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--gray-500);
-            margin-top: 8px;
-        }
-
-        /* Section Labels */
-        .section-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        /* Checkbox */
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-        }
-
-        .checkbox-item input {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            accent-color: var(--primary);
-        }
-
-        .checkbox-label {
-            flex: 1;
-        }
-
-        .checkbox-label .name {
-            font-size: 14px;
-            color: var(--gray-800);
-        }
-
-        .checkbox-label .meta {
-            font-size: 12px;
-            color: var(--gray-500);
-        }
-
         /* Phone Labels */
         .phone-label {
             text-align: center;
@@ -631,13 +307,400 @@
             margin-bottom: 4px;
         }
 
-        /* Unallocated Warning */
+        /* Section Labels */
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        /* ============================================ */
+        /* TIME BLOCKS - The core visual component     */
+        /* ============================================ */
+
+        .time-blocks-container {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .time-block {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+        }
+
+        .time-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .block-time-column {
+            width: 50px;
+            background: var(--gray-100);
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--gray-500);
+            border-right: 1px solid var(--gray-200);
+        }
+
+        .block-time-column .start {
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .block-time-column .duration {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .block-content {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .block-activity {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-concerning {
+            font-size: 11px;
+            color: var(--gray-500);
+        }
+
+        .block-concerning .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--gray-100);
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+
+        .block-concerning .tag.child { background: #dbeafe; color: #1d4ed8; }
+        .block-concerning .tag.home { background: #dcfce7; color: #15803d; }
+        .block-concerning .tag.self { background: #fef3c7; color: #b45309; }
+        .block-concerning .tag.unassigned { background: var(--gray-200); color: var(--gray-600); }
+
+        .block-color-bar {
+            width: 4px;
+            flex-shrink: 0;
+        }
+
+        .block-color-bar.case-mgmt { background: #3b82f6; }
+        .block-color-bar.treatment { background: #8b5cf6; }
+        .block-color-bar.travel { background: #06b6d4; }
+        .block-color-bar.medical { background: #ef4444; }
+        .block-color-bar.admin { background: #6b7280; }
+        .block-color-bar.break { background: #d1d5db; }
+
+        /* Visual Timeline */
+        .visual-timeline {
+            display: flex;
+            height: 60px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .timeline-block {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4px;
+            color: white;
+            font-size: 9px;
+            text-align: center;
+            min-width: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .timeline-block:hover {
+            filter: brightness(1.1);
+        }
+
+        .timeline-block .icon {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+
+        .timeline-block.case-mgmt { background: #3b82f6; }
+        .timeline-block.treatment { background: #8b5cf6; }
+        .timeline-block.travel { background: #06b6d4; }
+        .timeline-block.medical { background: #ef4444; }
+        .timeline-block.admin { background: #6b7280; }
+        .timeline-block.break { background: #d1d5db; color: var(--gray-600); }
+        .timeline-block.unallocated {
+            background: repeating-linear-gradient(
+                45deg,
+                #fef3c7,
+                #fef3c7 10px,
+                #fde68a 10px,
+                #fde68a 20px
+            );
+            color: #92400e;
+        }
+
+        .timeline-block .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            background: rgba(0,0,0,0.1);
+        }
+
+        /* Time Block Editor */
+        .block-editor {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 2px solid var(--primary);
+        }
+
+        .editor-section {
+            margin-bottom: 16px;
+        }
+
+        .editor-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .editor-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .duration-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .duration-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            border: 2px solid var(--gray-300);
+            background: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .duration-btn:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .duration-display {
+            font-size: 32px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .concerning-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .concerning-option {
+            padding: 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .concerning-option:hover {
+            border-color: var(--primary);
+        }
+
+        .concerning-option.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .concerning-option .icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .concerning-option .label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .concerning-option .desc {
+            font-size: 10px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        /* Activity Pills */
+        .activity-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .activity-pill {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .activity-pill:hover {
+            border-color: var(--primary);
+        }
+
+        .activity-pill.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Home/Child Selection */
+        .selection-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .selection-item:hover {
+            border-color: var(--primary);
+        }
+
+        .selection-item.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .selection-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            accent-color: var(--primary);
+        }
+
+        .selection-item .details {
+            flex: 1;
+        }
+
+        .selection-item .name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .selection-item .meta {
+            font-size: 11px;
+            color: var(--gray-500);
+        }
+
+        /* Quick Add */
+        .quick-add-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .quick-add-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 14px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .quick-add-btn:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .quick-add-btn .icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .quick-add-btn .label {
+            font-size: 10px;
+            color: var(--gray-600);
+            white-space: nowrap;
+        }
+
+        /* Unallocated Banner */
         .unallocated-banner {
             background: #fef3c7;
             border: 1px solid #f59e0b;
             border-radius: 8px;
             padding: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -659,10 +722,10 @@
         /* Notes */
         .notes-input {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: 1px solid var(--gray-300);
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             resize: none;
             font-family: inherit;
         }
@@ -673,19 +736,61 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        /* All Activities View */
-        .search-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--gray-300);
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 16px;
+        /* Timeline Labels */
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--gray-400);
+            margin-bottom: 4px;
+            padding: 0 4px;
         }
 
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary);
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--gray-500);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        /* Active Block Indicator */
+        .active-block-indicator {
+            background: linear-gradient(135deg, var(--success), #15803d);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .active-block-indicator .timer {
+            font-size: 36px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .active-block-indicator .activity {
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .active-block-indicator .concerning {
+            font-size: 12px;
+            opacity: 0.8;
         }
     </style>
 </head>
@@ -739,119 +844,182 @@
             </div>
         </div>
 
-        <!-- Screen 2: Main Dashboard -->
+        <!-- Screen 2: Main Dashboard with Visual Timeline -->
         <div>
             <div class="phone-label">
                 <div class="step">FLOW 2</div>
-                Main Dashboard
+                Dashboard - Visual Time Blocks
             </div>
             <div class="phone-frame">
                 <div class="phone-screen">
                     <div class="phone-notch"></div>
                     <div class="screen-header">
-                        <h1>Today's Activity</h1>
+                        <h1>Today's Time Blocks</h1>
                         <div class="subtitle">Thursday, January 2, 2026</div>
                     </div>
                     <div class="screen-content">
                         <!-- Status Banner -->
                         <div class="status-banner">
-                            <div class="label">Time Worked</div>
-                            <div class="time">4:32</div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <div>
+                                    <div class="label">Time Logged</div>
+                                    <div class="time">5:15</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div class="label">Unallocated</div>
+                                    <div class="time" style="color: #fde68a;">2:30</div>
+                                </div>
+                            </div>
                             <div class="status">
                                 <span class="status-dot"></span>
                                 Day in progress • Started 7:52 AM
                             </div>
                         </div>
 
-                        <!-- Quick Actions -->
-                        <div class="section-label">Quick Actions</div>
-                        <div class="quick-actions">
-                            <div class="quick-action">
-                                <div class="icon">🚗</div>
-                                <div class="label">Start Drive</div>
+                        <!-- Visual Timeline -->
+                        <div class="section-label">Your Day at a Glance</div>
+                        <div class="timeline-labels">
+                            <span>8 AM</span>
+                            <span>10</span>
+                            <span>12 PM</span>
+                            <span>2</span>
+                            <span>4</span>
+                        </div>
+                        <div class="visual-timeline">
+                            <div class="timeline-block travel" style="flex: 0.75;">
+                                <span class="icon">🚗</span>
+                                <span>0:45</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">🏠</div>
-                                <div class="label">Home Visit</div>
+                            <div class="timeline-block case-mgmt" style="flex: 1.5;">
+                                <span class="icon">🏠</span>
+                                <span>1:30</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">📞</div>
-                                <div class="label">Phone Contact</div>
+                            <div class="timeline-block travel" style="flex: 0.5;">
+                                <span class="icon">🚗</span>
+                                <span>0:30</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">📋</div>
-                                <div class="label">Document</div>
+                            <div class="timeline-block break" style="flex: 0.5;">
+                                <span class="icon">☕</span>
+                                <span>0:30</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">⚖️</div>
-                                <div class="label">Court</div>
+                            <div class="timeline-block admin" style="flex: 1.5;">
+                                <span class="icon">👥</span>
+                                <span>1:30</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">🏥</div>
-                                <div class="label">Medical</div>
+                            <div class="timeline-block unallocated" style="flex: 2.5;">
+                                <span class="icon">⚠️</span>
+                                <span>2:30</span>
                             </div>
-                            <div class="quick-action">
-                                <div class="icon">👥</div>
-                                <div class="label">Meeting</div>
-                            </div>
-                            <div class="quick-action">
-                                <div class="icon">➕</div>
-                                <div class="label">More...</div>
+                        </div>
+                        <div class="legend">
+                            <div class="legend-item"><div class="legend-dot" style="background: #06b6d4;"></div>Travel</div>
+                            <div class="legend-item"><div class="legend-dot" style="background: #3b82f6;"></div>Case Mgmt</div>
+                            <div class="legend-item"><div class="legend-dot" style="background: #6b7280;"></div>Admin</div>
+                            <div class="legend-item"><div class="legend-dot" style="background: #fde68a;"></div>Unallocated</div>
+                        </div>
+
+                        <!-- Quick Add -->
+                        <div style="margin-top: 16px;">
+                            <div class="section-label">Quick Add Time Block</div>
+                            <div class="quick-add-bar">
+                                <div class="quick-add-btn">
+                                    <span class="icon">🚗</span>
+                                    <span class="label">Drive</span>
+                                </div>
+                                <div class="quick-add-btn">
+                                    <span class="icon">🏠</span>
+                                    <span class="label">Home Visit</span>
+                                </div>
+                                <div class="quick-add-btn">
+                                    <span class="icon">📞</span>
+                                    <span class="label">Phone</span>
+                                </div>
+                                <div class="quick-add-btn">
+                                    <span class="icon">📋</span>
+                                    <span class="label">Document</span>
+                                </div>
+                                <div class="quick-add-btn">
+                                    <span class="icon">➕</span>
+                                    <span class="label">More</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Today's Log -->
-                        <div class="card">
-                            <div class="card-header">
-                                <span class="card-title">Today's Log</span>
-                                <span class="card-badge badge-primary">3.25 hrs logged</span>
-                            </div>
+                        <!-- Time Blocks List -->
+                        <div style="margin-top: 16px;">
+                            <div class="section-label">Time Block Details</div>
+                            <div class="time-blocks-container">
+                                <div class="time-block">
+                                    <div class="block-color-bar travel"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">8:15</span>
+                                        <span class="duration">0:45</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🚗 Travel - Home Visit</div>
+                                        <div class="block-concerning">
+                                            <span class="tag home">Smith Home</span>
+                                            32 miles
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <div class="activity-item">
-                                <div class="activity-icon travel">🚗</div>
-                                <div class="activity-details">
-                                    <div class="activity-name">Drive to Smith Home</div>
-                                    <div class="activity-meta">Marcus S., Jaylen S. • 32 mi</div>
+                                <div class="time-block">
+                                    <div class="block-color-bar case-mgmt"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">9:00</span>
+                                        <span class="duration">1:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🏠 Home Visit</div>
+                                        <div class="block-concerning">
+                                            <span class="tag child">Marcus S.</span>
+                                            <span class="tag child">Jaylen S.</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="activity-time">
-                                    <div>8:15 AM</div>
-                                    <div class="activity-duration">0:45</div>
-                                </div>
-                            </div>
 
-                            <div class="activity-item">
-                                <div class="activity-icon visit">🏠</div>
-                                <div class="activity-details">
-                                    <div class="activity-name">Home Visit - Smith Home</div>
-                                    <div class="activity-meta">Marcus S., Jaylen S.</div>
+                                <div class="time-block">
+                                    <div class="block-color-bar travel"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">10:30</span>
+                                        <span class="duration">0:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🚗 Travel - Admin</div>
+                                        <div class="block-concerning">
+                                            <span class="tag unassigned">Unassigned</span>
+                                            25 miles
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="activity-time">
-                                    <div>9:00 AM</div>
-                                    <div class="activity-duration">1:30</div>
-                                </div>
-                            </div>
 
-                            <div class="activity-item">
-                                <div class="activity-icon travel">🚗</div>
-                                <div class="activity-details">
-                                    <div class="activity-name">Drive to Office</div>
-                                    <div class="activity-meta">Admin • 25 mi</div>
+                                <div class="time-block">
+                                    <div class="block-color-bar break"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">12:00</span>
+                                        <span class="duration">0:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">☕ Lunch Break</div>
+                                        <div class="block-concerning">
+                                            <span class="tag" style="background: #e5e7eb;">Break</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="activity-time">
-                                    <div>10:30 AM</div>
-                                    <div class="activity-duration">0:30</div>
-                                </div>
-                            </div>
 
-                            <div class="activity-item">
-                                <div class="activity-icon break">☕</div>
-                                <div class="activity-details">
-                                    <div class="activity-name">Lunch Break</div>
-                                    <div class="activity-meta">Break</div>
-                                </div>
-                                <div class="activity-time">
-                                    <div>12:00 PM</div>
-                                    <div class="activity-duration">0:30</div>
+                                <div class="time-block">
+                                    <div class="block-color-bar admin"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">12:30</span>
+                                        <span class="duration">1:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">👥 Staff Meeting</div>
+                                        <div class="block-concerning">
+                                            <span class="tag unassigned">Unassigned</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -878,305 +1046,88 @@
             </div>
         </div>
 
-        <!-- Screen 3: Start Activity - Select Type -->
+        <!-- Screen 3: Add Time Block - Step 1: Activity -->
         <div>
             <div class="phone-label">
                 <div class="step">FLOW 3A</div>
-                Select Activity Type
+                Add Time Block - Activity
             </div>
             <div class="phone-frame">
                 <div class="phone-screen">
                     <div class="phone-notch"></div>
                     <div class="screen-header">
-                        <h1>Start Activity</h1>
-                        <div class="subtitle">What are you doing?</div>
+                        <h1>New Time Block</h1>
+                        <div class="subtitle">Step 1: Select Activity</div>
                     </div>
                     <div class="screen-content">
-                        <input type="text" class="search-input" placeholder="🔍 Search activities...">
+                        <div class="editor-section">
+                            <div class="editor-label">What are you doing?</div>
 
-                        <div class="activity-category">
-                            <div class="category-header">Case Management</div>
-                            <div class="activity-option">
-                                <span class="icon">🏠</span>
-                                <span class="name">Home Visit</span>
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Case Management</div>
+                                <div class="activity-pills">
+                                    <span class="activity-pill selected">🏠 Home Visit</span>
+                                    <span class="activity-pill">📞 Phone Contact</span>
+                                    <span class="activity-pill">📋 Documentation</span>
+                                    <span class="activity-pill">⚖️ Court Prep</span>
+                                    <span class="activity-pill">🏛️ Court</span>
+                                    <span class="activity-pill">🏫 School</span>
+                                    <span class="activity-pill">📎 Other</span>
+                                </div>
                             </div>
-                            <div class="activity-option">
-                                <span class="icon">📞</span>
-                                <span class="name">Phone/Video Contact</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">📋</span>
-                                <span class="name">Documentation/Case Notes</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">📝</span>
-                                <span class="name">Service Planning</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">⚖️</span>
-                                <span class="name">Court Preparation</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🏛️</span>
-                                <span class="name">Court Attendance</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🏫</span>
-                                <span class="name">School Contact/Meeting</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🔗</span>
-                                <span class="name">External Provider Coordination</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">📦</span>
-                                <span class="name">Placement Coordination</span>
-                            </div>
-                            <div class="activity-option" style="background: #f3f4f6;">
-                                <span class="icon">📎</span>
-                                <span class="name">Case Management - Other</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Screen 4: All Activity Types (scrolled) -->
-        <div>
-            <div class="phone-label">
-                <div class="step">FLOW 3A (cont.)</div>
-                More Activity Types
-            </div>
-            <div class="phone-frame">
-                <div class="phone-screen">
-                    <div class="phone-notch"></div>
-                    <div class="screen-header">
-                        <h1>Start Activity</h1>
-                        <div class="subtitle">What are you doing?</div>
-                    </div>
-                    <div class="screen-content">
-                        <div class="activity-category">
-                            <div class="category-header">Treatment Coordination</div>
-                            <div class="activity-option">
-                                <span class="icon">👥</span>
-                                <span class="name">Treatment Team Meeting</span>
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Treatment Coordination</div>
+                                <div class="activity-pills">
+                                    <span class="activity-pill">👥 Team Meeting</span>
+                                    <span class="activity-pill">🧠 Therapy Coord</span>
+                                    <span class="activity-pill">🚨 Crisis</span>
+                                    <span class="activity-pill">📊 CANS</span>
+                                    <span class="activity-pill">🛡️ Safety Plan</span>
+                                    <span class="activity-pill">📎 Other</span>
+                                </div>
                             </div>
-                            <div class="activity-option">
-                                <span class="icon">🧠</span>
-                                <span class="name">Therapy Coordination</span>
+
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Travel</div>
+                                <div class="activity-pills">
+                                    <span class="activity-pill">🚗 Home Visit</span>
+                                    <span class="activity-pill">⚖️ Court</span>
+                                    <span class="activity-pill">🏥 Medical</span>
+                                    <span class="activity-pill">🏫 School</span>
+                                    <span class="activity-pill">👨‍👩‍👧 Visitation</span>
+                                    <span class="activity-pill">🏢 Admin</span>
+                                    <span class="activity-pill">📎 Other</span>
+                                </div>
                             </div>
-                            <div class="activity-option">
-                                <span class="icon">🚨</span>
-                                <span class="name">Crisis Intervention</span>
+
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Medical</div>
+                                <div class="activity-pills">
+                                    <span class="activity-pill">🏥 Medical Appt</span>
+                                    <span class="activity-pill">🦷 Dental</span>
+                                    <span class="activity-pill">🧠 Mental Health</span>
+                                    <span class="activity-pill">💊 Medication</span>
+                                    <span class="activity-pill">📎 Other</span>
+                                </div>
                             </div>
-                            <div class="activity-option">
-                                <span class="icon">📊</span>
-                                <span class="name">CANS Assessment</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🛡️</span>
-                                <span class="name">Safety Planning</span>
-                            </div>
-                            <div class="activity-option" style="background: #f3f4f6;">
-                                <span class="icon">📎</span>
-                                <span class="name">Treatment Coordination - Other</span>
+
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 6px;">Administrative</div>
+                                <div class="activity-pills">
+                                    <span class="activity-pill">👥 Staff Meeting</span>
+                                    <span class="activity-pill">👤 Supervision</span>
+                                    <span class="activity-pill">📚 Training</span>
+                                    <span class="activity-pill">📜 Licensing</span>
+                                    <span class="activity-pill">🗂️ General Admin</span>
+                                    <span class="activity-pill">📎 Other</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="activity-category">
-                            <div class="category-header">Travel</div>
-                            <div class="activity-option">
-                                <span class="icon">🚗</span>
-                                <span class="name">Travel - Home Visit</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">⚖️</span>
-                                <span class="name">Travel - Court</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🏥</span>
-                                <span class="name">Travel - Medical</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🏫</span>
-                                <span class="name">Travel - School</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">👨‍👩‍👧</span>
-                                <span class="name">Travel - Visitation</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🏢</span>
-                                <span class="name">Travel - Administrative</span>
-                            </div>
-                            <div class="activity-option" style="background: #f3f4f6;">
-                                <span class="icon">📎</span>
-                                <span class="name">Travel - Other</span>
-                            </div>
-                        </div>
-
-                        <div class="activity-category">
-                            <div class="category-header">Medical</div>
-                            <div class="activity-option">
-                                <span class="icon">🏥</span>
-                                <span class="name">Medical Appointment</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🦷</span>
-                                <span class="name">Dental Appointment</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🧠</span>
-                                <span class="name">Mental Health Appointment</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">💊</span>
-                                <span class="name">Medication Coordination</span>
-                            </div>
-                            <div class="activity-option" style="background: #f3f4f6;">
-                                <span class="icon">📎</span>
-                                <span class="name">Medical - Other</span>
-                            </div>
-                        </div>
-
-                        <div class="activity-category">
-                            <div class="category-header">Administrative</div>
-                            <div class="activity-option">
-                                <span class="icon">👥</span>
-                                <span class="name">Staff Meeting</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">👤</span>
-                                <span class="name">Supervision (1:1)</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">📚</span>
-                                <span class="name">Training</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">📜</span>
-                                <span class="name">Licensing/Compliance</span>
-                            </div>
-                            <div class="activity-option">
-                                <span class="icon">🗂️</span>
-                                <span class="name">General Administrative</span>
-                            </div>
-                            <div class="activity-option" style="background: #f3f4f6;">
-                                <span class="icon">📎</span>
-                                <span class="name">Administrative - Other</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Screen 5: Select Home/Children -->
-        <div>
-            <div class="phone-label">
-                <div class="step">FLOW 3B</div>
-                Select Home
-            </div>
-            <div class="phone-frame">
-                <div class="phone-screen">
-                    <div class="phone-notch"></div>
-                    <div class="screen-header">
-                        <h1>Home Visit</h1>
-                        <div class="subtitle">Select home</div>
-                    </div>
-                    <div class="screen-content">
-                        <div class="section-label">My Assigned Homes</div>
-
-                        <div class="home-option selected">
-                            <div class="home-name">🏠 Smith Home</div>
-                            <div class="child-list">
-                                <span class="child-tag intensive">Marcus S. • T3C Intensive</span>
-                                <span class="child-tag basic">Jaylen S. • T3C Basic</span>
-                            </div>
-                        </div>
-
-                        <div class="home-option">
-                            <div class="home-name">🏠 Jones Home</div>
-                            <div class="child-list">
-                                <span class="child-tag moderate">Aaliyah J. • T3C Moderate</span>
-                            </div>
-                        </div>
-
-                        <div class="home-option">
-                            <div class="home-name">🏠 Williams Home</div>
-                            <div class="child-list">
-                                <span class="child-tag basic">Devon W. • T3C Basic</span>
-                                <span class="child-tag basic">Maya W. • T3C Basic</span>
-                            </div>
-                        </div>
-
-                        <div class="home-option">
-                            <div class="home-name">🏠 Garcia Home</div>
-                            <div class="child-list">
-                                <span class="child-tag intensive">Sofia G. • T3C Intensive</span>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; margin: 16px 0;">
-                            <a href="#" style="color: var(--primary); font-size: 14px;">🔍 Search all homes...</a>
-                        </div>
-
-                        <div class="home-option" style="border-style: dashed;">
-                            <div class="home-name">🏢 Administrative / No specific home</div>
-                            <div class="child-list">
-                                <span class="child-tag" style="background: var(--gray-200);">General admin tasks</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Screen 6: Select Children -->
-        <div>
-            <div class="phone-label">
-                <div class="step">FLOW 3C</div>
-                Select Children
-            </div>
-            <div class="phone-frame">
-                <div class="phone-screen">
-                    <div class="phone-notch"></div>
-                    <div class="screen-header">
-                        <h1>Smith Home</h1>
-                        <div class="subtitle">Who is this activity for?</div>
-                    </div>
-                    <div class="screen-content">
-                        <div class="section-label">Children in Placement</div>
-
-                        <label class="checkbox-item">
-                            <input type="checkbox" checked>
-                            <div class="checkbox-label">
-                                <div class="name">Marcus S.</div>
-                                <div class="meta">T3C Intensive • Age 14 • Placed 8/15/2025</div>
-                            </div>
-                        </label>
-
-                        <label class="checkbox-item">
-                            <input type="checkbox" checked>
-                            <div class="checkbox-label">
-                                <div class="name">Jaylen S.</div>
-                                <div class="meta">T3C Basic • Age 11 • Placed 6/02/2025</div>
-                            </div>
-                        </label>
-
-                        <div style="margin: 20px 0; padding: 16px; background: var(--gray-100); border-radius: 8px;">
-                            <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 8px;">
-                                <strong>Time Split:</strong> Equal allocation
-                            </div>
-                            <div style="font-size: 12px; color: var(--gray-500);">
-                                Each child will receive 50% of this activity's time for their service package.
-                            </div>
-                        </div>
-
-                        <div style="padding: 16px 0;">
+                        <div style="padding-top: 16px;">
                             <button class="btn btn-primary">
-                                Start Activity →
+                                Next: Who is this concerning? →
                             </button>
                         </div>
                     </div>
@@ -1184,41 +1135,203 @@
             </div>
         </div>
 
-        <!-- Screen 7: Active Activity Timer -->
+        <!-- Screen 4: Add Time Block - Step 2: Concerning -->
+        <div>
+            <div class="phone-label">
+                <div class="step">FLOW 3B</div>
+                Add Time Block - Concerning
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-notch"></div>
+                    <div class="screen-header">
+                        <h1>New Time Block</h1>
+                        <div class="subtitle">Step 2: Who is this concerning?</div>
+                    </div>
+                    <div class="screen-content">
+                        <div style="background: var(--gray-100); padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
+                            <strong>Activity:</strong> 🏠 Home Visit
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Concerning Type</div>
+                            <div class="concerning-options">
+                                <div class="concerning-option selected">
+                                    <div class="icon">🏠</div>
+                                    <div class="label">Home</div>
+                                    <div class="desc">Splits to children</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">👤</div>
+                                    <div class="label">Child(ren)</div>
+                                    <div class="desc">Specific children</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🏢</div>
+                                    <div class="label">Unassigned</div>
+                                    <div class="desc">Admin/Leadership</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🎓</div>
+                                    <div class="label">Self</div>
+                                    <div class="desc">Training/Development</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Select Home</div>
+                            <div class="selection-list">
+                                <div class="selection-item selected">
+                                    <input type="radio" name="home" checked>
+                                    <div class="details">
+                                        <div class="name">🏠 Smith Home</div>
+                                        <div class="meta">Marcus S. (Intensive), Jaylen S. (Basic)</div>
+                                    </div>
+                                </div>
+                                <div class="selection-item">
+                                    <input type="radio" name="home">
+                                    <div class="details">
+                                        <div class="name">🏠 Jones Home</div>
+                                        <div class="meta">Aaliyah J. (Moderate)</div>
+                                    </div>
+                                </div>
+                                <div class="selection-item">
+                                    <input type="radio" name="home">
+                                    <div class="details">
+                                        <div class="name">🏠 Williams Home</div>
+                                        <div class="meta">Devon W. (Basic), Maya W. (Basic)</div>
+                                    </div>
+                                </div>
+                                <div class="selection-item">
+                                    <input type="radio" name="home">
+                                    <div class="details">
+                                        <div class="name">🏠 Garcia Home</div>
+                                        <div class="meta">Sofia G. (Intensive)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding-top: 16px;">
+                            <button class="btn btn-primary">
+                                Next: Set Duration →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Add Time Block - Step 3: Duration -->
+        <div>
+            <div class="phone-label">
+                <div class="step">FLOW 3C</div>
+                Add Time Block - Duration
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-notch"></div>
+                    <div class="screen-header">
+                        <h1>New Time Block</h1>
+                        <div class="subtitle">Step 3: How long?</div>
+                    </div>
+                    <div class="screen-content">
+                        <div style="background: var(--gray-100); padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
+                            <div><strong>Activity:</strong> 🏠 Home Visit</div>
+                            <div style="margin-top: 4px;"><strong>Concerning:</strong> Smith Home → Marcus S., Jaylen S.</div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Duration (15-min increments)</div>
+                            <div class="duration-control">
+                                <button class="duration-btn">−</button>
+                                <div class="duration-display">1:30</div>
+                                <button class="duration-btn">+</button>
+                            </div>
+                            <div style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--gray-500);">
+                                Tap to adjust by 15 minutes
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Start Time</div>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="time" value="09:00" style="flex: 1; padding: 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 16px;">
+                                <button class="btn btn-outline" style="width: auto; padding: 12px 16px;">Now</button>
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Package Allocation</div>
+                            <div style="background: var(--gray-50); padding: 12px; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-200);">
+                                    <span style="font-size: 13px;">Marcus S.</span>
+                                    <span style="font-size: 13px; color: var(--gray-500);">T3C Intensive • 50%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                                    <span style="font-size: 13px;">Jaylen S.</span>
+                                    <span style="font-size: 13px; color: var(--gray-500);">T3C Basic • 50%</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 8px;">
+                                Time automatically split equally between children in home
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Notes (optional)</div>
+                            <textarea class="notes-input" rows="2" placeholder="Add any notes..."></textarea>
+                        </div>
+
+                        <div style="padding-top: 16px;">
+                            <button class="btn btn-success" style="font-size: 16px; padding: 16px;">
+                                ✓ Add Time Block
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 6: Real-time Timer -->
         <div>
             <div class="phone-label">
                 <div class="step">FLOW 4</div>
-                Activity In Progress
+                Real-time Timer Mode
             </div>
             <div class="phone-frame">
                 <div class="phone-screen">
                     <div class="phone-notch"></div>
                     <div class="screen-header" style="background: var(--success);">
-                        <h1>Activity in Progress</h1>
-                        <div class="subtitle">Home Visit</div>
+                        <h1>Time Block Active</h1>
+                        <div class="subtitle">Recording in real-time</div>
                     </div>
                     <div class="screen-content">
-                        <div class="active-activity">
-                            <div class="activity-type">🏠 Home Visit</div>
-                            <div class="activity-target">Smith Home • Marcus S., Jaylen S.</div>
+                        <div class="active-block-indicator">
+                            <div style="font-size: 12px; opacity: 0.8;">Currently tracking</div>
                             <div class="timer">01:23:45</div>
-                            <div style="font-size: 12px; opacity: 0.8;">Started at 9:00 AM</div>
+                            <div class="activity">🏠 Home Visit</div>
+                            <div class="concerning">Concerning: Smith Home → Marcus S., Jaylen S.</div>
                         </div>
 
                         <div class="card">
-                            <div class="card-title" style="margin-bottom: 12px;">Activity Details</div>
-
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="color: var(--gray-500); font-size: 13px;">Type</span>
-                                <span style="font-size: 13px;">Case Management</span>
+                            <div class="card-title" style="margin-bottom: 12px;">Block Details</div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px;">
+                                <span style="color: var(--gray-500);">Started</span>
+                                <span>9:00 AM</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-                                <span style="color: var(--gray-500); font-size: 13px;">Location</span>
-                                <span style="font-size: 13px;">📍 1234 Oak St, Houston</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px;">
+                                <span style="color: var(--gray-500);">Activity</span>
+                                <span>Case Management</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                                <span style="color: var(--gray-500); font-size: 13px;">Allocation</span>
-                                <span style="font-size: 13px;">50% each child</span>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px;">
+                                <span style="color: var(--gray-500);">Location</span>
+                                <span>📍 1234 Oak St</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px;">
+                                <span style="color: var(--gray-500);">Allocation</span>
+                                <span>50% each child</span>
                             </div>
                         </div>
 
@@ -1228,19 +1341,23 @@
 
                         <div style="padding: 20px 0;">
                             <button class="btn btn-danger" style="font-size: 16px; padding: 16px;">
-                                ⏹️ End Activity
+                                ⏹️ Stop & Save Block
                             </button>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <a href="#" style="color: var(--gray-500); font-size: 13px;">Cancel block</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Screen 8: End of Day - Reconciliation -->
+        <!-- Screen 7: End of Day - Visual Adjustment -->
         <div>
             <div class="phone-label">
-                <div class="step">FLOW 5</div>
-                End of Day Reconciliation
+                <div class="step">FLOW 5A</div>
+                End of Day - Overview
             </div>
             <div class="phone-frame">
                 <div class="phone-screen">
@@ -1250,20 +1367,21 @@
                         <div class="subtitle">January 2, 2026</div>
                     </div>
                     <div class="screen-content">
-                        <!-- Summary -->
+                        <!-- Summary Card -->
                         <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;">
                             <div style="display: flex; justify-content: space-between;">
                                 <div>
-                                    <div style="font-size: 12px; opacity: 0.8;">Total Hours</div>
+                                    <div style="font-size: 11px; opacity: 0.8;">Total Day</div>
                                     <div style="font-size: 28px; font-weight: 700;">8:30</div>
                                 </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size: 12px; opacity: 0.8;">Logged</div>
-                                    <div style="font-size: 28px; font-weight: 700;">5:15</div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 11px; opacity: 0.8;">Logged</div>
+                                    <div style="font-size: 28px; font-weight: 700;">5:45</div>
                                 </div>
-                            </div>
-                            <div style="margin-top: 8px; font-size: 13px;">
-                                7:52 AM - 4:22 PM • 0:30 break
+                                <div style="text-align: right;">
+                                    <div style="font-size: 11px; opacity: 0.8;">Remaining</div>
+                                    <div style="font-size: 28px; font-weight: 700; color: #fde68a;">2:45</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1271,92 +1389,103 @@
                         <div class="unallocated-banner">
                             <span class="icon">⚠️</span>
                             <div class="text">
-                                <span class="time">3:15</span> unallocated time remaining
+                                <span class="time">2:45</span> unallocated - add time blocks below
                             </div>
                         </div>
 
-                        <!-- Logged Activities Summary -->
-                        <div class="card">
-                            <div class="card-header">
-                                <span class="card-title">✅ Logged Activities</span>
-                                <span class="card-badge badge-success">5:15</span>
+                        <!-- Visual Timeline (editable) -->
+                        <div class="section-label">Drag edges to adjust blocks</div>
+                        <div class="timeline-labels">
+                            <span>8 AM</span>
+                            <span>10</span>
+                            <span>12 PM</span>
+                            <span>2</span>
+                            <span>4</span>
+                        </div>
+                        <div class="visual-timeline" style="height: 80px;">
+                            <div class="timeline-block travel" style="flex: 0.75;">
+                                <span class="icon">🚗</span>
+                                <span>0:45</span>
+                                <div class="resize-handle"></div>
                             </div>
-                            <div style="font-size: 12px; color: var(--gray-500);">
-                                4 activities • 75 miles
+                            <div class="timeline-block case-mgmt" style="flex: 1.5;">
+                                <span class="icon">🏠</span>
+                                <span>1:30</span>
+                                <div class="resize-handle"></div>
+                            </div>
+                            <div class="timeline-block travel" style="flex: 0.5;">
+                                <span class="icon">🚗</span>
+                                <span>0:30</span>
+                                <div class="resize-handle"></div>
+                            </div>
+                            <div class="timeline-block break" style="flex: 0.5;">
+                                <span class="icon">☕</span>
+                                <span>0:30</span>
+                                <div class="resize-handle"></div>
+                            </div>
+                            <div class="timeline-block admin" style="flex: 1.5;">
+                                <span class="icon">👥</span>
+                                <span>1:30</span>
+                                <div class="resize-handle"></div>
+                            </div>
+                            <div class="timeline-block unallocated" style="flex: 2.75;">
+                                <span class="icon">➕</span>
+                                <span>Tap to add</span>
                             </div>
                         </div>
 
-                        <!-- Allocate Remaining -->
-                        <div class="card">
-                            <div class="card-header">
-                                <span class="card-title">Allocate Remaining Time</span>
-                                <span class="card-badge badge-warning">3:15</span>
-                            </div>
+                        <!-- Existing blocks -->
+                        <div style="margin-top: 16px;">
+                            <div class="section-label">Your Time Blocks (tap to edit)</div>
+                            <div class="time-blocks-container">
+                                <div class="time-block" style="cursor: pointer;">
+                                    <div class="block-color-bar travel"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">8:15</span>
+                                        <span class="duration">0:45</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🚗 Travel - Home Visit</div>
+                                        <div class="block-concerning">
+                                            <span class="tag home">Smith Home</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <div class="allocation-row">
-                                <div class="allocation-name">
-                                    <div style="font-weight: 500;">Marcus S.</div>
-                                    <div style="font-size: 11px; color: var(--gray-500);">T3C Intensive</div>
+                                <div class="time-block" style="cursor: pointer;">
+                                    <div class="block-color-bar case-mgmt"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">9:00</span>
+                                        <span class="duration">1:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🏠 Home Visit</div>
+                                        <div class="block-concerning">
+                                            <span class="tag child">Marcus S.</span>
+                                            <span class="tag child">Jaylen S.</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="allocation-controls">
-                                    <button class="allocation-btn">−</button>
-                                    <span class="allocation-time">0:45</span>
-                                    <button class="allocation-btn">+</button>
-                                </div>
-                            </div>
 
-                            <div class="allocation-row">
-                                <div class="allocation-name">
-                                    <div style="font-weight: 500;">Jaylen S.</div>
-                                    <div style="font-size: 11px; color: var(--gray-500);">T3C Basic</div>
-                                </div>
-                                <div class="allocation-controls">
-                                    <button class="allocation-btn">−</button>
-                                    <span class="allocation-time">0:30</span>
-                                    <button class="allocation-btn">+</button>
-                                </div>
-                            </div>
-
-                            <div class="allocation-row">
-                                <div class="allocation-name">
-                                    <div style="font-weight: 500;">Aaliyah J.</div>
-                                    <div style="font-size: 11px; color: var(--gray-500);">T3C Moderate</div>
-                                </div>
-                                <div class="allocation-controls">
-                                    <button class="allocation-btn">−</button>
-                                    <span class="allocation-time">0:15</span>
-                                    <button class="allocation-btn">+</button>
+                                <div class="time-block" style="cursor: pointer;">
+                                    <div class="block-color-bar travel"></div>
+                                    <div class="block-time-column">
+                                        <span class="start">10:30</span>
+                                        <span class="duration">0:30</span>
+                                    </div>
+                                    <div class="block-content">
+                                        <div class="block-activity">🚗 Travel - Admin</div>
+                                        <div class="block-concerning">
+                                            <span class="tag unassigned">Unassigned</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="allocation-row" style="border-bottom: none;">
-                                <div class="allocation-name">
-                                    <div style="font-weight: 500;">Administrative</div>
-                                    <div style="font-size: 11px; color: var(--gray-500);">General admin</div>
-                                </div>
-                                <div class="allocation-controls">
-                                    <button class="allocation-btn">−</button>
-                                    <span class="allocation-time">1:45</span>
-                                    <button class="allocation-btn">+</button>
-                                </div>
-                            </div>
-
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 100%;"></div>
-                            </div>
-                            <div class="progress-labels">
-                                <span>Allocated: 3:15</span>
-                                <span style="color: var(--success);">✓ Complete</span>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 12px;">
-                            <textarea class="notes-input" rows="2" placeholder="Notes about today (optional)..."></textarea>
                         </div>
 
                         <div style="padding: 16px 0;">
-                            <button class="btn btn-success" style="font-size: 16px; padding: 16px;">
-                                ✓ Complete Day
+                            <button class="btn btn-primary">
+                                ➕ Add Time Block for Remaining 2:45
                             </button>
                         </div>
                     </div>
@@ -1364,100 +1493,288 @@
             </div>
         </div>
 
-        <!-- Screen 9: End of Day SMS Reminder -->
+        <!-- Screen 8: Allocate Remaining Time -->
         <div>
             <div class="phone-label">
-                <div class="step">FLOW 6</div>
-                End of Day SMS Prompt
+                <div class="step">FLOW 5B</div>
+                Allocate Remaining Time
             </div>
             <div class="phone-frame">
-                <div class="phone-screen sms-screen">
+                <div class="phone-screen">
                     <div class="phone-notch"></div>
-                    <div class="sms-header">
-                        <div style="font-size: 12px; opacity: 0.7;">Messages</div>
-                        <div style="font-size: 16px; font-weight: 600; margin-top: 4px;">Refuge House</div>
+                    <div class="screen-header">
+                        <h1>Add Time Block</h1>
+                        <div class="subtitle">2:45 remaining to allocate</div>
                     </div>
-                    <div class="sms-content">
-                        <div class="sms-time">Today 5:00 PM</div>
-
-                        <div class="sms-bubble sms-incoming">
-                            Time to wrap up! 📋<br><br>
-                            You have <strong>3:15</strong> unallocated time to log today.<br><br>
-                            Reply:<br>
-                            1 - Open app to complete<br>
-                            5 - Still working (remind in 1 hr)
+                    <div class="screen-content">
+                        <div class="editor-section">
+                            <div class="editor-label">Activity</div>
+                            <div class="activity-pills">
+                                <span class="activity-pill selected">📋 Documentation</span>
+                                <span class="activity-pill">📞 Phone Contact</span>
+                                <span class="activity-pill">🗂️ General Admin</span>
+                                <span class="activity-pill">📚 Training</span>
+                            </div>
                         </div>
 
-                        <div class="sms-time">Today 5:32 PM</div>
-
-                        <div class="sms-bubble sms-outgoing">
-                            1
+                        <div class="editor-section">
+                            <div class="editor-label">Concerning</div>
+                            <div class="concerning-options">
+                                <div class="concerning-option selected">
+                                    <div class="icon">👤</div>
+                                    <div class="label">Child(ren)</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🏢</div>
+                                    <div class="label">Unassigned</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🎓</div>
+                                    <div class="label">Self</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🏠</div>
+                                    <div class="label">Home</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="sms-bubble sms-incoming">
-                            Opening the app for you... 📱<br><br>
-                            <a href="#" style="color: #60a5fa;">refugehouse.app/complete-day</a>
+                        <div class="editor-section">
+                            <div class="editor-label">Select Children</div>
+                            <div class="selection-list">
+                                <label class="selection-item selected">
+                                    <input type="checkbox" checked>
+                                    <div class="details">
+                                        <div class="name">Marcus S.</div>
+                                        <div class="meta">T3C Intensive • Smith Home</div>
+                                    </div>
+                                </label>
+                                <label class="selection-item selected">
+                                    <input type="checkbox" checked>
+                                    <div class="details">
+                                        <div class="name">Jaylen S.</div>
+                                        <div class="meta">T3C Basic • Smith Home</div>
+                                    </div>
+                                </label>
+                                <label class="selection-item">
+                                    <input type="checkbox">
+                                    <div class="details">
+                                        <div class="name">Aaliyah J.</div>
+                                        <div class="meta">T3C Moderate • Jones Home</div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
 
-                        <div class="sms-time">Today 5:45 PM</div>
-
-                        <div class="sms-bubble sms-incoming">
-                            ✅ Day completed!<br><br>
-                            Summary:<br>
-                            • 8.5 hours worked<br>
-                            • 75 miles driven<br>
-                            • 4 children served<br><br>
-                            Great work today! 🌟
+                        <div class="editor-section">
+                            <div class="editor-label">Duration</div>
+                            <div class="duration-control">
+                                <button class="duration-btn">−</button>
+                                <div class="duration-display">1:30</div>
+                                <button class="duration-btn">+</button>
+                            </div>
+                            <div style="text-align: center; margin-top: 8px; font-size: 12px; color: var(--gray-500);">
+                                1:15 will still remain after this block
+                            </div>
                         </div>
-                    </div>
-                    <div style="padding: 12px; background: #2a2a2a;">
-                        <div style="background: #3a3a3a; border-radius: 20px; padding: 10px 16px; color: #888; font-size: 14px;">
-                            iMessage
+
+                        <div style="padding-top: 16px; display: flex; gap: 8px;">
+                            <button class="btn btn-outline" style="flex: 1;">Cancel</button>
+                            <button class="btn btn-success" style="flex: 2;">Add Block</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Screen 10: Incomplete Day - Next Morning -->
+        <!-- Screen 9: Day Complete -->
         <div>
             <div class="phone-label">
-                <div class="step">FLOW 7</div>
-                Next Morning (Incomplete)
+                <div class="step">FLOW 5C</div>
+                Day Complete
             </div>
             <div class="phone-frame">
-                <div class="phone-screen sms-screen">
+                <div class="phone-screen">
                     <div class="phone-notch"></div>
-                    <div class="sms-header">
-                        <div style="font-size: 12px; opacity: 0.7;">Messages</div>
-                        <div style="font-size: 16px; font-weight: 600; margin-top: 4px;">Refuge House</div>
+                    <div class="screen-header" style="background: var(--success);">
+                        <h1>Day Complete! ✓</h1>
+                        <div class="subtitle">January 2, 2026</div>
                     </div>
-                    <div class="sms-content">
-                        <div class="sms-time">Today 7:45 AM</div>
-
-                        <div class="sms-bubble sms-incoming">
-                            Good morning! ☀️<br><br>
-                            ⚠️ Before starting today, please complete yesterday's log.<br><br>
-                            You have <strong>2:30</strong> from January 2 to allocate.<br><br>
-                            Reply:<br>
-                            1 - Open app to complete yesterday<br>
-                            2 - Sick today<br>
-                            3 - Time off today
+                    <div class="screen-content">
+                        <div style="text-align: center; padding: 24px 0;">
+                            <div style="font-size: 64px; margin-bottom: 16px;">🎉</div>
+                            <div style="font-size: 18px; font-weight: 600; color: var(--gray-800);">Great work today!</div>
+                            <div style="font-size: 14px; color: var(--gray-500); margin-top: 4px;">All time has been allocated</div>
                         </div>
 
-                        <div class="sms-bubble sms-outgoing">
-                            1
+                        <div class="card">
+                            <div class="card-title" style="margin-bottom: 12px;">Day Summary</div>
+
+                            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="color: var(--gray-500); font-size: 13px;">Total Hours</span>
+                                <span style="font-weight: 600;">8:30</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="color: var(--gray-500); font-size: 13px;">Time Blocks</span>
+                                <span style="font-weight: 600;">7 blocks</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100);">
+                                <span style="color: var(--gray-500); font-size: 13px;">Miles Driven</span>
+                                <span style="font-weight: 600;">82 miles</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                                <span style="color: var(--gray-500); font-size: 13px;">Children Served</span>
+                                <span style="font-weight: 600;">4 children</span>
+                            </div>
                         </div>
 
-                        <div class="sms-bubble sms-incoming">
-                            Opening yesterday's log... 📱<br><br>
-                            <a href="#" style="color: #60a5fa;">refugehouse.app/complete-day/jan-2</a><br><br>
-                            Complete this first, then you can start today.
+                        <div class="card">
+                            <div class="card-title" style="margin-bottom: 12px;">Package Allocation</div>
+
+                            <div style="margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                                    <span>Marcus S. (T3C Intensive)</span>
+                                    <span style="font-weight: 600;">2:15</span>
+                                </div>
+                                <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: 35%; background: #ef4444;"></div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                                    <span>Jaylen S. (T3C Basic)</span>
+                                    <span style="font-weight: 600;">2:00</span>
+                                </div>
+                                <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: 30%; background: #22c55e;"></div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                                    <span>Aaliyah J. (T3C Moderate)</span>
+                                    <span style="font-weight: 600;">1:15</span>
+                                </div>
+                                <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: 20%; background: #f59e0b;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                                    <span>Unassigned / Admin</span>
+                                    <span style="font-weight: 600;">2:30</span>
+                                </div>
+                                <div style="height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: 40%; background: #6b7280;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding-top: 16px;">
+                            <button class="btn btn-primary">
+                                Done
+                            </button>
                         </div>
                     </div>
-                    <div style="padding: 12px; background: #2a2a2a;">
-                        <div style="background: #3a3a3a; border-radius: 20px; padding: 10px 16px; color: #888; font-size: 14px;">
-                            iMessage
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 10: Concerning = Self -->
+        <div>
+            <div class="phone-label">
+                <div class="step">EXAMPLE</div>
+                Concerning: Self (Training)
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-notch"></div>
+                    <div class="screen-header">
+                        <h1>New Time Block</h1>
+                        <div class="subtitle">Training Activity</div>
+                    </div>
+                    <div class="screen-content">
+                        <div style="background: var(--gray-100); padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;">
+                            <div><strong>Activity:</strong> 📚 Training</div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Concerning</div>
+                            <div class="concerning-options">
+                                <div class="concerning-option">
+                                    <div class="icon">🏠</div>
+                                    <div class="label">Home</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">👤</div>
+                                    <div class="label">Child(ren)</div>
+                                </div>
+                                <div class="concerning-option">
+                                    <div class="icon">🏢</div>
+                                    <div class="label">Unassigned</div>
+                                </div>
+                                <div class="concerning-option selected" style="border-color: #f59e0b; background: #fef3c7;">
+                                    <div class="icon">🎓</div>
+                                    <div class="label">Self</div>
+                                    <div class="desc">Training/Development</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 16px 0;">
+                            <div style="font-size: 13px; color: #92400e;">
+                                <strong>Self-directed time</strong><br>
+                                This time block will be allocated to your professional development / staff training cost center.
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Training Type</div>
+                            <div class="selection-list">
+                                <label class="selection-item selected">
+                                    <input type="radio" name="training" checked>
+                                    <div class="details">
+                                        <div class="name">Required Training</div>
+                                        <div class="meta">Mandatory certifications, compliance</div>
+                                    </div>
+                                </label>
+                                <label class="selection-item">
+                                    <input type="radio" name="training">
+                                    <div class="details">
+                                        <div class="name">Professional Development</div>
+                                        <div class="meta">Conferences, workshops, courses</div>
+                                    </div>
+                                </label>
+                                <label class="selection-item">
+                                    <input type="radio" name="training">
+                                    <div class="details">
+                                        <div class="name">On-the-Job Training</div>
+                                        <div class="meta">Shadowing, mentoring</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Duration</div>
+                            <div class="duration-control">
+                                <button class="duration-btn">−</button>
+                                <div class="duration-display">2:00</div>
+                                <button class="duration-btn">+</button>
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="editor-label">Description</div>
+                            <textarea class="notes-input" rows="2" placeholder="What training did you complete?">Annual trauma-informed care certification renewal</textarea>
+                        </div>
+
+                        <div style="padding-top: 16px;">
+                            <button class="btn btn-success" style="font-size: 16px; padding: 16px;">
+                                ✓ Add Time Block
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1466,10 +1783,14 @@
 
     </div>
 
-    <div style="text-align: center; padding: 40px; color: #888; font-size: 14px;">
-        <h2 style="color: white; margin-bottom: 16px;">Workforce MVP Mockup</h2>
-        <p>Refuge House - T3C Cost Reporting System</p>
-        <p style="margin-top: 8px; font-size: 12px;">Created January 2, 2026</p>
+    <div style="text-align: center; padding: 40px; color: #888;">
+        <h2 style="color: white; margin-bottom: 16px;">Workforce MVP - Time Blocks Model</h2>
+        <p style="max-width: 600px; margin: 0 auto; line-height: 1.6;">
+            Each time block has two required dimensions:<br>
+            <strong style="color: #60a5fa;">Activity</strong> (what) + <strong style="color: #60a5fa;">Concerning</strong> (who/what it's about)<br><br>
+            Concerning options: Home, Child(ren), Unassigned, or Self
+        </p>
+        <p style="margin-top: 16px; font-size: 12px;">Refuge House - T3C Cost Reporting System • January 2026</p>
     </div>
 
 </body>
