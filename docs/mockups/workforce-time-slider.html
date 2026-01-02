@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workforce MVP - Time Slider Interface</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+
+            --case-mgmt: #3b82f6;
+            --treatment: #8b5cf6;
+            --travel: #06b6d4;
+            --medical: #ef4444;
+            --admin: #6b7280;
+            --break: #9ca3af;
+            --self: #f59e0b;
+            --unallocated: #fde68a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-100);
+            min-height: 100vh;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--gray-500);
+            margin-bottom: 32px;
+        }
+
+        /* ============================================ */
+        /* SUMMARY BAR - Minimal                        */
+        /* ============================================ */
+
+        .summary-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+
+        .summary-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .summary-value.warning {
+            color: var(--warning);
+        }
+
+        .summary-value.success {
+            color: var(--success);
+        }
+
+        /* ============================================ */
+        /* TIME SLIDER - The Main Interface            */
+        /* ============================================ */
+
+        .slider-container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .slider-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .slider-hint {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        /* Time Labels */
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 8px;
+            margin-bottom: 8px;
+        }
+
+        .time-label {
+            font-size: 11px;
+            color: var(--gray-400);
+            width: 40px;
+            text-align: center;
+        }
+
+        /* The Slider Track */
+        .slider-track {
+            position: relative;
+            height: 80px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            overflow: visible;
+            cursor: pointer;
+        }
+
+        /* Time Blocks on the slider */
+        .slider-block {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: filter 0.2s;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .slider-block:hover {
+            filter: brightness(1.1);
+        }
+
+        .slider-block.selected {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+            z-index: 10;
+        }
+
+        .slider-block .icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .slider-block .duration {
+            font-weight: 600;
+        }
+
+        .slider-block .label {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .slider-block.case-mgmt { background: var(--case-mgmt); }
+        .slider-block.treatment { background: var(--treatment); }
+        .slider-block.travel { background: var(--travel); }
+        .slider-block.medical { background: var(--medical); }
+        .slider-block.admin { background: var(--admin); }
+        .slider-block.break { background: var(--break); }
+        .slider-block.self { background: var(--self); }
+        .slider-block.unallocated {
+            background: repeating-linear-gradient(
+                45deg,
+                #fef3c7,
+                #fef3c7 8px,
+                #fde68a 8px,
+                #fde68a 16px
+            );
+            color: #92400e;
+        }
+
+        /* Drag Handles (Stops) */
+        .slider-stop {
+            position: absolute;
+            top: -8px;
+            bottom: -8px;
+            width: 16px;
+            margin-left: -8px;
+            cursor: ew-resize;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stop-handle {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border: 2px solid var(--gray-400);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+
+        .slider-stop:hover .stop-handle {
+            transform: scale(1.3);
+            border-color: var(--primary);
+        }
+
+        .stop-line {
+            width: 2px;
+            flex: 1;
+            background: var(--gray-400);
+        }
+
+        .slider-stop:hover .stop-line {
+            background: var(--primary);
+        }
+
+        .stop-time {
+            position: absolute;
+            top: -24px;
+            font-size: 10px;
+            color: var(--gray-500);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .slider-stop:hover .stop-time {
+            opacity: 1;
+        }
+
+        /* Add Stop Button (appears on hover) */
+        .add-stop-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .slider-track:hover .add-stop-indicator {
+            opacity: 0.8;
+        }
+
+        /* Legend */
+        .slider-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* ============================================ */
+        /* BLOCK EDITOR - Simple Form                  */
+        /* ============================================ */
+
+        .block-editor {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 2px solid var(--primary);
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .editor-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .editor-time {
+            font-size: 14px;
+            color: var(--gray-500);
+        }
+
+        .editor-section {
+            margin-bottom: 20px;
+        }
+
+        .editor-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .editor-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 10px;
+        }
+
+        /* Activity Selection - Simple Pills */
+        .activity-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .activity-pill {
+            padding: 10px 16px;
+            border: 1px solid var(--gray-200);
+            border-radius: 24px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+        }
+
+        .activity-pill:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .activity-pill.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Concerning Selection - 4 Big Buttons */
+        .concerning-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .concerning-btn {
+            padding: 16px 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .concerning-btn:hover {
+            border-color: var(--primary);
+        }
+
+        .concerning-btn.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .concerning-btn .icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        .concerning-btn .label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        /* Sub-selection (Home or Children list) */
+        .sub-selection {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--gray-50);
+            border-radius: 8px;
+        }
+
+        .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .selection-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .selection-item:hover {
+            border-color: var(--primary);
+        }
+
+        .selection-item.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .selection-item input {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            accent-color: var(--primary);
+        }
+
+        .selection-item .name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .selection-item .meta {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        /* Notes */
+        .notes-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .notes-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Editor Actions */
+        .editor-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-600);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-danger-text {
+            background: none;
+            border: none;
+            color: #dc2626;
+            padding: 12px;
+        }
+
+        /* ============================================ */
+        /* INSTRUCTIONS PANEL                          */
+        /* ============================================ */
+
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .instructions h3 {
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .instructions ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13px;
+            color: var(--gray-600);
+            line-height: 1.8;
+        }
+
+        /* ============================================ */
+        /* COMPLETE BUTTON                             */
+        /* ============================================ */
+
+        .complete-section {
+            text-align: center;
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .complete-section.ready {
+            background: #dcfce7;
+            border: 1px solid var(--success);
+        }
+
+        .complete-section p {
+            margin-bottom: 16px;
+            color: var(--gray-600);
+        }
+
+        .complete-section.ready p {
+            color: #166534;
+        }
+
+        .btn-complete {
+            padding: 16px 48px;
+            font-size: 18px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-complete:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+        }
+
+        /* ============================================ */
+        /* RESPONSIVE                                  */
+        /* ============================================ */
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .concerning-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .summary-bar {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+
+            .summary-item {
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Complete Your Day</h1>
+        <p class="subtitle">Thursday, January 2, 2026</p>
+
+        <!-- Minimal Summary -->
+        <div class="summary-bar">
+            <div class="summary-item">
+                <div class="summary-label">Started</div>
+                <div class="summary-value">8:00 AM</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Ending</div>
+                <div class="summary-value">4:30 PM</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Total</div>
+                <div class="summary-value">8:30</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Allocated</div>
+                <div class="summary-value">5:45</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Remaining</div>
+                <div class="summary-value warning">2:45</div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>How to use the time slider</h3>
+            <ul>
+                <li><strong>Click on a block</strong> to edit its activity and who it concerns</li>
+                <li><strong>Drag the handles</strong> between blocks to adjust duration (snaps to 15 min)</li>
+                <li><strong>Click the striped area</strong> to add a new time block</li>
+                <li>Logged activities auto-round to the nearest 15 minutes</li>
+            </ul>
+        </div>
+
+        <!-- Time Slider -->
+        <div class="slider-container">
+            <div class="slider-header">
+                <div class="slider-title">Your Day</div>
+                <div class="slider-hint">Click a block to edit • Drag handles to resize</div>
+            </div>
+
+            <!-- Time Labels -->
+            <div class="time-labels">
+                <div class="time-label">8 AM</div>
+                <div class="time-label">9</div>
+                <div class="time-label">10</div>
+                <div class="time-label">11</div>
+                <div class="time-label">12 PM</div>
+                <div class="time-label">1</div>
+                <div class="time-label">2</div>
+                <div class="time-label">3</div>
+                <div class="time-label">4</div>
+            </div>
+
+            <!-- The Slider Track -->
+            <div class="slider-track" id="sliderTrack">
+                <!-- Block 1: Travel -->
+                <div class="slider-block travel" style="left: 0%; width: 8.82%;">
+                    <span class="icon">🚗</span>
+                    <span class="duration">0:45</span>
+                </div>
+
+                <!-- Stop Handle 1 -->
+                <div class="slider-stop" style="left: 8.82%;">
+                    <span class="stop-time">8:45 AM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 2: Home Visit (selected) -->
+                <div class="slider-block case-mgmt selected" style="left: 8.82%; width: 17.65%;">
+                    <span class="icon">🏠</span>
+                    <span class="duration">1:30</span>
+                    <span class="label">Home Visit</span>
+                </div>
+
+                <!-- Stop Handle 2 -->
+                <div class="slider-stop" style="left: 26.47%;">
+                    <span class="stop-time">10:15 AM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 3: Travel -->
+                <div class="slider-block travel" style="left: 26.47%; width: 5.88%;">
+                    <span class="icon">🚗</span>
+                    <span class="duration">0:30</span>
+                </div>
+
+                <!-- Stop Handle 3 -->
+                <div class="slider-stop" style="left: 32.35%;">
+                    <span class="stop-time">10:45 AM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 4: Break -->
+                <div class="slider-block break" style="left: 32.35%; width: 5.88%;">
+                    <span class="icon">☕</span>
+                    <span class="duration">0:30</span>
+                </div>
+
+                <!-- Stop Handle 4 -->
+                <div class="slider-stop" style="left: 38.23%;">
+                    <span class="stop-time">11:15 AM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 5: Meeting -->
+                <div class="slider-block admin" style="left: 38.23%; width: 17.65%;">
+                    <span class="icon">👥</span>
+                    <span class="duration">1:30</span>
+                    <span class="label">Meeting</span>
+                </div>
+
+                <!-- Stop Handle 5 -->
+                <div class="slider-stop" style="left: 55.88%;">
+                    <span class="stop-time">12:45 PM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 6: Documentation -->
+                <div class="slider-block case-mgmt" style="left: 55.88%; width: 8.82%;">
+                    <span class="icon">📋</span>
+                    <span class="duration">0:45</span>
+                </div>
+
+                <!-- Stop Handle 6 -->
+                <div class="slider-stop" style="left: 64.70%;">
+                    <span class="stop-time">1:30 PM</span>
+                    <div class="stop-handle"></div>
+                    <div class="stop-line"></div>
+                </div>
+
+                <!-- Block 7: Unallocated (remaining time) -->
+                <div class="slider-block unallocated" style="left: 64.70%; width: 35.30%;">
+                    <span class="icon">➕</span>
+                    <span class="duration">2:45</span>
+                    <span class="label">Click to add</span>
+                </div>
+
+                <!-- Hover indicator for adding new stop -->
+                <div class="add-stop-indicator" id="addIndicator" style="display: none;">+</div>
+            </div>
+
+            <!-- Legend -->
+            <div class="slider-legend">
+                <div class="legend-item"><div class="legend-dot" style="background: var(--travel);"></div>Travel</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--case-mgmt);"></div>Case Mgmt</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--treatment);"></div>Treatment</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--admin);"></div>Admin</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--medical);"></div>Medical</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--self);"></div>Self</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--break);"></div>Break</div>
+            </div>
+        </div>
+
+        <!-- Block Editor (shown when a block is selected) -->
+        <div class="block-editor">
+            <div class="editor-header">
+                <div class="editor-title">Edit Time Block</div>
+                <div class="editor-time">8:45 AM – 10:15 AM (1:30)</div>
+            </div>
+
+            <!-- Activity -->
+            <div class="editor-section">
+                <div class="editor-label">What did you do?</div>
+                <div class="activity-row">
+                    <span class="activity-pill selected">🏠 Home Visit</span>
+                    <span class="activity-pill">📞 Phone</span>
+                    <span class="activity-pill">📋 Docs</span>
+                    <span class="activity-pill">🚗 Travel</span>
+                    <span class="activity-pill">⚖️ Court</span>
+                    <span class="activity-pill">🏥 Medical</span>
+                    <span class="activity-pill">👥 Meeting</span>
+                    <span class="activity-pill">📚 Training</span>
+                    <span class="activity-pill">☕ Break</span>
+                    <span class="activity-pill">➕ Other...</span>
+                </div>
+            </div>
+
+            <!-- Concerning -->
+            <div class="editor-section">
+                <div class="editor-label">Who is this concerning?</div>
+                <div class="concerning-grid">
+                    <div class="concerning-btn selected">
+                        <div class="icon">🏠</div>
+                        <div class="label">Home</div>
+                    </div>
+                    <div class="concerning-btn">
+                        <div class="icon">👤</div>
+                        <div class="label">Child(ren)</div>
+                    </div>
+                    <div class="concerning-btn">
+                        <div class="icon">🏢</div>
+                        <div class="label">Unassigned</div>
+                    </div>
+                    <div class="concerning-btn">
+                        <div class="icon">🎓</div>
+                        <div class="label">Self</div>
+                    </div>
+                </div>
+
+                <!-- Sub-selection: Homes -->
+                <div class="sub-selection">
+                    <div class="selection-item selected">
+                        <input type="radio" name="home" checked>
+                        <div>
+                            <div class="name">🏠 Smith Home</div>
+                            <div class="meta">Marcus S., Jaylen S.</div>
+                        </div>
+                    </div>
+                    <div class="selection-item">
+                        <input type="radio" name="home">
+                        <div>
+                            <div class="name">🏠 Jones Home</div>
+                            <div class="meta">Aaliyah J.</div>
+                        </div>
+                    </div>
+                    <div class="selection-item">
+                        <input type="radio" name="home">
+                        <div>
+                            <div class="name">🏠 Williams Home</div>
+                            <div class="meta">Devon W., Maya W.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes (optional, collapsed by default) -->
+            <div class="editor-section">
+                <div class="editor-label">Notes (optional)</div>
+                <textarea class="notes-input" rows="2" placeholder="Add any notes..."></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="editor-actions">
+                <button class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                <button class="btn btn-outline">Cancel</button>
+                <button class="btn btn-danger-text">Delete Block</button>
+            </div>
+        </div>
+
+        <!-- Complete Section -->
+        <div class="complete-section">
+            <p>You have <strong>2:45</strong> remaining to allocate before completing your day.</p>
+            <button class="btn-complete" disabled>Complete Day</button>
+        </div>
+
+        <!-- Example: All Allocated State -->
+        <div style="margin-top: 48px; padding-top: 48px; border-top: 2px dashed var(--gray-300);">
+            <h2 style="color: var(--gray-500); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px;">
+                ↓ When all time is allocated:
+            </h2>
+
+            <div class="complete-section ready">
+                <p>✓ All time has been allocated. Ready to complete your day!</p>
+                <button class="btn-complete">Complete Day</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Interactive demo: clicking blocks selects them
+        document.querySelectorAll('.slider-block').forEach(block => {
+            block.addEventListener('click', function() {
+                document.querySelectorAll('.slider-block').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Activity pills selection
+        document.querySelectorAll('.activity-pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                document.querySelectorAll('.activity-pill').forEach(p => p.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Concerning buttons selection
+        document.querySelectorAll('.concerning-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.concerning-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Selection items
+        document.querySelectorAll('.selection-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                    this.closest('.sub-selection').querySelectorAll('.selection-item').forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                }
+            });
+        });
+
+        // Show add indicator on slider hover
+        const sliderTrack = document.getElementById('sliderTrack');
+        const addIndicator = document.getElementById('addIndicator');
+
+        sliderTrack.addEventListener('mousemove', function(e) {
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+
+            // Only show in unallocated area (last 35%)
+            const percentage = (x / rect.width) * 100;
+            if (percentage > 64.70) {
+                addIndicator.style.display = 'flex';
+                addIndicator.style.left = x + 'px';
+            } else {
+                addIndicator.style.display = 'none';
+            }
+        });
+
+        sliderTrack.addEventListener('mouseleave', function() {
+            addIndicator.style.display = 'none';
+        });
+    </script>
+
+</body>
+</html>
