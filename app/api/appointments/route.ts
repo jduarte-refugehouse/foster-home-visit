@@ -2,8 +2,11 @@ import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 export const runtime = "nodejs"
 
 // GET - Fetch appointments with optional filtering
@@ -185,12 +188,13 @@ export async function GET(request: NextRequest) {
       updated_at: appointment.updated_at ? new Date(appointment.updated_at).toISOString() : null,
     }))
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       count: transformedAppointments.length,
       appointments: transformedAppointments,
       timestamp: new Date().toISOString(),
     })
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error fetching appointments:", error)
     console.error("❌ [API] Error details:", {

@@ -4,8 +4,11 @@ import { format, addDays, startOfDay, endOfDay } from "date-fns"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 export const runtime = "nodejs"
 
 export async function GET(request: NextRequest) {
@@ -261,7 +264,7 @@ export async function GET(request: NextRequest) {
       (schedule: any) => new Date() >= new Date(schedule.start_datetime) && new Date() <= new Date(schedule.end_datetime)
     )
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         user: {
@@ -281,6 +284,7 @@ export async function GET(request: NextRequest) {
         currentOnCall: currentOnCall.length > 0 ? currentOnCall[0] : null,
       },
     })
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ Error fetching Home Liaison dashboard data:", error)
     return NextResponse.json(

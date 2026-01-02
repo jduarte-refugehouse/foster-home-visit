@@ -2,8 +2,11 @@ import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 export const runtime = "nodejs"
 export const maxDuration = 60 // Vercel function timeout in seconds (Pro plan: max 60s, Enterprise: max 900s)
 
@@ -176,6 +179,7 @@ export async function GET(request: NextRequest) {
       })),
       timestamp: new Date().toISOString(),
     })
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error fetching visit forms:", error)
     return NextResponse.json(

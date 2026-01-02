@@ -1,9 +1,10 @@
 import { NextResponse, NextRequest } from "next/server"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
-export const revalidate = 0 // Explicitly disable revalidation/caching
-export const fetchCache = "force-no-store" // Disable fetch caching
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 
 /**
  * GET /api/homes-list
@@ -47,14 +48,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
 
-    // Prevent caching to ensure fresh data (multiple layers)
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
-    response.headers.set('X-Vercel-Cache-Control', 'no-store') // Vercel-specific cache control
-    response.headers.set('CDN-Cache-Control', 'no-store') // CDN cache control
-
-    return response
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
