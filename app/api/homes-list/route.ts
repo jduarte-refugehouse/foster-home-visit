@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from "next/server"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0 // Explicitly disable revalidation/caching
+export const fetchCache = "force-no-store" // Disable fetch caching
 
 /**
  * GET /api/homes-list
@@ -27,6 +29,16 @@ export async function GET(request: NextRequest) {
     })
 
     console.log(`✅ [API] Successfully retrieved ${homes.length} homes from API Hub`)
+    
+    // Debug: Log sample of lastSync values to verify data freshness
+    if (homes.length > 0) {
+      const sampleHomes = homes.slice(0, 3)
+      console.log(`🔍 [API] Sample lastSync values:`, sampleHomes.map(h => ({
+        name: h.name,
+        lastSync: h.lastSync,
+        caseManager: h.contactPersonName
+      })))
+    }
 
     const response = NextResponse.json({
       success: true,
@@ -35,10 +47,12 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
 
-    // Prevent caching to ensure fresh data
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    // Prevent caching to ensure fresh data (multiple layers)
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
+    response.headers.set('X-Vercel-Cache-Control', 'no-store') // Vercel-specific cache control
+    response.headers.set('CDN-Cache-Control', 'no-store') // CDN cache control
 
     return response
   } catch (error) {

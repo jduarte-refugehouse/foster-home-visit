@@ -47,9 +47,11 @@ async function apiRequest<T>(
   const url = `${API_BASE_URL}/api/radius/${endpoint}`
   const response = await fetch(url, {
     ...options,
+    cache: 'no-store', // Disable fetch caching
     headers: {
       "Content-Type": "application/json",
       "x-api-key": API_KEY,
+      "Cache-Control": "no-cache",
       ...options?.headers,
     },
   })
@@ -125,9 +127,12 @@ export const radiusApiClient = {
     if (filters?.unit) params.append("unit", filters.unit)
     if (filters?.caseManager) params.append("caseManager", filters.caseManager)
     if (filters?.search) params.append("search", filters.search)
+    
+    // Add cache-busting timestamp to prevent edge/CDN caching
+    params.append("_t", Date.now().toString())
 
     const queryString = params.toString()
-    const endpoint = queryString ? `homes?${queryString}` : "homes"
+    const endpoint = queryString ? `homes?${queryString}` : `homes?_t=${Date.now()}`
 
     const response = await apiRequest<any>(endpoint)
     return response.homes || response.data || []
