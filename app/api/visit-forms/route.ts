@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -15,78 +17,119 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const userId = searchParams.get("userId")
 
-    // Build dynamic query based on filters
-    const whereConditions = ["vf.is_deleted = 0"]
-    const params: any[] = []
-    let paramIndex = 0
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (appointmentId) {
-      whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
-      params.push(appointmentId)
-      paramIndex++
+    let visitForms: any[]
+
+    if (useApiClient) {
+      // Use Radius API client for non-admin microservices
+      console.log(`✅ [API] Using API client for visit forms (microservice: ${microserviceCode})`)
+      
+      try {
+        const apiVisitForms = await radiusApiClient.getVisitForms({
+          appointmentId: appointmentId || undefined,
+          status: status || undefined,
+          userId: userId || undefined,
+        })
+
+        // Filter out deleted forms (API should handle this, but ensure it)
+        visitForms = apiVisitForms.filter((form: any) => !form.is_deleted)
+        
+        // Sort by updated_at DESC (API returns DESC, but ensure it)
+        visitForms.sort((a, b) => {
+          const aDate = new Date(a.updated_at).getTime()
+          const bDate = new Date(b.updated_at).getTime()
+          return bDate - aDate
+        })
+      } catch (apiError) {
+        console.error("❌ [API] Error fetching visit forms from API client:", apiError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to fetch visit forms from API Hub",
+            details: apiError instanceof Error ? apiError.message : "Unknown error",
+          },
+          { status: 500 },
+        )
+      }
+    } else {
+      // Direct database access for admin microservice
+      console.log(`⚠️ [API] Using direct DB access for visit forms (admin microservice)`)
+
+      // Build dynamic query based on filters
+      const whereConditions = ["vf.is_deleted = 0"]
+      const params: any[] = []
+      let paramIndex = 0
+
+      if (appointmentId) {
+        whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
+        params.push(appointmentId)
+        paramIndex++
+      }
+
+      if (status) {
+        whereConditions.push(`vf.status = @param${paramIndex}`)
+        params.push(status)
+        paramIndex++
+      }
+
+      if (userId) {
+        whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
+        params.push(userId)
+        paramIndex++
+      }
+
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+      visitForms = await query(
+        `
+        SELECT 
+          vf.visit_form_id,
+          vf.appointment_id,
+          vf.form_type,
+          vf.form_version,
+          vf.status,
+          vf.visit_date,
+          vf.visit_time,
+          vf.visit_number,
+          vf.quarter,
+          vf.visit_variant,
+          vf.visit_info,
+          vf.family_info,
+          vf.attendees,
+          vf.observations,
+          vf.recommendations,
+          vf.signatures,
+          vf.home_environment,
+          vf.child_interviews,
+          vf.parent_interviews,
+          vf.compliance_review,
+          vf.last_auto_save,
+          vf.auto_save_count,
+          vf.created_at,
+          vf.updated_at,
+          vf.created_by_user_id,
+          vf.created_by_name,
+          vf.updated_by_user_id,
+          vf.updated_by_name,
+          vf.current_session_id,
+          vf.current_session_last_save,
+          vf.current_session_save_type,
+          vf.current_session_user_id,
+          vf.current_session_user_name,
+          vf.save_history_json,
+          -- Include appointment details
+          a.title as appointment_title,
+          a.location_address
+        FROM visit_forms vf
+        LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
+        ${whereClause}
+        ORDER BY vf.updated_at DESC
+      `,
+        params,
+      )
     }
-
-    if (status) {
-      whereConditions.push(`vf.status = @param${paramIndex}`)
-      params.push(status)
-      paramIndex++
-    }
-
-    if (userId) {
-      whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
-      params.push(userId)
-      paramIndex++
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-    const visitForms = await query(
-      `
-      SELECT 
-        vf.visit_form_id,
-        vf.appointment_id,
-        vf.form_type,
-        vf.form_version,
-        vf.status,
-        vf.visit_date,
-        vf.visit_time,
-        vf.visit_number,
-        vf.quarter,
-        vf.visit_variant,
-        vf.visit_info,
-        vf.family_info,
-        vf.attendees,
-        vf.observations,
-        vf.recommendations,
-        vf.signatures,
-        vf.home_environment,
-        vf.child_interviews,
-        vf.parent_interviews,
-        vf.compliance_review,
-        vf.last_auto_save,
-        vf.auto_save_count,
-        vf.created_at,
-        vf.updated_at,
-        vf.created_by_user_id,
-        vf.created_by_name,
-        vf.updated_by_user_id,
-        vf.updated_by_name,
-        vf.current_session_id,
-        vf.current_session_last_save,
-        vf.current_session_save_type,
-        vf.current_session_user_id,
-        vf.current_session_user_name,
-        vf.save_history_json,
-        -- Include appointment details
-        a.title as appointment_title,
-        a.location_address
-      FROM visit_forms vf
-      LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
-      ${whereClause}
-      ORDER BY vf.updated_at DESC
-    `,
-      params,
-    )
 
     console.log(`✅ [API] Retrieved ${visitForms.length} visit forms`)
 
@@ -95,20 +138,40 @@ export async function GET(request: NextRequest) {
       count: visitForms.length,
       visitForms: visitForms.map((form) => ({
         ...form,
-        // Parse JSON fields
-        visit_info: form.visit_info ? JSON.parse(form.visit_info) : null,
-        family_info: form.family_info ? JSON.parse(form.family_info) : null,
-        attendees: form.attendees ? JSON.parse(form.attendees) : null,
-        observations: form.observations ? JSON.parse(form.observations) : null,
-        recommendations: form.recommendations ? JSON.parse(form.recommendations) : null,
-        signatures: form.signatures ? JSON.parse(form.signatures) : null,
-        home_environment: form.home_environment ? JSON.parse(form.home_environment) : null,
-        child_interviews: form.child_interviews ? JSON.parse(form.child_interviews) : null,
-        parent_interviews: form.parent_interviews ? JSON.parse(form.parent_interviews) : null,
-        compliance_review: form.compliance_review ? JSON.parse(form.compliance_review) : null,
+        // Parse JSON fields (handle both string and already-parsed JSON)
+        visit_info: form.visit_info 
+          ? (typeof form.visit_info === 'string' ? JSON.parse(form.visit_info) : form.visit_info)
+          : null,
+        family_info: form.family_info 
+          ? (typeof form.family_info === 'string' ? JSON.parse(form.family_info) : form.family_info)
+          : null,
+        attendees: form.attendees 
+          ? (typeof form.attendees === 'string' ? JSON.parse(form.attendees) : form.attendees)
+          : null,
+        observations: form.observations 
+          ? (typeof form.observations === 'string' ? JSON.parse(form.observations) : form.observations)
+          : null,
+        recommendations: form.recommendations 
+          ? (typeof form.recommendations === 'string' ? JSON.parse(form.recommendations) : form.recommendations)
+          : null,
+        signatures: form.signatures 
+          ? (typeof form.signatures === 'string' ? JSON.parse(form.signatures) : form.signatures)
+          : null,
+        home_environment: form.home_environment 
+          ? (typeof form.home_environment === 'string' ? JSON.parse(form.home_environment) : form.home_environment)
+          : null,
+        child_interviews: form.child_interviews 
+          ? (typeof form.child_interviews === 'string' ? JSON.parse(form.child_interviews) : form.child_interviews)
+          : null,
+        parent_interviews: form.parent_interviews 
+          ? (typeof form.parent_interviews === 'string' ? JSON.parse(form.parent_interviews) : form.parent_interviews)
+          : null,
+        compliance_review: form.compliance_review 
+          ? (typeof form.compliance_review === 'string' ? JSON.parse(form.compliance_review) : form.compliance_review)
+          : null,
         // Ensure consistent date formatting
-        created_at: new Date(form.created_at).toISOString(),
-        updated_at: new Date(form.updated_at).toISOString(),
+        created_at: form.created_at ? new Date(form.created_at).toISOString() : null,
+        updated_at: form.updated_at ? new Date(form.updated_at).toISOString() : null,
         last_auto_save: form.last_auto_save ? new Date(form.last_auto_save).toISOString() : null,
       })),
       timestamp: new Date().toISOString(),
