@@ -28,12 +28,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [API] Successfully retrieved ${homes.length} homes from API Hub`)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       count: homes.length,
       homes,
       timestamp: new Date().toISOString(),
     })
+
+    // Prevent caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+
+    return response
   } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"

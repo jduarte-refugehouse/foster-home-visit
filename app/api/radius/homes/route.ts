@@ -127,13 +127,20 @@ export async function GET(request: NextRequest) {
     )
 
     // 4. Return response
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       count: homes.length,
       homes,
       timestamp: new Date().toISOString(),
       duration_ms: duration,
     })
+
+    // Prevent caching to ensure fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+
+    return response
   } catch (error) {
     const duration = Date.now() - startTime
     console.error("❌ [RADIUS-API] Error in homes endpoint:", error)
