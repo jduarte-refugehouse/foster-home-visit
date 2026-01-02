@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workforce Time Tracking - Refuge House</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --success: #16a34a;
+            --success-light: #dcfce7;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #dc2626;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --case-mgmt: #3b82f6;
+            --treatment: #8b5cf6;
+            --travel: #06b6d4;
+            --medical: #ef4444;
+            --admin: #6b7280;
+            --break: #d1d5db;
+            --self: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--gray-100);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+
+        /* ============================================ */
+        /* LAYOUT                                       */
+        /* ============================================ */
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--gray-900);
+            color: white;
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 24px;
+            border-bottom: 1px solid var(--gray-700);
+        }
+
+        .sidebar-logo {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-nav {
+            padding: 16px 0;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--gray-400);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: var(--gray-800);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-item .icon {
+            font-size: 18px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--gray-700);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--gray-400);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 16px 32px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        /* ============================================ */
+        /* CARDS & PANELS                               */
+        /* ============================================ */
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* ============================================ */
+        /* BUTTONS                                      */
+        /* ============================================ */
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .btn-lg {
+            padding: 14px 28px;
+            font-size: 16px;
+        }
+
+        /* ============================================ */
+        /* STATUS CARDS                                 */
+        /* ============================================ */
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .stat-card.warning {
+            background: var(--warning-light);
+            border: 1px solid var(--warning);
+        }
+
+        .stat-card.success {
+            background: var(--success-light);
+            border: 1px solid var(--success);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        /* ============================================ */
+        /* VISUAL TIMELINE                              */
+        /* ============================================ */
+
+        .timeline-container {
+            margin-bottom: 24px;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--gray-400);
+            margin-bottom: 8px;
+            padding: 0 4px;
+        }
+
+        .visual-timeline {
+            display: flex;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+            background: white;
+        }
+
+        .timeline-block {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            min-width: 60px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .timeline-block:hover {
+            filter: brightness(1.1);
+            transform: scaleY(1.05);
+        }
+
+        .timeline-block .icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .timeline-block .duration {
+            font-weight: 600;
+        }
+
+        .timeline-block .label {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .timeline-block.case-mgmt { background: var(--case-mgmt); }
+        .timeline-block.treatment { background: var(--treatment); }
+        .timeline-block.travel { background: var(--travel); }
+        .timeline-block.medical { background: var(--medical); }
+        .timeline-block.admin { background: var(--admin); }
+        .timeline-block.break { background: var(--break); color: var(--gray-600); }
+        .timeline-block.self { background: var(--self); }
+        .timeline-block.unallocated {
+            background: repeating-linear-gradient(
+                45deg,
+                #fef3c7,
+                #fef3c7 10px,
+                #fde68a 10px,
+                #fde68a 20px
+            );
+            color: #92400e;
+        }
+
+        .timeline-block .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            background: rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .timeline-block:hover .resize-handle {
+            opacity: 1;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* ============================================ */
+        /* TIME BLOCKS TABLE                            */
+        /* ============================================ */
+
+        .blocks-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .blocks-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-500);
+            border-bottom: 2px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .blocks-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-100);
+            vertical-align: middle;
+        }
+
+        .blocks-table tr:hover {
+            background: var(--gray-50);
+        }
+
+        .block-row {
+            cursor: pointer;
+        }
+
+        .block-color {
+            width: 4px;
+            height: 40px;
+            border-radius: 2px;
+        }
+
+        .block-activity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .block-activity .icon {
+            font-size: 20px;
+        }
+
+        .block-activity .name {
+            font-weight: 500;
+        }
+
+        .block-activity .category {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .concerning-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .tag.child { background: #dbeafe; color: #1d4ed8; }
+        .tag.home { background: #dcfce7; color: #15803d; }
+        .tag.self { background: #fef3c7; color: #b45309; }
+        .tag.unassigned { background: var(--gray-200); color: var(--gray-600); }
+
+        .block-time {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .block-duration {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .block-actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .block-row:hover .block-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        /* ============================================ */
+        /* QUICK ADD BAR                                */
+        /* ============================================ */
+
+        .quick-add-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .quick-add-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .quick-add-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .quick-add-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .quick-add-btn .icon {
+            font-size: 18px;
+        }
+
+        /* ============================================ */
+        /* MODAL / SLIDE PANEL                          */
+        /* ============================================ */
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: flex-end;
+            z-index: 1000;
+        }
+
+        .slide-panel {
+            width: 480px;
+            background: white;
+            height: 100%;
+            overflow-y: auto;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+        }
+
+        .panel-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        .panel-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .panel-subtitle {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .close-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--gray-100);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .panel-content {
+            padding: 24px;
+        }
+
+        .panel-footer {
+            padding: 24px;
+            border-top: 1px solid var(--gray-200);
+            position: sticky;
+            bottom: 0;
+            background: white;
+            display: flex;
+            gap: 12px;
+        }
+
+        .panel-footer .btn {
+            flex: 1;
+        }
+
+        /* ============================================ */
+        /* FORM ELEMENTS                                */
+        /* ============================================ */
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-500);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 8px;
+        }
+
+        /* Activity Pills */
+        .activity-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .activity-pill {
+            padding: 10px 16px;
+            border: 1px solid var(--gray-200);
+            border-radius: 24px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .activity-pill:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .activity-pill.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Concerning Options */
+        .concerning-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .concerning-option {
+            padding: 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .concerning-option:hover {
+            border-color: var(--primary);
+        }
+
+        .concerning-option.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .concerning-option .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .concerning-option .label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-800);
+        }
+
+        .concerning-option .desc {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Selection List */
+        .selection-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+        }
+
+        .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .selection-item:last-child {
+            border-bottom: none;
+        }
+
+        .selection-item:hover {
+            background: var(--gray-50);
+        }
+
+        .selection-item.selected {
+            background: var(--primary-light);
+        }
+
+        .selection-item input[type="checkbox"],
+        .selection-item input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            accent-color: var(--primary);
+        }
+
+        .selection-item .details {
+            flex: 1;
+        }
+
+        .selection-item .name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .selection-item .meta {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        /* Duration Control */
+        .duration-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 20px;
+            background: var(--gray-50);
+            border-radius: 12px;
+        }
+
+        .duration-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid var(--gray-300);
+            background: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .duration-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .duration-display {
+            font-size: 48px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Time Input */
+        .time-input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .time-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Notes */
+        .notes-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .notes-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Allocation Preview */
+        .allocation-preview {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .allocation-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 13px;
+        }
+
+        .allocation-row:last-child {
+            border-bottom: none;
+        }
+
+        /* ============================================ */
+        /* ACTIVE TIMER BANNER                          */
+        /* ============================================ */
+
+        .active-timer-banner {
+            background: linear-gradient(135deg, var(--success), #15803d);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .timer-display {
+            font-size: 36px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-details .activity {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .timer-details .concerning {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .timer-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* ============================================ */
+        /* PACKAGE SUMMARY                              */
+        /* ============================================ */
+
+        .package-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .package-card {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .package-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .package-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .package-time {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .package-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .package-bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        /* ============================================ */
+        /* RESPONSIVE                                   */
+        /* ============================================ */
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .slide-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    🏠 Refuge House
+                </div>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-item active">
+                    <span class="icon">📊</span>
+                    Today's Time
+                </div>
+                <div class="nav-item">
+                    <span class="icon">📅</span>
+                    Schedule
+                </div>
+                <div class="nav-item">
+                    <span class="icon">📈</span>
+                    Reports
+                </div>
+                <div class="nav-item">
+                    <span class="icon">🏠</span>
+                    My Homes
+                </div>
+                <div class="nav-item">
+                    <span class="icon">👥</span>
+                    My Children
+                </div>
+                <div class="nav-item">
+                    <span class="icon">⚙️</span>
+                    Settings
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">SJ</div>
+                    <div>
+                        <div class="user-name">Sarah Johnson</div>
+                        <div class="user-role">Case Manager</div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Active Timer Banner (shown when tracking) -->
+            <div class="active-timer-banner">
+                <div class="timer-info">
+                    <div class="timer-display">01:23:45</div>
+                    <div class="timer-details">
+                        <div class="activity">🏠 Home Visit</div>
+                        <div class="concerning">Smith Home → Marcus S., Jaylen S.</div>
+                    </div>
+                </div>
+                <div class="timer-actions">
+                    <button class="btn btn-outline" style="background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); color: white;">
+                        Add Note
+                    </button>
+                    <button class="btn btn-danger btn-lg">
+                        ⏹️ Stop & Save
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div>
+                    <h1 class="page-title">Today's Time Blocks</h1>
+                    <p class="page-subtitle">Thursday, January 2, 2026</p>
+                </div>
+                <div class="top-actions">
+                    <button class="btn btn-outline">
+                        📤 Export Day
+                    </button>
+                    <button class="btn btn-primary btn-lg" onclick="openPanel()">
+                        ➕ Add Time Block
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card primary">
+                        <div class="stat-label">Day Started</div>
+                        <div class="stat-value">7:52 AM</div>
+                        <div class="stat-meta">8 hours 30 minutes ago</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Time Logged</div>
+                        <div class="stat-value">5:45</div>
+                        <div class="stat-meta">6 time blocks</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="stat-label" style="color: #92400e;">Unallocated</div>
+                        <div class="stat-value" style="color: #b45309;">2:45</div>
+                        <div class="stat-meta" style="color: #92400e;">Needs assignment</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Miles Today</div>
+                        <div class="stat-value">82</div>
+                        <div class="stat-meta">2 travel blocks</div>
+                    </div>
+                </div>
+
+                <!-- Quick Add Section -->
+                <div class="quick-add-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-weight: 600;">Quick Add Time Block</div>
+                            <div style="font-size: 13px; color: var(--gray-500);">Start tracking or add a completed block</div>
+                        </div>
+                        <button class="btn btn-success">
+                            ⏱️ Start Real-Time Timer
+                        </button>
+                    </div>
+                    <div class="quick-add-bar">
+                        <div class="quick-add-btn">
+                            <span class="icon">🚗</span>
+                            <span>Drive</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">🏠</span>
+                            <span>Home Visit</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">📞</span>
+                            <span>Phone Contact</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">📋</span>
+                            <span>Documentation</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">⚖️</span>
+                            <span>Court</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">🏥</span>
+                            <span>Medical</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">👥</span>
+                            <span>Meeting</span>
+                        </div>
+                        <div class="quick-add-btn">
+                            <span class="icon">📚</span>
+                            <span>Training</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Timeline -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Visual Timeline</div>
+                            <div class="card-subtitle">Click blocks to edit • Drag edges to adjust duration</div>
+                        </div>
+                    </div>
+
+                    <div class="timeline-labels">
+                        <span>8 AM</span>
+                        <span>9 AM</span>
+                        <span>10 AM</span>
+                        <span>11 AM</span>
+                        <span>12 PM</span>
+                        <span>1 PM</span>
+                        <span>2 PM</span>
+                        <span>3 PM</span>
+                        <span>4 PM</span>
+                    </div>
+
+                    <div class="visual-timeline">
+                        <div class="timeline-block travel" style="flex: 0.75;">
+                            <span class="icon">🚗</span>
+                            <span class="duration">0:45</span>
+                            <span class="label">Travel</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block case-mgmt" style="flex: 1.5;">
+                            <span class="icon">🏠</span>
+                            <span class="duration">1:30</span>
+                            <span class="label">Home Visit</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block travel" style="flex: 0.5;">
+                            <span class="icon">🚗</span>
+                            <span class="duration">0:30</span>
+                            <span class="label">Travel</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block break" style="flex: 0.5;">
+                            <span class="icon">☕</span>
+                            <span class="duration">0:30</span>
+                            <span class="label">Lunch</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block admin" style="flex: 1.5;">
+                            <span class="icon">👥</span>
+                            <span class="duration">1:30</span>
+                            <span class="label">Meeting</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block case-mgmt" style="flex: 0.75;">
+                            <span class="icon">📋</span>
+                            <span class="duration">0:45</span>
+                            <span class="label">Docs</span>
+                            <div class="resize-handle"></div>
+                        </div>
+                        <div class="timeline-block unallocated" style="flex: 2.75;">
+                            <span class="icon">⚠️</span>
+                            <span class="duration">2:45</span>
+                            <span class="label">Unallocated</span>
+                        </div>
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--travel);"></div>Travel</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--case-mgmt);"></div>Case Management</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--treatment);"></div>Treatment</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--admin);"></div>Administrative</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--medical);"></div>Medical</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--self);"></div>Self/Training</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: var(--break);"></div>Break</div>
+                        <div class="legend-item"><div class="legend-dot" style="background: #fde68a;"></div>Unallocated</div>
+                    </div>
+                </div>
+
+                <!-- Time Blocks Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Time Block Details</div>
+                            <div class="card-subtitle">Click any row to edit</div>
+                        </div>
+                    </div>
+
+                    <table class="blocks-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 4px;"></th>
+                                <th>Time</th>
+                                <th>Activity</th>
+                                <th>Concerning</th>
+                                <th>Duration</th>
+                                <th>Notes</th>
+                                <th style="width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--travel);"></div></td>
+                                <td class="block-time">8:15 AM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">🚗</span>
+                                        <div>
+                                            <div class="name">Travel - Home Visit</div>
+                                            <div class="category">Travel</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag home">Smith Home</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">0:45</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">32 miles</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--case-mgmt);"></div></td>
+                                <td class="block-time">9:00 AM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">🏠</span>
+                                        <div>
+                                            <div class="name">Home Visit</div>
+                                            <div class="category">Case Management</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag child">Marcus S.</span>
+                                        <span class="tag child">Jaylen S.</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">1:30</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">Monthly check-in</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--travel);"></div></td>
+                                <td class="block-time">10:30 AM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">🚗</span>
+                                        <div>
+                                            <div class="name">Travel - Admin</div>
+                                            <div class="category">Travel</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag unassigned">Unassigned</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">0:30</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">Return to office, 25 mi</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--break);"></div></td>
+                                <td class="block-time">12:00 PM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">☕</span>
+                                        <div>
+                                            <div class="name">Lunch Break</div>
+                                            <div class="category">Break</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag" style="background: #e5e7eb;">Break</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">0:30</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">—</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--admin);"></div></td>
+                                <td class="block-time">12:30 PM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">👥</span>
+                                        <div>
+                                            <div class="name">Staff Meeting</div>
+                                            <div class="category">Administrative</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag unassigned">Unassigned</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">1:30</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">Weekly team sync</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="block-row">
+                                <td><div class="block-color" style="background: var(--case-mgmt);"></div></td>
+                                <td class="block-time">2:00 PM</td>
+                                <td>
+                                    <div class="block-activity">
+                                        <span class="icon">📋</span>
+                                        <div>
+                                            <div class="name">Documentation</div>
+                                            <div class="category">Case Management</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="concerning-tags">
+                                        <span class="tag child">Marcus S.</span>
+                                        <span class="tag child">Jaylen S.</span>
+                                    </div>
+                                </td>
+                                <td class="block-duration">0:45</td>
+                                <td style="color: var(--gray-500); font-size: 13px;">Visit notes</td>
+                                <td>
+                                    <div class="block-actions">
+                                        <button class="action-btn">✏️</button>
+                                        <button class="action-btn">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Package Summary -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Package Allocation Summary</div>
+                            <div class="card-subtitle">Time allocated to each service package today</div>
+                        </div>
+                    </div>
+
+                    <div class="package-summary">
+                        <div class="package-card">
+                            <div class="package-header">
+                                <span class="package-name">Marcus S. (T3C Intensive)</span>
+                                <span class="package-time">2:15</span>
+                            </div>
+                            <div class="package-bar">
+                                <div class="package-bar-fill" style="width: 35%; background: #ef4444;"></div>
+                            </div>
+                        </div>
+                        <div class="package-card">
+                            <div class="package-header">
+                                <span class="package-name">Jaylen S. (T3C Basic)</span>
+                                <span class="package-time">2:00</span>
+                            </div>
+                            <div class="package-bar">
+                                <div class="package-bar-fill" style="width: 30%; background: #22c55e;"></div>
+                            </div>
+                        </div>
+                        <div class="package-card">
+                            <div class="package-header">
+                                <span class="package-name">Aaliyah J. (T3C Moderate)</span>
+                                <span class="package-time">0:00</span>
+                            </div>
+                            <div class="package-bar">
+                                <div class="package-bar-fill" style="width: 0%; background: #f59e0b;"></div>
+                            </div>
+                        </div>
+                        <div class="package-card">
+                            <div class="package-header">
+                                <span class="package-name">Unassigned / Admin</span>
+                                <span class="package-time">2:00</span>
+                            </div>
+                            <div class="package-bar">
+                                <div class="package-bar-fill" style="width: 30%; background: #6b7280;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complete Day Button -->
+                <div style="text-align: center; padding: 20px 0;">
+                    <button class="btn btn-success btn-lg" style="padding: 16px 48px; font-size: 18px;">
+                        ✓ Complete Day
+                    </button>
+                    <p style="margin-top: 12px; color: var(--gray-500); font-size: 13px;">
+                        You have <strong style="color: #b45309;">2:45</strong> remaining to allocate before completing
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Slide Panel for Adding/Editing Time Block -->
+    <div class="modal-overlay" id="addBlockPanel" style="display: none;">
+        <div class="slide-panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Add Time Block</div>
+                    <div class="panel-subtitle">Create a new time block entry</div>
+                </div>
+                <button class="close-btn" onclick="closePanel()">✕</button>
+            </div>
+
+            <div class="panel-content">
+                <!-- Step 1: Activity -->
+                <div class="form-section">
+                    <label class="form-label">Activity (What are you doing?)</label>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px; font-weight: 500;">CASE MANAGEMENT</div>
+                        <div class="activity-pills">
+                            <span class="activity-pill selected">🏠 Home Visit</span>
+                            <span class="activity-pill">📞 Phone</span>
+                            <span class="activity-pill">📋 Docs</span>
+                            <span class="activity-pill">⚖️ Court</span>
+                            <span class="activity-pill">🏫 School</span>
+                            <span class="activity-pill">📎 Other</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px; font-weight: 500;">TRAVEL</div>
+                        <div class="activity-pills">
+                            <span class="activity-pill">🚗 Home Visit</span>
+                            <span class="activity-pill">⚖️ Court</span>
+                            <span class="activity-pill">🏥 Medical</span>
+                            <span class="activity-pill">🏢 Admin</span>
+                            <span class="activity-pill">📎 Other</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px; font-weight: 500;">ADMINISTRATIVE</div>
+                        <div class="activity-pills">
+                            <span class="activity-pill">👥 Meeting</span>
+                            <span class="activity-pill">👤 Supervision</span>
+                            <span class="activity-pill">📚 Training</span>
+                            <span class="activity-pill">🗂️ General</span>
+                            <span class="activity-pill">📎 Other</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Concerning -->
+                <div class="form-section">
+                    <label class="form-label">Concerning (Who/What is this about?)</label>
+                    <div class="concerning-grid">
+                        <div class="concerning-option selected">
+                            <div class="icon">🏠</div>
+                            <div class="label">Home</div>
+                            <div class="desc">Splits to children</div>
+                        </div>
+                        <div class="concerning-option">
+                            <div class="icon">👤</div>
+                            <div class="label">Child(ren)</div>
+                            <div class="desc">Specific children</div>
+                        </div>
+                        <div class="concerning-option">
+                            <div class="icon">🏢</div>
+                            <div class="label">Unassigned</div>
+                            <div class="desc">Admin / Leadership</div>
+                        </div>
+                        <div class="concerning-option">
+                            <div class="icon">🎓</div>
+                            <div class="label">Self</div>
+                            <div class="desc">Training / Development</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Home Selection -->
+                <div class="form-section">
+                    <label class="form-label">Select Home</label>
+                    <div class="selection-list">
+                        <div class="selection-item selected">
+                            <input type="radio" name="home" checked>
+                            <div class="details">
+                                <div class="name">🏠 Smith Home</div>
+                                <div class="meta">Marcus S. (Intensive), Jaylen S. (Basic)</div>
+                            </div>
+                        </div>
+                        <div class="selection-item">
+                            <input type="radio" name="home">
+                            <div class="details">
+                                <div class="name">🏠 Jones Home</div>
+                                <div class="meta">Aaliyah J. (Moderate)</div>
+                            </div>
+                        </div>
+                        <div class="selection-item">
+                            <input type="radio" name="home">
+                            <div class="details">
+                                <div class="name">🏠 Williams Home</div>
+                                <div class="meta">Devon W. (Basic), Maya W. (Basic)</div>
+                            </div>
+                        </div>
+                        <div class="selection-item">
+                            <input type="radio" name="home">
+                            <div class="details">
+                                <div class="name">🏠 Garcia Home</div>
+                                <div class="meta">Sofia G. (Intensive)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duration -->
+                <div class="form-section">
+                    <label class="form-label">Duration (15-minute increments)</label>
+                    <div class="duration-control">
+                        <button class="duration-btn">−</button>
+                        <div class="duration-display">1:30</div>
+                        <button class="duration-btn">+</button>
+                    </div>
+                </div>
+
+                <!-- Start Time -->
+                <div class="form-section">
+                    <label class="form-label">Start Time</label>
+                    <div class="time-input-row">
+                        <input type="time" value="09:00" class="time-input">
+                        <button class="btn btn-outline">Now</button>
+                    </div>
+                </div>
+
+                <!-- Allocation Preview -->
+                <div class="form-section">
+                    <label class="form-label">Package Allocation Preview</label>
+                    <div class="allocation-preview">
+                        <div class="allocation-row">
+                            <span>Marcus S.</span>
+                            <span style="color: var(--gray-500);">T3C Intensive • 50%</span>
+                        </div>
+                        <div class="allocation-row">
+                            <span>Jaylen S.</span>
+                            <span style="color: var(--gray-500);">T3C Basic • 50%</span>
+                        </div>
+                    </div>
+                    <div class="form-hint">Time automatically split equally between children in home</div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-section">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="notes-input" rows="3" placeholder="Add any notes about this time block..."></textarea>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button class="btn btn-outline" onclick="closePanel()">Cancel</button>
+                <button class="btn btn-success" style="flex: 2;">✓ Add Time Block</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openPanel() {
+            document.getElementById('addBlockPanel').style.display = 'flex';
+        }
+
+        function closePanel() {
+            document.getElementById('addBlockPanel').style.display = 'none';
+        }
+
+        // Close panel on overlay click
+        document.getElementById('addBlockPanel').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePanel();
+            }
+        });
+
+        // Make activity pills clickable
+        document.querySelectorAll('.activity-pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                // Remove selected from siblings in same container
+                this.parentElement.querySelectorAll('.activity-pill').forEach(p => p.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Make concerning options clickable
+        document.querySelectorAll('.concerning-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.concerning-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Make selection items clickable
+        document.querySelectorAll('.selection-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                    this.closest('.selection-list').querySelectorAll('.selection-item').forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                }
+            });
+        });
+
+        // Duration controls
+        let duration = 90; // minutes
+        const durationDisplay = document.querySelector('.duration-display');
+
+        document.querySelectorAll('.duration-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.textContent === '−' && duration > 15) {
+                    duration -= 15;
+                } else if (this.textContent === '+') {
+                    duration += 15;
+                }
+                const hours = Math.floor(duration / 60);
+                const mins = duration % 60;
+                durationDisplay.textContent = `${hours}:${mins.toString().padStart(2, '0')}`;
+            });
+        });
+    </script>
+
+</body>
+</html>
