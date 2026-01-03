@@ -551,7 +551,7 @@ export async function POST(request: NextRequest) {
             @param6, @param7, @param8, @param9, @param10, @param11,
             @param12, @param13, @param14, @param15, @param16, @param17,
             @param18, @param19, @param20, @param21, @param22, @param23,
-            @param24, @param25, @param26, @param27, @param28, @param29, @param30,
+            @param24, @param25, @param26, @param27, @param28, @param29, @param30, @param31,
             GETUTCDATE(), GETUTCDATE()
           )
         `,
@@ -617,7 +617,13 @@ export async function POST(request: NextRequest) {
           { status: 201 },
         )
       } catch (insertError) {
-        console.error("❌ [API] Insert query failed:", insertError)
+        console.error("❌ [API] Insert query failed:", {
+          error: insertError,
+          message: insertError instanceof Error ? insertError.message : "Unknown error",
+          stack: insertError instanceof Error ? insertError.stack : undefined,
+          sqlState: (insertError as any)?.code,
+          sqlMessage: (insertError as any)?.message,
+        })
         throw insertError
       }
     }
@@ -629,12 +635,36 @@ export async function POST(request: NextRequest) {
       error: error,
     })
 
+    // Check if error is about missing columns (backward compatibility)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const isColumnError = errorMessage.includes("Invalid column name") || 
+                         errorMessage.includes("actor_radius_guid") ||
+                         errorMessage.includes("actor_entity_guid") ||
+                         errorMessage.includes("actor_user_type")
+
+    if (isColumnError) {
+      console.warn("⚠️ [API] Actor columns may not exist in database - this is expected if schema migration hasn't run")
+      // Try to save without actor columns (backward compatibility)
+      // This would require a separate query without actor columns, but for now just return a helpful error
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Database schema update required",
+          details: "The visit_forms table is missing actor columns. Please run the database migration to add actor_radius_guid, actor_entity_guid, and actor_user_type columns.",
+          errorType: "SchemaError",
+        },
+        { status: 500 },
+      )
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: "Failed to save visit form",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: errorMessage,
         errorType: error instanceof Error ? error.name : "UnknownError",
+        // Include more details for debugging
+        hint: errorMessage.includes("parameter") ? "Check parameter count matches column count" : undefined,
       },
       { status: 500 },
     )
