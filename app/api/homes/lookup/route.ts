@@ -65,7 +65,7 @@ export async function GET(request: Request) {
         Guid as guid,
         HomeName as name,
         Xref as xref
-      FROM syncActiveHomes
+      FROM SyncActiveHomes
       WHERE Xref = @param0
       `,
       [parseInt(xref)]

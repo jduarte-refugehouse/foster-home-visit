@@ -249,36 +249,48 @@ export async function POST(request: NextRequest) {
     try {
       // Resolve user identity
       if (createdByUserId && createdByUserId !== "system-user" && !createdByUserId.startsWith("temp-")) {
-        console.log("🔍 [API] Resolving user identity for:", createdByUserId)
-        identity = await resolveUserIdentity(createdByUserId)
-        actorFields = getActorFields(identity)
-        console.log("✅ [API] User identity resolved:", {
-          radiusGuid: identity.radiusGuid,
-          entityGuid: identity.entityGuid,
-          userType: identity.userType,
-          unit: identity.unit
-        })
+        try {
+          console.log("🔍 [API] Resolving user identity for:", createdByUserId)
+          identity = await resolveUserIdentity(createdByUserId)
+          actorFields = getActorFields(identity)
+          console.log("✅ [API] User identity resolved:", {
+            radiusGuid: identity.radiusGuid,
+            entityGuid: identity.entityGuid,
+            userType: identity.userType,
+            unit: identity.unit
+          })
+        } catch (identityResolveError) {
+          console.error("⚠️ [API] Failed to resolve user identity (non-blocking):", identityResolveError)
+          // Continue without identity - backward compatible
+          identity = null
+          actorFields = null
+        }
       } else {
         console.log("⚠️ [API] Skipping identity resolution for system/temp user")
       }
 
       // Get appointment data to find home GUID
-      appointmentData = await query(
-        `SELECT a.home_xref, h.HomeName, h.HomeGUID
-         FROM appointments a
-         LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
-         WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
-        [appointmentId]
-      )
+      try {
+        appointmentData = await query(
+          `SELECT a.home_xref, h.HomeName, h.Guid as HomeGUID
+           FROM appointments a
+           LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+           WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
+          [appointmentId]
+        )
 
-      if (appointmentData.length > 0) {
-        homeXref = appointmentData[0].home_xref
-        homeName = appointmentData[0].HomeName
-        homeGuid = appointmentData[0].HomeGUID
-        console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+        if (appointmentData.length > 0) {
+          homeXref = appointmentData[0].home_xref
+          homeName = appointmentData[0].HomeName
+          homeGuid = appointmentData[0].HomeGUID
+          console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+        }
+      } catch (appointmentError) {
+        console.error("⚠️ [API] Failed to fetch appointment data (non-blocking):", appointmentError)
+        // Continue without home data - backward compatible
       }
-    } catch (identityError) {
-      console.error("⚠️ [API] Error resolving identity or fetching appointment data:", identityError)
+    } catch (error) {
+      console.error("⚠️ [API] Unexpected error in identity/appointment resolution (non-blocking):", error)
       // Continue without identity - backward compatible
     }
 
