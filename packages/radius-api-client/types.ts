@@ -298,3 +298,151 @@ export interface NavigationResponse {
   error?: string
 }
 
+// ============================================
+// Continuum / Visits Types
+// ============================================
+
+export interface ContinuumMark {
+  MarkID: string
+  MarkType: string
+  MarkDate: string                    // Note: MarkDate not MarkTime
+  Unit: 'DAL' | 'SAN'
+  SourceSystem: string
+  // PID-based identity (PULSE)
+  ActorPID: number
+  // GUID-based identity (Visit Service)
+  ActorClerkId: string | null
+  ActorRadiusGuid: string | null
+  ActorEntityGuid: string | null
+  ActorCommBridgeId: string | null
+  ActorName: string | null
+  ActorEmail: string | null
+  ActorUserType: string | null
+  // Content
+  Notes: string | null
+  MarkContext: string | null
+  JsonPayload: Record<string, any> | null
+  MarkStatus: string | null
+  // Audit
+  CreatedAt: string
+  CreatedBy: string | null
+  IsArchived: boolean
+  IsDeleted: boolean
+}
+
+export interface MarkSubject {
+  MarkSubjectID: string
+  MarkID: string
+  EntityGUID: string
+  EntityType: 'facility' | 'child' | 'person'
+  EntityPID: number | null
+  SubjectRole: 'primary' | 'participant' | 'observer'
+  EntityName: string | null
+  EntityXref: number | null
+}
+
+export interface MarkParty {
+  MarkPartyID: string
+  MarkID: string
+  PartyName: string
+  PartyRole: 'PRESENT' | 'NOTIFIED' | 'ABSENT' | 'VIRTUAL'
+  EntityGUID: string | null
+  EntityPID: number | null
+  PartyRadiusGuid: string | null
+  PartyEntityGuid: string | null
+  PartyCommBridgeId: string | null
+  PartyType: string | null
+  PartyEmail: string | null
+  PartyPhone: string | null
+}
+
+export interface Trip {
+  TripID: string
+  TripDate: string
+  StaffClerkId: string
+  StaffRadiusGuid: string | null
+  StaffEmail: string
+  StaffName: string
+  TripPurpose: string
+  OriginType: string
+  DestinationType: string
+  DestinationFosterHomeGuid: string | null
+  MilesEstimated: number | null
+  MilesActual: number | null
+  CostCenterUnit: 'DAL' | 'SAN'
+  RelatedMarkID: string | null
+  TripStatus: string
+  IsDeleted: boolean
+}
+
+export interface UserIdentity {
+  clerkId: string
+  email: string
+  name: string
+  userType: 'staff' | 'foster_parent' | 'therapist' | 'external'
+  radiusGuid: string | null
+  entityGuid: string | null
+  commBridgeId: string | null
+  fosterHomeGuid: string | null
+  pid: number | null
+  unit: 'DAL' | 'SAN' | null
+}
+
+export interface CreateVisitParams {
+  markDate: string                    // ISO datetime
+  markType?: string                   // Default: 'HOME_VISIT'
+  fosterHomeGuid: string
+  fosterHomeName?: string
+  fosterHomeXref?: number
+  childGuids?: Array<{ guid: string; name?: string }>
+  notes?: string
+  jsonPayload?: Record<string, any>
+  unit: 'DAL' | 'SAN'
+  sourceSystem?: string               // Default: 'VisitService'
+  // Actor identity
+  actorPid?: number                   // For PULSE compatibility
+  actorClerkId: string
+  actorRadiusGuid?: string | null
+  actorEntityGuid?: string | null
+  actorCommBridgeId?: string | null
+  actorName: string
+  actorEmail?: string
+  actorUserType: string
+  // Parties
+  parties?: Array<{
+    name: string
+    role?: string                     // 'PRESENT', 'NOTIFIED', 'ABSENT'
+    radiusGuid?: string | null
+    entityGuid?: string | null
+    commBridgeId?: string | null
+    type?: string                     // 'foster_parent', 'child', 'dfps', etc.
+    email?: string
+    phone?: string
+  }>
+}
+
+export interface GetVisitsParams {
+  homeGuid?: string
+  staffGuid?: string
+  startDate?: string
+  endDate?: string
+}
+
+export interface CreateTripParams {
+  tripDate: string
+  staffClerkId: string
+  staffRadiusGuid?: string | null
+  staffEmail: string
+  staffName: string
+  tripPurpose: string
+  originType: string
+  originAddress?: string
+  destinationType: string
+  destinationAddress?: string
+  destinationFosterHomeGuid?: string
+  milesEstimated?: number
+  milesActual?: number
+  costCenterUnit: 'DAL' | 'SAN'
+  relatedMarkId?: string
+}
+

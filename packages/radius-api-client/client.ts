@@ -22,6 +22,15 @@ import type {
   // Navigation types
   NavigationOptions,
   NavigationResponse,
+  // Continuum types
+  ContinuumMark,
+  MarkSubject,
+  MarkParty,
+  Trip,
+  UserIdentity,
+  CreateVisitParams,
+  GetVisitsParams,
+  CreateTripParams,
 } from "./types"
 
 const API_BASE_URL =
@@ -290,6 +299,50 @@ export const radiusApiClient = {
     const endpoint = `navigation?${queryString}`
 
     return await apiRequest<NavigationResponse>(endpoint)
+  },
+
+  // ============================================
+  // Continuum / Visits Methods
+  // ============================================
+
+  /**
+   * Create a visit (ContinuumMark + MarkSubject + MarkParty)
+   * Creates a ContinuumMark record with linked subjects and parties
+   */
+  async createVisit(params: CreateVisitParams): Promise<{ markId: string }> {
+    return await apiRequest<{ markId: string }>("visits", {
+      method: "POST",
+      body: JSON.stringify(params),
+    })
+  },
+
+  /**
+   * Get visits with optional filtering
+   * Returns ContinuumMark records with optional filters
+   */
+  async getVisits(params?: GetVisitsParams): Promise<ContinuumMark[]> {
+    const queryParams = new URLSearchParams()
+    if (params?.homeGuid) queryParams.append("homeGuid", params.homeGuid)
+    if (params?.staffGuid) queryParams.append("staffGuid", params.staffGuid)
+    if (params?.startDate) queryParams.append("startDate", params.startDate)
+    if (params?.endDate) queryParams.append("endDate", params.endDate)
+
+    const queryString = queryParams.toString()
+    const endpoint = queryString ? `visits?${queryString}` : "visits"
+
+    const result = await apiRequest<{ visits: ContinuumMark[] }>(endpoint)
+    return result.visits || []
+  },
+
+  /**
+   * Create a trip linked to a visit
+   * Creates a trip record that can be linked to a ContinuumMark via RelatedMarkID
+   */
+  async createTrip(params: CreateTripParams): Promise<{ tripId: string }> {
+    return await apiRequest<{ tripId: string }>("trips", {
+      method: "POST",
+      body: JSON.stringify(params),
+    })
   },
 }
 
