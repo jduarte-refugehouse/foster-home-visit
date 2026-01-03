@@ -1,12 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { resolveUserIdentity, getActorFields } from "@/lib/identity-resolver"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
-import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
-export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
-export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
+export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 export const maxDuration = 60 // Vercel function timeout in seconds (Pro plan: max 60s, Enterprise: max 900s)
 
@@ -20,119 +18,78 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const userId = searchParams.get("userId")
 
-    const microserviceCode = getMicroserviceCode()
-    const useApiClient = shouldUseRadiusApiClient()
+    // Build dynamic query based on filters
+    const whereConditions = ["vf.is_deleted = 0"]
+    const params: any[] = []
+    let paramIndex = 0
 
-    let visitForms: any[]
-
-    if (useApiClient) {
-      // Use Radius API client for non-admin microservices
-      console.log(`✅ [API] Using API client for visit forms (microservice: ${microserviceCode})`)
-      
-      try {
-        const apiVisitForms = await radiusApiClient.getVisitForms({
-          appointmentId: appointmentId || undefined,
-          status: status || undefined,
-          userId: userId || undefined,
-        })
-
-        // Filter out deleted forms (API should handle this, but ensure it)
-        visitForms = apiVisitForms.filter((form: any) => !form.is_deleted)
-        
-        // Sort by updated_at DESC (API returns DESC, but ensure it)
-        visitForms.sort((a, b) => {
-          const aDate = new Date(a.updated_at).getTime()
-          const bDate = new Date(b.updated_at).getTime()
-          return bDate - aDate
-        })
-      } catch (apiError) {
-        console.error("❌ [API] Error fetching visit forms from API client:", apiError)
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Failed to fetch visit forms from API Hub",
-            details: apiError instanceof Error ? apiError.message : "Unknown error",
-          },
-          { status: 500 },
-        )
-      }
-    } else {
-      // Direct database access for admin microservice
-      console.log(`⚠️ [API] Using direct DB access for visit forms (admin microservice)`)
-
-      // Build dynamic query based on filters
-      const whereConditions = ["vf.is_deleted = 0"]
-      const params: any[] = []
-      let paramIndex = 0
-
-      if (appointmentId) {
-        whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
-        params.push(appointmentId)
-        paramIndex++
-      }
-
-      if (status) {
-        whereConditions.push(`vf.status = @param${paramIndex}`)
-        params.push(status)
-        paramIndex++
-      }
-
-      if (userId) {
-        whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
-        params.push(userId)
-        paramIndex++
-      }
-
-      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-      visitForms = await query(
-        `
-        SELECT 
-          vf.visit_form_id,
-          vf.appointment_id,
-          vf.form_type,
-          vf.form_version,
-          vf.status,
-          vf.visit_date,
-          vf.visit_time,
-          vf.visit_number,
-          vf.quarter,
-          vf.visit_variant,
-          vf.visit_info,
-          vf.family_info,
-          vf.attendees,
-          vf.observations,
-          vf.recommendations,
-          vf.signatures,
-          vf.home_environment,
-          vf.child_interviews,
-          vf.parent_interviews,
-          vf.compliance_review,
-          vf.last_auto_save,
-          vf.auto_save_count,
-          vf.created_at,
-          vf.updated_at,
-          vf.created_by_user_id,
-          vf.created_by_name,
-          vf.updated_by_user_id,
-          vf.updated_by_name,
-          vf.current_session_id,
-          vf.current_session_last_save,
-          vf.current_session_save_type,
-          vf.current_session_user_id,
-          vf.current_session_user_name,
-          vf.save_history_json,
-          -- Include appointment details
-          a.title as appointment_title,
-          a.location_address
-        FROM visit_forms vf
-        LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
-        ${whereClause}
-        ORDER BY vf.updated_at DESC
-      `,
-        params,
-      )
+    if (appointmentId) {
+      whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
+      params.push(appointmentId)
+      paramIndex++
     }
+
+    if (status) {
+      whereConditions.push(`vf.status = @param${paramIndex}`)
+      params.push(status)
+      paramIndex++
+    }
+
+    if (userId) {
+      whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
+      params.push(userId)
+      paramIndex++
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+    const visitForms = await query(
+      `
+      SELECT 
+        vf.visit_form_id,
+        vf.appointment_id,
+        vf.form_type,
+        vf.form_version,
+        vf.status,
+        vf.visit_date,
+        vf.visit_time,
+        vf.visit_number,
+        vf.quarter,
+        vf.visit_variant,
+        vf.visit_info,
+        vf.family_info,
+        vf.attendees,
+        vf.observations,
+        vf.recommendations,
+        vf.signatures,
+        vf.home_environment,
+        vf.child_interviews,
+        vf.parent_interviews,
+        vf.compliance_review,
+        vf.last_auto_save,
+        vf.auto_save_count,
+        vf.created_at,
+        vf.updated_at,
+        vf.created_by_user_id,
+        vf.created_by_name,
+        vf.updated_by_user_id,
+        vf.updated_by_name,
+        vf.current_session_id,
+        vf.current_session_last_save,
+        vf.current_session_save_type,
+        vf.current_session_user_id,
+        vf.current_session_user_name,
+        vf.save_history_json,
+        -- Include appointment details
+        a.title as appointment_title,
+        a.location_address
+      FROM visit_forms vf
+      LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
+      ${whereClause}
+      ORDER BY vf.updated_at DESC
+    `,
+      params,
+    )
 
     console.log(`✅ [API] Retrieved ${visitForms.length} visit forms`)
 
@@ -141,45 +98,24 @@ export async function GET(request: NextRequest) {
       count: visitForms.length,
       visitForms: visitForms.map((form) => ({
         ...form,
-        // Parse JSON fields (handle both string and already-parsed JSON)
-        visit_info: form.visit_info 
-          ? (typeof form.visit_info === 'string' ? JSON.parse(form.visit_info) : form.visit_info)
-          : null,
-        family_info: form.family_info 
-          ? (typeof form.family_info === 'string' ? JSON.parse(form.family_info) : form.family_info)
-          : null,
-        attendees: form.attendees 
-          ? (typeof form.attendees === 'string' ? JSON.parse(form.attendees) : form.attendees)
-          : null,
-        observations: form.observations 
-          ? (typeof form.observations === 'string' ? JSON.parse(form.observations) : form.observations)
-          : null,
-        recommendations: form.recommendations 
-          ? (typeof form.recommendations === 'string' ? JSON.parse(form.recommendations) : form.recommendations)
-          : null,
-        signatures: form.signatures 
-          ? (typeof form.signatures === 'string' ? JSON.parse(form.signatures) : form.signatures)
-          : null,
-        home_environment: form.home_environment 
-          ? (typeof form.home_environment === 'string' ? JSON.parse(form.home_environment) : form.home_environment)
-          : null,
-        child_interviews: form.child_interviews 
-          ? (typeof form.child_interviews === 'string' ? JSON.parse(form.child_interviews) : form.child_interviews)
-          : null,
-        parent_interviews: form.parent_interviews 
-          ? (typeof form.parent_interviews === 'string' ? JSON.parse(form.parent_interviews) : form.parent_interviews)
-          : null,
-        compliance_review: form.compliance_review 
-          ? (typeof form.compliance_review === 'string' ? JSON.parse(form.compliance_review) : form.compliance_review)
-          : null,
+        // Parse JSON fields
+        visit_info: form.visit_info ? JSON.parse(form.visit_info) : null,
+        family_info: form.family_info ? JSON.parse(form.family_info) : null,
+        attendees: form.attendees ? JSON.parse(form.attendees) : null,
+        observations: form.observations ? JSON.parse(form.observations) : null,
+        recommendations: form.recommendations ? JSON.parse(form.recommendations) : null,
+        signatures: form.signatures ? JSON.parse(form.signatures) : null,
+        home_environment: form.home_environment ? JSON.parse(form.home_environment) : null,
+        child_interviews: form.child_interviews ? JSON.parse(form.child_interviews) : null,
+        parent_interviews: form.parent_interviews ? JSON.parse(form.parent_interviews) : null,
+        compliance_review: form.compliance_review ? JSON.parse(form.compliance_review) : null,
         // Ensure consistent date formatting
-        created_at: form.created_at ? new Date(form.created_at).toISOString() : null,
-        updated_at: form.updated_at ? new Date(form.updated_at).toISOString() : null,
+        created_at: new Date(form.created_at).toISOString(),
+        updated_at: new Date(form.updated_at).toISOString(),
         last_auto_save: form.last_auto_save ? new Date(form.last_auto_save).toISOString() : null,
       })),
       timestamp: new Date().toISOString(),
     })
-    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error fetching visit forms:", error)
     return NextResponse.json(
@@ -302,6 +238,137 @@ export async function POST(request: NextRequest) {
     }
     console.log("✅ [API] Appointment exists")
 
+    // Resolve user identity for actor fields (dual-source pattern)
+    let identity = null
+    let actorFields = null
+    let appointmentData = null
+    let homeGuid: string | null = null
+    let homeName: string | null = null
+    let homeXref: number | null = null
+
+    try {
+      // Resolve user identity
+      if (createdByUserId && createdByUserId !== "system-user" && !createdByUserId.startsWith("temp-")) {
+        console.log("🔍 [API] Resolving user identity for:", createdByUserId)
+        identity = await resolveUserIdentity(createdByUserId)
+        actorFields = getActorFields(identity)
+        console.log("✅ [API] User identity resolved:", {
+          radiusGuid: identity.radiusGuid,
+          entityGuid: identity.entityGuid,
+          userType: identity.userType,
+          unit: identity.unit
+        })
+      } else {
+        console.log("⚠️ [API] Skipping identity resolution for system/temp user")
+      }
+
+      // Get appointment data to find home GUID
+      appointmentData = await query(
+        `SELECT a.home_xref, h.HomeName, h.HomeGUID
+         FROM appointments a
+         LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+         WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
+        [appointmentId]
+      )
+
+      if (appointmentData.length > 0) {
+        homeXref = appointmentData[0].home_xref
+        homeName = appointmentData[0].HomeName
+        homeGuid = appointmentData[0].HomeGUID
+        console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+      }
+    } catch (identityError) {
+      console.error("⚠️ [API] Error resolving identity or fetching appointment data:", identityError)
+      // Continue without identity - backward compatible
+    }
+
+    // Create ContinuumMark via API Hub (if not admin service)
+    const useApiClient = shouldUseRadiusApiClient()
+    let continuumMarkId: string | null = null
+
+    if (useApiClient && identity && actorFields && homeGuid && status !== "draft") {
+      // Only create ContinuumMark for non-draft forms (completed visits)
+      try {
+        console.log("🔄 [API] Creating ContinuumMark via API Hub...")
+        
+        // Extract child GUIDs from form data if available
+        const childGuids: Array<{ guid: string; name?: string }> = []
+        if (familyInfo?.placements) {
+          // Try to extract child GUIDs from placements data
+          const placements = Array.isArray(familyInfo.placements) 
+            ? familyInfo.placements 
+            : Object.values(familyInfo.placements || {})
+          placements.forEach((placement: any) => {
+            if (placement?.childGuid || placement?.child_guid) {
+              childGuids.push({
+                guid: placement.childGuid || placement.child_guid,
+                name: placement.childName || placement.child_name || null
+              })
+            }
+          })
+        }
+
+        // Extract parties from attendees
+        const parties: Array<{
+          name: string
+          role?: string
+          entityGuid?: string | null
+          type?: string
+        }> = []
+        if (attendees?.list) {
+          const attendeeList = Array.isArray(attendees.list) ? attendees.list : Object.values(attendees.list)
+          attendeeList.forEach((attendee: any) => {
+            if (attendee?.name) {
+              parties.push({
+                name: attendee.name,
+                role: "PRESENT",
+                entityGuid: attendee.entityGuid || attendee.entity_guid || null,
+                type: attendee.type || "unknown"
+              })
+            }
+          })
+        }
+
+        const markDate = `${visitDate}T${visitTime}:00`
+        const visitResult = await radiusApiClient.createVisit({
+          markDate,
+          markType: "HOME_VISIT",
+          fosterHomeGuid: homeGuid,
+          fosterHomeName: homeName || undefined,
+          fosterHomeXref: homeXref || undefined,
+          childGuids,
+          notes: observations?.observations || recommendations?.visitSummary || null,
+          jsonPayload: {
+            visitFormId: null, // Will be updated after local save
+            visitInfo,
+            familyInfo,
+            attendees,
+            observations,
+            recommendations,
+            homeEnvironment,
+            childInterviews,
+            parentInterviews,
+            complianceReview,
+            signatures
+          },
+          unit: identity.unit || "DAL",
+          sourceSystem: "VisitService",
+          ...actorFields,
+          parties
+        })
+
+        continuumMarkId = visitResult.markId
+        console.log("✅ [API] ContinuumMark created:", continuumMarkId)
+      } catch (markError) {
+        console.error("⚠️ [API] Failed to create ContinuumMark (non-blocking):", markError)
+        // Don't fail the entire request if ContinuumMark creation fails
+      }
+    } else if (!useApiClient) {
+      console.log("ℹ️ [API] Admin service - skipping API Hub call (direct DB access)")
+    } else if (status === "draft") {
+      console.log("ℹ️ [API] Draft form - skipping ContinuumMark creation")
+    }
+
     console.log("🔍 [API] Checking for existing visit form...")
     // Check if visit form already exists for this appointment
     const existingForm = await query(
@@ -370,7 +437,10 @@ export async function POST(request: NextRequest) {
             current_session_save_type = @param20,
             current_session_user_id = @param21,
             current_session_user_name = @param22,
-            save_history_json = @param23
+            save_history_json = @param23,
+            actor_radius_guid = @param24,
+            actor_entity_guid = @param25,
+            actor_user_type = @param26
           WHERE visit_form_id = @param0 AND is_deleted = 0
         `,
           [
@@ -398,6 +468,9 @@ export async function POST(request: NextRequest) {
             currentSessionUserId || createdByUserId,
             currentSessionUserName || createdByName,
             JSON.stringify(updatedHistory),
+            actorFields?.actorRadiusGuid || null,
+            actorFields?.actorEntityGuid || null,
+            actorFields?.actorUserType || null,
           ],
         )
 
@@ -454,6 +527,9 @@ export async function POST(request: NextRequest) {
             current_session_user_id,
             current_session_user_name,
             save_history_json,
+            actor_radius_guid,
+            actor_entity_guid,
+            actor_user_type,
             created_at,
             updated_at
           )
@@ -463,7 +539,7 @@ export async function POST(request: NextRequest) {
             @param6, @param7, @param8, @param9, @param10, @param11,
             @param12, @param13, @param14, @param15, @param16, @param17,
             @param18, @param19, @param20, @param21, @param22, @param23,
-            @param24, @param25, @param26, @param27, @param28,
+            @param24, @param25, @param26, @param27, @param28, @param29, @param30,
             GETUTCDATE(), GETUTCDATE()
           )
         `,
@@ -497,16 +573,31 @@ export async function POST(request: NextRequest) {
             currentSessionUserId || createdByUserId, // @param26 current_session_user_id
             currentSessionUserName || createdByName, // @param27 current_session_user_name
             "[]", // @param28 save_history_json (empty array for new form)
+            actorFields?.actorRadiusGuid || null, // @param29 actor_radius_guid
+            actorFields?.actorEntityGuid || null, // @param30 actor_entity_guid
+            actorFields?.actorUserType || null, // @param31 actor_user_type
           ],
         )
 
         const visitFormId = result[0].visit_form_id
         console.log(`✅ [API] Created visit form with ID: ${visitFormId}`)
 
+        // Update ContinuumMark with visit_form_id if it was created
+        if (continuumMarkId && useApiClient) {
+          try {
+            // Note: We can't update ContinuumMark.JsonPayload directly via API Hub yet
+            // This would require an UPDATE endpoint, which we can add later if needed
+            console.log("ℹ️ [API] ContinuumMark created with markId:", continuumMarkId)
+          } catch (updateError) {
+            console.error("⚠️ [API] Failed to update ContinuumMark with visit_form_id (non-blocking):", updateError)
+          }
+        }
+
         return NextResponse.json(
           {
             success: true,
             visitFormId,
+            continuumMarkId: continuumMarkId || undefined,
             message: isAutoSave ? "Form auto-saved successfully" : "Visit form created successfully",
             isAutoSave,
             timestamp: new Date().toISOString(),
