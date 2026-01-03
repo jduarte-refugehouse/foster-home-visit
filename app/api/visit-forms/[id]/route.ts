@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { resolveUserIdentity, getActorFields } from "@/lib/identity-resolver"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -130,9 +133,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       isAutoSave = false,
     } = body
 
-    // Check if visit form exists
+    // Get existing form to check status change and get appointment data
     const existingForm = await query(
-      "SELECT visit_form_id FROM visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
+      `SELECT 
+        visit_form_id, 
+        status as current_status,
+        appointment_id,
+        visit_date,
+        visit_time
+      FROM visit_forms 
+      WHERE visit_form_id = @param0 AND is_deleted = 0`,
       [visitFormId],
     )
 
@@ -140,8 +150,156 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
     }
 
-    console.log(`📝 [API] Updating visit form: ${visitFormId}`)
+    const currentStatus = existingForm[0].current_status
+    const appointmentId = existingForm[0].appointment_id
+    const isStatusChangingToCompleted = currentStatus === "draft" && status === "completed"
 
+    console.log(`📝 [API] Updating visit form: ${visitFormId}`, {
+      currentStatus,
+      newStatus: status,
+      isStatusChangingToCompleted
+    })
+
+    // Resolve user identity and get appointment data if status is changing to completed
+    let identity = null
+    let actorFields = null
+    let homeGuid: string | null = null
+    let homeName: string | null = null
+    let homeXref: number | null = null
+    let continuumMarkId: string | null = null
+
+    if (isStatusChangingToCompleted && updatedByUserId) {
+      try {
+        // Resolve user identity
+        if (updatedByUserId && updatedByUserId !== "system-user" && !updatedByUserId.startsWith("temp-")) {
+          try {
+            console.log("🔍 [API] Resolving user identity for:", updatedByUserId)
+            identity = await resolveUserIdentity(updatedByUserId)
+            actorFields = getActorFields(identity)
+            console.log("✅ [API] User identity resolved:", {
+              radiusGuid: identity.radiusGuid,
+              entityGuid: identity.entityGuid,
+              userType: identity.userType,
+              unit: identity.unit
+            })
+          } catch (identityResolveError) {
+            console.error("⚠️ [API] Failed to resolve user identity (non-blocking):", identityResolveError)
+            identity = null
+            actorFields = null
+          }
+        }
+
+        // Get appointment data to find home GUID
+        if (appointmentId) {
+          try {
+            const appointmentData = await query(
+              `SELECT a.home_xref, h.HomeName, h.Guid as HomeGUID
+               FROM appointments a
+               LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+               WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
+              [appointmentId]
+            )
+
+            if (appointmentData.length > 0) {
+              homeXref = appointmentData[0].home_xref
+              homeName = appointmentData[0].HomeName
+              homeGuid = appointmentData[0].HomeGUID
+              console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+            }
+          } catch (appointmentError) {
+            console.error("⚠️ [API] Failed to fetch appointment data (non-blocking):", appointmentError)
+          }
+        }
+      } catch (error) {
+        console.error("⚠️ [API] Unexpected error in identity/appointment resolution (non-blocking):", error)
+      }
+
+      // Create ContinuumMark via API Hub if we have all required data
+      const useApiClient = shouldUseRadiusApiClient()
+      if (useApiClient && identity && actorFields && homeGuid) {
+        try {
+          console.log("🔄 [API] Creating ContinuumMark via API Hub (status changed to completed)...")
+          
+          // Extract child GUIDs from form data if available
+          const childGuids: Array<{ guid: string; name?: string }> = []
+          if (familyInfo?.placements) {
+            const placements = Array.isArray(familyInfo.placements) 
+              ? familyInfo.placements 
+              : Object.values(familyInfo.placements || {})
+            placements.forEach((placement: any) => {
+              if (placement?.childGuid || placement?.child_guid) {
+                childGuids.push({
+                  guid: placement.childGuid || placement.child_guid,
+                  name: placement.childName || placement.child_name || null
+                })
+              }
+            })
+          }
+
+          // Extract parties from attendees
+          const parties: Array<{
+            name: string
+            role?: string
+            entityGuid?: string | null
+            type?: string
+          }> = []
+          if (attendees?.list) {
+            const attendeeList = Array.isArray(attendees.list) ? attendees.list : Object.values(attendees.list)
+            attendeeList.forEach((attendee: any) => {
+              if (attendee?.name) {
+                parties.push({
+                  name: attendee.name,
+                  role: "PRESENT",
+                  entityGuid: attendee.entityGuid || attendee.entity_guid || null,
+                  type: attendee.type || "unknown"
+                })
+              }
+            })
+          }
+
+          const markDate = visitDate && visitTime 
+            ? `${visitDate}T${visitTime}:00`
+            : existingForm[0].visit_date && existingForm[0].visit_time
+            ? `${existingForm[0].visit_date}T${existingForm[0].visit_time}:00`
+            : new Date().toISOString()
+
+          const visitResult = await radiusApiClient.createVisit({
+            markDate,
+            markType: "HOME_VISIT",
+            fosterHomeGuid: homeGuid,
+            fosterHomeName: homeName || undefined,
+            fosterHomeXref: homeXref || undefined,
+            childGuids,
+            notes: observations?.observations || recommendations?.visitSummary || null,
+            jsonPayload: {
+              visitFormId: visitFormId,
+              visitInfo,
+              familyInfo,
+              attendees,
+              observations,
+              recommendations,
+              homeEnvironment,
+              childInterviews,
+              parentInterviews,
+              complianceReview,
+              signatures
+            },
+            unit: identity.unit || "DAL",
+            sourceSystem: "VisitService",
+            ...actorFields,
+            parties
+          })
+
+          continuumMarkId = visitResult.markId
+          console.log("✅ [API] ContinuumMark created:", continuumMarkId)
+        } catch (markError) {
+          console.error("⚠️ [API] Failed to create ContinuumMark (non-blocking):", markError)
+          // Don't fail the entire request if ContinuumMark creation fails
+        }
+      }
+    }
+
+    // Update visit form with actor fields if available
     await query(
       `
       UPDATE visit_forms SET
@@ -165,7 +323,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         updated_by_user_id = @param17,
         updated_by_name = @param18,
         last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
-        auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"}
+        auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
+        actor_radius_guid = @param19,
+        actor_entity_guid = @param20,
+        actor_user_type = @param21
       WHERE visit_form_id = @param0 AND is_deleted = 0
     `,
       [
@@ -188,6 +349,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         complianceReview ? JSON.stringify(complianceReview) : null,
         updatedByUserId,
         updatedByName,
+        actorFields?.actorRadiusGuid || null,
+        actorFields?.actorEntityGuid || null,
+        actorFields?.actorUserType || null,
       ],
     )
 
@@ -196,6 +360,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({
       success: true,
       visitFormId,
+      continuumMarkId: continuumMarkId || undefined,
       message: isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully",
       isAutoSave,
       timestamp: new Date().toISOString(),
