@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@refugehouse/shared-core/db"
 import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
@@ -19,43 +18,6 @@ export async function GET(request: NextRequest) {
     const includeDeleted = searchParams.get("includeDeleted") === "true"
     
     console.log("📅 [API] Query parameters:", { startDate, endDate, userId, onCallType, includeDeleted })
-
-    let whereConditions = ["ocs.is_active = 1"]
-    const params: any[] = []
-
-    if (!includeDeleted) {
-      whereConditions.push("ocs.is_deleted = 0")
-    }
-
-    if (startDate) {
-      params.push(startDate)
-      whereConditions.push(`ocs.end_datetime >= @param${params.length - 1}`)
-    }
-
-    if (endDate) {
-      params.push(endDate)
-      whereConditions.push(`ocs.start_datetime <= @param${params.length - 1}`)
-    }
-
-    if (userId) {
-      // Convert Clerk user ID to app_users.id if needed
-      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
-      
-      if (isGuid) {
-        params.push(userId)
-        whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
-      } else {
-        // It's a Clerk ID - API Hub will handle the conversion
-        // Just pass the Clerk ID to the API Hub
-        params.push(userId)
-        whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
-      }
-    }
-
-    if (onCallType) {
-      params.push(onCallType)
-      whereConditions.push(`ocs.on_call_type = @param${params.length - 1}`)
-    }
 
     const useApiClient = shouldUseRadiusApiClient()
 
