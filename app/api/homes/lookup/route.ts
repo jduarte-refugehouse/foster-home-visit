@@ -28,25 +28,47 @@ export async function GET(request: Request) {
     }
 
     // Use API client to lookup home
-    console.log(`✅ [API] Using API client for home lookup`)
-    const result = await radiusApiClient.lookupHomeByXref(xref)
-    console.log(`✅ [API] Found home via API Hub: ${result.name} (${result.guid})`)
-    return NextResponse.json({
-      success: true,
-      guid: result.guid,
-      name: result.name,
-      xref: result.xref,
-    })
+    console.log(`✅ [API] Using API client for home lookup (xref: ${xref})`)
+    try {
+      const result = await radiusApiClient.lookupHomeByXref(xref)
+      console.log(`✅ [API] Found home via API Hub: ${result.name} (${result.guid})`)
+      return NextResponse.json({
+        success: true,
+        guid: result.guid,
+        name: result.name,
+        xref: result.xref,
+      })
+    } catch (apiError: any) {
+      console.error("❌ [API] Error from API client:", apiError)
+      console.error("❌ [API] API error details:", {
+        message: apiError?.message,
+        status: apiError?.status,
+        statusText: apiError?.statusText,
+        response: apiError?.response,
+      })
+      throw apiError // Re-throw to be caught by outer catch
+    }
 
   } catch (error: any) {
     console.error("❌ [API] Error looking up home GUID:", error)
+    console.error("❌ [API] Error stack:", error?.stack)
+    console.error("❌ [API] Error details:", {
+      message: error?.message,
+      status: error?.status,
+      statusText: error?.statusText,
+      response: error?.response,
+      name: error?.name,
+      constructor: error?.constructor?.name,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to lookup home GUID",
-        details: error.message,
+        details: error?.message || "Unknown error",
+        status: error?.status,
+        statusText: error?.statusText,
       },
-      { status: 500 }
+      { status: error?.status || 500 }
     )
   }
 }
