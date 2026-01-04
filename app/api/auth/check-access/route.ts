@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
 
     // NEW: Check microservice-specific access
     const microserviceCode = getMicroserviceCode()
-    const useApiClient = shouldUseRadiusApiClient()
+    // useApiClient already defined above
     
     // SECURITY: System admins - check email directly using centralized function
     // Only specific emails can be system admins - this prevents accidental access
