@@ -84,7 +84,11 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // Admin microservice: use direct DB access (existing code)
-        console.log(`⚠️ [NAV] Using direct DB access (admin microservice)`)
+        // SECURITY: Only allow direct DB access for admin microservice
+        if (microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin') {
+          throw new Error(`Direct DB access not allowed for microservice: ${microserviceCode}. This endpoint should use the API client.`)
+        }
+        console.log(`⚠️ [NAV] Using direct DB access (admin microservice: ${microserviceCode})`)
         try {
           // Get user permissions from database
           const connection = await getConnection()
