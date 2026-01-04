@@ -4,6 +4,18 @@ import { resolveUserIdentity, getActorFields } from "@/lib/identity-resolver"
 import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
+/**
+ * Helper function to safely parse JSON
+ */
+function safeJsonParse(jsonString: string): any {
+  try {
+    return JSON.parse(jsonString)
+  } catch (error) {
+    console.warn("⚠️ [API] Failed to parse JSON:", error)
+    return null
+  }
+}
+
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
@@ -13,82 +25,88 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const visitFormId = params.id
     console.log(`🔍 [API] Fetching visit form: ${visitFormId}`)
 
-    const visitForms = await query(
-      `
-      SELECT 
-        vf.visit_form_id,
-        vf.appointment_id,
-        vf.form_type,
-        vf.form_version,
-        vf.status,
-        vf.visit_date,
-        vf.visit_time,
-        vf.visit_number,
-        vf.quarter,
-        vf.visit_variant,
-        vf.visit_info,
-        vf.family_info,
-        vf.attendees,
-        vf.observations,
-        vf.recommendations,
-        vf.signatures,
-        vf.home_environment,
-        vf.child_interviews,
-        vf.parent_interviews,
-        vf.compliance_review,
-        vf.last_auto_save,
-        vf.auto_save_count,
-        vf.created_at,
-        vf.updated_at,
-        vf.created_by_user_id,
-        vf.created_by_name,
-        vf.updated_by_user_id,
-        vf.updated_by_name,
-        vf.current_session_id,
-        vf.current_session_last_save,
-        vf.current_session_save_type,
-        vf.current_session_user_id,
-        vf.current_session_user_name,
-        vf.save_history_json,
-        -- Include appointment details
-        a.title as appointment_title,
-        a.home_name,
-        a.location_address,
-        a.assigned_to_name,
-        a.assigned_to_role
-      FROM visit_forms vf
-      LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
-      WHERE vf.visit_form_id = @param0 AND vf.is_deleted = 0
-    `,
-      [visitFormId],
-    )
+    const useApiClient = shouldUseRadiusApiClient()
+    let form: any = null
 
-    if (visitForms.length === 0) {
-      return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
-    }
+    if (useApiClient) {
+      // Use API client
+      console.log("✅ [API] Using API client to fetch visit form")
+      form = await radiusApiClient.getVisitForm(visitFormId)
+    } else {
+      // Direct DB access for admin microservice
+      console.log("✅ [API] Using direct DB access to fetch visit form (admin microservice)")
+      const visitForms = await query(
+        `
+        SELECT 
+          vf.visit_form_id,
+          vf.appointment_id,
+          vf.form_type,
+          vf.form_version,
+          vf.status,
+          vf.visit_date,
+          vf.visit_time,
+          vf.visit_number,
+          vf.quarter,
+          vf.visit_variant,
+          vf.visit_info,
+          vf.family_info,
+          vf.attendees,
+          vf.observations,
+          vf.recommendations,
+          vf.signatures,
+          vf.home_environment,
+          vf.child_interviews,
+          vf.parent_interviews,
+          vf.compliance_review,
+          vf.last_auto_save,
+          vf.auto_save_count,
+          vf.created_at,
+          vf.updated_at,
+          vf.created_by_user_id,
+          vf.created_by_name,
+          vf.updated_by_user_id,
+          vf.updated_by_name,
+          vf.current_session_id,
+          vf.current_session_last_save,
+          vf.current_session_save_type,
+          vf.current_session_user_id,
+          vf.current_session_user_name,
+          vf.save_history_json,
+          -- Include appointment details
+          a.title as appointment_title,
+          a.home_name,
+          a.location_address,
+          a.assigned_to_name,
+          a.assigned_to_role
+        FROM visit_forms vf
+        LEFT JOIN appointments a ON vf.appointment_id = a.appointment_id
+        WHERE vf.visit_form_id = @param0 AND vf.is_deleted = 0
+      `,
+        [visitFormId],
+      )
 
-    const form = visitForms[0]
-
-    console.log(`✅ [API] Retrieved visit form: ${visitFormId}`)
-
-    // Helper function to safely parse JSON fields
-    const safeParseJSON = (value: any) => {
-      if (!value) return null
-      if (typeof value === 'string') {
-        try {
-          return JSON.parse(value)
-        } catch (e) {
-          console.warn(`⚠️ [API] Failed to parse JSON field:`, e)
-          return value // Return as-is if parsing fails
-        }
+      if (visitForms.length === 0) {
+        return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
       }
-      // If it's already an object, return it
-      return value
-    }
 
-    return NextResponse.json({
-      success: true,
-      visitForm: {
+      form = visitForms[0]
+
+      // Helper function to safely parse JSON fields
+      const safeParseJSON = (value: any) => {
+        if (!value) return null
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value)
+          } catch (e) {
+            console.warn(`⚠️ [API] Failed to parse JSON field:`, e)
+            return value // Return as-is if parsing fails
+          }
+        }
+        // If it's already an object, return it
+        return value
+      }
+
+      form = {
         ...form,
         // Parse JSON fields safely
         visit_info: safeParseJSON(form.visit_info),
@@ -101,6 +119,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         child_interviews: safeParseJSON(form.child_interviews),
         parent_interviews: safeParseJSON(form.parent_interviews),
         compliance_review: safeParseJSON(form.compliance_review),
+        save_history_json: safeParseJSON(form.save_history_json),
+      }
+    }
+
+    if (!form) {
+      return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
+    }
+
+    console.log(`✅ [API] Retrieved visit form: ${visitFormId}`)
+
+    return NextResponse.json({
+      success: true,
+      visitForm: {
+        ...form,
         // Ensure consistent date formatting
         created_at: form.created_at ? new Date(form.created_at).toISOString() : null,
         updated_at: form.updated_at ? new Date(form.updated_at).toISOString() : null,
@@ -315,71 +347,114 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Update visit form with actor fields if available
-    await query(
-      `
-      UPDATE visit_forms SET
-        status = @param1,
-        visit_date = @param2,
-        visit_time = @param3,
-        visit_number = @param4,
-        quarter = @param5,
-        visit_variant = @param6,
-        visit_info = @param7,
-        family_info = @param8,
-        attendees = @param9,
-        observations = @param10,
-        recommendations = @param11,
-        signatures = @param12,
-        home_environment = @param13,
-        child_interviews = @param14,
-        parent_interviews = @param15,
-        compliance_review = @param16,
-        updated_at = GETUTCDATE(),
-        updated_by_user_id = @param17,
-        updated_by_name = @param18,
-        last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
-        auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
-        actor_radius_guid = @param19,
-        actor_entity_guid = @param20,
-        actor_user_type = @param21
-      WHERE visit_form_id = @param0 AND is_deleted = 0
-    `,
-      [
-        visitFormId,
+    const useApiClient = shouldUseRadiusApiClient()
+
+    if (useApiClient) {
+      // Use API client to update form
+      const updateData = {
         status,
-        visitDate ? new Date(visitDate) : null,
+        visitDate: visitDate || undefined,
         visitTime,
         visitNumber,
         quarter,
         visitVariant,
-        visitInfo ? JSON.stringify(visitInfo) : null,
-        familyInfo ? JSON.stringify(familyInfo) : null,
-        attendees ? JSON.stringify(attendees) : null,
-        observations ? JSON.stringify(observations) : null,
-        recommendations ? JSON.stringify(recommendations) : null,
-        signatures ? JSON.stringify(signatures) : null,
-        homeEnvironment ? JSON.stringify(homeEnvironment) : null,
-        childInterviews ? JSON.stringify(childInterviews) : null,
-        parentInterviews ? JSON.stringify(parentInterviews) : null,
-        complianceReview ? JSON.stringify(complianceReview) : null,
+        visitInfo,
+        familyInfo,
+        attendees,
+        observations,
+        recommendations,
+        signatures,
+        homeEnvironment,
+        childInterviews,
+        parentInterviews,
+        complianceReview,
         updatedByUserId,
         updatedByName,
-        actorFields?.actorRadiusGuid || null,
-        actorFields?.actorEntityGuid || null,
-        actorFields?.actorUserType || null,
-      ],
-    )
+        isAutoSave,
+        actorRadiusGuid: actorFields?.actorRadiusGuid || null,
+        actorEntityGuid: actorFields?.actorEntityGuid || null,
+        actorUserType: actorFields?.actorUserType || null,
+      }
 
-    console.log(`✅ [API] Updated visit form: ${visitFormId}`)
+      const result = await radiusApiClient.updateVisitForm(visitFormId, updateData)
+      console.log(`✅ [API] Updated visit form: ${visitFormId} via API Hub`)
 
-    return NextResponse.json({
-      success: true,
-      visitFormId,
-      continuumMarkId: continuumMarkId || undefined,
-      message: isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully",
-      isAutoSave,
-      timestamp: new Date().toISOString(),
-    })
+      return NextResponse.json({
+        success: true,
+        visitFormId,
+        continuumMarkId: continuumMarkId || undefined,
+        message: result.message || (isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully"),
+        isAutoSave,
+        timestamp: new Date().toISOString(),
+      })
+    } else {
+      // Direct DB access for admin microservice
+      await query(
+        `
+        UPDATE visit_forms SET
+          status = @param1,
+          visit_date = @param2,
+          visit_time = @param3,
+          visit_number = @param4,
+          quarter = @param5,
+          visit_variant = @param6,
+          visit_info = @param7,
+          family_info = @param8,
+          attendees = @param9,
+          observations = @param10,
+          recommendations = @param11,
+          signatures = @param12,
+          home_environment = @param13,
+          child_interviews = @param14,
+          parent_interviews = @param15,
+          compliance_review = @param16,
+          updated_at = GETUTCDATE(),
+          updated_by_user_id = @param17,
+          updated_by_name = @param18,
+          last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
+          auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
+          actor_radius_guid = @param19,
+          actor_entity_guid = @param20,
+          actor_user_type = @param21
+        WHERE visit_form_id = @param0 AND is_deleted = 0
+      `,
+        [
+          visitFormId,
+          status,
+          visitDate ? new Date(visitDate) : null,
+          visitTime,
+          visitNumber,
+          quarter,
+          visitVariant,
+          visitInfo ? JSON.stringify(visitInfo) : null,
+          familyInfo ? JSON.stringify(familyInfo) : null,
+          attendees ? JSON.stringify(attendees) : null,
+          observations ? JSON.stringify(observations) : null,
+          recommendations ? JSON.stringify(recommendations) : null,
+          signatures ? JSON.stringify(signatures) : null,
+          homeEnvironment ? JSON.stringify(homeEnvironment) : null,
+          childInterviews ? JSON.stringify(childInterviews) : null,
+          parentInterviews ? JSON.stringify(parentInterviews) : null,
+          complianceReview ? JSON.stringify(complianceReview) : null,
+          updatedByUserId,
+          updatedByName,
+          actorFields?.actorRadiusGuid || null,
+          actorFields?.actorEntityGuid || null,
+          actorFields?.actorUserType || null,
+        ],
+      )
+
+      console.log(`✅ [API] Updated visit form: ${visitFormId}`)
+
+      return NextResponse.json({
+        success: true,
+        visitFormId,
+        continuumMarkId: continuumMarkId || undefined,
+        message: isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully",
+        isAutoSave,
+        timestamp: new Date().toISOString(),
+      })
+    }
   } catch (error) {
     console.error("❌ [API] Error updating visit form:", error)
     return NextResponse.json(
@@ -397,42 +472,59 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const visitFormId = params.id
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { deletedByUserId, deletedByName } = body
 
-    // Check if visit form exists
-    const existingForm = await query(
-      "SELECT visit_form_id FROM visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
-      [visitFormId],
-    )
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (existingForm.length === 0) {
-      return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
+    if (useApiClient) {
+      // Use API client to delete form
+      console.log(`🗑️ [API] Soft deleting visit form via API Hub: ${visitFormId}`)
+      const result = await radiusApiClient.deleteVisitForm(visitFormId, deletedByUserId, deletedByName)
+      console.log(`✅ [API] Soft deleted visit form: ${visitFormId} via API Hub`)
+
+      return NextResponse.json({
+        success: true,
+        visitFormId,
+        message: result.message || "Visit form deleted successfully",
+        timestamp: new Date().toISOString(),
+      })
+    } else {
+      // Direct DB access for admin microservice
+      // Check if visit form exists
+      const existingForm = await query(
+        "SELECT visit_form_id FROM visit_forms WHERE visit_form_id = @param0 AND is_deleted = 0",
+        [visitFormId],
+      )
+
+      if (existingForm.length === 0) {
+        return NextResponse.json({ error: "Visit form not found" }, { status: 404 })
+      }
+
+      console.log(`🗑️ [API] Soft deleting visit form: ${visitFormId}`)
+
+      await query(
+        `
+        UPDATE visit_forms SET
+          is_deleted = 1,
+          deleted_at = GETUTCDATE(),
+          deleted_by_user_id = @param1,
+          deleted_by_name = @param2,
+          updated_at = GETUTCDATE()
+        WHERE visit_form_id = @param0
+      `,
+        [visitFormId, deletedByUserId, deletedByName],
+      )
+
+      console.log(`✅ [API] Soft deleted visit form: ${visitFormId}`)
+
+      return NextResponse.json({
+        success: true,
+        visitFormId,
+        message: "Visit form deleted successfully",
+        timestamp: new Date().toISOString(),
+      })
     }
-
-    console.log(`🗑️ [API] Soft deleting visit form: ${visitFormId}`)
-
-    await query(
-      `
-      UPDATE visit_forms SET
-        is_deleted = 1,
-        deleted_at = GETUTCDATE(),
-        deleted_by_user_id = @param1,
-        deleted_by_name = @param2,
-        updated_at = GETUTCDATE()
-      WHERE visit_form_id = @param0
-    `,
-      [visitFormId, deletedByUserId, deletedByName],
-    )
-
-    console.log(`✅ [API] Soft deleted visit form: ${visitFormId}`)
-
-    return NextResponse.json({
-      success: true,
-      visitFormId,
-      message: "Visit form deleted successfully",
-      timestamp: new Date().toISOString(),
-    })
   } catch (error) {
     console.error("❌ [API] Error deleting visit form:", error)
     return NextResponse.json(

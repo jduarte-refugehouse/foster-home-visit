@@ -196,6 +196,31 @@ export function shouldUseRadiusApiClient(): boolean {
 }
 
 /**
+ * Throws an error if direct database access is attempted in a microservice
+ * that should only use the API Hub. This prevents accidental DB connections
+ * after static IPs are removed.
+ * 
+ * @param context Optional context string for the error message
+ * @throws Error with clear message about using API Hub instead
+ */
+export function throwIfDirectDbNotAllowed(context?: string): never {
+  const microserviceCode = getMicroserviceCode()
+  const contextMsg = context ? ` in ${context}` : ''
+  
+  throw new Error(
+    `❌ DIRECT DATABASE ACCESS NOT ALLOWED${contextMsg}\n\n` +
+    `This microservice (${microserviceCode}) must use the API Hub (admin.refugehouse.app) for all database operations.\n` +
+    `Direct database connections are not available after static IP removal.\n\n` +
+    `ACTION REQUIRED: Convert this code to use radiusApiClient instead of direct DB queries.\n` +
+    `See: packages/radius-api-client/client.ts for available methods.\n\n` +
+    `If you are seeing this error, it means:\n` +
+    `1. This endpoint still has direct DB access code that needs to be migrated\n` +
+    `2. The API Hub endpoint may be missing - check admin.refugehouse.app/api/radius/*\n` +
+    `3. Contact the development team to add the missing API Hub endpoint`
+  )
+}
+
+/**
  * Get the deployment environment (test or production)
  * Uses VERCEL_ENV or domain/branch detection
  * @returns 'test' | 'production'

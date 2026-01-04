@@ -238,10 +238,18 @@ export async function POST(request: NextRequest) {
       createdByName,
     } = body
 
-    // Validation
-    if (!title || !startDateTime || !endDateTime || !assignedToUserId || !assignedToName) {
+    // Validation - allow unassigned appointments (assignedToUserId and assignedToName can be null/empty)
+    if (!title || !startDateTime || !endDateTime) {
       return NextResponse.json(
-        { error: "Missing required fields: title, startDateTime, endDateTime, assignedToUserId, assignedToName" },
+        { error: "Missing required fields: title, startDateTime, endDateTime" },
+        { status: 400 },
+      )
+    }
+    
+    // If assigned, both userId and name should be provided
+    if ((assignedToUserId && !assignedToName) || (!assignedToUserId && assignedToName)) {
+      return NextResponse.json(
+        { error: "If assigning to a user, both assignedToUserId and assignedToName are required" },
         { status: 400 },
       )
     }
@@ -308,71 +316,109 @@ export async function POST(request: NextRequest) {
       endDateTime: endStr,
     })
 
-    const result = await query(
-      `
-      INSERT INTO appointments (
-        title,
-        description,
-        appointment_type,
-        start_datetime,
-        end_datetime,
-        status,
-        home_xref,
-        location_address,
-        location_notes,
-        assigned_to_user_id,
-        assigned_to_name,
-        assigned_to_role,
-        created_by_user_id,
-        created_by_name,
-        priority,
-        is_recurring,
-        recurring_pattern,
-        preparation_notes,
-        created_at,
-        updated_at
-      )
-      OUTPUT INSERTED.appointment_id, INSERTED.created_at
-      VALUES (
-        @param0, @param1, @param2, @param3, @param4, 'scheduled',
-        @param5, @param6, @param7, @param8, @param9,
-        @param10, @param11, @param12, @param13, @param14, @param15,
-        @param16, GETUTCDATE(), GETUTCDATE()
-      )
-    `,
-      [
+    const useApiClient = shouldUseRadiusApiClient()
+
+    if (useApiClient) {
+      // Use API client to create appointment
+      const appointmentData = {
         title,
         description,
         appointmentType,
-        startStr, // Pass as string to avoid timezone conversion
-        endStr, // Pass as string to avoid timezone conversion
+        startDateTime: startStr,
+        endDateTime: endStr,
         homeXref,
         locationAddress,
         locationNotes,
         assignedToUserId,
         assignedToName,
         assignedToRole,
-        "temp-user-id", // Temporary placeholder
-        createdByName || "System User", // Temporary placeholder
         priority,
-        isRecurring ? 1 : 0,
+        isRecurring,
         recurringPattern,
         preparationNotes,
-      ],
-    )
+        createdByName,
+      }
 
-    const appointmentId = result[0].appointment_id
-    console.log(`✅ [API] Created appointment with ID: ${appointmentId}`)
+      const result = await radiusApiClient.createAppointment(appointmentData)
+      console.log(`✅ [API] Created appointment with ID: ${result.appointmentId} via API Hub`)
 
-    return NextResponse.json(
-      {
-        success: true,
-        appointmentId,
-        message: "Appointment created successfully",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 201 },
-    )
+      return NextResponse.json(
+        {
+          success: true,
+          appointmentId: result.appointmentId,
+          message: result.message || "Appointment created successfully",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 201 },
+      )
+    } else {
+      // Direct DB access for admin microservice
+      const result = await query(
+        `
+        INSERT INTO appointments (
+          title,
+          description,
+          appointment_type,
+          start_datetime,
+          end_datetime,
+          status,
+          home_xref,
+          location_address,
+          location_notes,
+          assigned_to_user_id,
+          assigned_to_name,
+          assigned_to_role,
+          created_by_user_id,
+          created_by_name,
+          priority,
+          is_recurring,
+          recurring_pattern,
+          preparation_notes,
+          created_at,
+          updated_at
+        )
+        OUTPUT INSERTED.appointment_id, INSERTED.created_at
+        VALUES (
+          @param0, @param1, @param2, @param3, @param4, 'scheduled',
+          @param5, @param6, @param7, @param8, @param9,
+          @param10, @param11, @param12, @param13, @param14, @param15,
+          @param16, GETUTCDATE(), GETUTCDATE()
+        )
+      `,
+        [
+          title,
+          description,
+          appointmentType,
+          startStr, // Pass as string to avoid timezone conversion
+          endStr, // Pass as string to avoid timezone conversion
+          homeXref,
+          locationAddress,
+          locationNotes,
+          assignedToUserId || null,
+          assignedToName || null,
+          assignedToRole || null,
+          "temp-user-id", // Temporary placeholder
+          createdByName || "System User", // Temporary placeholder
+          priority,
+          isRecurring ? 1 : 0,
+          recurringPattern || null,
+          preparationNotes || null,
+        ],
+      )
+
+      const appointmentId = result[0].appointment_id
+      console.log(`✅ [API] Created appointment with ID: ${appointmentId}`)
+
+      return NextResponse.json(
+        {
+          success: true,
+          appointmentId,
+          message: "Appointment created successfully",
+          timestamp: new Date().toISOString(),
+        },
+        { status: 201 },
+      )
+    }
   } catch (error) {
     console.error("❌ [API] Error creating appointment:", error)
     return NextResponse.json(
@@ -494,33 +540,16 @@ export async function PUT(request: NextRequest) {
       endDateTime: endStr,
     })
 
-    await query(
-      `
-      UPDATE appointments SET
-        title = @param1,
-        description = @param2,
-        appointment_type = @param3,
-        start_datetime = @param4,
-        end_datetime = @param5,
-        home_xref = @param6,
-        location_address = @param7,
-        location_notes = @param8,
-        assigned_to_user_id = @param9,
-        assigned_to_name = @param10,
-        assigned_to_role = @param11,
-        priority = @param12,
-        status = @param13,
-        preparation_notes = @param14,
-        updated_at = GETUTCDATE()
-      WHERE appointment_id = @param0 AND is_deleted = 0
-    `,
-      [
-        appointmentId,
+    const useApiClient = shouldUseRadiusApiClient()
+
+    if (useApiClient) {
+      // Use API client to update appointment
+      const updateData = {
         title,
         description,
         appointmentType,
-        startStr, // Pass as string to avoid timezone conversion
-        endStr, // Pass as string to avoid timezone conversion
+        startDateTime: startStr,
+        endDateTime: endStr,
         homeXref,
         locationAddress,
         locationNotes,
@@ -528,19 +557,69 @@ export async function PUT(request: NextRequest) {
         assignedToName,
         assignedToRole,
         priority,
-        status || "scheduled",
+        status: status || "scheduled",
         preparationNotes,
-      ],
-    )
+      }
 
-    console.log(`✅ [API] Updated appointment with ID: ${appointmentId}`)
+      const result = await radiusApiClient.updateAppointment(appointmentId, updateData)
+      console.log(`✅ [API] Updated appointment with ID: ${appointmentId} via API Hub`)
 
-    return NextResponse.json({
-      success: true,
-      appointmentId,
-      message: "Appointment updated successfully",
-      timestamp: new Date().toISOString(),
-    })
+      return NextResponse.json({
+        success: true,
+        appointmentId,
+        message: result.message || "Appointment updated successfully",
+        timestamp: new Date().toISOString(),
+      })
+    } else {
+      // Direct DB access for admin microservice
+      await query(
+        `
+        UPDATE appointments SET
+          title = @param1,
+          description = @param2,
+          appointment_type = @param3,
+          start_datetime = @param4,
+          end_datetime = @param5,
+          home_xref = @param6,
+          location_address = @param7,
+          location_notes = @param8,
+          assigned_to_user_id = @param9,
+          assigned_to_name = @param10,
+          assigned_to_role = @param11,
+          priority = @param12,
+          status = @param13,
+          preparation_notes = @param14,
+          updated_at = GETUTCDATE()
+        WHERE appointment_id = @param0 AND is_deleted = 0
+      `,
+        [
+          appointmentId,
+          title,
+          description,
+          appointmentType,
+          startStr, // Pass as string to avoid timezone conversion
+          endStr, // Pass as string to avoid timezone conversion
+          homeXref,
+          locationAddress,
+          locationNotes,
+          assignedToUserId,
+          assignedToName,
+          assignedToRole,
+          priority,
+          status || "scheduled",
+          preparationNotes,
+        ],
+      )
+
+      console.log(`✅ [API] Updated appointment with ID: ${appointmentId}`)
+
+      return NextResponse.json({
+        success: true,
+        appointmentId,
+        message: "Appointment updated successfully",
+        timestamp: new Date().toISOString(),
+      })
+    }
   } catch (error) {
     console.error("❌ [API] Error updating appointment:", error)
     return NextResponse.json(

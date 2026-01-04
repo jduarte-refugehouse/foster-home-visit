@@ -18,32 +18,46 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const userId = searchParams.get("userId")
 
-    // Build dynamic query based on filters
-    const whereConditions = ["vf.is_deleted = 0"]
-    const params: any[] = []
-    let paramIndex = 0
+    const useApiClient = shouldUseRadiusApiClient()
+    let visitForms: any[] = []
 
-    if (appointmentId) {
-      whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
-      params.push(appointmentId)
-      paramIndex++
-    }
+    if (useApiClient) {
+      // Use API client
+      console.log("✅ [API] Using API client for visit forms")
+      visitForms = await radiusApiClient.getVisitForms({
+        appointmentId: appointmentId || undefined,
+        status: status || undefined,
+        userId: userId || undefined,
+      })
+    } else {
+      // Direct DB access for admin microservice
+      console.log("✅ [API] Using direct DB access for visit forms (admin microservice)")
+      // Build dynamic query based on filters
+      const whereConditions = ["vf.is_deleted = 0"]
+      const params: any[] = []
+      let paramIndex = 0
 
-    if (status) {
-      whereConditions.push(`vf.status = @param${paramIndex}`)
-      params.push(status)
-      paramIndex++
-    }
+      if (appointmentId) {
+        whereConditions.push(`vf.appointment_id = @param${paramIndex}`)
+        params.push(appointmentId)
+        paramIndex++
+      }
 
-    if (userId) {
-      whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
-      params.push(userId)
-      paramIndex++
-    }
+      if (status) {
+        whereConditions.push(`vf.status = @param${paramIndex}`)
+        params.push(status)
+        paramIndex++
+      }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+      if (userId) {
+        whereConditions.push(`vf.created_by_user_id = @param${paramIndex}`)
+        params.push(userId)
+        paramIndex++
+      }
 
-    const visitForms = await query(
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+      visitForms = await query(
       `
       SELECT 
         vf.visit_form_id,
@@ -88,8 +102,25 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY vf.updated_at DESC
     `,
-      params,
-    )
+        params,
+      )
+
+      // Parse JSON fields for direct DB results
+      visitForms = visitForms.map((form: any) => ({
+        ...form,
+        visit_info: form.visit_info ? safeJsonParse(form.visit_info) : null,
+        family_info: form.family_info ? safeJsonParse(form.family_info) : null,
+        attendees: form.attendees ? safeJsonParse(form.attendees) : null,
+        observations: form.observations ? safeJsonParse(form.observations) : null,
+        recommendations: form.recommendations ? safeJsonParse(form.recommendations) : null,
+        signatures: form.signatures ? safeJsonParse(form.signatures) : null,
+        home_environment: form.home_environment ? safeJsonParse(form.home_environment) : null,
+        child_interviews: form.child_interviews ? safeJsonParse(form.child_interviews) : null,
+        parent_interviews: form.parent_interviews ? safeJsonParse(form.parent_interviews) : null,
+        compliance_review: form.compliance_review ? safeJsonParse(form.compliance_review) : null,
+        save_history_json: form.save_history_json ? safeJsonParse(form.save_history_json) : null,
+      }))
+    }
 
     console.log(`✅ [API] Retrieved ${visitForms.length} visit forms`)
 
@@ -98,20 +129,9 @@ export async function GET(request: NextRequest) {
       count: visitForms.length,
       visitForms: visitForms.map((form) => ({
         ...form,
-        // Parse JSON fields
-        visit_info: form.visit_info ? JSON.parse(form.visit_info) : null,
-        family_info: form.family_info ? JSON.parse(form.family_info) : null,
-        attendees: form.attendees ? JSON.parse(form.attendees) : null,
-        observations: form.observations ? JSON.parse(form.observations) : null,
-        recommendations: form.recommendations ? JSON.parse(form.recommendations) : null,
-        signatures: form.signatures ? JSON.parse(form.signatures) : null,
-        home_environment: form.home_environment ? JSON.parse(form.home_environment) : null,
-        child_interviews: form.child_interviews ? JSON.parse(form.child_interviews) : null,
-        parent_interviews: form.parent_interviews ? JSON.parse(form.parent_interviews) : null,
-        compliance_review: form.compliance_review ? JSON.parse(form.compliance_review) : null,
         // Ensure consistent date formatting
-        created_at: new Date(form.created_at).toISOString(),
-        updated_at: new Date(form.updated_at).toISOString(),
+        created_at: form.created_at ? new Date(form.created_at).toISOString() : null,
+        updated_at: form.updated_at ? new Date(form.updated_at).toISOString() : null,
         last_auto_save: form.last_auto_save ? new Date(form.last_auto_save).toISOString() : null,
       })),
       timestamp: new Date().toISOString(),
@@ -382,11 +402,37 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔍 [API] Checking for existing visit form...")
+    
     // Check if visit form already exists for this appointment
-    const existingForm = await query(
-      "SELECT visit_form_id, current_session_id, current_session_last_save, current_session_save_type, current_session_user_id, current_session_user_name, save_history_json FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
-      [appointmentId],
-    )
+    let existingForm: any[] = []
+    
+    if (useApiClient) {
+      // Use API client to check for existing form
+      try {
+        const existingForms = await radiusApiClient.getVisitForms({ appointmentId })
+        if (existingForms.length > 0) {
+          // Convert to the format we expect
+          existingForm = [{
+            visit_form_id: existingForms[0].visit_form_id,
+            current_session_id: existingForms[0].current_session_id,
+            current_session_last_save: existingForms[0].current_session_last_save,
+            current_session_save_type: existingForms[0].current_session_save_type,
+            current_session_user_id: existingForms[0].current_session_user_id,
+            current_session_user_name: existingForms[0].current_session_user_name,
+            save_history_json: existingForms[0].save_history_json ? JSON.stringify(existingForms[0].save_history_json) : null,
+          }]
+        }
+      } catch (apiError) {
+        console.error("⚠️ [API] Failed to check existing form via API (non-blocking):", apiError)
+        // Continue with empty array - will create new form
+      }
+    } else {
+      // Direct DB access for admin microservice
+      existingForm = await query(
+        "SELECT visit_form_id, current_session_id, current_session_last_save, current_session_save_type, current_session_user_id, current_session_user_name, save_history_json FROM dbo.visit_forms WHERE appointment_id = @param0 AND is_deleted = 0",
+        [appointmentId],
+      )
+    }
 
     if (existingForm.length > 0) {
       // Update existing form
@@ -420,83 +466,130 @@ export async function POST(request: NextRequest) {
       const saveType = isAutoSave ? "auto" : "manual"
 
       try {
-        await query(
-          `
-          UPDATE dbo.visit_forms SET
-            status = @param1,
-            visit_date = @param2,
-            visit_time = @param3,
-            visit_number = @param4,
-            quarter = @param5,
-            visit_variant = @param6,
-            visit_info = @param7,
-            family_info = @param8,
-            attendees = @param9,
-            observations = @param10,
-            recommendations = @param11,
-            signatures = @param12,
-            home_environment = @param13,
-            child_interviews = @param14,
-            parent_interviews = @param15,
-            compliance_review = @param16,
-            updated_at = GETUTCDATE(),
-            updated_by_user_id = @param17,
-            updated_by_name = @param18,
-            last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
-            auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
-            current_session_id = @param19,
-            current_session_last_save = GETUTCDATE(),
-            current_session_save_type = @param20,
-            current_session_user_id = @param21,
-            current_session_user_name = @param22,
-            save_history_json = @param23,
-            actor_radius_guid = @param24,
-            actor_entity_guid = @param25,
-            actor_user_type = @param26
-          WHERE visit_form_id = @param0 AND is_deleted = 0
-        `,
-          [
-            visitFormId,
+        if (useApiClient) {
+          // Use API client POST (handles both create and update, including session history)
+          const formData = {
+            appointmentId,
+            formType,
+            formVersion,
             status,
-            parsedVisitDate,
+            visitDate: parsedVisitDate.toISOString().split('T')[0],
             visitTime,
             visitNumber,
             quarter,
             visitVariant,
-            serializedFields.visitInfo,
-            serializedFields.familyInfo,
-            serializedFields.attendees,
-            serializedFields.observations,
-            serializedFields.recommendations,
-            serializedFields.signatures,
-            serializedFields.homeEnvironment,
-            serializedFields.childInterviews,
-            serializedFields.parentInterviews,
-            serializedFields.complianceReview,
+            visitInfo,
+            familyInfo,
+            attendees,
+            observations,
+            recommendations,
+            signatures,
+            homeEnvironment,
+            childInterviews,
+            parentInterviews,
+            complianceReview,
             createdByUserId,
             createdByName,
-            currentSessionId || null,
-            saveType,
-            currentSessionUserId || createdByUserId,
-            currentSessionUserName || createdByName,
-            JSON.stringify(updatedHistory),
-            actorFields?.actorRadiusGuid || null,
-            actorFields?.actorEntityGuid || null,
-            actorFields?.actorUserType || null,
-          ],
-        )
+            isAutoSave,
+            currentSessionId,
+            currentSessionUserId,
+            currentSessionUserName,
+            actorRadiusGuid: actorFields?.actorRadiusGuid || null,
+            actorEntityGuid: actorFields?.actorEntityGuid || null,
+            actorUserType: actorFields?.actorUserType || null,
+          }
+          
+          // API Hub POST handles both create and update (checks if form exists)
+          const result = await radiusApiClient.createVisitForm(formData)
+          console.log(`✅ [API] Updated visit form with ID: ${result.visitFormId} via API Hub`)
 
-        console.log(`✅ [API] Updated visit form with ID: ${visitFormId}`)
+          return NextResponse.json({
+            success: true,
+            visitFormId: result.visitFormId,
+            message: result.message || (isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully"),
+            isAutoSave,
+            timestamp: new Date().toISOString(),
+          })
+        } else {
+          // Direct DB access for admin microservice
+          await query(
+            `
+            UPDATE dbo.visit_forms SET
+              status = @param1,
+              visit_date = @param2,
+              visit_time = @param3,
+              visit_number = @param4,
+              quarter = @param5,
+              visit_variant = @param6,
+              visit_info = @param7,
+              family_info = @param8,
+              attendees = @param9,
+              observations = @param10,
+              recommendations = @param11,
+              signatures = @param12,
+              home_environment = @param13,
+              child_interviews = @param14,
+              parent_interviews = @param15,
+              compliance_review = @param16,
+              updated_at = GETUTCDATE(),
+              updated_by_user_id = @param17,
+              updated_by_name = @param18,
+              last_auto_save = ${isAutoSave ? "GETUTCDATE()" : "last_auto_save"},
+              auto_save_count = ${isAutoSave ? "auto_save_count + 1" : "auto_save_count"},
+              current_session_id = @param19,
+              current_session_last_save = GETUTCDATE(),
+              current_session_save_type = @param20,
+              current_session_user_id = @param21,
+              current_session_user_name = @param22,
+              save_history_json = @param23,
+              actor_radius_guid = @param24,
+              actor_entity_guid = @param25,
+              actor_user_type = @param26
+            WHERE visit_form_id = @param0 AND is_deleted = 0
+          `,
+            [
+              visitFormId,
+              status,
+              parsedVisitDate,
+              visitTime,
+              visitNumber,
+              quarter,
+              visitVariant,
+              serializedFields.visitInfo,
+              serializedFields.familyInfo,
+              serializedFields.attendees,
+              serializedFields.observations,
+              serializedFields.recommendations,
+              serializedFields.signatures,
+              serializedFields.homeEnvironment,
+              serializedFields.childInterviews,
+              serializedFields.parentInterviews,
+              serializedFields.complianceReview,
+              createdByUserId,
+              createdByName,
+              currentSessionId || null,
+              saveType,
+              currentSessionUserId || createdByUserId,
+              currentSessionUserName || createdByName,
+              JSON.stringify(updatedHistory),
+              actorFields?.actorRadiusGuid || null,
+              actorFields?.actorEntityGuid || null,
+              actorFields?.actorUserType || null,
+            ],
+          )
 
-        return NextResponse.json({
-          success: true,
-          visitFormId,
-          message: isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully",
-          isAutoSave,
-          timestamp: new Date().toISOString(),
-        })
+          console.log(`✅ [API] Updated visit form with ID: ${visitFormId}`)
+
+          return NextResponse.json({
+            success: true,
+            visitFormId,
+            message: isAutoSave ? "Form auto-saved successfully" : "Visit form updated successfully",
+            isAutoSave,
+            timestamp: new Date().toISOString(),
+          })
+        }
       } catch (updateError) {
-        console.error("❌ [API] Update query failed:", updateError)
+        console.error("❌ [API] Update failed:", updateError)
         throw updateError
       }
     } else {
@@ -507,117 +600,168 @@ export async function POST(request: NextRequest) {
         // Determine save type for new form
         const saveType = isAutoSave ? "auto" : "manual"
 
-        const result = await query(
-          `
-          INSERT INTO dbo.visit_forms (
-            appointment_id,
-            form_type,
-            form_version,
+        if (useApiClient) {
+          // Use API client to create form
+          const createData = {
+            appointmentId,
+            formType,
+            formVersion,
             status,
-            visit_date,
-            visit_time,
-            visit_number,
+            visitDate: parsedVisitDate.toISOString().split('T')[0],
+            visitTime,
+            visitNumber,
             quarter,
-            visit_variant,
-            visit_info,
-            family_info,
+            visitVariant,
+            visitInfo,
+            familyInfo,
             attendees,
             observations,
             recommendations,
             signatures,
-            home_environment,
-            child_interviews,
-            parent_interviews,
-            compliance_review,
-            created_by_user_id,
-            created_by_name,
-            last_auto_save,
-            auto_save_count,
-            current_session_id,
-            current_session_last_save,
-            current_session_save_type,
-            current_session_user_id,
-            current_session_user_name,
-            save_history_json,
-            actor_radius_guid,
-            actor_entity_guid,
-            actor_user_type,
-            created_at,
-            updated_at
-          )
-          OUTPUT INSERTED.visit_form_id, INSERTED.created_at
-          VALUES (
-            @param0, @param1, @param2, @param3, @param4, @param5,
-            @param6, @param7, @param8, @param9, @param10, @param11,
-            @param12, @param13, @param14, @param15, @param16, @param17,
-            @param18, @param19, @param20, @param21, @param22, @param23,
-            @param24, @param25, @param26, @param27, @param28, @param29, @param30, @param31,
-            GETUTCDATE(), GETUTCDATE()
-          )
-        `,
-          [
-            appointmentId, // @param0
-            formType, // @param1
-            formVersion, // @param2
-            status, // @param3
-            parsedVisitDate, // @param4
-            visitTime, // @param5
-            visitNumber, // @param6
-            quarter, // @param7
-            visitVariant, // @param8
-            serializedFields.visitInfo, // @param9
-            serializedFields.familyInfo, // @param10
-            serializedFields.attendees, // @param11
-            serializedFields.observations, // @param12
-            serializedFields.recommendations, // @param13
-            serializedFields.signatures, // @param14
-            serializedFields.homeEnvironment, // @param15
-            serializedFields.childInterviews, // @param16
-            serializedFields.parentInterviews, // @param17
-            serializedFields.complianceReview, // @param18
-            createdByUserId, // @param19
-            createdByName, // @param20
-            isAutoSave ? new Date() : null, // @param21 last_auto_save
-            isAutoSave ? 1 : 0, // @param22 auto_save_count
-            currentSessionId || null, // @param23 current_session_id
-            new Date(), // @param24 current_session_last_save
-            saveType, // @param25 current_session_save_type
-            currentSessionUserId || createdByUserId, // @param26 current_session_user_id
-            currentSessionUserName || createdByName, // @param27 current_session_user_name
-            "[]", // @param28 save_history_json (empty array for new form)
-            actorFields?.actorRadiusGuid || null, // @param29 actor_radius_guid
-            actorFields?.actorEntityGuid || null, // @param30 actor_entity_guid
-            actorFields?.actorUserType || null, // @param31 actor_user_type
-          ],
-        )
-
-        const visitFormId = result[0].visit_form_id
-        console.log(`✅ [API] Created visit form with ID: ${visitFormId}`)
-
-        // Update ContinuumMark with visit_form_id if it was created
-        if (continuumMarkId && useApiClient) {
-          try {
-            // Note: We can't update ContinuumMark.JsonPayload directly via API Hub yet
-            // This would require an UPDATE endpoint, which we can add later if needed
-            console.log("ℹ️ [API] ContinuumMark created with markId:", continuumMarkId)
-          } catch (updateError) {
-            console.error("⚠️ [API] Failed to update ContinuumMark with visit_form_id (non-blocking):", updateError)
-          }
-        }
-
-        return NextResponse.json(
-          {
-            success: true,
-            visitFormId,
-            continuumMarkId: continuumMarkId || undefined,
-            message: isAutoSave ? "Form auto-saved successfully" : "Visit form created successfully",
+            homeEnvironment,
+            childInterviews,
+            parentInterviews,
+            complianceReview,
+            createdByUserId,
+            createdByName,
             isAutoSave,
-            timestamp: new Date().toISOString(),
-          },
-          { status: 201 },
-        )
+            currentSessionId,
+            currentSessionUserId,
+            currentSessionUserName,
+            actorRadiusGuid: actorFields?.actorRadiusGuid || null,
+            actorEntityGuid: actorFields?.actorEntityGuid || null,
+            actorUserType: actorFields?.actorUserType || null,
+          }
+          
+          const result = await radiusApiClient.createVisitForm(createData)
+          const visitFormId = result.visitFormId
+          console.log(`✅ [API] Created visit form with ID: ${visitFormId} via API Hub`)
+
+          // Update ContinuumMark with visit_form_id if it was created
+          if (continuumMarkId) {
+            try {
+              // Note: We can't update ContinuumMark.JsonPayload directly via API Hub yet
+              // This would require an UPDATE endpoint, which we can add later if needed
+              console.log("ℹ️ [API] ContinuumMark created with markId:", continuumMarkId)
+            } catch (updateError) {
+              console.error("⚠️ [API] Failed to update ContinuumMark with visit_form_id (non-blocking):", updateError)
+            }
+          }
+
+          return NextResponse.json(
+            {
+              success: true,
+              visitFormId,
+              continuumMarkId: continuumMarkId || undefined,
+              message: result.message || (isAutoSave ? "Form auto-saved successfully" : "Visit form created successfully"),
+              isAutoSave,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 201 },
+          )
+        } else {
+          // Direct DB access for admin microservice
+          const result = await query(
+            `
+            INSERT INTO dbo.visit_forms (
+              appointment_id,
+              form_type,
+              form_version,
+              status,
+              visit_date,
+              visit_time,
+              visit_number,
+              quarter,
+              visit_variant,
+              visit_info,
+              family_info,
+              attendees,
+              observations,
+              recommendations,
+              signatures,
+              home_environment,
+              child_interviews,
+              parent_interviews,
+              compliance_review,
+              created_by_user_id,
+              created_by_name,
+              last_auto_save,
+              auto_save_count,
+              current_session_id,
+              current_session_last_save,
+              current_session_save_type,
+              current_session_user_id,
+              current_session_user_name,
+              save_history_json,
+              actor_radius_guid,
+              actor_entity_guid,
+              actor_user_type,
+              created_at,
+              updated_at
+            )
+            OUTPUT INSERTED.visit_form_id, INSERTED.created_at
+            VALUES (
+              @param0, @param1, @param2, @param3, @param4, @param5,
+              @param6, @param7, @param8, @param9, @param10, @param11,
+              @param12, @param13, @param14, @param15, @param16, @param17,
+              @param18, @param19, @param20, @param21, @param22, @param23,
+              @param24, @param25, @param26, @param27, @param28, @param29, @param30, @param31,
+              GETUTCDATE(), GETUTCDATE()
+            )
+          `,
+            [
+              appointmentId, // @param0
+              formType, // @param1
+              formVersion, // @param2
+              status, // @param3
+              parsedVisitDate, // @param4
+              visitTime, // @param5
+              visitNumber, // @param6
+              quarter, // @param7
+              visitVariant, // @param8
+              serializedFields.visitInfo, // @param9
+              serializedFields.familyInfo, // @param10
+              serializedFields.attendees, // @param11
+              serializedFields.observations, // @param12
+              serializedFields.recommendations, // @param13
+              serializedFields.signatures, // @param14
+              serializedFields.homeEnvironment, // @param15
+              serializedFields.childInterviews, // @param16
+              serializedFields.parentInterviews, // @param17
+              serializedFields.complianceReview, // @param18
+              createdByUserId, // @param19
+              createdByName, // @param20
+              isAutoSave ? new Date() : null, // @param21 last_auto_save
+              isAutoSave ? 1 : 0, // @param22 auto_save_count
+              currentSessionId || null, // @param23 current_session_id
+              new Date(), // @param24 current_session_last_save
+              saveType, // @param25 current_session_save_type
+              currentSessionUserId || createdByUserId, // @param26 current_session_user_id
+              currentSessionUserName || createdByName, // @param27 current_session_user_name
+              "[]", // @param28 save_history_json (empty array for new form)
+              actorFields?.actorRadiusGuid || null, // @param29 actor_radius_guid
+              actorFields?.actorEntityGuid || null, // @param30 actor_entity_guid
+              actorFields?.actorUserType || null, // @param31 actor_user_type
+            ],
+          )
+
+          const visitFormId = result[0].visit_form_id
+          console.log(`✅ [API] Created visit form with ID: ${visitFormId}`)
+
+          return NextResponse.json(
+            {
+              success: true,
+              visitFormId,
+              continuumMarkId: continuumMarkId || undefined,
+              message: isAutoSave ? "Form auto-saved successfully" : "Visit form created successfully",
+              isAutoSave,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 201 },
+          )
+        }
       } catch (insertError) {
-        console.error("❌ [API] Insert query failed:", {
+        console.error("❌ [API] Create failed:", {
           error: insertError,
           message: insertError instanceof Error ? insertError.message : "Unknown error",
           stack: insertError instanceof Error ? insertError.stack : undefined,
@@ -668,5 +812,17 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     )
+  }
+}
+
+/**
+ * Helper function to safely parse JSON
+ */
+function safeJsonParse(jsonString: string): any {
+  try {
+    return JSON.parse(jsonString)
+  } catch (error) {
+    console.warn("⚠️ [API] Failed to parse JSON:", error)
+    return null
   }
 }

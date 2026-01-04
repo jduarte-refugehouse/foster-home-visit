@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -10,40 +12,17 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const { id } = params
     console.log(`📅 [API] Fetching on-call schedule: ${id}`)
 
-    const schedule = await query(
-      `
-      SELECT 
-        ocs.id,
-        ocs.user_id,
-        ocs.user_name,
-        ocs.user_email,
-        ocs.user_phone,
-        ocs.start_datetime,
-        ocs.end_datetime,
-        ocs.duration_hours,
-        ocs.on_call_type,
-        ocs.on_call_category,
-        ocs.role_required,
-        ocs.department,
-        ocs.region,
-        ocs.escalation_level,
-        ocs.is_active,
-        ocs.notes,
-        ocs.priority_level,
-        ocs.created_by_name,
-        ocs.created_at,
-        ocs.updated_at,
-        ocs.updated_by_name,
-        CASE 
-          WHEN GETDATE() BETWEEN ocs.start_datetime AND ocs.end_datetime 
-          THEN 1 
-          ELSE 0 
-        END as is_currently_active
-      FROM on_call_schedule ocs
-      WHERE ocs.id = @param0 AND ocs.is_deleted = 0
-    `,
-      [id],
-    )
+    const useApiClient = shouldUseRadiusApiClient()
+
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("on-call/[id] GET endpoint")
+    }
+
+    // Use API client to get on-call schedule
+    console.log("✅ [ON-CALL] Using API client to get on-call schedule")
+    const scheduleData = await radiusApiClient.getOnCallSchedule(id)
+    const schedule = [scheduleData]
 
     if (schedule.length === 0) {
       return NextResponse.json(
@@ -133,35 +112,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // Check for overlapping assignments if dates are being changed
-    // Note: Exact boundary times (one ends when another starts) are NOT overlaps
-    if ((startDatetime || endDatetime) && userId) {
-      const overlaps = await query(
-        `
-        SELECT COUNT(*) as overlap_count
-        FROM on_call_schedule
-        WHERE user_id = @param0
-          AND id != @param1
-          AND is_active = 1
-          AND is_deleted = 0
-          AND (
-            (start_datetime < @param3 AND end_datetime > @param2)
-          )
-      `,
-        [userId, id, startDatetime, endDatetime],
-      )
-
-      if (overlaps[0].overlap_count > 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "This user already has an overlapping on-call assignment",
-            code: "OVERLAP_CONFLICT",
-          },
-          { status: 409 },
-        )
-      }
-    }
+    // NO DIRECT DB ACCESS - overlap validation is handled by API Hub
+    // The API Hub will return 409 if there's an overlap conflict
 
     // Build update query dynamically
     const updates: string[] = []
@@ -228,26 +180,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updates.push(`escalation_level = @param${updateParams.length - 1}`)
     }
 
-    // Add updated_by fields
-    updateParams.push(updatedByUserId || "system")
-    updates.push(`updated_by_user_id = @param${updateParams.length - 1}`)
+    const useApiClient = shouldUseRadiusApiClient()
 
-    updateParams.push(updatedByName || "System")
-    updates.push(`updated_by_name = @param${updateParams.length - 1}`)
+    if (useApiClient) {
+      // Use API client to update on-call schedule
+      console.log("✅ [ON-CALL] Using API client to update on-call schedule")
+      const updateData: any = {}
+      if (userId !== undefined) updateData.userId = userId
+      if (userName !== undefined) updateData.userName = userName
+      if (userEmail !== undefined) updateData.userEmail = userEmail
+      if (userPhone !== undefined) updateData.userPhone = userPhone
+      if (startDatetime !== undefined) updateData.startDatetime = startDatetime
+      if (endDatetime !== undefined) updateData.endDatetime = endDatetime
+      if (notes !== undefined) updateData.notes = notes
+      if (priorityLevel !== undefined) updateData.priorityLevel = priorityLevel
+      if (isActive !== undefined) updateData.isActive = isActive
+      if (onCallType !== undefined) updateData.onCallType = onCallType
+      if (onCallCategory !== undefined) updateData.onCallCategory = onCallCategory
+      if (roleRequired !== undefined) updateData.roleRequired = roleRequired
+      if (department !== undefined) updateData.department = department
+      if (region !== undefined) updateData.region = region
+      if (escalationLevel !== undefined) updateData.escalationLevel = escalationLevel
+      updateData.updatedByUserId = updatedByUserId || "system"
+      updateData.updatedByName = updatedByName || "System"
 
-    updates.push(`updated_at = GETDATE()`)
-
-    // Add the ID parameter last
-    updateParams.push(id)
-
-    await query(
-      `
-      UPDATE on_call_schedule
-      SET ${updates.join(", ")}
-      WHERE id = @param${updateParams.length - 1}
-    `,
-      updateParams,
-    )
+    await radiusApiClient.updateOnCallSchedule(id, updateData)
 
     console.log(`✅ [API] Updated on-call schedule: ${id}`)
 
@@ -293,19 +250,18 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       )
     }
 
-    // Soft delete
-    // Note: deleted_by_user_id would need to be passed from client if tracking needed
-    await query(
-      `
-      UPDATE on_call_schedule
-      SET 
-        is_deleted = 1,
-        deleted_at = GETDATE(),
-        deleted_by_user_id = 'system'
-      WHERE id = @param0
-    `,
-      [id],
-    )
+    const useApiClient = shouldUseRadiusApiClient()
+    const body = await request.json().catch(() => ({}))
+    const { deletedByUserId, deletedByName } = body
+
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("on-call/[id] DELETE endpoint")
+    }
+
+    // Use API client to delete on-call schedule
+    console.log("✅ [ON-CALL] Using API client to delete on-call schedule")
+    await radiusApiClient.deleteOnCallSchedule(id, deletedByUserId, deletedByName)
 
     console.log(`✅ [API] Deleted on-call schedule: ${id}`)
 
