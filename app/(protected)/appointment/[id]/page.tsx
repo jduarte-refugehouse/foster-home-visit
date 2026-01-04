@@ -308,11 +308,36 @@ export default function AppointmentDetailPage() {
 
   const handleVisitFormCompleted = async () => {
     try {
-      // First, update visit form status to "completed" if it exists (this will create ContinuumMark)
-      if (existingFormData?.visit_form_id) {
+      console.log("🔍 [APPT] Visit Completed clicked, existingFormData:", {
+        hasExistingFormData: !!existingFormData,
+        visit_form_id: existingFormData?.visit_form_id,
+        status: existingFormData?.status
+      })
+      
+      // First, try to fetch the form if we don't have visit_form_id
+      let visitFormId = existingFormData?.visit_form_id
+      if (!visitFormId && appointmentId) {
+        console.log("🔍 [APPT] No visit_form_id in existingFormData, fetching form...")
         try {
-          console.log("📝 [APPT] Updating visit form status to completed...")
-          const formUpdateResponse = await fetch(`/api/visit-forms/${existingFormData.visit_form_id}`, {
+          const formResponse = await fetch(`/api/visit-forms?appointmentId=${appointmentId}`)
+          if (formResponse.ok) {
+            const formData = await formResponse.json()
+            if (formData.visitForms && formData.visitForms.length > 0) {
+              visitFormId = formData.visitForms[0].visit_form_id
+              setExistingFormData(formData.visitForms[0])
+              console.log("✅ [APPT] Found visit form, visit_form_id:", visitFormId)
+            }
+          }
+        } catch (fetchError) {
+          console.error("⚠️ [APPT] Failed to fetch form:", fetchError)
+        }
+      }
+      
+      // Update visit form status to "completed" if we have visit_form_id (this will create ContinuumMark)
+      if (visitFormId) {
+        try {
+          console.log("📝 [APPT] Updating visit form status to completed, visit_form_id:", visitFormId)
+          const formUpdateResponse = await fetch(`/api/visit-forms/${visitFormId}`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -323,22 +348,22 @@ export default function AppointmentDetailPage() {
               updatedByName: user?.firstName && user?.lastName 
                 ? `${user.firstName} ${user.lastName}`.trim()
                 : appointment?.assigned_to_name || "Unknown User",
-              // Include existing form data to preserve it
-              visitDate: existingFormData.visit_date,
-              visitTime: existingFormData.visit_time,
-              visitNumber: existingFormData.visit_number,
-              quarter: existingFormData.quarter,
-              visitVariant: existingFormData.visit_variant,
-              visitInfo: existingFormData.visit_info,
-              familyInfo: existingFormData.family_info,
-              attendees: existingFormData.attendees,
-              observations: existingFormData.observations,
-              recommendations: existingFormData.recommendations,
-              signatures: existingFormData.signatures,
-              homeEnvironment: existingFormData.home_environment,
-              childInterviews: existingFormData.child_interviews,
-              parentInterviews: existingFormData.parent_interviews,
-              complianceReview: existingFormData.compliance_review,
+              // Include existing form data to preserve it (use existingFormData if available, otherwise minimal data)
+              visitDate: existingFormData?.visit_date || appointment?.start_datetime?.split('T')[0] || new Date().toISOString().split('T')[0],
+              visitTime: existingFormData?.visit_time || appointment?.start_datetime?.split('T')[1]?.substring(0, 5) || "09:00",
+              visitNumber: existingFormData?.visit_number || 1,
+              quarter: existingFormData?.quarter || null,
+              visitVariant: existingFormData?.visit_variant || 1,
+              visitInfo: existingFormData?.visit_info || null,
+              familyInfo: existingFormData?.family_info || null,
+              attendees: existingFormData?.attendees || null,
+              observations: existingFormData?.observations || null,
+              recommendations: existingFormData?.recommendations || null,
+              signatures: existingFormData?.signatures || null,
+              homeEnvironment: existingFormData?.home_environment || null,
+              childInterviews: existingFormData?.child_interviews || null,
+              parentInterviews: existingFormData?.parent_interviews || null,
+              complianceReview: existingFormData?.compliance_review || null,
             }),
           })
 
@@ -349,12 +374,15 @@ export default function AppointmentDetailPage() {
               console.log("✅ [APPT] ContinuumMark created:", formResult.continuumMarkId)
             }
           } else {
-            console.warn("⚠️ [APPT] Failed to update visit form status:", formUpdateResponse.status)
+            const errorText = await formUpdateResponse.text()
+            console.warn("⚠️ [APPT] Failed to update visit form status:", formUpdateResponse.status, errorText)
           }
         } catch (formError) {
           console.error("⚠️ [APPT] Error updating visit form status (non-blocking):", formError)
           // Continue with appointment update even if form update fails
         }
+      } else {
+        console.warn("⚠️ [APPT] No visit_form_id available, skipping form status update")
       }
 
       // Update appointment status
@@ -1424,17 +1452,34 @@ export default function AppointmentDetailPage() {
             const formData = await formResponse.json()
             if (formData.visitForm) {
               setExistingFormData(formData.visitForm)
-              console.log("✅ [APPT] Updated existingFormData with visit_form_id:", result.visitFormId)
+              console.log("✅ [APPT] Updated existingFormData with full form data, visit_form_id:", result.visitFormId)
+            } else {
+              // Fallback if visitForm is missing
+              console.warn("⚠️ [APPT] Form response missing visitForm, using fallback")
+              setExistingFormData({
+                visit_form_id: result.visitFormId,
+                status: "draft",
+                appointment_id: appointmentId
+              })
             }
+          } else {
+            console.warn(`⚠️ [APPT] Failed to fetch form (status ${formResponse.status}), using fallback`)
+            // Fallback: create a minimal existingFormData object with just the visitFormId
+            setExistingFormData({
+              visit_form_id: result.visitFormId,
+              status: "draft",
+              appointment_id: appointmentId
+            })
           }
         } catch (fetchError) {
           console.warn("⚠️ [APPT] Failed to fetch form data after save (non-blocking):", fetchError)
           // Fallback: create a minimal existingFormData object with just the visitFormId
-          setExistingFormData((prev: any) => ({
-            ...prev,
+          setExistingFormData({
             visit_form_id: result.visitFormId,
-            status: "draft"
-          }))
+            status: "draft",
+            appointment_id: appointmentId
+          })
+          console.log("✅ [APPT] Set existingFormData with visit_form_id (fallback):", result.visitFormId)
         }
       }
       

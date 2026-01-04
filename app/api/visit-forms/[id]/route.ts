@@ -71,24 +71,39 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     console.log(`✅ [API] Retrieved visit form: ${visitFormId}`)
 
+    // Helper function to safely parse JSON fields
+    const safeParseJSON = (value: any) => {
+      if (!value) return null
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value)
+        } catch (e) {
+          console.warn(`⚠️ [API] Failed to parse JSON field:`, e)
+          return value // Return as-is if parsing fails
+        }
+      }
+      // If it's already an object, return it
+      return value
+    }
+
     return NextResponse.json({
       success: true,
       visitForm: {
         ...form,
-        // Parse JSON fields
-        visit_info: form.visit_info ? JSON.parse(form.visit_info) : null,
-        family_info: form.family_info ? JSON.parse(form.family_info) : null,
-        attendees: form.attendees ? JSON.parse(form.attendees) : null,
-        observations: form.observations ? JSON.parse(form.observations) : null,
-        recommendations: form.recommendations ? JSON.parse(form.recommendations) : null,
-        signatures: form.signatures ? JSON.parse(form.signatures) : null,
-        home_environment: form.home_environment ? JSON.parse(form.home_environment) : null,
-        child_interviews: form.child_interviews ? JSON.parse(form.child_interviews) : null,
-        parent_interviews: form.parent_interviews ? JSON.parse(form.parent_interviews) : null,
-        compliance_review: form.compliance_review ? JSON.parse(form.compliance_review) : null,
+        // Parse JSON fields safely
+        visit_info: safeParseJSON(form.visit_info),
+        family_info: safeParseJSON(form.family_info),
+        attendees: safeParseJSON(form.attendees),
+        observations: safeParseJSON(form.observations),
+        recommendations: safeParseJSON(form.recommendations),
+        signatures: safeParseJSON(form.signatures),
+        home_environment: safeParseJSON(form.home_environment),
+        child_interviews: safeParseJSON(form.child_interviews),
+        parent_interviews: safeParseJSON(form.parent_interviews),
+        compliance_review: safeParseJSON(form.compliance_review),
         // Ensure consistent date formatting
-        created_at: new Date(form.created_at).toISOString(),
-        updated_at: new Date(form.updated_at).toISOString(),
+        created_at: form.created_at ? new Date(form.created_at).toISOString() : null,
+        updated_at: form.updated_at ? new Date(form.updated_at).toISOString() : null,
         last_auto_save: form.last_auto_save ? new Date(form.last_auto_save).toISOString() : null,
       },
       timestamp: new Date().toISOString(),
