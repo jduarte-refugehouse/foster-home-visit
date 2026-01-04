@@ -74,13 +74,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Email address required" }, { status: 400 })
     }
 
-    // Check user access to platform (existing check)
-    const accessCheck = await checkUserAccess(
-      clerkUserId,
-      email,
-      name?.split(" ")[0] || undefined,
-      name?.split(" ").slice(1).join(" ") || undefined,
-    )
+    // Check user access to platform
+    const useApiClient = shouldUseRadiusApiClient()
+    let accessCheck: {
+      hasAccess: boolean
+      requiresInvitation: boolean
+      isNewUser: boolean
+      userExists: boolean
+      hasInvitation: boolean
+    }
+
+    if (useApiClient) {
+      // Use API client for non-admin microservices
+      try {
+        const result = await radiusApiClient.checkUserAccess({
+          clerkUserId,
+          email,
+          firstName: name?.split(" ")[0] || undefined,
+          lastName: name?.split(" ").slice(1).join(" ") || undefined,
+        })
+        accessCheck = {
+          hasAccess: result.hasAccess,
+          requiresInvitation: result.requiresInvitation,
+          isNewUser: result.isNewUser,
+          userExists: result.userExists,
+          hasInvitation: result.hasInvitation,
+        }
+      } catch (apiError) {
+        console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+        // Fail securely - deny access if API call fails
+        return NextResponse.json(
+          {
+            error: "Failed to check user access",
+            details: apiError instanceof Error ? apiError.message : "Unknown error",
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Admin microservice: use direct DB access (existing code)
+      accessCheck = await checkUserAccess(
+        clerkUserId,
+        email,
+        name?.split(" ")[0] || undefined,
+        name?.split(" ").slice(1).join(" ") || undefined,
+      )
+    }
 
     if (!accessCheck.hasAccess) {
       return NextResponse.json(

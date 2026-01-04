@@ -14,8 +14,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
+
     // Check user access (this will send email notification if new external user without access)
-    const accessCheck = await checkUserAccess(clerkUserId, email, firstName, lastName)
+    let accessCheck: {
+      hasAccess: boolean
+      requiresInvitation: boolean
+      isNewUser: boolean
+      userExists: boolean
+      hasInvitation: boolean
+    }
+
+    if (useApiClient) {
+      // Use API client for non-admin microservices
+      try {
+        const result = await radiusApiClient.checkUserAccess({
+          clerkUserId,
+          email,
+          firstName,
+          lastName,
+        })
+        accessCheck = {
+          hasAccess: result.hasAccess,
+          requiresInvitation: result.requiresInvitation,
+          isNewUser: result.isNewUser,
+          userExists: result.userExists,
+          hasInvitation: result.hasInvitation,
+        }
+      } catch (apiError) {
+        console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+        return NextResponse.json(
+          {
+            error: "Failed to check user access",
+            details: apiError instanceof Error ? apiError.message : "Unknown error",
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Admin microservice: use direct DB access
+      accessCheck = await checkUserAccess(clerkUserId, email, firstName, lastName)
+    }
 
     if (!accessCheck.hasAccess) {
       return NextResponse.json(
@@ -27,9 +67,6 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       )
     }
-
-    const microserviceCode = getMicroserviceCode()
-    const useApiClient = shouldUseRadiusApiClient()
 
     let appUser
     let userRoles: Array<{ role_name: string; app_name: string }> = []

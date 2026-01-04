@@ -242,6 +242,30 @@ export const radiusApiClient = {
   },
 
   /**
+   * Check if a user has access to the platform
+   * - refugehouse.org users: always allowed
+   * - External users: must have app_user record OR invitation
+   */
+  async checkUserAccess(params: {
+    clerkUserId: string
+    email: string
+    firstName?: string
+    lastName?: string
+  }): Promise<{
+    success: boolean
+    hasAccess: boolean
+    requiresInvitation: boolean
+    isNewUser: boolean
+    userExists: boolean
+    hasInvitation: boolean
+  }> {
+    return await apiRequest("auth/check-access", {
+      method: "POST",
+      body: JSON.stringify(params),
+    })
+  },
+
+  /**
    * Look up user and create if not found
    * Convenience method that combines lookupUser and createUser
    */
