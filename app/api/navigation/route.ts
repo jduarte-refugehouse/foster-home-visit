@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
 
       // NO DB FALLBACK - must use API client for non-admin microservices
       if (useApiClient) {
-        throwIfDirectDbNotAllowed("navigation endpoint - user lookup")
         console.log(`✅ [NAV] Using API client to lookup user (microservice: ${microserviceCode})`)
         try {
           // Use API client to lookup user and get permissions
@@ -85,9 +84,7 @@ export async function GET(request: NextRequest) {
       } else {
         // Admin microservice: use direct DB access (existing code)
         // SECURITY: Only allow direct DB access for admin microservice
-        if (microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin') {
-          throw new Error(`Direct DB access not allowed for microservice: ${microserviceCode}. This endpoint should use the API client.`)
-        }
+        throwIfDirectDbNotAllowed("navigation endpoint - user lookup")
         console.log(`⚠️ [NAV] Using direct DB access (admin microservice: ${microserviceCode})`)
         try {
           // Get user permissions from database
@@ -207,7 +204,6 @@ export async function GET(request: NextRequest) {
 
     // Use API client for non-admin microservices, direct DB for admin
     if (useApiClient) {
-      throwIfDirectDbNotAllowed("navigation endpoint - navigation items")
       console.log(`✅ [NAV] Using API client path for microservice: ${microserviceCode}`)
       try {
         if (!userInfo || !userInfo.id) {
@@ -269,6 +265,8 @@ export async function GET(request: NextRequest) {
     } else {
       console.log(`⚠️ [NAV] Using direct DB access (admin microservice or useApiClient=false)`)
       // Admin microservice: use direct DB access (existing code)
+      // SECURITY: Prevent direct DB access for non-admin microservices
+      throwIfDirectDbNotAllowed("navigation endpoint - navigation items")
       // Try to load from database first
       try {
         const connection = await getConnection()
