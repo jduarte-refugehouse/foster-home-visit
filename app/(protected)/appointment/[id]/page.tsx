@@ -1412,9 +1412,30 @@ export default function AppointmentDetailPage() {
 
       console.log("✅ [APPT] Form saved successfully:", result)
       
-      // Update visit form status
+      // Update visit form status and existingFormData
       if (result.visitFormId) {
         setVisitFormStatus("draft")
+        
+        // Update existingFormData with the saved form data so we have visit_form_id for later operations
+        // Fetch the full form data to get all fields
+        try {
+          const formResponse = await fetch(`/api/visit-forms/${result.visitFormId}`)
+          if (formResponse.ok) {
+            const formData = await formResponse.json()
+            if (formData.visitForm) {
+              setExistingFormData(formData.visitForm)
+              console.log("✅ [APPT] Updated existingFormData with visit_form_id:", result.visitFormId)
+            }
+          }
+        } catch (fetchError) {
+          console.warn("⚠️ [APPT] Failed to fetch form data after save (non-blocking):", fetchError)
+          // Fallback: create a minimal existingFormData object with just the visitFormId
+          setExistingFormData((prev: any) => ({
+            ...prev,
+            visit_form_id: result.visitFormId,
+            status: "draft"
+          }))
+        }
       }
       
       // Only show toast for manual saves
