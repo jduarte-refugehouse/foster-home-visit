@@ -162,7 +162,59 @@ export async function fetchHomesForMap(filters?: {
   caseManager?: string
 }): Promise<MapHome[]> {
   console.log("🗺️ [Extension] Fetching homes for map display...")
+  
+  const useApiClient = shouldUseRadiusApiClient()
 
+  if (useApiClient) {
+    console.log("🗺️ [Extension] Fetching homes for map from API client...")
+    
+    try {
+      const apiHomes = await radiusApiClient.getHomes({
+        unit: filters?.unit && filters.unit !== "ALL" ? filters.unit : undefined,
+        caseManager: filters?.caseManager && filters.caseManager !== "ALL" ? filters.caseManager : undefined,
+      })
+
+      // Transform API homes to MapHome format and filter for valid coordinates
+      const validHomes: MapHome[] = apiHomes
+        .filter((home) => {
+          const lat = typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude || 0))
+          const lng = typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude || 0))
+
+          const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90
+          const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180
+
+          if (!isValidLat || !isValidLng) {
+            console.log(`⚠️ [Extension] Invalid coordinates for ${home.name}: ${lat}, ${lng}`)
+            return false
+          }
+          return true
+        })
+        .map((home) => ({
+          id: home.id || "",
+          name: home.name || "",
+          address: home.address || "",
+          City: home.City || "",
+          State: home.State || "",
+          zipCode: home.zipCode || "",
+          Unit: home.Unit || "",
+          latitude: typeof home.latitude === "number" ? home.latitude : Number.parseFloat(String(home.latitude || 0)),
+          longitude: typeof home.longitude === "number" ? home.longitude : Number.parseFloat(String(home.longitude || 0)),
+          phoneNumber: home.phoneNumber || "",
+          contactPersonName: home.contactPersonName || "~unassigned~",
+          email: home.email || "",
+          contactPhone: home.contactPhone || "",
+          lastSync: home.lastSync || "",
+        }))
+
+      console.log(`✅ [Extension] Retrieved ${validHomes.length} valid homes for map from API client`)
+      return validHomes
+    } catch (error) {
+      console.error("❌ [Extension] Error fetching homes for map from API client:", error)
+      throw error
+    }
+  }
+
+  // Direct database access for admin microservice
   let whereClause = "WHERE [Latitude] IS NOT NULL AND [Longitude] IS NOT NULL"
   const params: any[] = []
 
