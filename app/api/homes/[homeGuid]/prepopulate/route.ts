@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 
+export const dynamic = "force-dynamic"
+
+/**
+ * GET /api/homes/[homeGuid]/prepopulate
+ * 
+ * This endpoint remains microservice-specific (direct DB access only) because:
+ * - It queries multiple specialized tables (syncLicenseCurrent, syncCurrentFosterFacility, syncChildrenInPlacement)
+ * - Contains business logic specific to home-visits (service levels, household members, placements)
+ * - Used only for prepopulating visit forms in the home-visits microservice
+ * - Not needed by other microservices
+ * 
+ * This is intentional - the API Hub is for shared data access, not microservice-specific business logic.
+ */
 export async function GET(request: Request, { params }: { params: { homeGuid: string } }) {
   try {
     const { homeGuid } = params

@@ -38,6 +38,9 @@ export function AccessGuard({ children }: AccessGuardProps) {
     // This allows authentication to work the same way as browser, then avoids Clerk hooks
     const checkAccess = async () => {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'access-guard.tsx:39',message:'checkAccess entry',data:{userExists:!!user,userId:user?.id,userEmail:user?.emailAddresses?.[0]?.emailAddress,isLoaded},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         const headers: HeadersInit = {
           "Content-Type": "application/json",
         }
@@ -53,11 +56,19 @@ export function AccessGuard({ children }: AccessGuardProps) {
           headers["x-user-name"] = `${user.firstName || ""} ${user.lastName || ""}`.trim()
         }
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'access-guard.tsx:56',message:'Headers before fetch',data:{hasEmail:!!headers['x-user-email'],hasClerkId:!!headers['x-user-clerk-id'],hasName:!!headers['x-user-name'],headers:Object.keys(headers)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+
         const response = await fetch("/api/auth/check-access", {
           method: "GET",
           headers,
           credentials: 'include', // Ensure session cookies are sent (critical for mobile)
         })
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/656b4634-b80f-4e7b-b696-205774e1774e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'access-guard.tsx:62',message:'Response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
 
         const data = await response.json()
 

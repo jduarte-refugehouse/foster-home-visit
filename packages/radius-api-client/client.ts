@@ -22,6 +22,15 @@ import type {
   // Navigation types
   NavigationOptions,
   NavigationResponse,
+  // Continuum types
+  ContinuumMark,
+  MarkSubject,
+  MarkParty,
+  Trip,
+  UserIdentity,
+  CreateVisitParams,
+  GetVisitsParams,
+  CreateTripParams,
 } from "./types"
 
 const API_BASE_URL =
@@ -47,9 +56,11 @@ async function apiRequest<T>(
   const url = `${API_BASE_URL}/api/radius/${endpoint}`
   const response = await fetch(url, {
     ...options,
+    cache: 'no-store', // Disable fetch caching
     headers: {
       "Content-Type": "application/json",
       "x-api-key": API_KEY,
+      "Cache-Control": "no-cache",
       ...options?.headers,
     },
   })
@@ -125,12 +136,26 @@ export const radiusApiClient = {
     if (filters?.unit) params.append("unit", filters.unit)
     if (filters?.caseManager) params.append("caseManager", filters.caseManager)
     if (filters?.search) params.append("search", filters.search)
+    
+    // Add cache-busting timestamp to prevent edge/CDN caching
+    params.append("_t", Date.now().toString())
 
     const queryString = params.toString()
-    const endpoint = queryString ? `homes?${queryString}` : "homes"
+    const endpoint = queryString ? `homes?${queryString}` : `homes?_t=${Date.now()}`
 
     const response = await apiRequest<any>(endpoint)
     return response.homes || response.data || []
+  },
+
+  /**
+   * Look up a home by xref and return GUID
+   */
+  async lookupHomeByXref(xref: number | string): Promise<{ guid: string; name: string; xref: number }> {
+    const params = new URLSearchParams()
+    params.append("xref", xref.toString())
+
+    const response = await apiRequest<{ guid: string; name: string; xref: number }>(`homes/lookup?${params.toString()}`)
+    return response
   },
 
   /**
@@ -285,6 +310,308 @@ export const radiusApiClient = {
     const endpoint = `navigation?${queryString}`
 
     return await apiRequest<NavigationResponse>(endpoint)
+  },
+
+  // ============================================
+  // Continuum / Visits Methods
+  // ============================================
+
+  /**
+   * Create a visit (ContinuumMark + MarkSubject + MarkParty)
+   * Creates a ContinuumMark record with linked subjects and parties
+   */
+  async createVisit(params: CreateVisitParams): Promise<{ markId: string }> {
+    return await apiRequest<{ markId: string }>("visits", {
+      method: "POST",
+      body: JSON.stringify(params),
+    })
+  },
+
+  /**
+   * Get visits with optional filtering
+   * Returns ContinuumMark records with optional filters
+   */
+  async getVisits(params?: GetVisitsParams): Promise<ContinuumMark[]> {
+    const queryParams = new URLSearchParams()
+    if (params?.homeGuid) queryParams.append("homeGuid", params.homeGuid)
+    if (params?.staffGuid) queryParams.append("staffGuid", params.staffGuid)
+    if (params?.startDate) queryParams.append("startDate", params.startDate)
+    if (params?.endDate) queryParams.append("endDate", params.endDate)
+
+    const queryString = queryParams.toString()
+    const endpoint = queryString ? `visits?${queryString}` : "visits"
+
+    const result = await apiRequest<{ visits: ContinuumMark[] }>(endpoint)
+    return result.visits || []
+  },
+
+  /**
+   * Create a trip linked to a visit
+   * Creates a trip record that can be linked to a ContinuumMark via RelatedMarkID
+   */
+  async createTrip(params: CreateTripParams): Promise<{ tripId: string }> {
+    return await apiRequest<{ tripId: string }>("trips", {
+      method: "POST",
+      body: JSON.stringify(params),
+    })
+  },
+
+  // ============================================
+  // Visit Forms Methods
+  // ============================================
+
+  /**
+   * Create or update a visit form
+   * If a form exists for the appointment, it will be updated; otherwise, a new form is created
+   */
+  async createVisitForm(data: any): Promise<{ visitFormId: string; message: string; isAutoSave?: boolean }> {
+    return await apiRequest<{ visitFormId: string; message: string; isAutoSave?: boolean }>("visit-forms", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Update an existing visit form by ID
+   */
+  async updateVisitForm(
+    visitFormId: string,
+    data: any
+  ): Promise<{ visitFormId: string; message: string; isAutoSave?: boolean }> {
+    return await apiRequest<{ visitFormId: string; message: string; isAutoSave?: boolean }>(`visit-forms/${visitFormId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Get a specific visit form by ID
+   */
+  async getVisitForm(visitFormId: string): Promise<VisitForm> {
+    const response = await apiRequest<{ visitForm: VisitForm }>(`visit-forms/${visitFormId}`)
+    return response.visitForm
+  },
+
+  /**
+   * Delete (soft delete) a visit form by ID
+   */
+  async deleteVisitForm(
+    visitFormId: string,
+    deletedByUserId?: string,
+    deletedByName?: string
+  ): Promise<{ visitFormId: string; message: string }> {
+    return await apiRequest<{ visitFormId: string; message: string }>(`visit-forms/${visitFormId}`, {
+      method: "DELETE",
+      body: JSON.stringify({
+        deletedByUserId,
+        deletedByName,
+      }),
+    })
+  },
+
+  // ============================================
+  // Appointments Methods
+  // ============================================
+
+  /**
+   * Create a new appointment
+   */
+  async createAppointment(data: any): Promise<{ appointmentId: string; message: string }> {
+    return await apiRequest<{ appointmentId: string; message: string }>("appointments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Update an existing appointment by ID
+   */
+  async updateAppointment(
+    appointmentId: string,
+    data: any
+  ): Promise<{ appointmentId: string; message: string }> {
+    return await apiRequest<{ appointmentId: string; message: string }>(`appointments/${appointmentId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Get a specific appointment by ID
+   */
+  async getAppointment(appointmentId: string): Promise<Appointment> {
+    const response = await apiRequest<{ appointment: Appointment }>(`appointments/${appointmentId}`)
+    return response.appointment
+  },
+
+  /**
+   * Delete (soft delete) an appointment by ID
+   */
+  async deleteAppointment(
+    appointmentId: string,
+    deletedByUserId?: string,
+    deletedByName?: string
+  ): Promise<{ appointmentId: string; message: string; deletedVisitForms?: number }> {
+    return await apiRequest<{ appointmentId: string; message: string; deletedVisitForms?: number }>(`appointments/${appointmentId}`, {
+      method: "DELETE",
+      body: JSON.stringify({
+        deletedByUserId,
+        deletedByName,
+      }),
+    })
+  },
+
+  // ============================================
+  // Dashboard Methods
+  // ============================================
+
+  /**
+   * Get dashboard data for home liaison users
+   */
+  async getDashboardHomeLiaison(userEmail: string): Promise<any> {
+    const params = new URLSearchParams()
+    params.append("userEmail", userEmail)
+
+    const response = await apiRequest<{ data: any }>(`dashboard/home-liaison?${params.toString()}`)
+    return response.data
+  },
+
+  // ============================================
+  // Travel Legs Methods
+  // ============================================
+
+  /**
+   * Get travel legs with optional filters
+   */
+  async getTravelLegs(filters?: {
+    staffUserId?: string
+    date?: string
+    journeyId?: string
+    status?: string
+    appointmentId?: string
+    includeDeleted?: boolean
+  }): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (filters?.staffUserId) params.append("staffUserId", filters.staffUserId)
+    if (filters?.date) params.append("date", filters.date)
+    if (filters?.journeyId) params.append("journeyId", filters.journeyId)
+    if (filters?.status) params.append("status", filters.status)
+    if (filters?.appointmentId) params.append("appointmentId", filters.appointmentId)
+    if (filters?.includeDeleted) params.append("includeDeleted", "true")
+
+    const queryString = params.toString()
+    const endpoint = queryString ? `travel-legs?${queryString}` : "travel-legs"
+
+    const response = await apiRequest<{ legs: any[] }>(endpoint)
+    return response.legs || []
+  },
+
+  /**
+   * Create a new travel leg
+   */
+  async createTravelLeg(data: any): Promise<{ leg_id: string; journey_id: string; leg_sequence: number; created_at: Date }> {
+    return await apiRequest<{ leg_id: string; journey_id: string; leg_sequence: number; created_at: Date }>("travel-legs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Complete a travel leg (add end point and calculate mileage)
+   */
+  async completeTravelLeg(
+    legId: string,
+    data: any
+  ): Promise<{ calculated_mileage: number; estimated_toll_cost: number | null; duration_minutes: number | null }> {
+    return await apiRequest<{ calculated_mileage: number; estimated_toll_cost: number | null; duration_minutes: number | null }>(`travel-legs/${legId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Cancel a travel leg
+   */
+  async cancelTravelLeg(legId: string, updatedByUserId?: string): Promise<{ message: string }> {
+    return await apiRequest<{ message: string }>(`travel-legs/${legId}`, {
+      method: "DELETE",
+      body: JSON.stringify({
+        updated_by_user_id: updatedByUserId,
+      }),
+    })
+  },
+
+  // ============================================
+  // On-Call Methods
+  // ============================================
+
+  /**
+   * Get on-call schedules with optional filters
+   */
+  async getOnCallSchedules(filters?: {
+    startDate?: string
+    endDate?: string
+    userId?: string
+    type?: string
+    includeDeleted?: boolean
+  }): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (filters?.startDate) params.append("startDate", filters.startDate)
+    if (filters?.endDate) params.append("endDate", filters.endDate)
+    if (filters?.userId) params.append("userId", filters.userId)
+    if (filters?.type) params.append("type", filters.type)
+    if (filters?.includeDeleted) params.append("includeDeleted", "true")
+
+    const queryString = params.toString()
+    const endpoint = queryString ? `on-call?${queryString}` : "on-call"
+
+    const response = await apiRequest<{ schedules: any[] }>(endpoint)
+    return response.schedules || []
+  },
+
+  /**
+   * Create a new on-call schedule assignment
+   */
+  async createOnCallSchedule(data: any): Promise<{ id: string; created_at: Date }> {
+    return await apiRequest<{ id: string; created_at: Date }>("on-call", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Get a specific on-call schedule by ID
+   */
+  async getOnCallSchedule(scheduleId: string): Promise<any> {
+    const response = await apiRequest<{ schedule: any }>(`on-call/${scheduleId}`)
+    return response.schedule
+  },
+
+  /**
+   * Update an existing on-call schedule
+   */
+  async updateOnCallSchedule(scheduleId: string, data: any): Promise<{ id: string; message: string }> {
+    return await apiRequest<{ id: string; message: string }>(`on-call/${scheduleId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  },
+
+  /**
+   * Delete (soft delete) an on-call schedule
+   */
+  async deleteOnCallSchedule(
+    scheduleId: string,
+    deletedByUserId?: string,
+    deletedByName?: string
+  ): Promise<{ id: string; message: string }> {
+    return await apiRequest<{ id: string; message: string }>(`on-call/${scheduleId}`, {
+      method: "DELETE",
+      body: JSON.stringify({
+        deletedByUserId,
+        deletedByName,
+      }),
+    })
   },
 }
 

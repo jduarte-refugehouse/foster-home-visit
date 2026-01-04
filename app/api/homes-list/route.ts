@@ -1,7 +1,10 @@
 import { NextResponse, NextRequest } from "next/server"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 
 /**
  * GET /api/homes-list
@@ -27,13 +30,25 @@ export async function GET(request: NextRequest) {
     })
 
     console.log(`✅ [API] Successfully retrieved ${homes.length} homes from API Hub`)
+    
+    // Debug: Log sample of lastSync values to verify data freshness
+    if (homes.length > 0) {
+      const sampleHomes = homes.slice(0, 3)
+      console.log(`🔍 [API] Sample lastSync values:`, sampleHomes.map(h => ({
+        name: h.name,
+        lastSync: h.lastSync,
+        caseManager: h.contactPersonName
+      })))
+    }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       count: homes.length,
       homes,
       timestamp: new Date().toISOString(),
     })
+
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error in homes-list:", error)
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"

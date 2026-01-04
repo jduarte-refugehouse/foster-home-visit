@@ -1,7 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { fetchHomesForMap, getUniqueCaseManagers } from "@/lib/db-extensions"
+import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
-export const dynamic = "force-dynamic"
+export const dynamic = DYNAMIC_ROUTE_CONFIG.dynamic
+export const revalidate = DYNAMIC_ROUTE_CONFIG.revalidate
+export const fetchCache = DYNAMIC_ROUTE_CONFIG.fetchCache
 export const runtime = "nodejs"
 
 export async function GET(request: NextRequest) {
@@ -18,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [API] Successfully processed ${homes.length} homes for map`)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       homes,
       caseManagers,
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
         ),
       },
     })
+    return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ [API] Error in homes-for-map:", error)
     return NextResponse.json(

@@ -1,7 +1,10 @@
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 // ✅ SAFE EXTENSION FUNCTIONS - These extend functionality without modifying core connection
 // These functions use the locked db.ts connection but don't modify it
+// Now supports API client for non-admin microservices
 
 export interface ListHome {
   id: string
@@ -33,13 +36,52 @@ export interface HomeStats {
 
 /**
  * Fetch homes list with proper coordinate casting and LastSync data
- * Uses the locked database connection safely
+ * Uses the locked database connection safely, or API client for non-admin microservices
  */
 export async function fetchHomesList(filters?: {
   unit?: string
   caseManager?: string
   search?: string
 }): Promise<ListHome[]> {
+  const useApiClient = shouldUseRadiusApiClient()
+
+  if (useApiClient) {
+    console.log("🏠 [Extension] Fetching homes list from API client...")
+    
+    try {
+      const apiHomes = await radiusApiClient.getHomes({
+        unit: filters?.unit && filters.unit !== "ALL" ? filters.unit : undefined,
+        caseManager: filters?.caseManager && filters.caseManager !== "ALL" ? filters.caseManager : undefined,
+        search: filters?.search,
+      })
+
+      // Transform API homes to ListHome format
+      const processedHomes: ListHome[] = apiHomes.map((home) => ({
+        id: home.id || "",
+        name: home.name || "",
+        address: home.address || "",
+        City: home.City || "",
+        State: home.State || "",
+        zipCode: home.zipCode || "",
+        Unit: home.Unit || "",
+        latitude: typeof home.latitude === "number" && !isNaN(home.latitude) ? home.latitude : 0,
+        longitude: typeof home.longitude === "number" && !isNaN(home.longitude) ? home.longitude : 0,
+        phoneNumber: home.phoneNumber || "",
+        contactPersonName: home.contactPersonName || "~unassigned~",
+        email: home.email || "",
+        contactPhone: home.contactPhone || "",
+        lastSync: home.lastSync || "",
+      }))
+
+      console.log(`✅ [Extension] Retrieved ${processedHomes.length} homes from API client`)
+      return processedHomes
+    } catch (error) {
+      console.error("❌ [Extension] Error fetching homes from API client:", error)
+      throw error
+    }
+  }
+
+  // Direct database access for admin microservice
   console.log("🏠 [Extension] Fetching homes list from database...")
 
   let whereClause = "WHERE 1=1"
@@ -232,9 +274,35 @@ export async function getHomeStats(): Promise<HomeStats> {
 
 /**
  * Get unique case managers for filtering
- * Uses the locked database connection safely
+ * Uses the locked database connection safely, or API client for non-admin microservices
  */
 export async function getUniqueCaseManagers(): Promise<string[]> {
+  const useApiClient = shouldUseRadiusApiClient()
+
+  if (useApiClient) {
+    console.log("👥 [Extension] Fetching unique case managers from API client...")
+    
+    try {
+      const homes = await radiusApiClient.getHomes()
+      const managers = new Set<string>()
+      
+      homes.forEach((home) => {
+        const manager = home.contactPersonName || "~unassigned~"
+        if (manager.trim() !== "") {
+          managers.add(manager)
+        }
+      })
+      
+      const sortedManagers = Array.from(managers).sort()
+      console.log(`✅ [Extension] Found ${sortedManagers.length} unique case managers from API client`)
+      return sortedManagers
+    } catch (error) {
+      console.error("❌ [Extension] Error fetching case managers from API client:", error)
+      return []
+    }
+  }
+
+  // Direct database access for admin microservice
   console.log("👥 [Extension] Fetching unique case managers...")
 
   const queryText = `
