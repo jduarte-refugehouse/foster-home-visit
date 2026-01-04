@@ -87,12 +87,14 @@ export async function GET(request: NextRequest) {
     if (useApiClient) {
       // Use API client for non-admin microservices
       try {
+        console.log("🔍 [AUTH] Checking access via API Hub for:", { clerkUserId, email, name })
         const result = await radiusApiClient.checkUserAccess({
           clerkUserId,
           email,
           firstName: name?.split(" ")[0] || undefined,
           lastName: name?.split(" ").slice(1).join(" ") || undefined,
         })
+        console.log("📥 [AUTH] API Hub response:", JSON.stringify(result, null, 2))
         accessCheck = {
           hasAccess: result.hasAccess,
           requiresInvitation: result.requiresInvitation,
@@ -102,6 +104,11 @@ export async function GET(request: NextRequest) {
         }
       } catch (apiError) {
         console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+        console.error("❌ [AUTH] Error details:", {
+          message: apiError instanceof Error ? apiError.message : String(apiError),
+          stack: apiError instanceof Error ? apiError.stack : undefined,
+          name: apiError instanceof Error ? apiError.name : undefined,
+        })
         // Fail securely - deny access if API call fails
         return NextResponse.json(
           {
@@ -122,11 +129,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (!accessCheck.hasAccess) {
+      console.log("🚫 [AUTH] Access denied for user:", {
+        email,
+        clerkUserId,
+        userExists: accessCheck.userExists,
+        hasInvitation: accessCheck.hasInvitation,
+        isNewUser: accessCheck.isNewUser,
+        requiresInvitation: accessCheck.requiresInvitation,
+      })
       return NextResponse.json(
         {
           error: "Access denied. External users require an invitation to join.",
           requiresInvitation: true,
           isNewUser: accessCheck.isNewUser,
+          userExists: accessCheck.userExists,
+          hasInvitation: accessCheck.hasInvitation,
         },
         { status: 403 },
       )
