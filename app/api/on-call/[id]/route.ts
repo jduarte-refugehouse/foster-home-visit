@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@refugehouse/shared-core/db"
 import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
@@ -80,22 +79,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updatedByUserId,
       updatedByName
     } = body
-
-    // Check if schedule exists
-    const existing = await query(
-      `SELECT id FROM on_call_schedule WHERE id = @param0 AND is_deleted = 0`,
-      [id],
-    )
-
-    if (existing.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "On-call schedule not found",
-        },
-        { status: 404 },
-      )
-    }
 
     // Validate date range if provided
     if (startDatetime && endDatetime) {
@@ -182,27 +165,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const useApiClient = shouldUseRadiusApiClient()
 
-    if (useApiClient) {
-      // Use API client to update on-call schedule
-      console.log("✅ [ON-CALL] Using API client to update on-call schedule")
-      const updateData: any = {}
-      if (userId !== undefined) updateData.userId = userId
-      if (userName !== undefined) updateData.userName = userName
-      if (userEmail !== undefined) updateData.userEmail = userEmail
-      if (userPhone !== undefined) updateData.userPhone = userPhone
-      if (startDatetime !== undefined) updateData.startDatetime = startDatetime
-      if (endDatetime !== undefined) updateData.endDatetime = endDatetime
-      if (notes !== undefined) updateData.notes = notes
-      if (priorityLevel !== undefined) updateData.priorityLevel = priorityLevel
-      if (isActive !== undefined) updateData.isActive = isActive
-      if (onCallType !== undefined) updateData.onCallType = onCallType
-      if (onCallCategory !== undefined) updateData.onCallCategory = onCallCategory
-      if (roleRequired !== undefined) updateData.roleRequired = roleRequired
-      if (department !== undefined) updateData.department = department
-      if (region !== undefined) updateData.region = region
-      if (escalationLevel !== undefined) updateData.escalationLevel = escalationLevel
-      updateData.updatedByUserId = updatedByUserId || "system"
-      updateData.updatedByName = updatedByName || "System"
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("on-call/[id] PUT endpoint")
+    }
+
+    // Use API client to update on-call schedule
+    console.log("✅ [ON-CALL] Using API client to update on-call schedule")
+    const updateData: any = {}
+    if (userId !== undefined) updateData.userId = userId
+    if (userName !== undefined) updateData.userName = userName
+    if (userEmail !== undefined) updateData.userEmail = userEmail
+    if (userPhone !== undefined) updateData.userPhone = userPhone
+    if (startDatetime !== undefined) updateData.startDatetime = startDatetime
+    if (endDatetime !== undefined) updateData.endDatetime = endDatetime
+    if (notes !== undefined) updateData.notes = notes
+    if (priorityLevel !== undefined) updateData.priorityLevel = priorityLevel
+    if (isActive !== undefined) updateData.isActive = isActive
+    if (onCallType !== undefined) updateData.onCallType = onCallType
+    if (onCallCategory !== undefined) updateData.onCallCategory = onCallCategory
+    if (roleRequired !== undefined) updateData.roleRequired = roleRequired
+    if (department !== undefined) updateData.department = department
+    if (region !== undefined) updateData.region = region
+    if (escalationLevel !== undefined) updateData.escalationLevel = escalationLevel
+    updateData.updatedByUserId = updatedByUserId || "system"
+    updateData.updatedByName = updatedByName || "System"
 
     await radiusApiClient.updateOnCallSchedule(id, updateData)
 
@@ -233,22 +220,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // Note: Clerk middleware is not active for API routes
     // Authentication is handled at component level
-
-    // Check if schedule exists
-    const existing = await query(
-      `SELECT id FROM on_call_schedule WHERE id = @param0 AND is_deleted = 0`,
-      [id],
-    )
-
-    if (existing.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "On-call schedule not found",
-        },
-        { status: 404 },
-      )
-    }
 
     const useApiClient = shouldUseRadiusApiClient()
     const body = await request.json().catch(() => ({}))
