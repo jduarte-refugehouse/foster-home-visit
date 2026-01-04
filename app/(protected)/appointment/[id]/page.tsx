@@ -308,6 +308,55 @@ export default function AppointmentDetailPage() {
 
   const handleVisitFormCompleted = async () => {
     try {
+      // First, update visit form status to "completed" if it exists (this will create ContinuumMark)
+      if (existingFormData?.visit_form_id) {
+        try {
+          console.log("📝 [APPT] Updating visit form status to completed...")
+          const formUpdateResponse = await fetch(`/api/visit-forms/${existingFormData.visit_form_id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: "completed",
+              updatedByUserId: user?.id || appointment?.assigned_to_user_id || null,
+              updatedByName: user?.firstName && user?.lastName 
+                ? `${user.firstName} ${user.lastName}`.trim()
+                : appointment?.assigned_to_name || "Unknown User",
+              // Include existing form data to preserve it
+              visitDate: existingFormData.visit_date,
+              visitTime: existingFormData.visit_time,
+              visitNumber: existingFormData.visit_number,
+              quarter: existingFormData.quarter,
+              visitVariant: existingFormData.visit_variant,
+              visitInfo: existingFormData.visit_info,
+              familyInfo: existingFormData.family_info,
+              attendees: existingFormData.attendees,
+              observations: existingFormData.observations,
+              recommendations: existingFormData.recommendations,
+              signatures: existingFormData.signatures,
+              homeEnvironment: existingFormData.home_environment,
+              childInterviews: existingFormData.child_interviews,
+              parentInterviews: existingFormData.parent_interviews,
+              complianceReview: existingFormData.compliance_review,
+            }),
+          })
+
+          if (formUpdateResponse.ok) {
+            const formResult = await formUpdateResponse.json()
+            console.log("✅ [APPT] Visit form marked as completed:", formResult)
+            if (formResult.continuumMarkId) {
+              console.log("✅ [APPT] ContinuumMark created:", formResult.continuumMarkId)
+            }
+          } else {
+            console.warn("⚠️ [APPT] Failed to update visit form status:", formUpdateResponse.status)
+          }
+        } catch (formError) {
+          console.error("⚠️ [APPT] Error updating visit form status (non-blocking):", formError)
+          // Continue with appointment update even if form update fails
+        }
+      }
+
       // Update appointment status
       const response = await fetch(`/api/appointments/${appointmentId}`, {
         method: "PUT",
