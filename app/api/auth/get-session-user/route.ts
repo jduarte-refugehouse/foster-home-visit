@@ -39,10 +39,13 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("❌ [AUTH] Error getting session user:", error)
+    console.error("❌ [AUTH] Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("❌ [AUTH] Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)))
     return NextResponse.json(
       {
         error: "Failed to get user from session",
         details: error instanceof Error ? error.message : "Unknown error",
+        type: error instanceof Error ? error.constructor.name : typeof error,
       },
       { status: 500 }
     )
