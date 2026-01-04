@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@refugehouse/shared-core/db"
-import { format, addDays, startOfDay, endOfDay } from "date-fns"
+import { addDays, startOfDay, endOfDay } from "date-fns"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 import { getMicroserviceCode, shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
@@ -35,48 +34,6 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Check for impersonation first
-    const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
-    
-    // Get user info - prefer impersonated user if active, otherwise get any app_user with matching email
-    // This handles cases where user has multiple app_user records with same email
-    let appUser: { id: string; email: string; first_name: string; last_name: string }[]
-    
-    if (impersonatedUserId) {
-      appUser = await query<{ id: string; email: string; first_name: string; last_name: string }>(
-        `SELECT id, email, first_name, last_name FROM app_users WHERE id = @param0`,
-        [impersonatedUserId]
-      )
-    } else {
-      // Get any app_user record with matching email (handles multiple records)
-      appUser = await query<{ id: string; email: string; first_name: string; last_name: string }>(
-        `SELECT TOP 1 id, email, first_name, last_name FROM app_users WHERE email = @param0 ORDER BY created_at DESC`,
-        [userEmail]
-      )
-    }
-
-    if (appUser.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    const user = appUser[0]
-    const userId = user.id
-
-    // Debug: Log user info
-    console.log("🔍 [DASHBOARD] User lookup:", {
-      clerkUserId,
-      impersonatedUserId,
-      appUserId: userId,
-      userName: `${user.first_name} ${user.last_name}`,
-      email: userEmail,
-      appUserEmail: user.email,
-      note: "Filtering by email to handle multiple app_user records",
-    })
-
-    // Date range: today and next 30 days
-    const today = startOfDay(new Date())
-    const endDate = endOfDay(addDays(today, 30))
-
     const microserviceCode = getMicroserviceCode()
     const useApiClient = shouldUseRadiusApiClient()
 
@@ -85,14 +42,24 @@ export async function GET(request: NextRequest) {
       throwIfDirectDbNotAllowed("dashboard/home-liaison endpoint")
     }
 
-    // Use API client for dashboard data
-    console.log(`✅ [DASHBOARD] Using API client for dashboard data (microservice: ${microserviceCode})`)
+    // Use API client for dashboard data (includes user lookup)
+    console.log(`✅ [DASHBOARD] Using API client for dashboard data (microservice: ${microserviceCode}, email: ${userEmail})`)
     
     const dashboardData = await radiusApiClient.getDashboardHomeLiaison(userEmail)
+    
+    // Check if user was found
+    if (!dashboardData.user) {
+      return NextResponse.json({ 
+        error: "User not found",
+        details: "User not found in system database. Please contact an administrator."
+      }, { status: 404 })
+    }
+    
     const upcomingAppointments = dashboardData.upcomingAppointments || []
     const upcomingOnCall = dashboardData.upcomingOnCall || []
     
     // Use the stats and other data from API Hub
+    const today = startOfDay(new Date())
     const todayStart = startOfDay(new Date())
     const todayEnd = endOfDay(new Date())
     const weekEnd = endOfDay(addDays(today, 7))
@@ -125,11 +92,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       data: {
-        user: dashboardData.user || {
-          id: user.id,
-          name: `${user.first_name} ${user.last_name}`,
-          email: user.email,
-        },
+        user: dashboardData.user,
         stats: {
           todayCount: todayAppointments.count,
           weekCount: weekAppointments.count,
