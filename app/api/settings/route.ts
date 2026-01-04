@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,6 +10,22 @@ export const runtime = "nodejs"
 // GET - Fetch all settings or a specific setting
 export async function GET(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      throwIfDirectDbNotAllowed("settings endpoint")
+      // TODO: Create API Hub endpoint for settings
+      // For now, return error indicating migration needed
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Settings endpoint not yet migrated to API Hub",
+          details: "This endpoint needs to be migrated to use the API Hub. Please contact the development team.",
+        },
+        { status: 501 }, // 501 Not Implemented
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const key = searchParams.get("key")
 
@@ -58,6 +76,21 @@ export async function GET(request: NextRequest) {
 // PUT - Update a setting
 export async function PUT(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      throwIfDirectDbNotAllowed("settings endpoint")
+      // TODO: Create API Hub endpoint for settings
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Settings endpoint not yet migrated to API Hub",
+          details: "This endpoint needs to be migrated to use the API Hub. Please contact the development team.",
+        },
+        { status: 501 }, // 501 Not Implemented
+      )
+    }
+
     const auth = getClerkUserIdFromRequest(request)
     if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

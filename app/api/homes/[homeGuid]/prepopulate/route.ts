@@ -1,21 +1,35 @@
 import { NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
 /**
  * GET /api/homes/[homeGuid]/prepopulate
  * 
- * This endpoint remains microservice-specific (direct DB access only) because:
- * - It queries multiple specialized tables (syncLicenseCurrent, syncCurrentFosterFacility, syncChildrenInPlacement)
- * - Contains business logic specific to home-visits (service levels, household members, placements)
- * - Used only for prepopulating visit forms in the home-visits microservice
- * - Not needed by other microservices
+ * This endpoint queries multiple specialized tables for prepopulating visit forms.
  * 
- * This is intentional - the API Hub is for shared data access, not microservice-specific business logic.
+ * NOTE: Even though this is microservice-specific business logic, it still needs to go through
+ * the API Hub because direct DB access is not available after static IP removal.
+ * 
+ * TODO: Create API Hub endpoint for home prepopulation data.
  */
 export async function GET(request: Request, { params }: { params: { homeGuid: string } }) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      throwIfDirectDbNotAllowed("homes prepopulate endpoint")
+      // TODO: Create API Hub endpoint for home prepopulation
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Home prepopulation endpoint not yet migrated to API Hub",
+          details: "This endpoint needs to be migrated to use the API Hub. Please contact the development team.",
+        },
+        { status: 501 }, // 501 Not Implemented
+      )
+    }
     const { homeGuid } = params
     console.log(`📋 [API] Fetching pre-population data for home: ${homeGuid}`)
 
