@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getConnection } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG, shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
-import { requireClerkAuth } from "@refugehouse/shared-core/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -40,235 +39,119 @@ export async function GET(request: NextRequest) {
     let userPermissions: string[] = []
     let userInfo = null
 
+    // Get microservice code and check if we should use API client
+    const microserviceCode = getMicroserviceCode()
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    console.log(`🌍 [NAV] Microservice: ${microserviceCode}, useApiClient: ${useApiClient}`)
+
     if (userClerkId || userEmail) {
       console.log(`👤 User identified: ${userEmail} (${userClerkId})`)
 
-      try {
-        // Get user permissions from database
-        const connection = await getConnection()
-
-        // First, get the app user record using either clerk_user_id or email
-        let userQuery = ""
-        let queryParam = ""
-
-        // Check for impersonation first
-        const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
-        
-        // Get microservice code and deployment environment
-        const microserviceCode = getMicroserviceCode()
-        const isServiceDomainAdmin = microserviceCode === 'service-domain-admin'
-        const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
-        
-        console.log(`🌍 [NAV] Deployment environment detected: ${deploymentEnv} (microservice: ${microserviceCode})`)
-        
-        if (impersonatedUserId) {
-          // Use impersonated user
-          if (isServiceDomainAdmin && deploymentEnv) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE id = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-                AND environment = @param1
-            `
-          } else if (isServiceDomainAdmin) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE id = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-            `
-          } else {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE id = @param0
-                AND is_active = 1
-            `
-          }
-          queryParam = impersonatedUserId
-        } else if (userClerkId) {
-          // PRIORITY: Use clerk_user_id first (most reliable)
-          // NOTE: clerk_user_id is unique, so we don't need to filter by environment
-          if (isServiceDomainAdmin) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE clerk_user_id = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-            `
-          } else {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE clerk_user_id = @param0
-                AND is_active = 1
-            `
-          }
-          queryParam = userClerkId
-        } else if (userEmail) {
-          // Fallback: Use email only if clerk_user_id not available
-          if (isServiceDomainAdmin && deploymentEnv) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE email = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-                AND environment = @param1
-            `
-          } else if (isServiceDomainAdmin) {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE email = @param0
-                AND (user_type = 'global_admin' OR user_type IS NULL)
-                AND is_active = 1
-            `
-          } else {
-            userQuery = `
-              SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment
-              FROM app_users 
-              WHERE email = @param0
-                AND is_active = 1
-            `
-          }
-          queryParam = userEmail
-        }
-
-        console.log("📝 EXECUTING USER QUERY:")
-        console.log("Query:", userQuery)
-        console.log("Parameter @param0:", queryParam)
-        const userParams: Record<string, any> = { param0: queryParam }
-        // Only add environment param if NOT using clerk_user_id (clerk_user_id is unique, no env filter needed)
-        if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
-          console.log("Parameter @param1 (environment):", deploymentEnv)
-          userParams.param1 = deploymentEnv
-        }
-        
-        // TEMPORARY: Generate readable SQL for SSMS testing
-        const readableUserSQL = generateReadableSQL(userQuery, userParams)
-        console.log("═══════════════════════════════════════════════════════════")
-        console.log("📋 READABLE SQL FOR SSMS TESTING (USER QUERY):")
-        console.log("═══════════════════════════════════════════════════════════")
-        console.log(readableUserSQL)
-        console.log("═══════════════════════════════════════════════════════════")
-
-        const userRequest = connection.request().input("param0", queryParam)
-        // Only add environment param if NOT using clerk_user_id (clerk_user_id is unique, no env filter needed)
-        if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
-          userRequest.input("param1", deploymentEnv)
-        }
-        const userResult = await userRequest.query(userQuery)
-
-        console.log("📊 USER QUERY RESULT:")
-        console.log("Recordset length:", userResult.recordset.length)
-        console.log("Records:", JSON.stringify(userResult.recordset, null, 2))
-
-        if (userResult.recordset.length > 0) {
-          userInfo = userResult.recordset[0]
-          console.log(`✅ Found app user: ${userInfo.email} (${userInfo.first_name} ${userInfo.last_name})`)
-
-          // Get user permissions for this microservice
-          const permissionsQuery = `
-            SELECT DISTINCT p.permission_code
-            FROM user_permissions up
-            INNER JOIN permissions p ON up.permission_id = p.id
-            INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-            WHERE up.user_id = @param0 
-              AND ma.app_code = @param1 
-              AND up.is_active = 1 
-              AND (up.expires_at IS NULL OR up.expires_at > GETDATE())
-          `
-          const microserviceCode = getMicroserviceCode()
-          // microserviceCode already defined above
-          console.log("📝 EXECUTING PERMISSIONS QUERY:")
-          console.log("Query:", permissionsQuery)
-          console.log("Parameter @param0 (user_id):", userInfo.id)
-          console.log("Parameter @param1 (app_code):", microserviceCode)
-          
-          // TEMPORARY: Generate readable SQL for SSMS testing
-          const readablePermissionsSQL = generateReadableSQL(permissionsQuery, {
-            param0: userInfo.id,
-            param1: microserviceCode
+      // NO DB FALLBACK - must use API client for non-admin microservices
+      if (useApiClient) {
+        throwIfDirectDbNotAllowed("navigation endpoint - user lookup")
+        console.log(`✅ [NAV] Using API client to lookup user (microservice: ${microserviceCode})`)
+        try {
+          // Use API client to lookup user and get permissions
+          const lookupResult = await radiusApiClient.lookupUser({
+            clerkUserId: userClerkId || undefined,
+            email: userEmail || undefined,
+            microserviceCode: microserviceCode,
           })
-          console.log("═══════════════════════════════════════════════════════════")
-          console.log("📋 READABLE SQL FOR SSMS TESTING (PERMISSIONS QUERY):")
-          console.log("═══════════════════════════════════════════════════════════")
-          console.log(readablePermissionsSQL)
-          console.log("═══════════════════════════════════════════════════════════")
 
-          const permissionsResult = await connection
-            .request()
-            .input("param0", userInfo.id)
-            .input("param1", microserviceCode)
-            .query(permissionsQuery)
+          if (lookupResult.found && lookupResult.user) {
+            userInfo = {
+              id: lookupResult.user.id,
+              email: lookupResult.user.email,
+              first_name: lookupResult.user.first_name || "",
+              last_name: lookupResult.user.last_name || "",
+              is_active: lookupResult.user.is_active,
+              clerk_user_id: lookupResult.user.clerk_user_id,
+            }
+            userPermissions = (lookupResult.permissions || []).map((p: any) => p.permission_code || p.code)
+            console.log(`✅ [NAV] Found user via API: ${userInfo.email} (${userInfo.first_name} ${userInfo.last_name})`)
+            console.log(`🔑 [NAV] User permissions:`, userPermissions)
+          } else {
+            console.log("⚠️ [NAV] User not found via API client")
+            userInfo = null
+            userPermissions = []
+          }
+        } catch (userError) {
+          console.error("❌ [NAV] Error loading user via API client:", userError)
+          userInfo = null
+          userPermissions = []
+        }
+      } else {
+        // Admin microservice: use direct DB access (existing code)
+        console.log(`⚠️ [NAV] Using direct DB access (admin microservice)`)
+        try {
+          // Get user permissions from database
+          const connection = await getConnection()
 
-          console.log("📊 PERMISSIONS QUERY RESULT:")
-          console.log("Recordset length:", permissionsResult.recordset.length)
-          console.log("Records:", JSON.stringify(permissionsResult.recordset, null, 2))
+          // First, get the app user record using either clerk_user_id or email
+          let userQuery = ""
+          let queryParam = ""
 
-          userPermissions = permissionsResult.recordset.map((row: any) => row.permission_code)
-          console.log("🔑 User permissions:", userPermissions)
+          // Check for impersonation first
+          const impersonatedUserId = request.cookies.get("impersonate_user_id")?.value
+          const isServiceDomainAdmin = microserviceCode === 'service-domain-admin'
+          const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
+          
+          if (impersonatedUserId) {
+            if (isServiceDomainAdmin && deploymentEnv) {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
+            } else if (isServiceDomainAdmin) {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
+            } else {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
+            }
+            queryParam = impersonatedUserId
+          } else if (userClerkId) {
+            if (isServiceDomainAdmin) {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
+            } else {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`
+            }
+            queryParam = userClerkId
+          } else if (userEmail) {
+            if (isServiceDomainAdmin && deploymentEnv) {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
+            } else if (isServiceDomainAdmin) {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
+            } else {
+              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
+            }
+            queryParam = userEmail
+          }
 
-          // Also check role-based permissions (if role tables exist)
-          try {
-            // NOTE: role_permissions table does not exist
-            // Roles don't automatically grant permissions - permissions must be granted directly via user_permissions
-            // This query is intentionally empty - permissions come from user_permissions table only
-            const rolePermissionsQuery = `
-              SELECT DISTINCT p.permission_code
-              FROM user_permissions up
-              INNER JOIN permissions p ON up.permission_id = p.id
-              INNER JOIN microservice_apps ma ON p.microservice_id = ma.id
-              WHERE up.user_id = @param0 
-                AND ma.app_code = @param1 
-                AND up.is_active = 1
-            `
-            console.log("📝 EXECUTING ROLE PERMISSIONS QUERY:")
-            console.log("Query:", rolePermissionsQuery)
-            console.log("Parameter @param0 (user_id):", userInfo.id)
-            console.log("Parameter @param1 (app_code):", microserviceCode)
+          const userRequest = connection.request().input("param0", queryParam)
+          if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
+            userRequest.input("param1", deploymentEnv)
+          }
+          const userResult = await userRequest.query(userQuery)
+
+          if (userResult.recordset.length > 0) {
+            userInfo = userResult.recordset[0]
+            console.log(`✅ Found app user: ${userInfo.email} (${userInfo.first_name} ${userInfo.last_name})`)
+
+            // Get user permissions for this microservice
+            const permissionsQuery = `SELECT DISTINCT p.permission_code FROM user_permissions up INNER JOIN permissions p ON up.permission_id = p.id INNER JOIN microservice_apps ma ON p.microservice_id = ma.id WHERE up.user_id = @param0 AND ma.app_code = @param1 AND up.is_active = 1 AND (up.expires_at IS NULL OR up.expires_at > GETDATE())`
             
-            // TEMPORARY: Generate readable SQL for SSMS testing
-            const readableRolePermissionsSQL = generateReadableSQL(rolePermissionsQuery, {
-              param0: userInfo.id,
-              param1: microserviceCode
-            })
-            console.log("═══════════════════════════════════════════════════════════")
-            console.log("📋 READABLE SQL FOR SSMS TESTING (ROLE PERMISSIONS QUERY):")
-            console.log("═══════════════════════════════════════════════════════════")
-            console.log(readableRolePermissionsSQL)
-            console.log("═══════════════════════════════════════════════════════════")
-
-            const rolePermissionsResult = await connection
+            const permissionsResult = await connection
               .request()
               .input("param0", userInfo.id)
               .input("param1", microserviceCode)
-              .query(rolePermissionsQuery)
+              .query(permissionsQuery)
 
-            console.log("📊 ROLE PERMISSIONS QUERY RESULT:")
-            console.log("Recordset length:", rolePermissionsResult.recordset.length)
-            console.log("Records:", JSON.stringify(rolePermissionsResult.recordset, null, 2))
-
-            const rolePermissions = rolePermissionsResult.recordset.map((row: any) => row.permission_code)
-            console.log("🔑 Role-based permissions:", rolePermissions)
-
-            // Combine direct and role-based permissions
-            userPermissions = [...new Set([...userPermissions, ...rolePermissions])]
-            console.log("🔑 Combined user permissions:", userPermissions)
-          } catch (roleError) {
-            console.log("ℹ️ Role-based permissions not available (tables may not exist)")
+            userPermissions = permissionsResult.recordset.map((row: any) => row.permission_code)
+            console.log("🔑 User permissions:", userPermissions)
+          } else {
+            console.log("⚠️ No app user record found for:", queryParam)
           }
-        } else {
-          console.log("⚠️ No app user record found for:", queryParam)
-          console.log("💡 This user may need to be added to the app_users table")
+        } catch (userError) {
+          console.error("❌ Error loading user permissions:", userError)
         }
-      } catch (userError) {
-        console.error("❌ Error loading user permissions:", userError)
       }
     } else {
       console.log("👤 No user identity found in request headers")
@@ -292,12 +175,6 @@ export async function GET(request: NextRequest) {
         },
       })
     }
-
-    // Get microservice code and check if we should use API client
-    const microserviceCode = getMicroserviceCode()
-    const useApiClient = shouldUseRadiusApiClient()
-    
-    console.log(`🌍 [NAV] Microservice: ${microserviceCode}, useApiClient: ${useApiClient}`)
 
     // SECURITY: If user lookup failed (userInfo is null), return empty navigation
     if (!userInfo) {
@@ -326,48 +203,15 @@ export async function GET(request: NextRequest) {
 
     // Use API client for non-admin microservices, direct DB for admin
     if (useApiClient) {
+      throwIfDirectDbNotAllowed("navigation endpoint - navigation items")
       console.log(`✅ [NAV] Using API client path for microservice: ${microserviceCode}`)
       try {
-        // First, get user ID from user lookup (we already have userInfo, but need to get userId)
-        let userId: string | null = null
-        
-        // Get user via API client to ensure we have the correct userId
-        try {
-          const auth = requireClerkAuth(request)
-          const lookupResult = await radiusApiClient.lookupUser({
-            clerkUserId: auth.clerkUserId,
-            email: auth.email || undefined,
-            microserviceCode: microserviceCode,
-          })
-
-          if (lookupResult.found && lookupResult.user) {
-            userId = lookupResult.user.id
-          } else {
-            console.error("❌ [NAV] User not found via API client")
-            return NextResponse.json({
-              navigation: [],
-              metadata: {
-                source: "user_not_found",
-                totalItems: 0,
-                visibleItems: 0,
-                microservice: {
-                  code: microserviceCode,
-                  name: MICROSERVICE_CONFIG.name,
-                  description: MICROSERVICE_CONFIG.description,
-                },
-                timestamp: new Date().toISOString(),
-                error: "User not found in system",
-                userPermissions: [],
-                userInfo: null,
-              },
-            })
-          }
-        } catch (lookupError) {
-          console.error("❌ [NAV] Error looking up user from API Hub:", lookupError)
+        if (!userInfo || !userInfo.id) {
+          console.error("❌ [NAV] User info not available for navigation lookup")
           return NextResponse.json({
             navigation: [],
             metadata: {
-              source: "api_error",
+              source: "user_not_found",
               totalItems: 0,
               visibleItems: 0,
               microservice: {
@@ -376,30 +220,18 @@ export async function GET(request: NextRequest) {
                 description: MICROSERVICE_CONFIG.description,
               },
               timestamp: new Date().toISOString(),
-              error: "Failed to look up user",
+              error: "User not found in system",
               userPermissions: [],
               userInfo: null,
             },
           })
         }
 
-        // Get permissions first (needed for filtering)
-        let userPermissionsForNav: string[] = []
-        try {
-          const permissionsResponse = await radiusApiClient.getPermissions({
-            userId,
-            microserviceCode: microserviceCode,
-          })
-          userPermissionsForNav = permissionsResponse.permissionCodes
-        } catch (permError) {
-          console.warn("⚠️ [NAV] Could not fetch permissions, proceeding without permission filtering")
-        }
-
-        // Get navigation from API Hub
+        // Get navigation from API Hub (permissions already loaded from user lookup)
         const navigationResponse = await radiusApiClient.getNavigation({
-          userId,
+          userId: userInfo.id,
           microserviceCode: microserviceCode,
-          userPermissions: userPermissionsForNav,
+          userPermissions: userPermissions,
         })
 
         // Transform API response to match expected format
@@ -409,10 +241,10 @@ export async function GET(request: NextRequest) {
           metadata: {
             ...navigationResponse.metadata,
             userInfo: {
-              id: userId,
-              email: userInfo?.email || "",
-              first_name: userInfo?.first_name || "",
-              last_name: userInfo?.last_name || "",
+              id: userInfo.id,
+              email: userInfo.email || "",
+              first_name: userInfo.first_name || "",
+              last_name: userInfo.last_name || "",
             },
           },
         }
