@@ -1283,6 +1283,9 @@ export default function AppointmentDetailPage() {
               if (prepopResponse.ok) {
                 const prepopData = await prepopResponse.json()
                 console.log(`✅ [FORM] Prepopulation data loaded:`, prepopData)
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/(protected)/appointment/[id]/page.tsx:1285',message:'Prepopulation data received in appointment page',data:{hasHome:!!prepopData.home,homeName:prepopData.home?.name,homePhone:prepopData.home?.phone,homeEmail:prepopData.home?.email,hasLicense:!!prepopData.license,hasLegacyLicense:!!prepopData.license?.legacyLicense,licenseType:prepopData.license?.legacyLicense?.licenseType,placementHistoryCount:prepopData.placementHistory?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
                 setPrepopulationData(prepopData)
               } else {
                 const prepopError = await prepopResponse.json().catch(() => ({ error: "Unknown error" }))
