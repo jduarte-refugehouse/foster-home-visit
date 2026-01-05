@@ -114,6 +114,8 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+    // Direct DB access for admin microservice
+    throwIfDirectDbNotAllowed("settings PUT endpoint")
     const auth = getClerkUserIdFromRequest(request)
     if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
