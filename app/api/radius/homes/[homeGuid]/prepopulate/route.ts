@@ -217,63 +217,31 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Fallback to legacy database queries if API calls failed
-    let legacyHomeInfo: any = null
-    if (!homeInfo || !licenseData) {
-      console.log(`📋 [RADIUS-API] API calls failed, falling back to legacy database queries`)
-      try {
-        const homeInfoQuery = `
-          SELECT TOP 1
-            lc.HomeName,
-            lc.Address1,
-            lc.Address2,
-            lc.City,
-            lc.State,
-            lc.Zip,
-            lc.County,
-            lc.CaseManagerName,
-            lc.CaseManagerEmail,
-            lc.LicenseID,
-            lc.LicenseEffective,
-            lc.LicenseExpiration,
-            lc.LicenseType,
-            lc.TotalCapacity,
-            lc.AgeMin,
-            lc.AgeMax,
-            lc.OpenBeds,
-            lc.FilledBeds,
-            lc.LegacyDFPSLevel,
-            lc.OriginallyLicensed,
-            lc.LicenseLastUpdated,
-            ah.HomePhone,
-            ah.CaregiverEmail
-          FROM syncLicenseCurrent lc
-          LEFT JOIN syncActiveHomes ah ON lc.FacilityGUID = ah.Guid
-          WHERE lc.FacilityGUID = @param0
-            AND lc.IsActive = 1
-        `
-        const legacyHomeResult = await query(homeInfoQuery, [homeGuid])
-        if (legacyHomeResult && legacyHomeResult.length > 0) {
-          legacyHomeInfo = legacyHomeResult[0]
-          console.log(`✅ [RADIUS-API] Legacy home info retrieved from database`)
-        }
-      } catch (error: any) {
-        console.error(`❌ [RADIUS-API] Error fetching legacy home info:`, error)
-      }
+    // 9. Validate that we have required data from API calls
+    if (!homeInfo && !licenseData) {
+      console.error(`❌ [RADIUS-API] Both home info and license data API calls failed`)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to fetch home and license information from HomeFolio API",
+          details: "Both /admin/api/homes/:homeGUID/info and /admin/api/homes/:homeGUID/license-combined endpoints failed",
+        },
+        { status: 500 }
+      )
     }
 
-    // 10. Extract home information from API responses or fallback to legacy
-    const homeName = homeInfo?.homeName || licenseData?.homeName || legacyHomeInfo?.HomeName || "Unknown Home"
+    // 10. Extract home information from API responses
+    const homeName = homeInfo?.homeName || licenseData?.homeName || "Unknown Home"
     const address = homeInfo?.address || {
-      street: legacyHomeInfo?.Address1 || "",
-      street2: legacyHomeInfo?.Address2 || null,
-      city: legacyHomeInfo?.City || "",
-      state: legacyHomeInfo?.State || "",
-      zip: legacyHomeInfo?.Zip || "",
-      county: legacyHomeInfo?.County || null,
+      street: "",
+      street2: null,
+      city: "",
+      state: "",
+      zip: "",
+      county: null,
     }
-    const homePhone = homeInfo?.phone || legacyHomeInfo?.HomePhone || null
-    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || legacyHomeInfo?.CaregiverEmail || null
+    const homePhone = homeInfo?.phone || null
+    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || null
 
     // 11. Extract T3C credentials from license data (already provided by license-combined endpoint)
     const t3cCredentials = licenseData?.t3cCredentials || {
@@ -282,18 +250,18 @@ export async function GET(
       isAuthorized: false,
     }
 
-    // 12. Extract legacy license information (from API or fallback to database)
+    // 12. Extract legacy license information from API response
     const legacyLicenseInfo = licenseData?.legacyLicense || {
-      licenseType: legacyHomeInfo?.LicenseType || null,
-      respiteOnly: false, // Not available in legacy query
-      licenseEffectiveDate: legacyHomeInfo?.LicenseEffective || legacyHomeInfo?.LicenseLastUpdated || null,
-      licenseExpirationDate: legacyHomeInfo?.LicenseExpiration || null,
-      totalCapacity: legacyHomeInfo?.TotalCapacity || null,
-      fosterCareCapacity: null, // Not available in legacy query
+      licenseType: null,
+      respiteOnly: false,
+      licenseEffectiveDate: null,
+      licenseExpirationDate: null,
+      totalCapacity: null,
+      fosterCareCapacity: null,
       currentCensus: childrenInPlacement.length, // Use active placements as census
-      serviceLevelsApproved: extractServiceLevelsFromLegacy(legacyHomeInfo?.LegacyDFPSLevel),
+      serviceLevelsApproved: [],
       homeTypes: [],
-      originallyLicensed: legacyHomeInfo?.OriginallyLicensed || null,
+      originallyLicensed: null,
     }
 
     // 12. Prepare response data
@@ -313,8 +281,8 @@ export async function GET(
         phone: homePhone,
         email: homeEmail,
         caseManager: {
-          name: homeInfo?.caseManager?.name || legacyHomeInfo?.CaseManagerName || null,
-          email: homeInfo?.caseManager?.email || legacyHomeInfo?.CaseManagerEmail || null,
+          name: homeInfo?.caseManager?.name || null,
+          email: homeInfo?.caseManager?.email || null,
         },
         // Home Logistics (basic info for display)
         logistics: {
@@ -445,31 +413,6 @@ function safeJsonParse(jsonString: any): any {
     }
   }
   return jsonString
-}
-
-// Helper function to extract service levels from legacy DFPS level
-function extractServiceLevelsFromLegacy(legacyLevel: string | null | undefined): string[] {
-  if (!legacyLevel) return ["Basic"] // Default to Basic
-  
-  const levels: string[] = []
-  const levelLower = legacyLevel.toLowerCase()
-  
-  // Basic is always included
-  levels.push("Basic")
-  
-  if (levelLower === "moderate" || levelLower === "specialized" || levelLower === "intense") {
-    levels.push("Moderate")
-  }
-  
-  if (levelLower === "specialized" || levelLower === "intense") {
-    levels.push("Specialized")
-  }
-  
-  if (levelLower === "intense") {
-    levels.push("Intensive")
-  }
-  
-  return levels
 }
 
 // Helper function to calculate age from date of birth
