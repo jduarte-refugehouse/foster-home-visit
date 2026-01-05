@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { currentUser } from "@clerk/nextjs/server"
+import { getAuth } from "@clerk/backend"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,15 +11,18 @@ export const dynamic = "force-dynamic"
  * It's the ONLY place we use Clerk APIs after authentication - just to get the user ID.
  * After this, the app never uses Clerk APIs again.
  * 
+ * Uses getAuth() from @clerk/backend which works without middleware.
+ * 
  * Returns: { clerkUserId: string, email: string | null, name: string | null }
  */
 export async function GET(request: NextRequest) {
   try {
     // Read user from Clerk session cookie (server-side, secure)
     // This is the ONLY use of Clerk APIs after authentication
-    const user = await currentUser()
+    // Using getAuth() from @clerk/backend which doesn't require middleware
+    const authResult = await getAuth(request)
     
-    if (!user) {
+    if (!authResult.userId) {
       return NextResponse.json(
         {
           error: "Not authenticated",
@@ -29,13 +32,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Return user ID from originally authenticated session
-    // This will be stored client-side and sent in headers for all API calls
+    // Note: getAuth() only returns userId, not full user object
+    // The client should already have user info from Clerk client-side
+    // This endpoint just confirms the session is valid
     return NextResponse.json({
       success: true,
-      clerkUserId: user.id,
-      email: user.emailAddresses[0]?.emailAddress || null,
-      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      clerkUserId: authResult.userId,
+      email: null, // Client should provide this in headers
+      name: null,  // Client should provide this in headers
     })
   } catch (error) {
     console.error("❌ [AUTH] Error getting session user:", error)

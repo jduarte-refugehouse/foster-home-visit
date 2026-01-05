@@ -74,17 +74,26 @@ export async function POST(request: NextRequest) {
 
     if (useApiClient) {
       // Use Radius API client for non-admin microservices
-      const userResult = await radiusApiClient.getOrCreateUser({
-        clerkUserId,
-        email,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        microserviceCode: microserviceCode,
-      })
+      try {
+        console.log("🔍 [AUTH-TEST] Getting/creating user via API Hub:", { clerkUserId, email, microserviceCode })
+        const userResult = await radiusApiClient.getOrCreateUser({
+          clerkUserId,
+          email,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          microserviceCode: microserviceCode,
+        })
+        console.log("📥 [AUTH-TEST] API Hub response:", JSON.stringify({ 
+          found: userResult.found, 
+          created: userResult.created,
+          userId: userResult.user?.id,
+          hasRoles: userResult.roles?.length > 0,
+          hasPermissions: userResult.permissions?.length > 0,
+        }, null, 2))
 
-      if (!userResult.user) {
-        return NextResponse.json({ error: "Failed to create or retrieve user" }, { status: 500 })
-      }
+        if (!userResult.user) {
+          return NextResponse.json({ error: "Failed to create or retrieve user" }, { status: 500 })
+        }
 
       appUser = {
         id: userResult.user.id,
@@ -108,6 +117,20 @@ export async function POST(request: NextRequest) {
         permission_name: p.permissionName || p.permissionCode,
         app_name: p.appName || microserviceCode || "home-visits",
       }))
+      } catch (apiError) {
+        console.error("❌ [AUTH-TEST] Error getting/creating user via API Hub:", apiError)
+        console.error("❌ [AUTH-TEST] Error details:", {
+          message: apiError instanceof Error ? apiError.message : String(apiError),
+          stack: apiError instanceof Error ? apiError.stack : undefined,
+        })
+        return NextResponse.json(
+          {
+            error: "Failed to get or create user",
+            details: apiError instanceof Error ? apiError.message : "Unknown error",
+          },
+          { status: 500 }
+        )
+      }
     } else {
       // Direct database access for admin microservice
       // Check if user already exists

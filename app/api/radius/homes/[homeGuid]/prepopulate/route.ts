@@ -1,59 +1,49 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { validateApiKey } from "@/lib/api-auth"
 import { query } from "@refugehouse/shared-core/db"
-import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
-import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 /**
- * GET /api/homes/[homeGuid]/prepopulate
+ * GET /api/radius/homes/[homeGuid]/prepopulate
  * 
- * This endpoint queries multiple specialized tables for prepopulating visit forms.
+ * Proxy endpoint for fetching home prepopulation data from RadiusBifrost
+ * Requires API key authentication via x-api-key header
  * 
- * NOTE: Even though this is microservice-specific business logic, it still needs to go through
- * the API Hub because direct DB access is not available after static IP removal.
- * 
- * TODO: Create API Hub endpoint for home prepopulation data.
+ * Returns comprehensive data for prepopulating visit forms including:
+ * - Home/license information
+ * - Household members
+ * - Children in placement
+ * - Previous visit data
  */
-export async function GET(request: Request, { params }: { params: { homeGuid: string } }) {
-  try {
-    const useApiClient = shouldUseRadiusApiClient()
-    
-    if (useApiClient) {
-      // Use API client to fetch home prepopulation data
-      const { homeGuid } = params
-      try {
-        console.log(`🔍 [API] Fetching prepopulation data via API Hub for home: ${homeGuid}`)
-        const data = await radiusApiClient.getHomePrepopulationData(homeGuid)
-        console.log(`✅ [API] Prepopulation data received from API Hub`)
-        return NextResponse.json(data)
-      } catch (apiError: any) {
-        console.error(`❌ [API] Error fetching prepopulation data from API Hub:`, apiError)
-        console.error(`❌ [API] API error details:`, {
-          message: apiError?.message,
-          status: apiError?.status,
-          statusText: apiError?.statusText,
-          response: apiError?.response,
-          stack: apiError?.stack,
-        })
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Failed to fetch prepopulation data from API Hub",
-            details: apiError?.message || "Unknown error",
-            status: apiError?.status,
-          },
-          { status: apiError?.status || 500 }
-        )
-      }
-    }
-    
-    // Direct DB access for admin microservice
-    throwIfDirectDbNotAllowed("homes prepopulate endpoint")
-    const { homeGuid } = params
-    console.log(`📋 [API] Fetching pre-population data for home: ${homeGuid}`)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { homeGuid: string } }
+) {
+  const startTime = Date.now()
 
-    // 1. Get home/license info from syncLicenseCurrent
+  try {
+    // 1. Validate API key
+    const apiKeyRaw = request.headers.get("x-api-key")
+    const apiKey = apiKeyRaw?.trim() || null
+    const validation = await validateApiKey(apiKey)
+
+    if (!validation.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          details: validation.error || "Invalid API key",
+        },
+        { status: 401 }
+      )
+    }
+
+    const { homeGuid } = params
+    console.log(`📋 [RADIUS-API] Fetching pre-population data for home: ${homeGuid}`)
+
+    // 2. Get home/license info from syncLicenseCurrent
     const homeInfoQuery = `
       SELECT TOP 1
         lc.HomeName,
@@ -96,7 +86,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
 
     const home = homeInfo[0]
 
-    // 2. Get household members from syncCurrentFosterFacility
+    // 3. Get household members from syncCurrentFosterFacility
     const householdQuery = `
       SELECT
         PersonGUID,
@@ -120,7 +110,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
 
     const householdMembers = await query(householdQuery, [homeGuid])
 
-    // 3. Get children in placement from syncChildrenInPlacement
+    // 4. Get children in placement from syncChildrenInPlacement
     const childrenQuery = `
       SELECT
         ChildGUID,
@@ -144,8 +134,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
 
     const childrenInPlacement = await query(childrenQuery, [homeGuid])
 
-    // 4. Get previous visit data for carry-forward (most recent completed visit)
-    // Join with appointments to find visits for this home
+    // 5. Get previous visit data for carry-forward (most recent completed visit)
     const previousVisitQuery = `
       SELECT TOP 1
         vf.visit_form_id,
@@ -173,10 +162,10 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         previousVisit = previousVisitResult[0]
       }
     } catch (error) {
-      console.log("📋 [API] No previous visit data found (this is normal for first visits)")
+      console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 5. Prepare response data
+    // 6. Prepare response data
     const prepopulationData = {
       success: true,
       home: {
@@ -199,7 +188,7 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         license: {
           id: home.LicenseID,
           type: home.LicenseType,
-          effective: home.LicenseEffective || home.LicenseLastUpdated, // Use LicenseLastUpdated if LicenseEffective is null
+          effective: home.LicenseEffective || home.LicenseLastUpdated,
           expiration: home.LicenseExpiration,
           capacity: home.TotalCapacity,
           ageMin: home.AgeMin,
@@ -207,15 +196,12 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
           openBeds: home.OpenBeds,
           filledBeds: home.FilledBeds,
           originallyLicensed: home.OriginallyLicensed,
-          lastUpdated: home.LicenseLastUpdated || home.LicenseEffective, // LicenseLastUpdated and LicenseEffective are the same
+          lastUpdated: home.LicenseLastUpdated || home.LicenseEffective,
         },
         serviceLevels: (() => {
-          // Legacy DFPS levels: Basic > Moderate > Specialized > Intense
-          // If they have a higher level, they have all levels below it
           const levels: string[] = []
           const legacyLevel = home.LegacyDFPSLevel?.toLowerCase() || ''
           
-          // Basic is always included
           levels.push('basic')
           
           if (legacyLevel === 'moderate' || legacyLevel === 'specialized' || legacyLevel === 'intense') {
@@ -291,21 +277,28 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
       } : null,
     }
 
-    console.log(`✅ [API] Pre-population data prepared for ${home.HomeName}`)
+    const duration = Date.now() - startTime
+    console.log(`✅ [RADIUS-API] Pre-population data prepared for ${home.HomeName} in ${duration}ms`)
     console.log(`   - ${prepopulationData.household.providers.length} providers`)
     console.log(`   - ${prepopulationData.household.biologicalChildren.length} biological children`)
     console.log(`   - ${prepopulationData.placements.length} children in placement`)
     console.log(`   - Previous visit: ${previousVisit ? 'Found' : 'None'}`)
 
-    return NextResponse.json(prepopulationData)
-
+    return NextResponse.json({
+      ...prepopulationData,
+      timestamp: new Date().toISOString(),
+      duration_ms: duration,
+    })
   } catch (error: any) {
-    console.error("❌ [API] Error fetching pre-population data:", error)
+    const duration = Date.now() - startTime
+    console.error("❌ [RADIUS-API] Error fetching pre-population data:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch home data",
         details: error.message,
+        timestamp: new Date().toISOString(),
+        duration_ms: duration,
       },
       { status: 500 }
     )

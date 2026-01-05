@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,6 +10,57 @@ export const runtime = "nodejs"
 // GET - Fetch all settings or a specific setting
 export async function GET(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      // Use API client to fetch settings
+      const { searchParams } = new URL(request.url)
+      const key = searchParams.get("key")
+
+      try {
+        if (key) {
+          // Get specific setting
+          console.log(`🔍 [API] Fetching setting '${key}' via API Hub`)
+          const setting = await radiusApiClient.getSetting(key)
+          if (!setting) {
+            return NextResponse.json({ error: "Setting not found" }, { status: 404 })
+          }
+          console.log(`✅ [API] Setting '${key}' retrieved from API Hub`)
+          return NextResponse.json({
+            success: true,
+            setting,
+          })
+        } else {
+          // Get all settings
+          console.log(`🔍 [API] Fetching all settings via API Hub`)
+          const settings = await radiusApiClient.getAllSettings()
+          console.log(`✅ [API] Retrieved ${settings.length} settings from API Hub`)
+          return NextResponse.json({
+            success: true,
+            settings,
+          })
+        }
+      } catch (apiError: any) {
+        console.error(`❌ [API] Error fetching settings from API Hub:`, apiError)
+        console.error(`❌ [API] API error details:`, {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
+        })
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to fetch settings from API Hub",
+            details: apiError?.message || "Unknown error",
+            status: apiError?.status,
+          },
+          { status: apiError?.status || 500 }
+        )
+      }
+    }
+
     const { searchParams } = new URL(request.url)
     const key = searchParams.get("key")
 
@@ -29,6 +82,8 @@ export async function GET(request: NextRequest) {
         setting: result[0],
       })
     } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("settings GET endpoint")
       // Get all settings
       const result = await query(
         `SELECT ConfigKey, ConfigValue, Description, ModifiedDate, ModifiedBy 
@@ -58,6 +113,33 @@ export async function GET(request: NextRequest) {
 // PUT - Update a setting
 export async function PUT(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      // Use API client to update setting
+      const auth = getClerkUserIdFromRequest(request)
+      if (!auth.clerkUserId && !auth.email) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      const body = await request.json()
+      const { key, value, description } = body
+
+      if (!key) {
+        return NextResponse.json({ error: "Setting key is required" }, { status: 400 })
+      }
+
+      const modifiedBy = auth.email || auth.clerkUserId || "system"
+      const result = await radiusApiClient.updateSetting(key, value, description, modifiedBy)
+
+      return NextResponse.json({
+        success: true,
+        message: result.message || "Setting updated successfully",
+      })
+    }
+
+    // Direct DB access for admin microservice
+    throwIfDirectDbNotAllowed("settings PUT endpoint")
     const auth = getClerkUserIdFromRequest(request)
     if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

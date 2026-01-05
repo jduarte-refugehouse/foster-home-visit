@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { getMicroserviceCode, shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
@@ -254,14 +254,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (homeXref) {
-      const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
-
-      if (homeExists[0].count === 0) {
-        return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
-      }
-    }
-
     // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
     // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
     // We pass the string directly to SQL Server to avoid timezone conversion
@@ -318,41 +310,89 @@ export async function POST(request: NextRequest) {
 
     const useApiClient = shouldUseRadiusApiClient()
 
+    // Validate home exists if provided (using API client for non-admin microservices)
+    if (homeXref) {
+      if (useApiClient) {
+        // Use API client to validate home exists
+        try {
+          const home = await radiusApiClient.lookupHomeByXref(homeXref)
+          console.log(`✅ [API] Home validation passed: ${home.name} (${home.guid})`)
+        } catch (error: any) {
+          if (error?.status === 404 || error?.response?.status === 404) {
+            return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+          }
+          // If it's a different error, log it but don't fail the appointment creation
+          console.warn(`⚠️ [API] Error validating home (non-blocking):`, error)
+        }
+      } else {
+        // Direct DB access for admin microservice
+        throwIfDirectDbNotAllowed("appointments POST - home validation")
+        const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
+
+        if (homeExists[0].count === 0) {
+          return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        }
+      }
+    }
+
     if (useApiClient) {
       // Use API client to create appointment
-      const appointmentData = {
-        title,
-        description,
-        appointmentType,
-        startDateTime: startStr,
-        endDateTime: endStr,
-        homeXref,
-        locationAddress,
-        locationNotes,
-        assignedToUserId,
-        assignedToName,
-        assignedToRole,
-        priority,
-        isRecurring,
-        recurringPattern,
-        preparationNotes,
-        createdByName,
+      try {
+        const appointmentData = {
+          title,
+          description,
+          appointmentType,
+          startDateTime: startStr,
+          endDateTime: endStr,
+          homeXref,
+          locationAddress,
+          locationNotes,
+          assignedToUserId,
+          assignedToName,
+          assignedToRole,
+          priority,
+          isRecurring,
+          recurringPattern,
+          preparationNotes,
+          createdByName,
+        }
+
+        console.log(`📤 [API] Sending appointment data to API Hub:`, {
+          title,
+          appointmentType,
+          startDateTime: startStr,
+          endDateTime: endStr,
+          homeXref,
+          assignedToName,
+        })
+
+        const result = await radiusApiClient.createAppointment(appointmentData)
+        console.log(`✅ [API] Created appointment with ID: ${result.appointmentId} via API Hub`)
+
+        return NextResponse.json(
+          {
+            success: true,
+            appointmentId: result.appointmentId,
+            message: result.message || "Appointment created successfully",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 201 },
+        )
+      } catch (apiError: any) {
+        console.error("❌ [API] Error from API client when creating appointment:", apiError)
+        console.error("❌ [API] API error details:", {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
+        })
+        // Re-throw to be caught by outer catch block
+        throw apiError
       }
-
-      const result = await radiusApiClient.createAppointment(appointmentData)
-      console.log(`✅ [API] Created appointment with ID: ${result.appointmentId} via API Hub`)
-
-      return NextResponse.json(
-        {
-          success: true,
-          appointmentId: result.appointmentId,
-          message: result.message || "Appointment created successfully",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 201 },
-      )
     } else {
       // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments POST endpoint")
       const result = await query(
         `
         INSERT INTO appointments (
@@ -421,11 +461,26 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("❌ [API] Error creating appointment:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+      // Check if it's an API client error
+      status: (error as any)?.status,
+      statusText: (error as any)?.statusText,
+      response: (error as any)?.response,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to create appointment",
         details: error instanceof Error ? error.message : "Unknown error",
+        // Include API client error details if available
+        apiError: (error as any)?.status ? {
+          status: (error as any).status,
+          statusText: (error as any).statusText,
+          message: (error as any).response?.error || (error as any).message,
+        } : undefined,
       },
       { status: 500 },
     )
@@ -466,22 +521,56 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const useApiClient = shouldUseRadiusApiClient()
+    
     // Check if appointment exists
-    const existingAppointment = await query(
-      "SELECT appointment_id FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
-      [appointmentId],
-    )
+    if (useApiClient) {
+      // Use API client to check if appointment exists
+      try {
+        await radiusApiClient.getAppointment(appointmentId)
+        console.log(`✅ [API] Appointment validation passed: ${appointmentId}`)
+      } catch (error: any) {
+        if (error?.status === 404 || error?.response?.status === 404) {
+          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+        // Re-throw other errors
+        throw error
+      }
+    } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments PUT - appointment validation")
+      const existingAppointment = await query(
+        "SELECT appointment_id FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
+        [appointmentId],
+      )
 
-    if (existingAppointment.length === 0) {
-      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      if (existingAppointment.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
     }
 
     // Validate home exists if provided
     if (homeXref) {
-      const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
+      if (useApiClient) {
+        // Use API client to validate home exists
+        try {
+          const home = await radiusApiClient.lookupHomeByXref(homeXref)
+          console.log(`✅ [API] Home validation passed: ${home.name} (${home.guid})`)
+        } catch (error: any) {
+          if (error?.status === 404 || error?.response?.status === 404) {
+            return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+          }
+          // If it's a different error, log it but don't fail the appointment update
+          console.warn(`⚠️ [API] Error validating home (non-blocking):`, error)
+        }
+      } else {
+        // Direct DB access for admin microservice
+        throwIfDirectDbNotAllowed("appointments PUT - home validation")
+        const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
 
-      if (homeExists[0].count === 0) {
-        return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        if (homeExists[0].count === 0) {
+          return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        }
       }
     }
 
@@ -540,8 +629,6 @@ export async function PUT(request: NextRequest) {
       endDateTime: endStr,
     })
 
-    const useApiClient = shouldUseRadiusApiClient()
-
     if (useApiClient) {
       // Use API client to update appointment
       const updateData = {
@@ -572,6 +659,7 @@ export async function PUT(request: NextRequest) {
       })
     } else {
       // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments PUT endpoint")
       await query(
         `
         UPDATE appointments SET
