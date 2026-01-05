@@ -597,8 +597,6 @@ export async function PUT(request: NextRequest) {
       endDateTime: endStr,
     })
 
-    const useApiClient = shouldUseRadiusApiClient()
-
     if (useApiClient) {
       // Use API client to update appointment
       const updateData = {
