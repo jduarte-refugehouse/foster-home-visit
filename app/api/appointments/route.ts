@@ -317,10 +317,6 @@ export async function POST(request: NextRequest) {
     })
 
     const useApiClient = shouldUseRadiusApiClient()
-    
-    if (!useApiClient) {
-      throwIfDirectDbNotAllowed("appointments POST endpoint")
-    }
 
     if (useApiClient) {
       // Use API client to create appointment
@@ -379,6 +375,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments POST endpoint")
       const result = await query(
         `
         INSERT INTO appointments (
