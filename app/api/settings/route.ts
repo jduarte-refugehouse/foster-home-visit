@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
         setting: result[0],
       })
     } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("settings GET endpoint")
       // Get all settings
       const result = await query(
         `SELECT ConfigKey, ConfigValue, Description, ModifiedDate, ModifiedBy 

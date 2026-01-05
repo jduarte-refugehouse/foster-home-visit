@@ -25,6 +25,9 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
       const data = await radiusApiClient.getHomePrepopulationData(homeGuid)
       return NextResponse.json(data)
     }
+    
+    // Direct DB access for admin microservice
+    throwIfDirectDbNotAllowed("homes prepopulate endpoint")
     const { homeGuid } = params
     console.log(`📋 [API] Fetching pre-population data for home: ${homeGuid}`)
 
