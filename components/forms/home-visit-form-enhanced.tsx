@@ -635,7 +635,7 @@ const EnhancedHomeVisitForm = ({
 
     console.log("📋 [FORM] Pre-populating form with data:", prepopulationData)
 
-    const { home, household, placements, previousVisit } = prepopulationData
+    const { home, household, placements, previousVisit, license } = prepopulationData
 
     setFormData(prev => ({
       ...prev,
@@ -659,16 +659,21 @@ const EnhancedHomeVisitForm = ({
         })(),
         phone: home?.phone || "",
         email: home?.email || "",
-        // CRITICAL: License info NEVER carried forward - always fresh from DB
-        licenseNumber: home?.license?.id || "",
-        licenseType: home?.license?.type || "",
-        licenseEffective: home?.license?.effective ? (home.license.effective.split('T')[0] || home.license.effective) : "",
-        licenseExpiration: home?.license?.expiration ? home.license.expiration.split('T')[0] : "",
-        originallyLicensed: home?.license?.originallyLicensed || "",
-        totalCapacity: home?.license?.capacity || 0,
-        fosterCareCapacity: home?.license?.capacity || 0, // Using same value as default
-        currentCensus: home?.license?.filledBeds || 0,
-        serviceLevels: home?.serviceLevels || ['basic'], // Populate from API (Basic always included)
+        // CRITICAL: License info comes from license.legacyLicense, not home.license
+        licenseNumber: license?.legacyLicense?.licenseNumber || "",
+        licenseType: license?.legacyLicense?.licenseType || "",
+        licenseEffective: license?.legacyLicense?.licenseEffectiveDate 
+          ? (license.legacyLicense.licenseEffectiveDate.split('T')[0] || license.legacyLicense.licenseEffectiveDate)
+          : "",
+        licenseExpiration: license?.legacyLicense?.licenseExpirationDate 
+          ? (license.legacyLicense.licenseExpirationDate.split('T')[0] || license.legacyLicense.licenseExpirationDate)
+          : "",
+        originallyLicensed: license?.legacyLicense?.originallyLicensed || "",
+        totalCapacity: license?.legacyLicense?.totalCapacity || 0,
+        fosterCareCapacity: license?.legacyLicense?.fosterCareCapacity || 0,
+        currentCensus: license?.legacyLicense?.currentCensus || 0,
+        serviceLevels: license?.legacyLicense?.serviceLevelsApproved || ['basic'],
+        respiteOnly: license?.legacyLicense?.respiteOnly || false,
       },
       household: {
         ...prev.household,
