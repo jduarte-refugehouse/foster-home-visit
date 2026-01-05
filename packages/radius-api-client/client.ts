@@ -154,8 +154,13 @@ export const radiusApiClient = {
     const params = new URLSearchParams()
     params.append("xref", xref.toString())
 
-    const response = await apiRequest<{ guid: string; name: string; xref: number }>(`homes/lookup?${params.toString()}`)
-    return response
+    const response = await apiRequest<{ success: boolean; guid: string; name: string; xref: number; timestamp?: string; duration_ms?: number }>(`homes/lookup?${params.toString()}`)
+    // Extract only the fields we need (API Hub returns additional metadata)
+    return {
+      guid: response.guid,
+      name: response.name,
+      xref: response.xref,
+    }
   },
 
   /**
@@ -678,7 +683,9 @@ export const radiusApiClient = {
    * Get home prepopulation data for visit forms
    */
   async getHomePrepopulationData(homeGuid: string): Promise<any> {
-    return await apiRequest<any>(`homes/${homeGuid}/prepopulate`)
+    const response = await apiRequest<{ success: boolean; [key: string]: any }>(`homes/${homeGuid}/prepopulate`)
+    // Return the entire response (it contains home, household, placements, etc.)
+    return response
   },
 }
 
