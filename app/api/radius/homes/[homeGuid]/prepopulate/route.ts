@@ -232,8 +232,14 @@ export async function GET(
     // 9. Fallback: Get basic home info from database if HomeFolio APIs failed
     // This is allowed because this endpoint is in the admin service (has direct DB access)
     let fallbackHomeInfo: any = null
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:235',message:'Fallback check',data:{hasHomeInfo:!!homeInfo,hasLicenseData:!!licenseData,willUseFallback:(!homeInfo&&!licenseData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
     if (!homeInfo && !licenseData) {
       console.warn(`⚠️ [RADIUS-API] HomeFolio APIs failed, attempting database fallback for basic home info`)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:237',message:'Fallback triggered - querying database',data:{homeGuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+      // #endregion
       try {
         const fallbackQuery = `
           SELECT TOP 1
@@ -265,6 +271,13 @@ export async function GET(
             email: fallbackResult[0].CaregiverEmail || null,
           }
           console.log(`✅ [RADIUS-API] Retrieved fallback home info from database`)
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:254',message:'Fallback data retrieved',data:{homeName:fallbackHomeInfo.homeName,phone:fallbackHomeInfo.phone,email:fallbackHomeInfo.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
+        } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:267',message:'Fallback query returned no results',data:{homeGuid,resultCount:fallbackResult?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
         }
       } catch (fallbackError) {
         console.error(`❌ [RADIUS-API] Database fallback also failed:`, fallbackError)
@@ -272,6 +285,9 @@ export async function GET(
     }
 
     // 10. Extract home information from API responses or fallback
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:275',message:'Home data extraction - before fallback',data:{hasHomeInfo:!!homeInfo,homeInfoName:homeInfo?.homeName,hasLicenseData:!!licenseData,licenseDataName:licenseData?.homeName,hasFallback:!!fallbackHomeInfo,fallbackName:fallbackHomeInfo?.homeName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     const homeName = homeInfo?.homeName || licenseData?.homeName || fallbackHomeInfo?.homeName || "Unknown Home"
     const address = homeInfo?.address || fallbackHomeInfo?.address || {
       street: "",
@@ -283,6 +299,9 @@ export async function GET(
     }
     const homePhone = homeInfo?.phone || fallbackHomeInfo?.phone || null
     const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || fallbackHomeInfo?.email || null
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:285',message:'Home data extraction - final values',data:{homeName,homePhone,homeEmail,hasAddress:!!address,addressStreet:address?.street},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
 
     // 11. Extract T3C credentials from license data (already provided by license-combined endpoint)
     const t3cCredentials = licenseData?.t3cCredentials || {
@@ -292,6 +311,9 @@ export async function GET(
     }
 
     // 12. Extract legacy license information from API response
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:295',message:'License data extraction',data:{hasLicenseData:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
     const legacyLicenseInfo = licenseData?.legacyLicense || {
       licenseType: null,
       respiteOnly: false,
@@ -304,6 +326,9 @@ export async function GET(
       homeTypes: [],
       originallyLicensed: null,
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:306',message:'License data extraction - final legacyLicenseInfo',data:{licenseType:legacyLicenseInfo.licenseType,licenseEffectiveDate:legacyLicenseInfo.licenseEffectiveDate,totalCapacity:legacyLicenseInfo.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
 
     // 12. Prepare response data
     const prepopulationData = {
