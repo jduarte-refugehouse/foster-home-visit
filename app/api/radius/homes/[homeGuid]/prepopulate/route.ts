@@ -52,68 +52,55 @@ export async function GET(
     // Get admin service base URL (for internal API calls)
     const adminBaseUrl = process.env.ADMIN_SERVICE_URL || process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || "https://admin.test.refugehouse.app"
     
-    // Get auth token for admin service calls (if needed)
-    // Note: Since this is an internal API Hub endpoint, we may need to pass through auth
-    const authHeader = request.headers.get("authorization")
-
-    // 2. Get HomeFolio (contains home info, legacy license, T3C credentials)
-    let folio: any = null
-    let homeFolioError: string | null = null
+    // Get API key for admin service calls
+    const radiusApiKey = process.env.RADIUS_API_KEY || apiKey // Use the validated API key from request or env var
+    
+    // 2. Get Simplified Home Information
+    let homeInfo: any = null
     try {
-      const folioUrl = `${adminBaseUrl}/admin/api/home-management/home/${homeGuid}/folio`
-      console.log(`📋 [RADIUS-API] Fetching HomeFolio from: ${folioUrl}`)
+      const homeInfoUrl = `${adminBaseUrl}/admin/api/homes/${homeGuid}/info`
+      console.log(`📋 [RADIUS-API] Fetching home info from: ${homeInfoUrl}`)
       
-      const folioResponse = await fetch(folioUrl, {
+      const homeInfoResponse = await fetch(homeInfoUrl, {
         headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
+          "x-api-key": radiusApiKey,
           "Content-Type": "application/json",
         },
       })
 
-      if (folioResponse.ok) {
-        const folioData = await folioResponse.json()
-        folio = folioData.folio
-        console.log(`✅ [RADIUS-API] HomeFolio retrieved successfully`)
+      if (homeInfoResponse.ok) {
+        const homeInfoData = await homeInfoResponse.json()
+        homeInfo = homeInfoData.home
+        console.log(`✅ [RADIUS-API] Home info retrieved successfully`)
       } else {
-        homeFolioError = `HomeFolio API returned ${folioResponse.status}`
-        console.warn(`⚠️ [RADIUS-API] ${homeFolioError}`)
+        console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}`)
       }
     } catch (error: any) {
-      homeFolioError = error.message || "Failed to fetch HomeFolio"
-      console.error(`❌ [RADIUS-API] Error fetching HomeFolio:`, error)
+      console.error(`❌ [RADIUS-API] Error fetching home info:`, error)
     }
 
-    // 3. Get License Overview (legacy + T3C combined)
-    let licenseOverview: any = null
+    // 3. Get Combined License Information (PRIMARY ENDPOINT - contains legacy + T3C)
+    let licenseData: any = null
     try {
-      const licenseUrl = `${adminBaseUrl}/admin/license/homes/${homeGuid}/overview?unit=${unit}`
-      console.log(`📋 [RADIUS-API] Fetching license overview from: ${licenseUrl}`)
+      const licenseUrl = `${adminBaseUrl}/admin/api/homes/${homeGuid}/license-combined?unit=${unit}`
+      console.log(`📋 [RADIUS-API] Fetching combined license from: ${licenseUrl}`)
       
       const licenseResponse = await fetch(licenseUrl, {
         headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
+          "x-api-key": radiusApiKey,
           "Content-Type": "application/json",
         },
       })
 
       if (licenseResponse.ok) {
-        licenseOverview = await licenseResponse.json()
-        console.log(`✅ [RADIUS-API] License overview retrieved successfully`)
+        const licenseResponseData = await licenseResponse.json()
+        licenseData = licenseResponseData.license
+        console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
       } else {
-        console.warn(`⚠️ [RADIUS-API] License overview API returned ${licenseResponse.status}`)
+        console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}`)
       }
     } catch (error: any) {
-      console.error(`❌ [RADIUS-API] Error fetching license overview:`, error)
-    }
-
-    // 4. Analyze T3C Status from HomeFolio
-    const t3cStatus = folio?.data ? analyzeT3CStatus(folio.data) : {
-      hasT3C: false,
-      isAuthorized: false,
-      hasLCPAASignature: false,
-      hasT3CLeadSignature: false,
-      isFullyCompliant: false,
-      credential: null,
+      console.error(`❌ [RADIUS-API] Error fetching combined license:`, error)
     }
 
     // 5. Get household members from syncCurrentFosterFacility (fallback if not in HomeFolio)
@@ -230,24 +217,23 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Extract home information from HomeFolio or fallback to legacy
-    const homeData = folio?.data?.home || {}
-    const licenseData = folio?.data?.license || {}
-    const homeName = homeData.homeName || licenseOverview?.homeName || "Unknown Home"
-    const address = homeData.address || {
-      street: licenseOverview?.address1 || "",
-      street2: licenseOverview?.address2 || null,
-      city: licenseOverview?.city || "",
-      state: licenseOverview?.state || "",
-      zip: licenseOverview?.zip || "",
+    // 9. Extract home information from API responses
+    const homeName = homeInfo?.homeName || licenseData?.homeName || "Unknown Home"
+    const address = homeInfo?.address || {
+      street: "",
+      street2: null,
+      city: "",
+      state: "",
+      zip: "",
       county: null,
     }
 
-    // 10. Extract service levels from license data
-    const serviceLevels = extractServiceLevels(licenseData, t3cStatus)
-
-    // 11. Extract T3C service packages
-    const t3cServicePackages = extractT3CServicePackages(folio?.data?.addenda || [])
+    // 10. Extract T3C credentials from license data (already provided by license-combined endpoint)
+    const t3cCredentials = licenseData?.t3cCredentials || {
+      hasT3C: false,
+      isCompliant: false,
+      isAuthorized: false,
+    }
 
     // 12. Prepare response data
     const prepopulationData = {
@@ -284,55 +270,26 @@ export async function GET(
         },
       },
       license: {
-        // Legacy License Information
+        // Legacy License Information (from license-combined endpoint)
         legacyLicense: {
-          licenseType: determineLicenseType(licenseData, licenseOverview),
-          respiteOnly: !licenseData.foster,
-          licenseEffectiveDate: licenseOverview?.homeTypes?.[0]?.effectiveDt || licenseData.effectiveDate || null,
-          licenseExpirationDate: licenseOverview?.homeTypes?.[0]?.expirationDt || null,
-          totalCapacity: licenseData.totalCapacity || licenseOverview?.totalCapacity || null,
-          fosterCareCapacity: licenseData.placementCapacity || null,
-          currentCensus: childrenInPlacement.length, // Use active placements as census
-          serviceLevelsApproved: serviceLevels,
-          homeTypes: licenseOverview?.homeTypes || [],
-          originallyLicensed: licenseData.originallyLicensed || null,
+          licenseType: licenseData?.licenseType || null,
+          respiteOnly: licenseData?.respiteOnly || false,
+          licenseEffectiveDate: licenseData?.licenseEffectiveDate || null,
+          licenseExpirationDate: licenseData?.homeTypes?.[0]?.expirationDt || null,
+          totalCapacity: licenseData?.totalCapacity || null,
+          fosterCareCapacity: licenseData?.fosterCareCapacity || null,
+          currentCensus: licenseData?.currentCensus || childrenInPlacement.length, // Use active placements as fallback
+          serviceLevelsApproved: licenseData?.serviceLevelsApproved || [],
+          homeTypes: licenseData?.homeTypes || [],
+          originallyLicensed: null, // Not provided by license-combined endpoint
         },
-        // T3C Credentialing Information
-        t3cCredentials: t3cStatus.hasT3C ? {
-          hasT3C: true,
-          isCompliant: t3cStatus.isFullyCompliant,
-          isAuthorized: t3cStatus.isAuthorized,
-          credential: t3cStatus.credential,
-          status: t3cStatus.isFullyCompliant ? "Compliant" :
-                 t3cStatus.hasT3CLeadSignature ? "Pending LCPAA" :
-                 "Pending T3C Lead",
-          authorizations: {
-            lcpaa: {
-              authorized: t3cStatus.hasLCPAASignature,
-              authorizedBy: t3cStatus.lcpaaAuthorizedBy,
-              authorizedDate: t3cStatus.lcpaaAuthorizedDate,
-            },
-            t3cLead: {
-              authorized: t3cStatus.hasT3CLeadSignature,
-              authorizedBy: t3cStatus.t3cLeadAuthorizedBy,
-              authorizedDate: t3cStatus.t3cLeadAuthorizedDate,
-            },
-          },
-          servicePackages: t3cServicePackages,
-        } : {
-          hasT3C: false,
-          isCompliant: false,
-          isAuthorized: false,
-        },
-        // Combined License Status (for display)
-        licenseStatus: {
-          type: t3cStatus.hasT3C ? "T3C" : "Legacy",
-          effective: t3cStatus.hasT3C ?
-            (t3cStatus.isFullyCompliant ? "Active" : "Pending") :
-            "Active",
-          displayText: t3cStatus.hasT3C ?
-            `T3C ${t3cStatus.isFullyCompliant ? "Compliant" : "Pending"}` :
-            "Legacy License",
+        // T3C Credentialing Information (from license-combined endpoint)
+        t3cCredentials: t3cCredentials,
+        // Combined License Status (from license-combined endpoint)
+        licenseStatus: licenseData?.licenseStatus || {
+          type: "Legacy",
+          effective: "Active",
+          displayText: "Legacy License",
         },
       },
       household: {
@@ -400,7 +357,8 @@ export async function GET(
     console.log(`   - ${prepopulationData.household.biologicalChildren.length} biological children`)
     console.log(`   - ${prepopulationData.placements.length} children in placement`)
     console.log(`   - ${placementHistory.length} placement history records`)
-    console.log(`   - T3C Status: ${t3cStatus.hasT3C ? (t3cStatus.isFullyCompliant ? "Compliant" : "Pending") : "Not T3C"}`)
+    console.log(`   - T3C Status: ${t3cCredentials.hasT3C ? (t3cCredentials.isCompliant ? "Compliant" : "Pending") : "Not T3C"}`)
+    console.log(`   - License Type: ${prepopulationData.license.licenseStatus.type}`)
     console.log(`   - Previous visit: ${previousVisit ? "Found" : "None"}`)
 
     return NextResponse.json({
@@ -424,168 +382,6 @@ export async function GET(
   }
 }
 
-// Helper function to analyze T3C status from HomeFolio data
-function analyzeT3CStatus(folioData: any): {
-  hasT3C: boolean
-  isAuthorized: boolean
-  hasLCPAASignature: boolean
-  hasT3CLeadSignature: boolean
-  isFullyCompliant: boolean
-  credential: string | null
-  lcpaaAuthorizedBy: string | null
-  lcpaaAuthorizedDate: string | null
-  t3cLeadAuthorizedBy: string | null
-  t3cLeadAuthorizedDate: string | null
-} {
-  if (!folioData || !folioData.addenda) {
-    return {
-      hasT3C: false,
-      isAuthorized: false,
-      hasLCPAASignature: false,
-      hasT3CLeadSignature: false,
-      isFullyCompliant: false,
-      credential: null,
-      lcpaaAuthorizedBy: null,
-      lcpaaAuthorizedDate: null,
-      t3cLeadAuthorizedBy: null,
-      t3cLeadAuthorizedDate: null,
-    }
-  }
-
-  const addenda = Array.isArray(folioData.addenda) ? folioData.addenda : []
-  
-  // Find T3C credential addenda
-  const t3cAddenda = addenda.filter((a: any) =>
-    a.addendum_type === "T3C_CREDENTIAL_BASIC_FFH" ||
-    a.credential_awarded === "T3C_BASIC_FOSTER_FAMILY_HOME" ||
-    (a.credential_awarded && a.credential_awarded.startsWith("T3C_")) ||
-    (a.t3cBlueprintCredentials && a.t3cBlueprintCredentials.length > 0)
-  )
-
-  if (t3cAddenda.length === 0) {
-    return {
-      hasT3C: false,
-      isAuthorized: false,
-      hasLCPAASignature: false,
-      hasT3CLeadSignature: false,
-      isFullyCompliant: false,
-      credential: null,
-      lcpaaAuthorizedBy: null,
-      lcpaaAuthorizedDate: null,
-      t3cLeadAuthorizedBy: null,
-      t3cLeadAuthorizedDate: null,
-    }
-  }
-
-  // Check most recent T3C addendum
-  const latestT3C = t3cAddenda[t3cAddenda.length - 1]
-  const authorizations = latestT3C.authorizations || []
-
-  // Check for LCPAA/Program Director authorization
-  const lcpaaAuth = authorizations.find((auth: any) =>
-    auth.role === "LCPAA/Program Director" && auth.authorizedBy
-  )
-  const hasLCPAA = !!lcpaaAuth
-
-  // Check for T3C Transition Team Lead authorization
-  const t3cLeadAuth = authorizations.find((auth: any) =>
-    auth.role === "T3C Transition Team Lead" && auth.authorizedBy
-  )
-  const hasT3CLead = !!t3cLeadAuth
-
-  // Home is fully compliant when both required signatures are present
-  const isFullyCompliant = hasLCPAA && hasT3CLead
-
-  return {
-    hasT3C: true,
-    isAuthorized: hasT3CLead, // T3C Lead authorization = credential authorized
-    hasLCPAASignature: hasLCPAA,
-    hasT3CLeadSignature: hasT3CLead,
-    isFullyCompliant,
-    credential: latestT3C.credential_awarded || "T3C_BASIC_FOSTER_FAMILY_HOME",
-    lcpaaAuthorizedBy: lcpaaAuth?.authorizedBy || null,
-    lcpaaAuthorizedDate: lcpaaAuth?.authorizedDate || null,
-    t3cLeadAuthorizedBy: t3cLeadAuth?.authorizedBy || null,
-    t3cLeadAuthorizedDate: t3cLeadAuth?.authorizedDate || null,
-  }
-}
-
-// Helper function to determine license type
-function determineLicenseType(licenseData: any, licenseOverview: any): string {
-  if (licenseData.verification) return "Full"
-  if (licenseOverview?.licenseType) return licenseOverview.licenseType
-  return "Pending"
-}
-
-// Helper function to extract service levels
-function extractServiceLevels(licenseData: any, t3cStatus: any): string[] {
-  const levels: string[] = []
-
-  // Extract from legacy license data
-  if (licenseData?.levels) {
-    if (licenseData.levels.basic) levels.push("Basic")
-    if (licenseData.levels.moderate) levels.push("Moderate")
-    if (licenseData.levels.specialized) levels.push("Specialized")
-    if (licenseData.levels.intensive) levels.push("Intensive")
-    if (licenseData.levels.medicalNeeds) levels.push("Medical Needs")
-  }
-
-  // If no levels from license data, check T3C service packages
-  if (levels.length === 0 && t3cStatus.hasT3C) {
-    // T3C service packages might indicate service levels
-    // This is a fallback - actual service levels should come from license data
-    levels.push("Basic") // Default
-  }
-
-  return levels.length > 0 ? levels : ["Basic"] // Always include Basic as minimum
-}
-
-// Helper function to extract T3C service packages
-function extractT3CServicePackages(addenda: any[]): Array<{
-  packageId: string
-  packageName: string
-  status: string
-}> {
-  if (!addenda || !Array.isArray(addenda)) return []
-
-  const t3cAddenda = addenda.filter((a: any) =>
-    a.addendum_type === "T3C_CREDENTIAL_BASIC_FFH" ||
-    (a.credential_awarded && a.credential_awarded.startsWith("T3C_"))
-  )
-
-  const packages: Array<{ packageId: string; packageName: string; status: string }> = []
-
-  t3cAddenda.forEach((addendum: any) => {
-    if (addendum.servicePackages && Array.isArray(addendum.servicePackages)) {
-      packages.push(...addendum.servicePackages.map((pkg: any) => ({
-        packageId: pkg.packageId || pkg.id || "",
-        packageName: pkg.packageName || pkg.name || getPackageName(pkg.packageId || pkg.id || ""),
-        status: pkg.status || "ACTIVE",
-      })))
-    } else if (addendum.t3cBlueprintCredentials && Array.isArray(addendum.t3cBlueprintCredentials)) {
-      packages.push(...addendum.t3cBlueprintCredentials.map((id: string) => ({
-        packageId: id,
-        packageName: getPackageName(id),
-        status: "ACTIVE",
-      })))
-    }
-  })
-
-  return packages
-}
-
-// Helper function to get package name from package ID
-function getPackageName(packageId: string): string {
-  const packageNames: Record<string, string> = {
-    BASIC_FFH: "T3C Basic Foster Family Home Support Services",
-    MENTAL_BEHAVIORAL_HEALTH: "Mental & Behavioral Health Support Services",
-    IDD_AUTISM: "IDD/Autism Spectrum Disorder Support Services",
-    SUBSTANCE_USE: "Substance Use Support Services",
-    SHORT_TERM_ASSESSMENT: "Short-Term Assessment Support Services",
-    TREATMENT_FOSTER_CARE: "T3C Treatment Foster Family Care Support Services",
-  }
-  return packageNames[packageId] || packageId
-}
 
 // Helper function to safely parse JSON
 function safeJsonParse(jsonString: any): any {
