@@ -72,8 +72,14 @@ export async function GET(
         const homeInfoData = await homeInfoResponse.json()
         homeInfo = homeInfoData.home
         console.log(`✅ [RADIUS-API] Home info retrieved successfully`)
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:73',message:'HomeFolio home info API response',data:{hasHome:!!homeInfo,homeName:homeInfo?.homeName,homePhone:homeInfo?.phone,homeEmail:homeInfo?.primaryEmail||homeInfo?.email,hasAddress:!!homeInfo?.address},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
       } else {
         console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}`)
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:77',message:'HomeFolio home info API failed',data:{status:homeInfoResponse.status,statusText:homeInfoResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
       }
     } catch (error: any) {
       console.error(`❌ [RADIUS-API] Error fetching home info:`, error)
@@ -96,8 +102,14 @@ export async function GET(
         const licenseResponseData = await licenseResponse.json()
         licenseData = licenseResponseData.license
         console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:97',message:'HomeFolio license API response',data:{hasLicense:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,licenseExpirationDate:licenseData?.legacyLicense?.licenseExpirationDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
       } else {
         console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}`)
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:101',message:'HomeFolio license API failed',data:{status:licenseResponse.status,statusText:licenseResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
       }
     } catch (error: any) {
       console.error(`❌ [RADIUS-API] Error fetching combined license:`, error)
@@ -407,6 +419,10 @@ export async function GET(
     console.log(`   - T3C Status: ${t3cCredentials.hasT3C ? (t3cCredentials.isCompliant ? "Compliant" : "Pending") : "Not T3C"}`)
     console.log(`   - License Type: ${prepopulationData.license.licenseStatus.type}`)
     console.log(`   - Previous visit: ${previousVisit ? "Found" : "None"}`)
+
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:401',message:'API response structure',data:{homeName:prepopulationData.home?.name,homePhone:prepopulationData.home?.phone,homeEmail:prepopulationData.home?.email,hasLicense:!!prepopulationData.license,hasLegacyLicense:!!prepopulationData.license?.legacyLicense,licenseType:prepopulationData.license?.legacyLicense?.licenseType,licenseEffectiveDate:prepopulationData.license?.legacyLicense?.licenseEffectiveDate,placementHistoryCount:prepopulationData.placementHistory?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     return NextResponse.json({
       ...prepopulationData,

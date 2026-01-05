@@ -635,11 +635,14 @@ const EnhancedHomeVisitForm = ({
 
     console.log("📋 [FORM] Pre-populating form with data:", prepopulationData)
 
-    const { home, household, placements, previousVisit, license } = prepopulationData
+    const { home, household, placements, previousVisit, license, placementHistory } = prepopulationData
 
-    setFormData(prev => ({
-      ...prev,
-      fosterHome: {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/forms/home-visit-form-enhanced.tsx:638',message:'Form prepopulation - extracted values',data:{hasHome:!!home,homeName:home?.name,homePhone:home?.phone,homeEmail:home?.email,hasLicense:!!license,hasLegacyLicense:!!license?.legacyLicense,licenseType:license?.legacyLicense?.licenseType,licenseEffectiveDate:license?.legacyLicense?.licenseEffectiveDate,placementHistoryCount:placementHistory?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    setFormData(prev => {
+      const newFosterHome = {
         ...prev.fosterHome,
         familyName: home?.name || "",
         homeId: home?.guid || "",
@@ -674,41 +677,51 @@ const EnhancedHomeVisitForm = ({
         currentCensus: license?.legacyLicense?.currentCensus || 0,
         serviceLevels: license?.legacyLicense?.serviceLevelsApproved || ['basic'],
         respiteOnly: license?.legacyLicense?.respiteOnly || false,
-      },
-      household: {
-        ...prev.household,
-        providers: household?.providers?.map(p => ({
-          name: p.name,
-          age: p.age,
-          relationship: p.relationship,
-        })) || [],
-        biologicalChildren: household?.biologicalChildren?.map(c => ({
-          name: c.name,
-          age: c.age,
-        })) || [],
-        otherMembers: household?.otherHouseholdMembers?.map(m => ({
-          name: m.name,
-          age: m.age,
-          relationship: m.relationship,
-        })) || [],
-      },
-      placements: {
-        ...prev.placements,
-        children: placements?.map(child => ({
-          firstName: child.firstName,
-          lastName: child.lastName,
-          age: child.age,
-          dateOfBirth: child.dateOfBirth,
-          placementDate: child.placementDate,
-          contract: child.contract,
-          servicePackage: child.servicePackage,
-          nextCourtDate: child.nextCourtDate,
-          medicalCheckups: child.nextAnnualMedical,
-          dentalCheckups: child.nextDental,
-          safetyPlan: child.hasActiveSafetyPlan ? "Yes" : "No",
-        })) || [],
-      },
-    }))
+        placementHistory: placementHistory || [], // Map placement history from prepopulationData
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/forms/home-visit-form-enhanced.tsx:677',message:'Form prepopulation - values set in fosterHome',data:{familyName:newFosterHome.familyName,phone:newFosterHome.phone,email:newFosterHome.email,licenseType:newFosterHome.licenseType,licenseEffective:newFosterHome.licenseEffective,totalCapacity:newFosterHome.totalCapacity,placementHistoryCount:newFosterHome.placementHistory?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+
+      return {
+        ...prev,
+        fosterHome: newFosterHome,
+        household: {
+          ...prev.household,
+          providers: household?.providers?.map(p => ({
+            name: p.name,
+            age: p.age,
+            relationship: p.relationship,
+          })) || [],
+          biologicalChildren: household?.biologicalChildren?.map(c => ({
+            name: c.name,
+            age: c.age,
+          })) || [],
+          otherMembers: household?.otherHouseholdMembers?.map(m => ({
+            name: m.name,
+            age: m.age,
+            relationship: m.relationship,
+          })) || [],
+        },
+        placements: {
+          ...prev.placements,
+          children: placements?.map(child => ({
+            firstName: child.firstName,
+            lastName: child.lastName,
+            age: child.age,
+            dateOfBirth: child.dateOfBirth,
+            placementDate: child.placementDate,
+            contract: child.contract,
+            servicePackage: child.servicePackage,
+            nextCourtDate: child.nextCourtDate,
+            medicalCheckups: child.nextAnnualMedical,
+            dentalCheckups: child.nextDental,
+            safetyPlan: child.hasActiveSafetyPlan ? "Yes" : "No",
+          })) || [],
+        },
+      }
+    })
 
     console.log("✅ [FORM] Form pre-populated successfully")
   }, [prepopulationData])
