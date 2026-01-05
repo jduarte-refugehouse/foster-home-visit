@@ -598,10 +598,6 @@ export async function PUT(request: NextRequest) {
     })
 
     const useApiClient = shouldUseRadiusApiClient()
-    
-    if (!useApiClient) {
-      throwIfDirectDbNotAllowed("appointments PUT endpoint")
-    }
 
     if (useApiClient) {
       // Use API client to update appointment
@@ -633,6 +629,7 @@ export async function PUT(request: NextRequest) {
       })
     } else {
       // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments PUT endpoint")
       await query(
         `
         UPDATE appointments SET
