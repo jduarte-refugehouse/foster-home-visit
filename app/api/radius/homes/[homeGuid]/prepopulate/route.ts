@@ -71,9 +71,16 @@ export async function GET(
       if (homeInfoResponse.ok) {
         const homeInfoData = await homeInfoResponse.json()
         homeInfo = homeInfoData.home
-        console.log(`✅ [RADIUS-API] Home info retrieved successfully`)
+        // Check if we got useful data (not just an empty object)
+        const hasUsefulData = homeInfo && (homeInfo.homeName || homeInfo.name || homeInfo.phone || homeInfo.email)
+        if (!hasUsefulData) {
+          console.warn(`⚠️ [RADIUS-API] Home info API returned empty data`)
+          homeInfo = null // Treat empty data as failure
+        } else {
+          console.log(`✅ [RADIUS-API] Home info retrieved successfully`)
+        }
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:73',message:'HomeFolio home info API response',data:{hasHome:!!homeInfo,homeName:homeInfo?.homeName,homePhone:homeInfo?.phone,homeEmail:homeInfo?.primaryEmail||homeInfo?.email,hasAddress:!!homeInfo?.address},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:73',message:'HomeFolio home info API response',data:{hasHome:!!homeInfo,homeName:homeInfo?.homeName||homeInfo?.name,homePhone:homeInfo?.phone,homeEmail:homeInfo?.primaryEmail||homeInfo?.email,hasAddress:!!homeInfo?.address,hasUsefulData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
       } else {
         console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}`)
@@ -101,14 +108,26 @@ export async function GET(
       if (licenseResponse.ok) {
         const licenseResponseData = await licenseResponse.json()
         licenseData = licenseResponseData.license
-        console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
+        // Check if we got useful data (not just an empty object)
+        const hasUsefulData = licenseData && (
+          licenseData.legacyLicense?.licenseType || 
+          licenseData.legacyLicense?.licenseEffectiveDate ||
+          licenseData.legacyLicense?.totalCapacity ||
+          licenseData.licenseStatus?.type
+        )
+        if (!hasUsefulData) {
+          console.warn(`⚠️ [RADIUS-API] License API returned empty data`)
+          licenseData = null // Treat empty data as failure
+        } else {
+          console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
+        }
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:97',message:'HomeFolio license API response',data:{hasLicense:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,licenseExpirationDate:licenseData?.legacyLicense?.licenseExpirationDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:108',message:'HomeFolio license API response',data:{hasLicense:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,licenseExpirationDate:licenseData?.legacyLicense?.licenseExpirationDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity,hasUsefulData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
       } else {
         console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}`)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:101',message:'HomeFolio license API failed',data:{status:licenseResponse.status,statusText:licenseResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:120',message:'HomeFolio license API failed',data:{status:licenseResponse.status,statusText:licenseResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
       }
     } catch (error: any) {
@@ -182,6 +201,8 @@ export async function GET(
       const placementResponse = await fetch(placementHistoryUrl, {
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": radiusApiKey, // Include API key for server-to-server authentication
+          "x-internal-service": "admin-service", // Indicate this is an internal service call
         },
       })
 
@@ -229,13 +250,15 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Fallback: Get basic home info from database if HomeFolio APIs failed
+    // 9. Fallback: Get basic home and license info from database if HomeFolio APIs failed
     // This is allowed because this endpoint is in the admin service (has direct DB access)
     let fallbackHomeInfo: any = null
+    let fallbackLicenseInfo: any = null
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:235',message:'Fallback check',data:{hasHomeInfo:!!homeInfo,hasLicenseData:!!licenseData,willUseFallback:(!homeInfo&&!licenseData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:235',message:'Fallback check',data:{hasHomeInfo:!!homeInfo,hasLicenseData:!!licenseData,willUseFallback:(!homeInfo||!licenseData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
     // #endregion
-    if (!homeInfo && !licenseData) {
+    // Use fallback if EITHER API failed (not both) - we need both home and license data
+    if (!homeInfo || !licenseData) {
       console.warn(`⚠️ [RADIUS-API] HomeFolio APIs failed, attempting database fallback for basic home info`)
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:237',message:'Fallback triggered - querying database',data:{homeGuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
@@ -276,8 +299,50 @@ export async function GET(
           // #endregion
         } else {
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:267',message:'Fallback query returned no results',data:{homeGuid,resultCount:fallbackResult?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:287',message:'Fallback home query returned no results',data:{homeGuid,resultCount:fallbackResult?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
           // #endregion
+        }
+
+        // Also fetch license data from database if license API failed
+        if (!licenseData) {
+          try {
+            const licenseFallbackQuery = `
+              SELECT TOP 1
+                lc.LicenseType,
+                lc.LicenseEffective,
+                lc.LicenseExpiration,
+                lc.TotalCapacity,
+                lc.OpenBeds,
+                lc.FilledBeds,
+                lc.OriginallyLicensed,
+                lc.RespiteOnly,
+                lc.LegacyDFPSLevel
+              FROM syncLicenseCurrent lc
+              WHERE lc.FacilityGUID = @param0
+                AND lc.IsActive = 1
+            `
+            const licenseFallbackResult = await query(licenseFallbackQuery, [homeGuid])
+            if (licenseFallbackResult && licenseFallbackResult.length > 0) {
+              const lc = licenseFallbackResult[0]
+              fallbackLicenseInfo = {
+                licenseType: lc.LicenseType || null,
+                licenseEffectiveDate: lc.LicenseEffective ? new Date(lc.LicenseEffective).toISOString().split('T')[0] : null,
+                licenseExpirationDate: lc.LicenseExpiration ? new Date(lc.LicenseExpiration).toISOString().split('T')[0] : null,
+                totalCapacity: lc.TotalCapacity || null,
+                fosterCareCapacity: lc.TotalCapacity || null, // Use same as total capacity
+                currentCensus: lc.FilledBeds || 0,
+                originallyLicensed: lc.OriginallyLicensed ? new Date(lc.OriginallyLicensed).toISOString().split('T')[0] : null,
+                respiteOnly: lc.RespiteOnly || false,
+                serviceLevelsApproved: lc.LegacyDFPSLevel ? [lc.LegacyDFPSLevel] : [],
+              }
+              console.log(`✅ [RADIUS-API] Retrieved fallback license info from database`)
+              // #region agent log
+              fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:310',message:'Fallback license data retrieved',data:{licenseType:fallbackLicenseInfo.licenseType,licenseEffectiveDate:fallbackLicenseInfo.licenseEffectiveDate,totalCapacity:fallbackLicenseInfo.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+              // #endregion
+            }
+          } catch (licenseFallbackError) {
+            console.error(`❌ [RADIUS-API] License database fallback failed:`, licenseFallbackError)
+          }
         }
       } catch (fallbackError) {
         console.error(`❌ [RADIUS-API] Database fallback also failed:`, fallbackError)
@@ -310,11 +375,11 @@ export async function GET(
       isAuthorized: false,
     }
 
-    // 12. Extract legacy license information from API response
+    // 12. Extract legacy license information from API response or fallback
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:295',message:'License data extraction',data:{hasLicenseData:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:325',message:'License data extraction',data:{hasLicenseData:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,hasFallbackLicense:!!fallbackLicenseInfo,licenseType:licenseData?.legacyLicense?.licenseType||fallbackLicenseInfo?.licenseType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
     // #endregion
-    const legacyLicenseInfo = licenseData?.legacyLicense || {
+    const legacyLicenseInfo = licenseData?.legacyLicense || fallbackLicenseInfo || {
       licenseType: null,
       respiteOnly: false,
       licenseEffectiveDate: null,
