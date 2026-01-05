@@ -310,6 +310,31 @@ export async function POST(request: NextRequest) {
 
     const useApiClient = shouldUseRadiusApiClient()
 
+    // Validate home exists if provided (using API client for non-admin microservices)
+    if (homeXref) {
+      if (useApiClient) {
+        // Use API client to validate home exists
+        try {
+          const home = await radiusApiClient.lookupHomeByXref(homeXref)
+          console.log(`✅ [API] Home validation passed: ${home.name} (${home.guid})`)
+        } catch (error: any) {
+          if (error?.status === 404 || error?.response?.status === 404) {
+            return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+          }
+          // If it's a different error, log it but don't fail the appointment creation
+          console.warn(`⚠️ [API] Error validating home (non-blocking):`, error)
+        }
+      } else {
+        // Direct DB access for admin microservice
+        throwIfDirectDbNotAllowed("appointments POST - home validation")
+        const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
+
+        if (homeExists[0].count === 0) {
+          return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        }
+      }
+    }
+
     if (useApiClient) {
       // Use API client to create appointment
       try {
