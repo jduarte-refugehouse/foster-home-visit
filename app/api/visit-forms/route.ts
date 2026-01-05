@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { resolveUserIdentity, getActorFields } from "@/lib/identity-resolver"
-import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -246,17 +246,37 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔍 [API] Checking if appointment exists...")
-    // Check if appointment exists
-    const appointmentExists = await query(
-      "SELECT COUNT(*) as count FROM dbo.appointments WHERE appointment_id = @param0 AND is_deleted = 0",
-      [appointmentId],
-    )
+    
+    // Check if appointment exists (using API client for non-admin microservices)
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      // Use API client to check if appointment exists
+      try {
+        await radiusApiClient.getAppointment(appointmentId)
+        console.log("✅ [API] Appointment exists (verified via API Hub)")
+      } catch (error: any) {
+        if (error?.status === 404 || error?.response?.status === 404) {
+          console.error("❌ [API] Appointment not found:", appointmentId)
+          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+        // Re-throw other errors
+        throw error
+      }
+    } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("visit-forms POST - appointment validation")
+      const appointmentExists = await query(
+        "SELECT COUNT(*) as count FROM dbo.appointments WHERE appointment_id = @param0 AND is_deleted = 0",
+        [appointmentId],
+      )
 
-    if (appointmentExists[0].count === 0) {
-      console.error("❌ [API] Appointment not found:", appointmentId)
-      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      if (appointmentExists[0].count === 0) {
+        console.error("❌ [API] Appointment not found:", appointmentId)
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
+      console.log("✅ [API] Appointment exists")
     }
-    console.log("✅ [API] Appointment exists")
 
     // Resolve user identity for actor fields (dual-source pattern)
     let identity = null
@@ -289,21 +309,41 @@ export async function POST(request: NextRequest) {
         console.log("⚠️ [API] Skipping identity resolution for system/temp user")
       }
 
-      // Get appointment data to find home GUID
+      // Get appointment data to find home GUID (using API client for non-admin microservices)
       try {
-        appointmentData = await query(
-          `SELECT a.home_xref, h.HomeName, h.Guid as HomeGUID
-           FROM appointments a
-           LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
-           WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
-          [appointmentId]
-        )
+        if (useApiClient) {
+          // Use API client to get appointment data
+          const appointment = await radiusApiClient.getAppointment(appointmentId)
+          homeXref = appointment.home_xref || null
+          homeName = appointment.home_info?.name || null
+          // Get home GUID from home lookup if we have xref
+          if (homeXref) {
+            try {
+              const home = await radiusApiClient.lookupHomeByXref(homeXref)
+              homeGuid = home.guid
+              homeName = home.name
+            } catch (homeError) {
+              console.warn("⚠️ [API] Failed to lookup home GUID (non-blocking):", homeError)
+            }
+          }
+          console.log("✅ [API] Appointment data retrieved via API Hub:", { homeXref, homeName, homeGuid })
+        } else {
+          // Direct DB access for admin microservice
+          throwIfDirectDbNotAllowed("visit-forms POST - appointment data retrieval")
+          appointmentData = await query(
+            `SELECT a.home_xref, h.HomeName, h.Guid as HomeGUID
+             FROM appointments a
+             LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+             WHERE a.appointment_id = @param0 AND a.is_deleted = 0`,
+            [appointmentId]
+          )
 
-        if (appointmentData.length > 0) {
-          homeXref = appointmentData[0].home_xref
-          homeName = appointmentData[0].HomeName
-          homeGuid = appointmentData[0].HomeGUID
-          console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+          if (appointmentData.length > 0) {
+            homeXref = appointmentData[0].home_xref
+            homeName = appointmentData[0].HomeName
+            homeGuid = appointmentData[0].HomeGUID
+            console.log("✅ [API] Appointment data retrieved:", { homeXref, homeName, homeGuid })
+          }
         }
       } catch (appointmentError) {
         console.error("⚠️ [API] Failed to fetch appointment data (non-blocking):", appointmentError)
@@ -315,7 +355,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ContinuumMark via API Hub (if not admin service)
-    const useApiClient = shouldUseRadiusApiClient()
+    // Note: useApiClient is already defined above
     let continuumMarkId: string | null = null
 
     if (useApiClient && identity && actorFields && homeGuid && status !== "draft") {
