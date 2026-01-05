@@ -254,14 +254,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (homeXref) {
-      const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
-
-      if (homeExists[0].count === 0) {
-        return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
-      }
-    }
-
     // IMPORTANT: SQL Server DATETIME2 has no timezone, so we store the literal datetime value
     // The datetime string comes in format "YYYY-MM-DDTHH:mm:ss" (no timezone)
     // We pass the string directly to SQL Server to avoid timezone conversion
