@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
-import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { getMicroserviceCode, shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 import { addNoCacheHeaders, DYNAMIC_ROUTE_CONFIG } from "@/lib/api-cache-utils"
 
@@ -317,6 +317,10 @@ export async function POST(request: NextRequest) {
     })
 
     const useApiClient = shouldUseRadiusApiClient()
+    
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("appointments POST endpoint")
+    }
 
     if (useApiClient) {
       // Use API client to create appointment
@@ -466,22 +470,56 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const useApiClient = shouldUseRadiusApiClient()
+    
     // Check if appointment exists
-    const existingAppointment = await query(
-      "SELECT appointment_id FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
-      [appointmentId],
-    )
+    if (useApiClient) {
+      // Use API client to check if appointment exists
+      try {
+        await radiusApiClient.getAppointment(appointmentId)
+        console.log(`✅ [API] Appointment validation passed: ${appointmentId}`)
+      } catch (error: any) {
+        if (error?.status === 404 || error?.response?.status === 404) {
+          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+        // Re-throw other errors
+        throw error
+      }
+    } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("appointments PUT - appointment validation")
+      const existingAppointment = await query(
+        "SELECT appointment_id FROM appointments WHERE appointment_id = @param0 AND is_deleted = 0",
+        [appointmentId],
+      )
 
-    if (existingAppointment.length === 0) {
-      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      if (existingAppointment.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
     }
 
     // Validate home exists if provided
     if (homeXref) {
-      const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
+      if (useApiClient) {
+        // Use API client to validate home exists
+        try {
+          const home = await radiusApiClient.lookupHomeByXref(homeXref)
+          console.log(`✅ [API] Home validation passed: ${home.name} (${home.guid})`)
+        } catch (error: any) {
+          if (error?.status === 404 || error?.response?.status === 404) {
+            return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+          }
+          // If it's a different error, log it but don't fail the appointment update
+          console.warn(`⚠️ [API] Error validating home (non-blocking):`, error)
+        }
+      } else {
+        // Direct DB access for admin microservice
+        throwIfDirectDbNotAllowed("appointments PUT - home validation")
+        const homeExists = await query("SELECT COUNT(*) as count FROM SyncActiveHomes WHERE Xref = @param0", [homeXref])
 
-      if (homeExists[0].count === 0) {
-        return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        if (homeExists[0].count === 0) {
+          return NextResponse.json({ error: "Selected home does not exist" }, { status: 400 })
+        }
       }
     }
 
@@ -541,6 +579,10 @@ export async function PUT(request: NextRequest) {
     })
 
     const useApiClient = shouldUseRadiusApiClient()
+    
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("appointments PUT endpoint")
+    }
 
     if (useApiClient) {
       // Use API client to update appointment
