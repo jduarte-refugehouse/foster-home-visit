@@ -17,23 +17,47 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(request.url)
       const key = searchParams.get("key")
 
-      if (key) {
-        // Get specific setting
-        const setting = await radiusApiClient.getSetting(key)
-        if (!setting) {
-          return NextResponse.json({ error: "Setting not found" }, { status: 404 })
+      try {
+        if (key) {
+          // Get specific setting
+          console.log(`🔍 [API] Fetching setting '${key}' via API Hub`)
+          const setting = await radiusApiClient.getSetting(key)
+          if (!setting) {
+            return NextResponse.json({ error: "Setting not found" }, { status: 404 })
+          }
+          console.log(`✅ [API] Setting '${key}' retrieved from API Hub`)
+          return NextResponse.json({
+            success: true,
+            setting,
+          })
+        } else {
+          // Get all settings
+          console.log(`🔍 [API] Fetching all settings via API Hub`)
+          const settings = await radiusApiClient.getAllSettings()
+          console.log(`✅ [API] Retrieved ${settings.length} settings from API Hub`)
+          return NextResponse.json({
+            success: true,
+            settings,
+          })
         }
-        return NextResponse.json({
-          success: true,
-          setting,
+      } catch (apiError: any) {
+        console.error(`❌ [API] Error fetching settings from API Hub:`, apiError)
+        console.error(`❌ [API] API error details:`, {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
         })
-      } else {
-        // Get all settings
-        const settings = await radiusApiClient.getAllSettings()
-        return NextResponse.json({
-          success: true,
-          settings,
-        })
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to fetch settings from API Hub",
+            details: apiError?.message || "Unknown error",
+            status: apiError?.status,
+          },
+          { status: apiError?.status || 500 }
+        )
       }
     }
 

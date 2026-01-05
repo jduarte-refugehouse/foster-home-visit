@@ -22,8 +22,30 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
     if (useApiClient) {
       // Use API client to fetch home prepopulation data
       const { homeGuid } = params
-      const data = await radiusApiClient.getHomePrepopulationData(homeGuid)
-      return NextResponse.json(data)
+      try {
+        console.log(`🔍 [API] Fetching prepopulation data via API Hub for home: ${homeGuid}`)
+        const data = await radiusApiClient.getHomePrepopulationData(homeGuid)
+        console.log(`✅ [API] Prepopulation data received from API Hub`)
+        return NextResponse.json(data)
+      } catch (apiError: any) {
+        console.error(`❌ [API] Error fetching prepopulation data from API Hub:`, apiError)
+        console.error(`❌ [API] API error details:`, {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
+        })
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to fetch prepopulation data from API Hub",
+            details: apiError?.message || "Unknown error",
+            status: apiError?.status,
+          },
+          { status: apiError?.status || 500 }
+        )
+      }
     }
     
     // Direct DB access for admin microservice
