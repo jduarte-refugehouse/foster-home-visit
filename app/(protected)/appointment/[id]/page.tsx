@@ -186,13 +186,18 @@ export default function AppointmentDetailPage() {
       // Fetch home GUID if we have home_xref
       if (data.appointment?.home_xref && !homeGuid) {
         try {
+          console.log(`🔍 [APPT] Looking up home GUID for xref: ${data.appointment.home_xref}`)
           const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${data.appointment.home_xref}`)
           if (homeLookupResponse.ok) {
             const homeLookupData = await homeLookupResponse.json()
+            console.log(`✅ [APPT] Home GUID retrieved: ${homeLookupData.guid}`)
             setHomeGuid(homeLookupData.guid)
+          } else {
+            const lookupError = await homeLookupResponse.json().catch(() => ({ error: "Unknown error" }))
+            console.error(`❌ [APPT] Failed to lookup home GUID:`, homeLookupResponse.status, lookupError)
           }
         } catch (error) {
-          console.error("Error fetching home GUID:", error)
+          console.error("❌ [APPT] Error fetching home GUID:", error)
         }
       }
     } catch (error) {
@@ -1263,19 +1268,37 @@ export default function AppointmentDetailPage() {
       // 3. Get home GUID and prepopulation data
       const homeXref = appointment?.home_xref
       if (homeXref) {
-        const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
-        if (homeLookupResponse.ok) {
-          const homeLookupData = await homeLookupResponse.json()
-          const homeGuid = homeLookupData.guid
-          
-          if (homeGuid) {
-            const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
-            if (prepopResponse.ok) {
-              const prepopData = await prepopResponse.json()
-              setPrepopulationData(prepopData)
+        try {
+          console.log(`🔍 [FORM] Looking up home GUID for xref: ${homeXref}`)
+          const homeLookupResponse = await fetch(`/api/homes/lookup?xref=${homeXref}`)
+          if (homeLookupResponse.ok) {
+            const homeLookupData = await homeLookupResponse.json()
+            const homeGuid = homeLookupData.guid
+            console.log(`✅ [FORM] Home GUID retrieved: ${homeGuid}`)
+            
+            if (homeGuid) {
+              console.log(`🔍 [FORM] Fetching prepopulation data for home: ${homeGuid}`)
+              const prepopResponse = await fetch(`/api/homes/${homeGuid}/prepopulate`)
+              if (prepopResponse.ok) {
+                const prepopData = await prepopResponse.json()
+                console.log(`✅ [FORM] Prepopulation data loaded:`, prepopData)
+                setPrepopulationData(prepopData)
+              } else {
+                const prepopError = await prepopResponse.json().catch(() => ({ error: "Unknown error" }))
+                console.error(`❌ [FORM] Failed to fetch prepopulation data:`, prepopResponse.status, prepopError)
+              }
+            } else {
+              console.warn(`⚠️ [FORM] Home GUID is null for xref: ${homeXref}`)
             }
+          } else {
+            const lookupError = await homeLookupResponse.json().catch(() => ({ error: "Unknown error" }))
+            console.error(`❌ [FORM] Failed to lookup home GUID:`, homeLookupResponse.status, lookupError)
           }
+        } catch (lookupError) {
+          console.error(`❌ [FORM] Error during home lookup/prepopulation:`, lookupError)
         }
+      } else {
+        console.warn(`⚠️ [FORM] No home_xref found in appointment`)
       }
     } catch (error) {
       console.error("❌ [FORM] Error fetching form data:", error)
