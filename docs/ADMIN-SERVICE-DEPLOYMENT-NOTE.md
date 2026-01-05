@@ -2,9 +2,15 @@
 
 ## Issue
 
-The visit service is getting 500 errors when calling:
-- `/api/radius/settings?key=mileage_rate`
-- `/api/radius/homes/[homeGuid]/prepopulate`
+**Current Problem:** Users can SAVE visit forms but cannot LOAD prepopulation data.
+
+The visit service is getting 404/500 errors when calling:
+- `/api/radius/settings?key=mileage_rate` - Needed for mileage rate and other settings
+- `/api/radius/homes/[homeGuid]/prepopulate` - **CRITICAL**: Needed to load home data, household members, children in placement, and previous visit data into the form
+
+**Why saving works but loading doesn't:**
+- ✅ **SAVE works** - Saving doesn't require prepopulation data, users can manually enter data
+- ❌ **LOAD fails** - Loading requires prepopulation data to populate form fields with home information
 
 These endpoints exist in the visit service codebase but **must be deployed to the admin service** for them to work.
 
@@ -54,9 +60,10 @@ Copy these files from the visit service to the admin service:
 
 ## Current Status
 
-- ✅ Endpoints created in visit service codebase
+- ✅ Endpoints created in visit service codebase (`app/api/radius/` directory)
 - ❌ Endpoints NOT yet deployed to admin service
-- ❌ Visit service calls failing with 500 errors
+- ❌ Visit service calls failing with 404/500 errors
+- ⚠️ **Users can save forms but cannot load prepopulation data**
 
 ## Next Steps
 
