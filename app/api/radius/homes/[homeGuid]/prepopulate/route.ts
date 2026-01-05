@@ -217,22 +217,83 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Extract home information from API responses
-    const homeName = homeInfo?.homeName || licenseData?.homeName || "Unknown Home"
-    const address = homeInfo?.address || {
-      street: "",
-      street2: null,
-      city: "",
-      state: "",
-      zip: "",
-      county: null,
+    // 9. Fallback to legacy database queries if API calls failed
+    let legacyHomeInfo: any = null
+    if (!homeInfo || !licenseData) {
+      console.log(`📋 [RADIUS-API] API calls failed, falling back to legacy database queries`)
+      try {
+        const homeInfoQuery = `
+          SELECT TOP 1
+            lc.HomeName,
+            lc.Address1,
+            lc.Address2,
+            lc.City,
+            lc.State,
+            lc.Zip,
+            lc.County,
+            lc.CaseManagerName,
+            lc.CaseManagerEmail,
+            lc.LicenseID,
+            lc.LicenseEffective,
+            lc.LicenseExpiration,
+            lc.LicenseType,
+            lc.TotalCapacity,
+            lc.AgeMin,
+            lc.AgeMax,
+            lc.OpenBeds,
+            lc.FilledBeds,
+            lc.LegacyDFPSLevel,
+            lc.OriginallyLicensed,
+            lc.LicenseLastUpdated,
+            ah.HomePhone,
+            ah.CaregiverEmail
+          FROM syncLicenseCurrent lc
+          LEFT JOIN syncActiveHomes ah ON lc.FacilityGUID = ah.Guid
+          WHERE lc.FacilityGUID = @param0
+            AND lc.IsActive = 1
+        `
+        const legacyHomeResult = await query(homeInfoQuery, [homeGuid])
+        if (legacyHomeResult && legacyHomeResult.length > 0) {
+          legacyHomeInfo = legacyHomeResult[0]
+          console.log(`✅ [RADIUS-API] Legacy home info retrieved from database`)
+        }
+      } catch (error: any) {
+        console.error(`❌ [RADIUS-API] Error fetching legacy home info:`, error)
+      }
     }
 
-    // 10. Extract T3C credentials from license data (already provided by license-combined endpoint)
+    // 10. Extract home information from API responses or fallback to legacy
+    const homeName = homeInfo?.homeName || licenseData?.homeName || legacyHomeInfo?.HomeName || "Unknown Home"
+    const address = homeInfo?.address || {
+      street: legacyHomeInfo?.Address1 || "",
+      street2: legacyHomeInfo?.Address2 || null,
+      city: legacyHomeInfo?.City || "",
+      state: legacyHomeInfo?.State || "",
+      zip: legacyHomeInfo?.Zip || "",
+      county: legacyHomeInfo?.County || null,
+    }
+    const homePhone = homeInfo?.phone || legacyHomeInfo?.HomePhone || null
+    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || legacyHomeInfo?.CaregiverEmail || null
+
+    // 11. Extract T3C credentials from license data (already provided by license-combined endpoint)
     const t3cCredentials = licenseData?.t3cCredentials || {
       hasT3C: false,
       isCompliant: false,
       isAuthorized: false,
+    }
+
+    // 12. Extract legacy license information (from API or fallback to database)
+    const legacyLicenseInfo = licenseData?.legacyLicense || {
+      licenseType: legacyHomeInfo?.LicenseType || null,
+      respiteOnly: false, // Not available in legacy query
+      licenseEffectiveDate: legacyHomeInfo?.LicenseEffective || legacyHomeInfo?.LicenseLastUpdated || null,
+      licenseExpirationDate: legacyHomeInfo?.LicenseExpiration || null,
+      totalCapacity: legacyHomeInfo?.TotalCapacity || null,
+      fosterCareCapacity: null, // Not available in legacy query
+      currentCensus: childrenInPlacement.length, // Use active placements as census
+      serviceLevelsApproved: extractServiceLevelsFromLegacy(legacyHomeInfo?.LegacyDFPSLevel),
+      homeTypes: [],
+      originallyLicensed: legacyHomeInfo?.OriginallyLicensed || null,
     }
 
     // 12. Prepare response data
@@ -249,11 +310,11 @@ export async function GET(
           zip: address.zip || "",
           county: address.county || null,
         },
-        phone: homeData.phone || licenseOverview?.phone || null,
-        email: homeData.primaryEmail || homeData.email || null,
+        phone: homePhone,
+        email: homeEmail,
         caseManager: {
-          name: homeData.caseManager?.name || null,
-          email: homeData.caseManager?.email || null,
+          name: homeInfo?.caseManager?.name || legacyHomeInfo?.CaseManagerName || null,
+          email: homeInfo?.caseManager?.email || legacyHomeInfo?.CaseManagerEmail || null,
         },
         // Home Logistics (basic info for display)
         logistics: {
@@ -265,24 +326,13 @@ export async function GET(
             address.state,
             address.zip,
           ].filter(Boolean).join(", "),
-          phone: homeData.phone || licenseOverview?.phone || null,
-          email: homeData.primaryEmail || homeData.email || null,
+          phone: homePhone,
+          email: homeEmail,
         },
       },
       license: {
-        // Legacy License Information (from license-combined endpoint)
-        legacyLicense: {
-          licenseType: licenseData?.licenseType || null,
-          respiteOnly: licenseData?.respiteOnly || false,
-          licenseEffectiveDate: licenseData?.licenseEffectiveDate || null,
-          licenseExpirationDate: licenseData?.homeTypes?.[0]?.expirationDt || null,
-          totalCapacity: licenseData?.totalCapacity || null,
-          fosterCareCapacity: licenseData?.fosterCareCapacity || null,
-          currentCensus: licenseData?.currentCensus || childrenInPlacement.length, // Use active placements as fallback
-          serviceLevelsApproved: licenseData?.serviceLevelsApproved || [],
-          homeTypes: licenseData?.homeTypes || [],
-          originallyLicensed: null, // Not provided by license-combined endpoint
-        },
+        // Legacy License Information (from license-combined endpoint or fallback to database)
+        legacyLicense: licenseData?.legacyLicense || legacyLicenseInfo,
         // T3C Credentialing Information (from license-combined endpoint)
         t3cCredentials: t3cCredentials,
         // Combined License Status (from license-combined endpoint)
@@ -395,6 +445,31 @@ function safeJsonParse(jsonString: any): any {
     }
   }
   return jsonString
+}
+
+// Helper function to extract service levels from legacy DFPS level
+function extractServiceLevelsFromLegacy(legacyLevel: string | null | undefined): string[] {
+  if (!legacyLevel) return ["Basic"] // Default to Basic
+  
+  const levels: string[] = []
+  const levelLower = legacyLevel.toLowerCase()
+  
+  // Basic is always included
+  levels.push("Basic")
+  
+  if (levelLower === "moderate" || levelLower === "specialized" || levelLower === "intense") {
+    levels.push("Moderate")
+  }
+  
+  if (levelLower === "specialized" || levelLower === "intense") {
+    levels.push("Specialized")
+  }
+  
+  if (levelLower === "intense") {
+    levels.push("Intensive")
+  }
+  
+  return levels
 }
 
 // Helper function to calculate age from date of birth
