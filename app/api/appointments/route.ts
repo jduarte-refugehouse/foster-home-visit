@@ -444,11 +444,26 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("❌ [API] Error creating appointment:", error)
+    console.error("❌ [API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+      // Check if it's an API client error
+      status: (error as any)?.status,
+      statusText: (error as any)?.statusText,
+      response: (error as any)?.response,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to create appointment",
         details: error instanceof Error ? error.message : "Unknown error",
+        // Include API client error details if available
+        apiError: (error as any)?.status ? {
+          status: (error as any).status,
+          statusText: (error as any).statusText,
+          message: (error as any).response?.error || (error as any).message,
+        } : undefined,
       },
       { status: 500 },
     )
