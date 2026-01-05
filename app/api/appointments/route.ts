@@ -324,37 +324,59 @@ export async function POST(request: NextRequest) {
 
     if (useApiClient) {
       // Use API client to create appointment
-      const appointmentData = {
-        title,
-        description,
-        appointmentType,
-        startDateTime: startStr,
-        endDateTime: endStr,
-        homeXref,
-        locationAddress,
-        locationNotes,
-        assignedToUserId,
-        assignedToName,
-        assignedToRole,
-        priority,
-        isRecurring,
-        recurringPattern,
-        preparationNotes,
-        createdByName,
+      try {
+        const appointmentData = {
+          title,
+          description,
+          appointmentType,
+          startDateTime: startStr,
+          endDateTime: endStr,
+          homeXref,
+          locationAddress,
+          locationNotes,
+          assignedToUserId,
+          assignedToName,
+          assignedToRole,
+          priority,
+          isRecurring,
+          recurringPattern,
+          preparationNotes,
+          createdByName,
+        }
+
+        console.log(`📤 [API] Sending appointment data to API Hub:`, {
+          title,
+          appointmentType,
+          startDateTime: startStr,
+          endDateTime: endStr,
+          homeXref,
+          assignedToName,
+        })
+
+        const result = await radiusApiClient.createAppointment(appointmentData)
+        console.log(`✅ [API] Created appointment with ID: ${result.appointmentId} via API Hub`)
+
+        return NextResponse.json(
+          {
+            success: true,
+            appointmentId: result.appointmentId,
+            message: result.message || "Appointment created successfully",
+            timestamp: new Date().toISOString(),
+          },
+          { status: 201 },
+        )
+      } catch (apiError: any) {
+        console.error("❌ [API] Error from API client when creating appointment:", apiError)
+        console.error("❌ [API] API error details:", {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
+        })
+        // Re-throw to be caught by outer catch block
+        throw apiError
       }
-
-      const result = await radiusApiClient.createAppointment(appointmentData)
-      console.log(`✅ [API] Created appointment with ID: ${result.appointmentId} via API Hub`)
-
-      return NextResponse.json(
-        {
-          success: true,
-          appointmentId: result.appointmentId,
-          message: result.message || "Appointment created successfully",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 201 },
-      )
     } else {
       // Direct DB access for admin microservice
       const result = await query(
