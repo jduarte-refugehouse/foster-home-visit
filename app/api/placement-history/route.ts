@@ -18,8 +18,16 @@ const ALLOWED_ORIGINS = [
 /**
  * Check if the request origin is allowed
  * Checks both Origin and Referer headers for better coverage
+ * Also allows server-to-server calls from admin service (via API key or internal header)
  */
 function isOriginAllowed(request: NextRequest): boolean {
+  // Allow server-to-server calls from admin service (indicated by API key or internal header)
+  const apiKey = request.headers.get("x-api-key")
+  const isInternalCall = request.headers.get("x-internal-service") === "admin-service"
+  if (apiKey || isInternalCall) {
+    return true // Allow API-key authenticated server-to-server calls
+  }
+
   const origin = request.headers.get("origin")
   const referer = request.headers.get("referer")
   
@@ -45,7 +53,7 @@ function isOriginAllowed(request: NextRequest): boolean {
     }
   }
   
-  // If no origin/referer headers, deny (could be a direct API call)
+  // If no origin/referer headers and no API key, deny
   return false
 }
 
