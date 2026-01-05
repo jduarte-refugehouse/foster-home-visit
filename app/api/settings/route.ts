@@ -13,17 +13,28 @@ export async function GET(request: NextRequest) {
     const useApiClient = shouldUseRadiusApiClient()
     
     if (useApiClient) {
-      throwIfDirectDbNotAllowed("settings endpoint")
-      // TODO: Create API Hub endpoint for settings
-      // For now, return error indicating migration needed
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Settings endpoint not yet migrated to API Hub",
-          details: "This endpoint needs to be migrated to use the API Hub. Please contact the development team.",
-        },
-        { status: 501 }, // 501 Not Implemented
-      )
+      // Use API client to fetch settings
+      const { searchParams } = new URL(request.url)
+      const key = searchParams.get("key")
+
+      if (key) {
+        // Get specific setting
+        const setting = await radiusApiClient.getSetting(key)
+        if (!setting) {
+          return NextResponse.json({ error: "Setting not found" }, { status: 404 })
+        }
+        return NextResponse.json({
+          success: true,
+          setting,
+        })
+      } else {
+        // Get all settings
+        const settings = await radiusApiClient.getAllSettings()
+        return NextResponse.json({
+          success: true,
+          settings,
+        })
+      }
     }
 
     const { searchParams } = new URL(request.url)
@@ -79,16 +90,26 @@ export async function PUT(request: NextRequest) {
     const useApiClient = shouldUseRadiusApiClient()
     
     if (useApiClient) {
-      throwIfDirectDbNotAllowed("settings endpoint")
-      // TODO: Create API Hub endpoint for settings
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Settings endpoint not yet migrated to API Hub",
-          details: "This endpoint needs to be migrated to use the API Hub. Please contact the development team.",
-        },
-        { status: 501 }, // 501 Not Implemented
-      )
+      // Use API client to update setting
+      const auth = getClerkUserIdFromRequest(request)
+      if (!auth.clerkUserId && !auth.email) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      const body = await request.json()
+      const { key, value, description } = body
+
+      if (!key) {
+        return NextResponse.json({ error: "Setting key is required" }, { status: 400 })
+      }
+
+      const modifiedBy = auth.email || auth.clerkUserId || "system"
+      const result = await radiusApiClient.updateSetting(key, value, description, modifiedBy)
+
+      return NextResponse.json({
+        success: true,
+        message: result.message || "Setting updated successfully",
+      })
     }
 
     const auth = getClerkUserIdFromRequest(request)

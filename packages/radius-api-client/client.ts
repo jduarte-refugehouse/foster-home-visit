@@ -637,5 +637,48 @@ export const radiusApiClient = {
       }),
     })
   },
+
+  // ============================================
+  // Settings Methods
+  // ============================================
+
+  /**
+   * Get a specific setting by key
+   */
+  async getSetting(key: string): Promise<any> {
+    const params = new URLSearchParams()
+    params.append("key", key)
+    const response = await apiRequest<any>(`settings?${params.toString()}`)
+    return response.setting
+  },
+
+  /**
+   * Get all settings
+   */
+  async getAllSettings(): Promise<any[]> {
+    const response = await apiRequest<{ settings: any[] }>("settings")
+    return response.settings || []
+  },
+
+  /**
+   * Update a setting
+   */
+  async updateSetting(key: string, value: string, description?: string, modifiedBy?: string): Promise<{ success: boolean; message: string }> {
+    return await apiRequest<{ success: boolean; message: string }>("settings", {
+      method: "PUT",
+      body: JSON.stringify({ key, value, description, modifiedBy }),
+    })
+  },
+
+  // ============================================
+  // Home Prepopulation Methods
+  // ============================================
+
+  /**
+   * Get home prepopulation data for visit forms
+   */
+  async getHomePrepopulationData(homeGuid: string): Promise<any> {
+    return await apiRequest<any>(`homes/${homeGuid}/prepopulate`)
+  },
 }
 
