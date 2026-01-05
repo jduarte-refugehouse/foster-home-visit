@@ -217,22 +217,51 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Validate that we have required data from API calls
+    // 9. Fallback: Get basic home info from database if HomeFolio APIs failed
+    // This is allowed because this endpoint is in the admin service (has direct DB access)
+    let fallbackHomeInfo: any = null
     if (!homeInfo && !licenseData) {
-      console.error(`❌ [RADIUS-API] Both home info and license data API calls failed`)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to fetch home and license information from HomeFolio API",
-          details: "Both /admin/api/homes/:homeGUID/info and /admin/api/homes/:homeGUID/license-combined endpoints failed",
-        },
-        { status: 500 }
-      )
+      console.warn(`⚠️ [RADIUS-API] HomeFolio APIs failed, attempting database fallback for basic home info`)
+      try {
+        const fallbackQuery = `
+          SELECT TOP 1
+            h.HomeName,
+            h.Address1,
+            h.Address2,
+            h.City,
+            h.State,
+            h.Zip,
+            h.County,
+            h.HomePhone,
+            h.CaregiverEmail
+          FROM SyncActiveHomes h
+          WHERE h.Guid = @param0
+        `
+        const fallbackResult = await query(fallbackQuery, [homeGuid])
+        if (fallbackResult && fallbackResult.length > 0) {
+          fallbackHomeInfo = {
+            homeName: fallbackResult[0].HomeName,
+            address: {
+              street: fallbackResult[0].Address1 || "",
+              street2: fallbackResult[0].Address2 || null,
+              city: fallbackResult[0].City || "",
+              state: fallbackResult[0].State || "",
+              zip: fallbackResult[0].Zip || "",
+              county: fallbackResult[0].County || null,
+            },
+            phone: fallbackResult[0].HomePhone || null,
+            email: fallbackResult[0].CaregiverEmail || null,
+          }
+          console.log(`✅ [RADIUS-API] Retrieved fallback home info from database`)
+        }
+      } catch (fallbackError) {
+        console.error(`❌ [RADIUS-API] Database fallback also failed:`, fallbackError)
+      }
     }
 
-    // 10. Extract home information from API responses
-    const homeName = homeInfo?.homeName || licenseData?.homeName || "Unknown Home"
-    const address = homeInfo?.address || {
+    // 10. Extract home information from API responses or fallback
+    const homeName = homeInfo?.homeName || licenseData?.homeName || fallbackHomeInfo?.homeName || "Unknown Home"
+    const address = homeInfo?.address || fallbackHomeInfo?.address || {
       street: "",
       street2: null,
       city: "",
@@ -240,8 +269,8 @@ export async function GET(
       zip: "",
       county: null,
     }
-    const homePhone = homeInfo?.phone || null
-    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || null
+    const homePhone = homeInfo?.phone || fallbackHomeInfo?.phone || null
+    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || fallbackHomeInfo?.email || null
 
     // 11. Extract T3C credentials from license data (already provided by license-combined endpoint)
     const t3cCredentials = licenseData?.t3cCredentials || {

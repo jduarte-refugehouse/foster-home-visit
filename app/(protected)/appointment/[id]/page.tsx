@@ -32,7 +32,8 @@ import {
   Trash2,
   Send,
   Image,
-  X
+  X,
+  RefreshCw
 } from "lucide-react"
 import { SidebarTrigger } from "@refugehouse/shared-core/components/ui/sidebar"
 import { Separator } from "@refugehouse/shared-core/components/ui/separator"
@@ -2533,15 +2534,55 @@ export default function AppointmentDetailPage() {
                 </CardContent>
               </Card>
             ) : appointmentData && appointment ? (
-              <EnhancedHomeVisitForm
-                appointmentId={appointmentId}
-                appointmentData={appointmentData}
-                prepopulationData={prepopulationData}
-                existingFormData={existingFormData}
-                onSave={handleSaveForm}
-                onSubmit={handleSubmitForm}
-                onCompleteVisit={handleVisitFormCompleted}
-              />
+              <div className="relative">
+                {/* Refresh Prepopulation Data Button */}
+                <div className="absolute top-4 right-4 z-10">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        setFormDataLoading(true)
+                        toast({
+                          title: "Refreshing...",
+                          description: "Reloading prepopulation data from database",
+                        })
+                        // Clear existing prepopulation data to force reload
+                        setPrepopulationData(null)
+                        // Re-fetch form data (which includes prepopulation)
+                        await fetchFormData()
+                        toast({
+                          title: "Refreshed",
+                          description: "Prepopulation data has been reloaded",
+                        })
+                      } catch (error) {
+                        console.error("Error refreshing prepopulation data:", error)
+                        toast({
+                          title: "Error",
+                          description: "Failed to refresh prepopulation data",
+                          variant: "destructive",
+                        })
+                      } finally {
+                        setFormDataLoading(false)
+                      }
+                    }}
+                    disabled={formDataLoading}
+                    className="h-8 px-3 text-sm"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1.5 ${formDataLoading ? "animate-spin" : ""}`} />
+                    Refresh Data
+                  </Button>
+                </div>
+                <EnhancedHomeVisitForm
+                  appointmentId={appointmentId}
+                  appointmentData={appointmentData}
+                  prepopulationData={prepopulationData}
+                  existingFormData={existingFormData}
+                  onSave={handleSaveForm}
+                  onSubmit={handleSubmitForm}
+                  onCompleteVisit={handleVisitFormCompleted}
+                />
+              </div>
             ) : appointment ? (
               <Card className="rounded-xl shadow-sm">
                 <CardContent className="p-12 text-center">
