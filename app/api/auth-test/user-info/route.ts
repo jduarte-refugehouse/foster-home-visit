@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
           microserviceCode: microserviceCode,
         })
         console.log("📥 [AUTH-TEST] API Hub response:", JSON.stringify({ 
-          found: userResult.found, 
-          created: userResult.created,
+          found: (userResult as any).found ?? undefined,
+          isNewUser: (userResult as any).isNewUser ?? undefined,
           userId: userResult.user?.id,
           hasRoles: userResult.roles?.length > 0,
           hasPermissions: userResult.permissions?.length > 0,
@@ -95,27 +95,28 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Failed to create or retrieve user" }, { status: 500 })
         }
 
+      // API returns snake_case, map to expected format
       appUser = {
         id: userResult.user.id,
-        clerk_user_id: userResult.user.clerkUserId,
+        clerk_user_id: userResult.user.clerk_user_id,
         email: userResult.user.email,
-        first_name: userResult.user.firstName || "",
-        last_name: userResult.user.lastName || "",
-        is_active: userResult.user.isActive ?? true,
-        created_at: userResult.user.createdAt ? new Date(userResult.user.createdAt) : new Date(),
-        updated_at: userResult.user.updatedAt ? new Date(userResult.user.updatedAt) : new Date(),
+        first_name: userResult.user.first_name || "",
+        last_name: userResult.user.last_name || "",
+        is_active: userResult.user.is_active ?? true,
+        created_at: userResult.user.created_at ? new Date(userResult.user.created_at) : new Date(),
+        updated_at: userResult.user.updated_at ? new Date(userResult.user.updated_at) : new Date(),
       }
 
-      // Map roles and permissions from API response
-      userRoles = userResult.roles.map((r) => ({
-        role_name: r.roleName,
-        app_name: r.appName || microserviceCode || "home-visits",
+      // Map roles and permissions from API response (API returns snake_case)
+      userRoles = (userResult.roles || []).map((r: any) => ({
+        role_name: r.role_name,
+        app_name: r.microservice_name || microserviceCode || "home-visits",
       }))
 
-      userPermissions = userResult.permissions.map((p) => ({
-        permission_code: p.permissionCode,
-        permission_name: p.permissionName || p.permissionCode,
-        app_name: p.appName || microserviceCode || "home-visits",
+      userPermissions = (userResult.permissions || []).map((p: any) => ({
+        permission_code: p.permission_code,
+        permission_name: p.permission_name || p.permission_code,
+        app_name: p.microservice_name || microserviceCode || "home-visits",
       }))
       } catch (apiError) {
         console.error("❌ [AUTH-TEST] Error getting/creating user via API Hub:", apiError)
