@@ -55,11 +55,23 @@ async function apiRequest<T>(
 
   const url = `${API_BASE_URL}/api/radius/${endpoint}`
   
+  // Log the request details
+  console.log(`🌐 [API-CLIENT] ==========================================`)
+  console.log(`🌐 [API-CLIENT] Making API Hub Request`)
+  console.log(`🌐 [API-CLIENT] ------------------------------------------`)
+  console.log(`🌐 [API-CLIENT] Endpoint: ${endpoint}`)
+  console.log(`🌐 [API-CLIENT] API Base URL: ${API_BASE_URL}`)
+  console.log(`🌐 [API-CLIENT] Full URL: ${url}`)
+  console.log(`🌐 [API-CLIENT] Method: ${options?.method || "GET"}`)
+  console.log(`🌐 [API-CLIENT] Has API Key: ${API_KEY ? "Yes (length: " + API_KEY.length + ")" : "NO - THIS WILL FAIL"}`)
+  console.log(`🌐 [API-CLIENT] Headers: x-api-key: [${API_KEY ? "PRESENT" : "MISSING"}]`)
+  
   // Create an AbortController for timeout handling
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
   
   try {
+    const requestStartTime = Date.now()
     const response = await fetch(url, {
       ...options,
       signal: controller.signal, // Add abort signal
@@ -71,6 +83,11 @@ async function apiRequest<T>(
         ...options?.headers,
       },
     })
+    
+    const requestDuration = Date.now() - requestStartTime
+    console.log(`🌐 [API-CLIENT] Response received in ${requestDuration}ms`)
+    console.log(`🌐 [API-CLIENT] Status: ${response.status} ${response.statusText}`)
+    console.log(`🌐 [API-CLIENT] Response Headers:`, Object.fromEntries(response.headers.entries()))
 
     clearTimeout(timeoutId) // Clear timeout if request completes
 
@@ -96,8 +113,15 @@ async function apiRequest<T>(
     const errorMessage = `API request failed: ${response.statusText}. ${errorData.error || ""} ${errorData.details || ""}`
     
     // Log detailed error information for debugging
+    console.error(`❌ [API-CLIENT] ==========================================`)
+    console.error(`❌ [API-CLIENT] API REQUEST FAILED`)
+    console.error(`❌ [API-CLIENT] ------------------------------------------`)
+    console.error(`❌ [API-CLIENT] Full URL: ${url}`)
+    console.error(`❌ [API-CLIENT] Status: ${response.status} ${response.statusText}`)
+    console.error(`❌ [API-CLIENT] Response Body:`, responseText)
+    console.error(`❌ [API-CLIENT] Parsed Error Data:`, errorData)
     const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview"
-    console.error("❌ [RADIUS-API-CLIENT] Request failed:", {
+    console.error("❌ [API-CLIENT] Request failed:", {
       status: response.status,
       statusText: response.statusText,
       url,
