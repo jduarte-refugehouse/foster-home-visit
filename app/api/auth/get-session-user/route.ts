@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
+import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic"
  * It's the ONLY place we use Clerk APIs after authentication - just to get the user ID.
  * After this, the app never uses Clerk APIs again.
  * 
- * Uses auth() from @clerk/nextjs/server which works in API routes without middleware.
+ * Uses currentUser() from @clerk/nextjs/server which reads from session cookies.
  * 
  * Returns: { clerkUserId: string, email: string | null, name: string | null }
  */
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
   try {
     // Read user from Clerk session cookie (server-side, secure)
     // This is the ONLY use of Clerk APIs after authentication
-    // Using auth() from @clerk/nextjs/server which works in API routes
-    const { userId } = auth()
+    // Using currentUser() which reads from session cookies (works without middleware)
+    const user = await currentUser()
     
-    if (!userId) {
+    if (!user) {
       return NextResponse.json(
         {
           error: "Not authenticated",
@@ -32,14 +32,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Note: auth() only returns userId, not full user object
-    // The client should already have user info from Clerk client-side
-    // This endpoint just confirms the session is valid
+    // Return user info from Clerk session
     return NextResponse.json({
       success: true,
-      clerkUserId: userId,
-      email: null, // Client should provide this in headers
-      name: null,  // Client should provide this in headers
+      clerkUserId: user.id,
+      email: user.emailAddresses[0]?.emailAddress || null,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
     })
   } catch (error) {
     console.error("❌ [AUTH] Error getting session user:", error)
