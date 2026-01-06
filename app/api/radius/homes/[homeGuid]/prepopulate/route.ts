@@ -30,9 +30,18 @@ export async function GET(
     // 1. Validate API key
     const apiKeyRaw = request.headers.get("x-api-key")
     const apiKey = apiKeyRaw?.trim() || null
+    
+    console.log(`🔐 [ADMIN-SERVICE] ==========================================`)
+    console.log(`🔐 [ADMIN-SERVICE] Prepopulation Endpoint Called`)
+    console.log(`🔐 [ADMIN-SERVICE] ------------------------------------------`)
+    console.log(`🔐 [ADMIN-SERVICE] Request URL: ${request.url}`)
+    console.log(`🔐 [ADMIN-SERVICE] Has API Key: ${apiKey ? "Yes (length: " + apiKey.length + ")" : "NO"}`)
+    console.log(`🔐 [ADMIN-SERVICE] API Key (first 10 chars): ${apiKey ? apiKey.substring(0, 10) + "..." : "MISSING"}`)
+    
     const validation = await validateApiKey(apiKey)
 
     if (!validation.valid) {
+      console.error(`❌ [ADMIN-SERVICE] API Key validation failed:`, validation.error)
       return NextResponse.json(
         {
           success: false,
@@ -47,7 +56,9 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const unit = searchParams.get("unit") || "DAL" // Default to DAL if not specified
 
-    console.log(`📋 [RADIUS-API] Fetching pre-population data for home: ${homeGuid}, unit: ${unit}`)
+    console.log(`📋 [ADMIN-SERVICE] Home GUID: ${homeGuid}`)
+    console.log(`📋 [ADMIN-SERVICE] Unit: ${unit}`)
+    console.log(`📋 [ADMIN-SERVICE] Starting database queries...`)
 
     // 2. Get Home Information directly from database (this endpoint is in admin service - direct DB access allowed)
     let homeInfo: any = null
@@ -465,12 +476,23 @@ export async function GET(
     })
   } catch (error: any) {
     const duration = Date.now() - startTime
-    console.error("❌ [RADIUS-API] Error fetching pre-population data:", error)
+    console.error(`❌ [ADMIN-SERVICE] ==========================================`)
+    console.error(`❌ [ADMIN-SERVICE] ERROR in prepopulation endpoint`)
+    console.error(`❌ [ADMIN-SERVICE] ------------------------------------------`)
+    console.error(`❌ [ADMIN-SERVICE] Home GUID: ${params?.homeGuid || "UNKNOWN"}`)
+    console.error(`❌ [ADMIN-SERVICE] Error Type: ${error?.constructor?.name || typeof error}`)
+    console.error(`❌ [ADMIN-SERVICE] Error Message: ${error?.message || "No message"}`)
+    console.error(`❌ [ADMIN-SERVICE] Error Stack:`, error?.stack || "No stack trace")
+    console.error(`❌ [ADMIN-SERVICE] Full Error:`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+    console.error(`❌ [ADMIN-SERVICE] Duration: ${duration}ms`)
+    
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch home data",
-        details: error.message,
+        details: error?.message || "Unknown error",
+        errorType: error?.constructor?.name || typeof error,
+        homeGuid: params?.homeGuid || "UNKNOWN",
         timestamp: new Date().toISOString(),
         duration_ms: duration,
       },
