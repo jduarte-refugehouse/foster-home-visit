@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -17,8 +16,8 @@ export const dynamic = "force-dynamic"
 export async function GET(request: Request, { params }: { params: { homeGuid: string } }) {
   const { homeGuid } = params
   
-  // ENFORCE: Visit service MUST use API client - no direct DB access
-  throwIfDirectDbNotAllowed("homes prepopulate endpoint")
+  // NOTE: This endpoint does NOT use direct database access - it only uses the API client
+  // The throwIfDirectDbNotAllowed check is not needed here since we never call query() directly
   
   // Log the request details
   const apiHubUrl = process.env.RADIUS_API_HUB_URL || "https://admin.refugehouse.app"
@@ -57,6 +56,10 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
     const errorMessage = apiError?.message || "Unknown error"
     const errorStatus = apiError?.status || 500
     
+    // Extract response data if available for more context
+    const responseData = apiError?.responseData || {}
+    const responseText = apiError?.responseText || ""
+    
     return NextResponse.json(
       {
         success: false,
@@ -68,6 +71,20 @@ export async function GET(request: Request, { params }: { params: { homeGuid: st
         endpoint: apiEndpoint,
         errorType: apiError?.constructor?.name || typeof apiError,
         message: "This endpoint requires API Hub access. Database fallback is not available in the visit service.",
+        // Include response data for debugging
+        apiResponse: responseData,
+        rawResponse: responseText ? responseText.substring(0, 500) : undefined, // First 500 chars
+        troubleshooting: {
+          step: "Visit service called API Hub",
+          calledEndpoint: apiEndpoint,
+          usingGuid: homeGuid,
+          apiKeyPresent: !!process.env.RADIUS_API_KEY,
+          suggestion: errorStatus === 401 
+            ? "Check that RADIUS_API_KEY is configured in Vercel environment variables"
+            : errorStatus === 404 
+            ? "The admin service endpoint may not be deployed yet"
+            : "Check admin service logs for more details",
+        },
       },
       { status: errorStatus }
     )
