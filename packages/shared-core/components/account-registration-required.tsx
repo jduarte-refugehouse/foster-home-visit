@@ -60,14 +60,26 @@ export function AccountRegistrationRequired({
         return null
       })
       .then(data => {
-        if (data && data.success && data.email) {
-          setUserEmail(data.email)
+        if (data && data.success) {
+          // Use email from response, or fallback to clerkUserId if email is null
+          const email = data.email || (data.clerkUserId ? `${data.clerkUserId}@clerk.user` : "User")
+          setUserEmail(email)
+          // Store in sessionStorage for future use
+          sessionStorage.setItem("session_user", JSON.stringify({
+            email: email,
+            clerkUserId: data.clerkUserId,
+            name: data.name,
+          }))
           // Clear auth failed flag if we successfully authenticated
           sessionStorage.removeItem("auth_failed")
+        } else if (data && data.error) {
+          console.warn("⚠️ [ACCOUNT-REG] Session user API returned error:", data.error)
+          // Don't update userEmail - keep default "User"
         }
       })
-      .catch(() => {
-        // Ignore errors
+      .catch((error) => {
+        console.error("❌ [ACCOUNT-REG] Error fetching session user:", error)
+        // Don't update userEmail - keep default "User"
       })
   }, [])
 

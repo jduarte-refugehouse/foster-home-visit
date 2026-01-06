@@ -57,15 +57,34 @@ export function useDatabaseAccess(): DatabaseAccessResult {
         }
 
         // Check navigation API to see if user is found in database
-        const response = await fetch("/api/navigation", {
-          headers,
-          credentials: "include",
-        })
+        // Add timeout to prevent hanging forever
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+        
+        try {
+          const response = await fetch("/api/navigation", {
+            headers,
+            credentials: "include",
+            signal: controller.signal,
+          })
 
-        const data = await response.json()
-        const found = data.metadata?.userInfo !== null && data.metadata?.userInfo !== undefined
-        setHasAccess(found)
-        setUserInfo(data.metadata?.userInfo || null)
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            throw new Error(`Navigation API returned ${response.status}: ${response.statusText}`)
+          }
+
+          const data = await response.json()
+          const found = data.metadata?.userInfo !== null && data.metadata?.userInfo !== undefined
+          setHasAccess(found)
+          setUserInfo(data.metadata?.userInfo || null)
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId)
+          if (fetchError.name === 'AbortError') {
+            throw new Error("Navigation API request timed out after 30 seconds")
+          }
+          throw fetchError
+        }
       } catch (err) {
         console.error("Error checking database access:", err)
         setError(err instanceof Error ? err.message : "Failed to check database access")

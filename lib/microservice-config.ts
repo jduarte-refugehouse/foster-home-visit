@@ -165,6 +165,9 @@ export function getMicroserviceCode(): string {
     if (branch.includes('service-plan') || branch.includes('service-plans')) {
       return 'service-plans'
     }
+    if (branch.includes('myhouse')) {
+      return 'myhouse-portal'
+    }
     // Add more microservice branch patterns as needed
   }
 
@@ -190,6 +193,31 @@ export function shouldUseRadiusApiClient(): boolean {
   const microserviceCode = getMicroserviceCode()
   // Admin microservice has direct DB access - don't use API client
   return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+}
+
+/**
+ * Throws an error if direct database access is attempted in a microservice
+ * that should only use the API Hub. This prevents accidental DB connections
+ * after static IPs are removed.
+ * 
+ * @param context Optional context string for the error message
+ * @throws Error with clear message about using API Hub instead
+ */
+export function throwIfDirectDbNotAllowed(context?: string): never {
+  const microserviceCode = getMicroserviceCode()
+  const contextMsg = context ? ` in ${context}` : ''
+  
+  throw new Error(
+    `❌ DIRECT DATABASE ACCESS NOT ALLOWED${contextMsg}\n\n` +
+    `This microservice (${microserviceCode}) must use the API Hub (admin.refugehouse.app) for all database operations.\n` +
+    `Direct database connections are not available after static IP removal.\n\n` +
+    `ACTION REQUIRED: Convert this code to use radiusApiClient instead of direct DB queries.\n` +
+    `See: packages/radius-api-client/client.ts for available methods.\n\n` +
+    `If you are seeing this error, it means:\n` +
+    `1. This endpoint still has direct DB access code that needs to be migrated\n` +
+    `2. The API Hub endpoint may be missing - check admin.refugehouse.app/api/radius/*\n` +
+    `3. Contact the development team to add the missing API Hub endpoint`
+  )
 }
 
 /**
@@ -304,6 +332,10 @@ export function getDeploymentUrl(request?: { headers: { get: (name: string) => s
       test: 'case-management.test.refugehouse.app',
       production: 'case-management.refugehouse.app',
     },
+    'myhouse-portal': {
+      test: 'myhouse.staging.refugehouse.app',
+      production: 'myhouse.refugehouse.app',
+    },
     // Add more microservices as needed
   }
 
@@ -335,6 +367,40 @@ export function getPermissionDisplayName(permissionCode: string): string {
     [MICROSERVICE_CONFIG.permissions.SYSTEM_CONFIG]: "System Configuration",
   }
   return permissionMap[permissionCode] || permissionCode
+}
+
+// ============================================================================
+// MyHouse Portal Microservice Configuration
+// ============================================================================
+export const MYHOUSE_PORTAL_CONFIG: MicroserviceConfig = {
+  code: "myhouse-portal",
+  name: "MyHouse Portal",
+  description: "Foster parent information sharing and communication portal",
+  url: "/dashboard",
+  organizationDomain: "refugehouse.org",
+  
+  // Define microservice-specific roles
+  roles: {
+    FOSTER_PARENT: "foster_parent",
+    VIEWER: "viewer",
+  },
+  
+  // Define microservice-specific permissions
+  permissions: {
+    VIEW_DASHBOARD: "view_dashboard",
+    VIEW_DOCUMENTS: "view_documents",
+    SEND_MESSAGES: "send_messages",
+  },
+  
+  // Default navigation structure (used as fallback when database is unavailable)
+  defaultNavigation: [
+    {
+      title: "Main",
+      items: [
+        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+      ],
+    },
+  ],
 }
 
 // Template example for new microservices:

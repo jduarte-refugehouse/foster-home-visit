@@ -4,6 +4,8 @@ import { query } from "@refugehouse/shared-core/db"
 import { fetchHomesList, type ListHome } from "@/lib/db-extensions"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0 // Explicitly disable revalidation/caching
+export const fetchCache = "force-no-store" // Disable fetch caching
 
 /**
  * GET /api/radius/homes
@@ -127,13 +129,22 @@ export async function GET(request: NextRequest) {
     )
 
     // 4. Return response
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       count: homes.length,
       homes,
       timestamp: new Date().toISOString(),
       duration_ms: duration,
     })
+
+    // Prevent caching to ensure fresh data (multiple layers)
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    response.headers.set('X-Vercel-Cache-Control', 'no-store') // Vercel-specific cache control
+    response.headers.set('CDN-Cache-Control', 'no-store') // CDN cache control
+
+    return response
   } catch (error) {
     const duration = Date.now() - startTime
     console.error("❌ [RADIUS-API] Error in homes endpoint:", error)
