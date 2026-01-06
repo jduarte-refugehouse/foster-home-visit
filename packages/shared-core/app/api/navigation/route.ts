@@ -365,6 +365,29 @@ export async function GET(request: NextRequest) {
 function createFallbackResponse(source: string, error: string, userPermissions: string[] = [], userInfo: any = null) {
   console.log(`📋 Using ${source} navigation`)
 
+  // SECURITY: If user is not authenticated/found, return empty navigation (fail securely)
+  if (!userInfo) {
+    console.log("🔒 SECURITY: No user info in fallback - returning empty navigation")
+    return NextResponse.json({
+      navigation: [],
+      metadata: {
+        source: "auth_required",
+        totalItems: 0,
+        visibleItems: 0,
+        microservice: {
+          code: MICROSERVICE_CONFIG.code,
+          name: MICROSERVICE_CONFIG.name,
+          description: MICROSERVICE_CONFIG.description,
+        },
+        timestamp: new Date().toISOString(),
+        dbError: error,
+        userPermissions: [],
+        userInfo: null,
+      },
+    })
+  }
+
+  // Only show fallback navigation if user IS authenticated (userInfo exists)
   // Filter navigation items by permissions
   const filteredNavigation = MICROSERVICE_CONFIG.defaultNavigation
     .map((section) => ({

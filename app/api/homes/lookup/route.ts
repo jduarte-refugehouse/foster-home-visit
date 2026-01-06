@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = 'force-dynamic'
 
@@ -15,47 +17,58 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log(`🔍 [API] Looking up home GUID for xref: ${xref}`)
+    console.log(`🔍 [API] Looking up home GUID for xref: ${xref} (type: ${typeof xref})`)
 
-    // Look up GUID from syncActiveHomes using Xref
-    const result = await query(
-      `
-      SELECT TOP 1
-        Guid as guid,
-        HomeName as name,
-        Xref as xref
-      FROM syncActiveHomes
-      WHERE Xref = @param0
-      `,
-      [parseInt(xref)]
-    )
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (!result || result.length === 0) {
-      console.warn(`⚠️ [API] No home found for xref: ${xref}`)
-      return NextResponse.json(
-        { success: false, error: "Home not found for this xref" },
-        { status: 404 }
-      )
+    // NO DB FALLBACK - must use API client
+    // NOTE: This endpoint was previously using direct DB to get GUID, but now must use API Hub
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("homes/lookup endpoint")
     }
 
-    console.log(`✅ [API] Found home: ${result[0].name} (${result[0].guid})`)
-
-    return NextResponse.json({
-      success: true,
-      guid: result[0].guid,
-      name: result[0].name,
-      xref: result[0].xref,
-    })
+    // Use API client to lookup home
+    console.log(`✅ [API] Using API client for home lookup (xref: ${xref})`)
+    try {
+      const result = await radiusApiClient.lookupHomeByXref(xref)
+      console.log(`✅ [API] Found home via API Hub: ${result.name} (${result.guid})`)
+      return NextResponse.json({
+        success: true,
+        guid: result.guid,
+        name: result.name,
+        xref: result.xref,
+      })
+    } catch (apiError: any) {
+      console.error("❌ [API] Error from API client:", apiError)
+      console.error("❌ [API] API error details:", {
+        message: apiError?.message,
+        status: apiError?.status,
+        statusText: apiError?.statusText,
+        response: apiError?.response,
+      })
+      throw apiError // Re-throw to be caught by outer catch
+    }
 
   } catch (error: any) {
     console.error("❌ [API] Error looking up home GUID:", error)
+    console.error("❌ [API] Error stack:", error?.stack)
+    console.error("❌ [API] Error details:", {
+      message: error?.message,
+      status: error?.status,
+      statusText: error?.statusText,
+      response: error?.response,
+      name: error?.name,
+      constructor: error?.constructor?.name,
+    })
     return NextResponse.json(
       {
         success: false,
         error: "Failed to lookup home GUID",
-        details: error.message,
+        details: error?.message || "Unknown error",
+        status: error?.status,
+        statusText: error?.statusText,
       },
-      { status: 500 }
+      { status: error?.status || 500 }
     )
   }
 }

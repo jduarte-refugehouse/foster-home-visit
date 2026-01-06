@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
 import { calculateDrivingDistance } from "@refugehouse/shared-core/route-calculator"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -76,190 +78,39 @@ export async function PATCH(
       )
     }
 
-    // Get existing leg
-    const existingLegs = await query(
-      `SELECT leg_id, start_latitude, start_longitude, start_timestamp, leg_status
-       FROM travel_legs
-       WHERE leg_id = @param0 AND is_deleted = 0`,
-      [legId]
-    )
+    // NO DIRECT DB ACCESS - validation is handled by API Hub
+    // The API Hub will return 404 if leg doesn't exist and 400 if leg is not in_progress
 
-    if (existingLegs.length === 0) {
-      return NextResponse.json({ error: "Travel leg not found" }, { status: 404 })
+    const useApiClient = shouldUseRadiusApiClient()
+
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("travel-legs/[legId] PATCH endpoint")
     }
 
-    const leg = existingLegs[0]
-
-    if (leg.leg_status !== "in_progress") {
-      return NextResponse.json(
-        { error: `Leg is already ${leg.leg_status}. Cannot complete.` },
-        { status: 400 }
-      )
+    // Use API client to complete travel leg
+    console.log("✅ [TRAVEL] Using API client to complete travel leg")
+    const completeData = {
+      end_latitude,
+      end_longitude,
+      end_timestamp,
+      end_location_name,
+      end_location_address,
+      end_location_type,
+      appointment_id_to,
+      is_final_leg,
+      updated_by_user_id: authInfo.clerkUserId || authInfo.email,
     }
 
-    // Calculate mileage
-    let calculatedMileage = 0.00
-    let estimatedToll: number | null = null
-    let durationMinutes: number | null = null
+    const apiResult = await radiusApiClient.completeTravelLeg(legId, completeData)
+    const calculatedMileage = apiResult.calculated_mileage
+    const estimatedToll = apiResult.estimated_toll_cost
+    const durationMinutes = apiResult.duration_minutes
 
-    if (leg.start_latitude && leg.start_longitude) {
-      try {
-        const routeData = await calculateDrivingDistance(
-          leg.start_latitude,
-          leg.start_longitude,
-          end_latitude,
-          end_longitude
-        )
-
-        if (routeData) {
-          calculatedMileage = routeData.distance
-          estimatedToll = routeData.estimatedTollCost
-        }
-      } catch (routeError) {
-        console.error("❌ [TRAVEL] Error calculating route:", routeError)
-        // Continue with 0 mileage if calculation fails
-      }
-    }
-
-    // Calculate duration
-    try {
-      const startTime = new Date(leg.start_timestamp).getTime()
-      const endTime = new Date(end_timestamp).getTime()
-      durationMinutes = Math.round((endTime - startTime) / (1000 * 60))
-    } catch (durationError) {
-      console.error("❌ [TRAVEL] Error calculating duration:", durationError)
-    }
-
-    // Get leg details for continuum logging
-    const legDetails = await query(
-      `SELECT appointment_id_to, appointment_id_from, start_timestamp, staff_user_id, staff_name
-       FROM travel_legs
-       WHERE leg_id = @param0`,
-      [legId]
-    )
-
-    // Update leg
-    await query(
-      `UPDATE travel_legs
-       SET end_latitude = @param1,
-           end_longitude = @param2,
-           end_timestamp = @param3,
-           end_location_name = @param4,
-           end_location_address = @param5,
-           end_location_type = @param6,
-           appointment_id_to = @param7,
-           calculated_mileage = @param8,
-           estimated_toll_cost = @param9,
-           duration_minutes = @param10,
-           is_final_leg = @param11,
-           leg_status = 'completed',
-           updated_at = GETUTCDATE(),
-           updated_by_user_id = @param12
-       WHERE leg_id = @param0`,
-      [
-        legId,
-        end_latitude,
-        end_longitude,
-        end_timestamp,
-        end_location_name || null,
-        end_location_address || null,
-        end_location_type || null,
-        appointment_id_to || null,
-        calculatedMileage,
-        estimatedToll,
-        durationMinutes,
-        is_final_leg || false,
-        authInfo.clerkUserId || authInfo.email,
-      ]
-    )
-
-    // If this is a return leg (has appointment_id_from but no appointment_id_to), update appointment return_mileage
-    const returnAppointmentId = legDetails[0]?.appointment_id_from
-    if (returnAppointmentId && !appointment_id_to && is_final_leg) {
-      try {
-        await query(
-          `UPDATE appointments 
-           SET return_latitude = @param1,
-               return_longitude = @param2,
-               return_timestamp = @param3,
-               return_mileage = @param4,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0 AND is_deleted = 0`,
-          [
-            returnAppointmentId,
-            end_latitude,
-            end_longitude,
-            end_timestamp,
-            calculatedMileage,
-          ]
-        )
-        console.log(`✅ [TRAVEL] Updated appointment ${returnAppointmentId} with return mileage: ${calculatedMileage.toFixed(2)} miles`)
-      } catch (updateError: any) {
-        // If return columns don't exist, log a warning but don't fail
-        if (updateError.message?.includes("Invalid column name") && 
-            (updateError.message.includes("return_latitude") || 
-             updateError.message.includes("return_longitude") || 
-             updateError.message.includes("return_timestamp") ||
-             updateError.message.includes("return_mileage"))) {
-          console.warn("⚠️ [TRAVEL] Return travel columns not found in appointments table. Please run migration script.")
-        } else {
-          console.error("⚠️ [TRAVEL] Failed to update appointment return mileage (non-fatal):", updateError)
-        }
-      }
-    }
-
-    // Log continuum entry for drive_end if this leg is tied to an appointment
-    const finalAppointmentId = appointment_id_to || legDetails[0]?.appointment_id_to
-    if (finalAppointmentId) {
-      try {
-        // Fetch appointment details for continuum entry
-        const appointmentData = await query(
-          `SELECT home_name, home_xref, home_guid, assigned_to_name
-           FROM appointments
-           WHERE appointment_id = @param0 AND is_deleted = 0`,
-          [finalAppointmentId]
-        )
-
-        if (appointmentData.length > 0) {
-          const apt = appointmentData[0]
-          // Log drive_end continuum entry
-          await query(
-            `INSERT INTO continuum_entries (
-              appointment_id, activity_type, activity_status, timestamp,
-              staff_user_id, staff_name, home_guid, home_xref, home_name,
-              location_latitude, location_longitude, location_address,
-              activity_description, duration_minutes, created_by_user_id, metadata
-            )
-            VALUES (
-              @param0, 'drive_end', 'complete', @param1,
-              @param2, @param3, @param4, @param5, @param6,
-              @param7, @param8, @param9,
-              @param10, @param11, @param12, @param13
-            )`,
-            [
-              finalAppointmentId,
-              end_timestamp,
-              legDetails[0]?.staff_user_id || authInfo.clerkUserId || authInfo.email,
-              legDetails[0]?.staff_name || authInfo.name || null,
-              apt.home_guid || null,
-              apt.home_xref || null,
-              apt.home_name || null,
-              end_latitude,
-              end_longitude,
-              end_location_address || end_location_name || null,
-              `Arrived at ${apt.home_name || 'appointment location'}`,
-              durationMinutes,
-              authInfo.clerkUserId || authInfo.email,
-              JSON.stringify({ leg_id: legId, mileage: calculatedMileage }),
-            ]
-          )
-          console.log(`✅ [TRAVEL] Logged drive_end continuum entry for appointment ${finalAppointmentId}`)
-        }
-      } catch (continuumError) {
-        // Don't fail the leg completion if continuum logging fails
-        console.error("⚠️ [TRAVEL] Failed to log continuum entry (non-fatal):", continuumError)
-      }
-    }
+    // NO DIRECT DB ACCESS - The API Hub handles:
+    // 1. Appointment return_mileage updates (for return legs)
+    // 2. Continuum entry logging (drive_end)
+    // All of this is done in the API Hub endpoint
 
     return NextResponse.json({
       success: true,
@@ -304,31 +155,9 @@ export async function DELETE(
       if (hasSession) {
         console.log("🔍 [Travel Legs DELETE] Session cookie found - user is authenticated")
         
-        // Try to get user from existing leg's staff_user_id
-        // This is safe because user must be authenticated to access the leg
-        const { legId } = params
-        try {
-          const legResult = await query(
-            `SELECT staff_user_id, staff_name 
-             FROM travel_legs 
-             WHERE leg_id = @param0 AND is_deleted = 0`,
-            [legId]
-          )
-          
-          if (legResult.length > 0 && legResult[0].staff_user_id) {
-            authInfo = {
-              clerkUserId: legResult[0].staff_user_id,
-              email: null,
-              name: legResult[0].staff_name || null,
-            }
-            console.log("✅ [Travel Legs DELETE] Auth from leg context:", { 
-              clerkUserId: authInfo.clerkUserId,
-              legId 
-            })
-          }
-        } catch (dbError) {
-          console.error("🚗 [Travel Legs DELETE] Error getting user from leg:", dbError)
-        }
+        // NO DIRECT DB ACCESS - cannot query leg for auth info
+        // User must provide auth via headers or token
+        console.warn("⚠️ [Travel Legs DELETE] Session exists but no auth headers - cannot query leg for user info")
       }
       
       if (!authInfo.clerkUserId && !authInfo.email) {
@@ -350,15 +179,16 @@ export async function DELETE(
     }
 
     const { legId } = params
+    const useApiClient = shouldUseRadiusApiClient()
 
-    await query(
-      `UPDATE travel_legs
-       SET leg_status = 'cancelled',
-           updated_at = GETUTCDATE(),
-           updated_by_user_id = @param1
-       WHERE leg_id = @param0 AND is_deleted = 0`,
-      [legId, authInfo.clerkUserId || authInfo.email]
-    )
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("travel-legs/[legId] DELETE endpoint")
+    }
+
+    // Use API client to cancel travel leg
+    console.log("✅ [TRAVEL] Using API client to cancel travel leg")
+    await radiusApiClient.cancelTravelLeg(legId, authInfo.clerkUserId || authInfo.email || undefined)
 
     return NextResponse.json({
       success: true,

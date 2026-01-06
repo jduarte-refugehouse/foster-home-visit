@@ -1,20 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@refugehouse/shared-core/components/ui/card"
-import { Users, Settings, Globe, Shield, Database } from "lucide-react"
+import { AccountRegistrationRequired } from "@refugehouse/shared-core/components/account-registration-required"
+import { useDatabaseAccess } from "@refugehouse/shared-core/hooks/use-database-access"
+import { Users, Settings, Globe, Shield, Database, FolderGit } from "lucide-react"
 import Link from "next/link"
 
 export default function GlobalAdminDashboard() {
-  const { user, isLoaded: userLoaded } = useUser()
   const router = useRouter()
+  const { user, isLoaded } = useUser()
+  const { hasAccess: hasDatabaseAccess, userInfo, isLoading: checkingAccess } = useDatabaseAccess()
   const [microserviceCode, setMicroserviceCode] = useState<string | null>(null)
 
-  // Get user headers for API calls (same pattern as liaison dashboard)
-  const getUserHeaders = () => {
-    if (!user) return {}
+  // Get user headers for API calls (from Clerk user)
+  const getUserHeaders = (): HeadersInit => {
+    if (!user) {
+      return {
+        "Content-Type": "application/json",
+      }
+    }
     return {
       "Content-Type": "application/json",
       "x-user-email": user.emailAddresses[0]?.emailAddress || "",
@@ -23,9 +30,9 @@ export default function GlobalAdminDashboard() {
     }
   }
 
-  // Get microservice code from navigation API (wait for user to be loaded)
+  // Get microservice code from navigation API
   useEffect(() => {
-    if (!userLoaded || !user) {
+    if (!isLoaded || !user || checkingAccess) {
       return
     }
 
@@ -37,6 +44,7 @@ export default function GlobalAdminDashboard() {
       .then(data => {
         const code = data.metadata?.microservice?.code || 'home-visits'
         setMicroserviceCode(code)
+        
         if (code !== 'service-domain-admin') {
           router.push('/dashboard')
         }
@@ -49,10 +57,10 @@ export default function GlobalAdminDashboard() {
           router.push('/dashboard')
         }
       })
-  }, [userLoaded, user, router])
+  }, [isLoaded, user, router, checkingAccess])
 
-  // Show loading state while user is loading
-  if (!userLoaded) {
+  // Show loading state while checking access
+  if (!isLoaded || checkingAccess) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="animate-pulse space-y-4">
@@ -65,6 +73,22 @@ export default function GlobalAdminDashboard() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // SECURITY: If no user, redirect to sign-in
+  if (!user) {
+    router.push('/sign-in')
+    return null
+  }
+
+  // SECURITY: If user is authenticated but not found in database, show registration required
+  if (!hasDatabaseAccess) {
+    return (
+      <AccountRegistrationRequired 
+        microserviceName="Domain Administration"
+        contactEmail="jduarte@refugehouse.org"
+      />
     )
   }
 
@@ -133,6 +157,20 @@ export default function GlobalAdminDashboard() {
               </CardTitle>
               <CardDescription>
                 View system health, database connection status, and configuration details
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href="/globaladmin/policies">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderGit className="h-5 w-5" />
+                Policy Management
+              </CardTitle>
+              <CardDescription>
+                Manage policies, procedures, and regulatory documentation
               </CardDescription>
             </CardHeader>
           </Card>

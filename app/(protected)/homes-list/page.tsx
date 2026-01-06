@@ -39,7 +39,13 @@ export default function HomesListPage() {
     setLoading(true)
     try {
       console.log("🏠 Fetching homes data...")
-      const response = await fetch("/api/homes-list")
+      // Add cache-busting timestamp and no-cache headers
+      const response = await fetch("/api/homes-list", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

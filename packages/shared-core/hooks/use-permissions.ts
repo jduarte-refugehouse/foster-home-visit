@@ -46,8 +46,9 @@ const createDefaultPermissions = (): UserPermissions => ({
 })
 
 export function usePermissions(): UserPermissions {
-  const { isSignedIn, user, isLoaded: userLoaded } = useUser()
+  const { user, isLoaded } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
+  const [isLoading, setIsLoading] = useState(true)
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
     const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
@@ -95,19 +96,23 @@ export function usePermissions(): UserPermissions {
   }, [])
 
   useEffect(() => {
-    // Wait for user to be loaded before fetching permissions
-    if (!userLoaded) {
-      return
-    }
-
-    if (!isSignedIn || !user) {
-      setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
-      return
-    }
-
     const fetchPermissions = async () => {
+      setIsLoading(true)
+
       try {
-        // Send authentication headers with the request
+        // Wait for Clerk to load
+        if (!isLoaded) {
+          return
+        }
+
+        // If not authenticated, return default permissions
+        if (!user) {
+          setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+          setIsLoading(false)
+          return
+        }
+
+        // Fetch permissions using headers from Clerk user
         const headers: HeadersInit = {
           "x-user-email": user.emailAddresses[0]?.emailAddress || "",
           "x-user-clerk-id": user.id,
@@ -132,11 +137,13 @@ export function usePermissions(): UserPermissions {
       } catch (error) {
         console.error("Error in usePermissions hook:", error)
         setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     fetchPermissions()
-  }, [isSignedIn, user, userLoaded, constructPermissionSet])
+  }, [isLoaded, user, constructPermissionSet])
 
   return permissionData
 }

@@ -1,14 +1,84 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { testConnection } from "@refugehouse/shared-core/db"
+import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/lib/clerk-auth-helper"
+import { getConnection } from "@refugehouse/shared-core/lib/db"
+import { getDeploymentEnvironment, getMicroserviceCode } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Check if user is authenticated and found in database
+    const { clerkUserId, email } = getClerkUserIdFromRequest(request)
+    
+    if (!clerkUserId && !email) {
+      return NextResponse.json(
+        { error: "Authentication required", message: "Please sign in to access diagnostics" },
+        { status: 401 }
+      )
+    }
+
+    // Check if user exists in database
+    let userFound = false
+    try {
+      const connection = await getConnection()
+      let userQuery = ""
+      let queryParam = ""
+      
+      if (clerkUserId) {
+        userQuery = "SELECT id FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1"
+        queryParam = clerkUserId
+      } else if (email) {
+        userQuery = "SELECT id FROM app_users WHERE email = @param0 AND is_active = 1"
+        queryParam = email
+      }
+      
+      if (queryParam) {
+        const userResult = await connection.request().input("param0", queryParam).query(userQuery)
+        userFound = userResult.recordset.length > 0
+      }
+    } catch (dbError) {
+      console.error("Error checking user in database:", dbError)
+    }
+
+    if (!userFound) {
+      return NextResponse.json(
+        { 
+          error: "Access denied", 
+          message: "Your account is not registered in the system. Please contact an administrator." 
+        },
+        { status: 403 }
+      )
+    }
+
     console.log("🔍 [Diagnostics] Running system diagnostics...")
 
     // Test database connection
     const dbTest = await testConnection()
+
+    // Get deployment environment info
+    const deploymentEnv = getDeploymentEnvironment()
+    const microserviceCode = getMicroserviceCode()
+    
+    // Collect environment variables (non-sensitive ones)
+    const envVars = {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      VERCEL_URL: process.env.VERCEL_URL,
+      VERCEL_BRANCH: process.env.VERCEL_BRANCH,
+      VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF,
+      DEPLOYMENT_ENVIRONMENT: process.env.DEPLOYMENT_ENVIRONMENT,
+      NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+      MICROSERVICE_CODE: process.env.MICROSERVICE_CODE,
+      // Database connection (already in envChecks, but include here for completeness)
+      DATABASE_SERVER: process.env.DATABASE_SERVER,
+      DATABASE_NAME: process.env.DATABASE_NAME,
+      DATABASE_USER: process.env.DATABASE_USER,
+      // Azure Key Vault (names only, not secrets)
+      AZURE_KEY_VAULT_NAME: process.env.AZURE_KEY_VAULT_NAME,
+      AZURE_TENANT_ID: process.env.AZURE_TENANT_ID ? "••••••••" : undefined,
+      AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID ? "••••••••" : undefined,
+    }
 
     // Environment checks
     const envChecks = {
@@ -46,6 +116,13 @@ export async function GET() {
 
     const diagnostics = {
       timestamp: new Date().toISOString(),
+      deployment: {
+        environment: deploymentEnv,
+        microserviceCode,
+        vercelEnv: process.env.VERCEL_ENV,
+        branch: process.env.VERCEL_GIT_COMMIT_REF,
+        url: process.env.VERCEL_URL || process.env.NEXT_PUBLIC_APP_URL,
+      },
       database: {
         status: dbTest.success ? "connected" : "disconnected",
         message: dbTest.message,
@@ -54,6 +131,7 @@ export async function GET() {
         passwordError: dbTest.passwordError,
       },
       environment: envChecks,
+      environmentVariables: envVars,
       system: {
         nodeVersion: process.version,
         platform: process.platform,
@@ -73,7 +151,7 @@ export async function GET() {
         },
         serverEnvironment: {
           status: "active",
-          message: `production environment on ${process.platform}`,
+          message: `${deploymentEnv} environment on ${process.platform}`,
         },
       },
     }

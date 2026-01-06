@@ -28,6 +28,8 @@ export function ImpersonationBanner() {
   useEffect(() => {
     if (isLoaded && user) {
       fetchImpersonationStatus()
+    } else if (isLoaded && !user) {
+      setLoading(false)
     }
   }, [isLoaded, user])
 
