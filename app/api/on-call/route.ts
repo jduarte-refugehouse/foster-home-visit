@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -18,96 +19,22 @@ export async function GET(request: NextRequest) {
     
     console.log("📅 [API] Query parameters:", { startDate, endDate, userId, onCallType, includeDeleted })
 
-    let whereConditions = ["ocs.is_active = 1"]
-    const params: any[] = []
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (!includeDeleted) {
-      whereConditions.push("ocs.is_deleted = 0")
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("on-call GET endpoint")
     }
 
-    if (startDate) {
-      params.push(startDate)
-      whereConditions.push(`ocs.end_datetime >= @param${params.length - 1}`)
-    }
-
-    if (endDate) {
-      params.push(endDate)
-      whereConditions.push(`ocs.start_datetime <= @param${params.length - 1}`)
-    }
-
-    if (userId) {
-      // Convert Clerk user ID to app_users.id if needed
-      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
-      
-      if (isGuid) {
-        params.push(userId)
-        whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
-      } else {
-        // It's a Clerk ID, look it up
-        console.log("📅 [API] Looking up user_id for Clerk ID:", userId)
-        const userLookup = await query(`SELECT id FROM app_users WHERE clerk_user_id = @param0`, [userId])
-        
-        if (userLookup.length > 0) {
-          const appUserId = userLookup[0].id
-          console.log("📅 [API] Found app_users.id:", appUserId)
-          params.push(appUserId)
-          whereConditions.push(`ocs.user_id = @param${params.length - 1}`)
-        } else {
-          console.log("📅 [API] No app_user found for Clerk ID, filtering will return no results")
-          // Add impossible condition so query returns empty
-          whereConditions.push(`1 = 0`)
-        }
-      }
-    }
-
-    if (onCallType) {
-      params.push(onCallType)
-      whereConditions.push(`ocs.on_call_type = @param${params.length - 1}`)
-    }
-
-    const whereClause = whereConditions.join(" AND ")
-
-    const schedules = await query(
-      `
-      SELECT 
-        ocs.id,
-        ocs.user_id,
-        ocs.user_name,
-        ocs.user_email,
-        ocs.user_phone,
-        ocs.start_datetime,
-        ocs.end_datetime,
-        ocs.duration_hours,
-        ocs.on_call_type,
-        ocs.on_call_category,
-        ocs.role_required,
-        ocs.department,
-        ocs.region,
-        ocs.escalation_level,
-        ocs.is_active,
-        ocs.notes,
-        ocs.priority_level,
-        ocs.created_by_name,
-        ocs.created_at,
-        ocs.updated_at,
-        ocs.updated_by_name,
-        -- Calculate if currently on call
-        CASE 
-          WHEN GETDATE() BETWEEN ocs.start_datetime AND ocs.end_datetime 
-          THEN 1 
-          ELSE 0 
-        END as is_currently_active,
-        -- User details from app_users if linked
-        u.first_name,
-        u.last_name,
-        u.email as user_app_email
-      FROM on_call_schedule ocs
-      LEFT JOIN app_users u ON ocs.user_id = u.id
-      WHERE ${whereClause}
-      ORDER BY ocs.start_datetime ASC
-    `,
-      params,
-    )
+    // Use API client to get on-call schedules
+    console.log("✅ [ON-CALL] Using API client to get on-call schedules")
+    const schedules = await radiusApiClient.getOnCallSchedules({
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      userId: userId || undefined,
+      type: onCallType || undefined,
+      includeDeleted,
+    })
 
     console.log(`✅ [API] Retrieved ${schedules.length} on-call schedules`)
 
@@ -216,134 +143,49 @@ export async function POST(request: NextRequest) {
       if (isGuid) {
         appUserId = userId
       } else {
-        // It's a Clerk ID, look up the app_users.id
-        console.log("📅 [API] Looking up app_users.id for Clerk ID:", userId)
-        const userLookup = await query(
-          `SELECT id FROM app_users WHERE clerk_user_id = @param0`,
-          [userId]
-        )
-        
-        if (userLookup.length > 0) {
-          appUserId = userLookup[0].id
-          console.log("📅 [API] Found app_users.id:", appUserId)
-        } else {
-          console.log("📅 [API] No app_user found for Clerk ID, proceeding without user_id link")
-        }
+        // It's a Clerk ID - API Hub will handle the conversion
+        // Just pass the Clerk ID, API Hub will convert it
       }
     }
 
-    // Check for overlapping assignments for the same user
-    // Note: Exact boundary times (one ends when another starts) are NOT overlaps
-    if (appUserId) {
-      const overlaps = await query(
-        `
-        SELECT COUNT(*) as overlap_count
-        FROM on_call_schedule
-        WHERE user_id = @param0
-          AND is_active = 1
-          AND is_deleted = 0
-          AND (
-            (start_datetime < @param2 AND end_datetime > @param1)
-          )
-      `,
-        [appUserId, startDatetime, endDatetime],
-      )
+    // NO DIRECT DB ACCESS - overlap validation and phone updates are handled by API Hub
+    // The API Hub will:
+    // 1. Convert Clerk ID to app_users.id if needed
+    // 2. Check for overlapping assignments (returns 409 if conflict)
+    // 3. Update app_users phone if provided
 
-      if (overlaps[0].overlap_count > 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "This user already has an overlapping on-call assignment",
-            code: "OVERLAP_CONFLICT",
-          },
-          { status: 409 },
-        )
-      }
+    const useApiClient = shouldUseRadiusApiClient()
+
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("on-call POST endpoint")
     }
 
-    // Update app_users with phone number if provided and not from database
-    if (appUserId && userPhone && !phoneFromDatabase) {
-      console.log(`📞 [API] Updating app_users with phone for user: ${appUserId}`)
-      try {
-        await query(
-          `UPDATE app_users SET phone = @param0, updated_at = GETDATE() WHERE id = @param1`,
-          [userPhone, appUserId]
-        )
-        console.log(`✅ [API] Successfully updated phone number in app_users`)
-      } catch (error) {
-        console.error(`⚠️ [API] Failed to update app_users with phone:`, error)
-        // Don't fail the entire request if phone update fails
-      }
+    // Use API client to create on-call schedule
+    console.log("✅ [ON-CALL] Using API client to create on-call schedule")
+    const scheduleData = {
+      userId,
+      appUserId,
+      userName,
+      userEmail,
+      userPhone,
+      phoneFromDatabase,
+      startDatetime,
+      endDatetime,
+      notes,
+      priorityLevel,
+      onCallType,
+      onCallCategory,
+      roleRequired,
+      department,
+      region,
+      escalationLevel,
+      createdByUserId,
+      createdByName,
     }
 
-    // Create the on-call schedule
-    const result = await query(
-      `
-      INSERT INTO on_call_schedule (
-        id,
-        user_id,
-        user_name,
-        user_email,
-        user_phone,
-        start_datetime,
-        end_datetime,
-        notes,
-        priority_level,
-        on_call_type,
-        on_call_category,
-        role_required,
-        department,
-        region,
-        escalation_level,
-        is_active,
-        created_by_user_id,
-        created_by_name,
-        created_at
-      )
-      OUTPUT INSERTED.id
-      VALUES (
-        NEWID(),
-        @param0,
-        @param1,
-        @param2,
-        @param3,
-        @param4,
-        @param5,
-        @param6,
-        @param7,
-        @param8,
-        @param9,
-        @param10,
-        @param11,
-        @param12,
-        @param13,
-        1,
-        @param14,
-        @param15,
-        GETDATE()
-      )
-    `,
-      [
-        appUserId || null,  // Use converted GUID
-        userName,
-        userEmail || null,
-        userPhone || null,
-        startDatetime,
-        endDatetime,
-        notes || null,
-        priorityLevel || "normal",
-        onCallType || "general",
-        onCallCategory || null,
-        roleRequired || null,
-        department || null,
-        region || null,
-        escalationLevel || 1,
-        createdByUserId || "system",
-        createdByName || "System",
-      ],
-    )
-
-    const newScheduleId = result[0].id
+    const apiResult = await radiusApiClient.createOnCallSchedule(scheduleData)
+    const newScheduleId = apiResult.id
 
     console.log(`✅ [API] Created on-call schedule: ${newScheduleId}`)
 

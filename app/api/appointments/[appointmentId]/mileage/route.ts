@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { currentUser } from "@clerk/nextjs/server"
 
 export const runtime = "nodejs"
 
@@ -24,7 +23,8 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     let email: string | null = null
     let authMethod = "none"
     
-    // Try to get from headers (desktop/tablet)
+    // Get credentials from headers (stored after initial Clerk authentication)
+    // NO CLERK API CALLS - only use stored credentials
     const headerAuth = getClerkUserIdFromRequest(request)
     if (headerAuth.clerkUserId || headerAuth.email) {
       clerkUserId = headerAuth.clerkUserId
@@ -32,30 +32,15 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       authMethod = "headers"
       console.log("✅ [MILEAGE] Auth from headers:", { clerkUserId, email })
     } else {
-      // Fall back to Clerk session (mobile - cookies are sent automatically)
-      try {
-        const user = await currentUser()
-        if (user) {
-          clerkUserId = user.id
-          email = user.emailAddresses[0]?.emailAddress || null
-          authMethod = "clerk_session"
-          console.log("✅ [MILEAGE] Auth from Clerk session:", { clerkUserId, email })
-        } else {
-          console.warn("⚠️ [MILEAGE] currentUser() returned null")
-        }
-      } catch (clerkError) {
-        console.error("❌ [MILEAGE] Error getting user from Clerk session:", clerkError)
-      }
-    }
-    
-    // TEMPORARY: Allow request to proceed even without explicit auth
-    // The route is protected, so user must be authenticated to reach the button
-    if (!clerkUserId && !email) {
-      console.warn("⚠️ [MILEAGE] No explicit auth found, but allowing request (protected route)")
-      // Still allow the request - the route is protected so user must be authenticated
-      // We'll log this for debugging but proceed with the request
-    } else {
-      console.log("✅ [MILEAGE] Authenticated via:", authMethod)
+      // NO FALLBACK TO CLERK SESSION - all requests must use headers
+      console.warn("⚠️ [MILEAGE] No authentication headers found")
+      return NextResponse.json(
+        { 
+          error: "Unauthorized", 
+          details: "Missing authentication headers. Please ensure credentials are sent in x-user-clerk-id, x-user-email, and x-user-name headers." 
+        },
+        { status: 401 }
+      )
     }
 
     const { appointmentId } = params

@@ -1,7 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +16,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@refugehouse/shared-core/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@refugehouse/shared-core/components/ui/avatar"
 import { Badge } from "@refugehouse/shared-core/components/ui/badge"
-import { SignOutButton } from "@clerk/nextjs"
+import { SignOutButton, useUser } from "@clerk/nextjs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@refugehouse/shared-core/components/ui/collapsible"
 import {
   Home,
@@ -70,6 +69,8 @@ interface NavigationItem {
   url: string
   icon: string
   order: number
+  subItems?: NavigationItem[]  // Add sub-items support for hierarchical navigation
+  subcategory?: string
 }
 
 interface NavigationCategory {
@@ -112,46 +113,64 @@ const EMERGENCY_NAVIGATION: NavigationCategory[] = [
 export function AppSidebar() {
   const { user, isLoaded } = useUser()
   const [navigationItems, setNavigationItems] = useState<NavigationCategory[]>([])
+  const [collapsibleItems, setCollapsibleItems] = useState<NavigationItem[]>([])
   const [navigationMetadata, setNavigationMetadata] = useState<NavigationMetadata | null>(null)
   const [isLoadingNav, setIsLoadingNav] = useState(true)
   const [navError, setNavError] = useState<string | null>(null)
-  const [usersOpen, setUsersOpen] = useState(false)
   const [systemOpen, setSystemOpen] = useState(false)
 
   // Load navigation items
   useEffect(() => {
     const loadNavigation = async () => {
-      if (!isLoaded || !user) return
+      if (!isLoaded || !user) {
+        console.log("⏳ [NAV] Waiting for Clerk user:", { isLoaded, hasUser: !!user })
+        return
+      }
 
       try {
         console.log("🔄 Loading navigation from API...")
+        console.log("👤 [NAV] Clerk user:", {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress,
+          hasEmail: !!user.emailAddresses[0]?.emailAddress,
+        })
 
-        // Create headers with user identity
+        // Create headers with user identity from Clerk
         const headers: HeadersInit = {
           "x-user-email": user.emailAddresses[0]?.emailAddress || "",
           "x-user-clerk-id": user.id,
           "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
         }
 
-        const response = await fetch("/api/navigation", { headers })
+        console.log("📤 [NAV] Headers being sent:", {
+          "x-user-email": headers["x-user-email"],
+          "x-user-clerk-id": headers["x-user-clerk-id"],
+          "x-user-name": headers["x-user-name"],
+        })
+
+        const response = await fetch("/api/navigation", { 
+          headers,
+          credentials: 'include', // Ensure cookies are sent
+        })
 
         if (response.ok) {
           const data = await response.json()
           console.log("📥 Navigation API response:", data.metadata)
 
           setNavigationItems(data.navigation || [])
+          setCollapsibleItems(data.collapsibleItems || [])
           setNavigationMetadata(data.metadata)
           setNavError(null)
 
           // Log navigation source for debugging
           const source = data.metadata?.source || "unknown"
-          const sourceEmoji =
-            {
-              database: "🗄️",
-              config_fallback: "✱",
-              config_default: "✱",
-              error_fallback: "❌",
-            }[source] || "❓"
+          const sourceEmojiMap: Record<string, string> = {
+            database: "🗄️",
+            config_fallback: "✱",
+            config_default: "✱",
+            error_fallback: "❌",
+          }
+          const sourceEmoji = sourceEmojiMap[source] || "❓"
 
           // Only show fallback warnings for admins/internal users
           const isAdmin = data.metadata?.userPermissions?.includes('system_config') || 
@@ -174,14 +193,41 @@ export function AppSidebar() {
             }
           }
         } else {
-          console.error("❌ Failed to load navigation from API, using emergency fallback")
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ Failed to load navigation from API")
+          
+          // SECURITY: If user is not authenticated/found, show nothing (fail securely)
+          const isAuthRequired = errorData.metadata?.source === "auth_required" || 
+                                 errorData.metadata?.source === "user_not_found" ||
+                                 !errorData.metadata?.userInfo
+          
+          if (!user || isAuthRequired) {
+            console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
+            setNavigationItems([])
+            setNavError("Access denied. Please sign in.")
+            return
+          }
+          
+          // Only show emergency fallback if user IS authenticated but API failed
+          console.error("⚠️ API failed but user is authenticated - using emergency fallback")
           setNavigationItems(EMERGENCY_NAVIGATION)
           setNavError(`API Error: ${response.status}`)
         }
       } catch (error) {
         console.error("❌ Error loading navigation:", error)
+        
+        // SECURITY: If user is not authenticated, show nothing (fail securely)
+        if (!user) {
+          console.log("🔒 SECURITY: User not authenticated - showing empty navigation")
+          setNavigationItems([])
+          setNavError("Access denied. Please sign in.")
+          return
+        }
+        
+        // Only show emergency fallback if user IS authenticated but error occurred
+        console.error("⚠️ Error occurred but user is authenticated - using emergency fallback")
         setNavigationItems(EMERGENCY_NAVIGATION)
-        setNavError(error.message)
+        setNavError(error instanceof Error ? error.message : "Unknown error")
       } finally {
         setIsLoadingNav(false)
       }
@@ -213,15 +259,13 @@ export function AppSidebar() {
     )
   }
 
-  const userInitials =
-    user?.firstName && user?.lastName
-      ? `${user.firstName[0]}${user.lastName[0]}`
-      : user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"
+  const userInitials = user
+    ? `${user.firstName || ""}${user.lastName || ""}`.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || user.emailAddresses[0]?.emailAddress?.[0]?.toUpperCase() || "U"
+    : "U"
 
-  const displayName =
-    user?.firstName && user?.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user?.emailAddresses?.[0]?.emailAddress || "User"
+  const displayName = user
+    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "User"
+    : "User"
 
   // Check if user has admin permissions
   const isAdmin = navigationMetadata?.userPermissions?.some((p) => p.includes("admin") || p.includes("system")) || false
@@ -230,10 +274,10 @@ export function AppSidebar() {
   const getFallbackBadge = () => {
     if (!navigationMetadata || navigationMetadata.source === "database") return null
 
-    const sourceConfig = {
-      config_fallback: { label: "✱ Fallback", variant: "secondary" as const },
-      config_default: { label: "✱ Default", variant: "outline" as const },
-      error_fallback: { label: "✱ Error", variant: "destructive" as const },
+    const sourceConfig: Record<string, { label: string; variant: "secondary" | "outline" | "destructive" }> = {
+      config_fallback: { label: "✱ Fallback", variant: "secondary" },
+      config_default: { label: "✱ Default", variant: "outline" },
+      error_fallback: { label: "✱ Error", variant: "destructive" },
     }
 
     const config = sourceConfig[navigationMetadata.source]
@@ -250,41 +294,9 @@ export function AppSidebar() {
   const navigationGroups = navigationItems.filter((group) => group.title !== "Administration")
   const administrationGroup = navigationItems.find((group) => group.title === "Administration")
 
-  // Group Administration items into "Users" and "System" domains
-  const groupAdministrationItems = (items: NavigationItem[]) => {
-    const userItems: NavigationItem[] = []
-    const systemItems: NavigationItem[] = []
-
-    items.forEach((item) => {
-      // User-related items
-      if (
-        item.code === "user_invitations" ||
-        item.code === "user_management"
-      ) {
-        userItems.push(item)
-      }
-      // System-related items
-      else if (
-        item.code === "system_admin" ||
-        item.code === "diagnostics" ||
-        item.code === "feature_development" ||
-        item.code === "bulk_sms" ||
-        item.code === "test_logging" ||
-        item.code === "communication_history"
-      ) {
-        systemItems.push(item)
-      }
-      // Default to system if not categorized
-      else {
-        systemItems.push(item)
-      }
-    })
-
-    return {
-      users: userItems.sort((a, b) => a.order - b.order),
-      system: systemItems.sort((a, b) => a.order - b.order),
-    }
-  }
+  // Show collapsible section if user has collapsible items OR if there's an administration group with items
+  const showCollapsibleSection = collapsibleItems.length > 0 || (administrationGroup && administrationGroup.items.length > 0)
+  const sectionLabel = collapsibleItems.length > 0 ? "MORE..." : (administrationGroup?.title || "ADMINISTRATION")
 
   return (
     <Sidebar className="border-r border-gray-200 flex flex-col">
@@ -312,11 +324,34 @@ export function AppSidebar() {
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-refuge-light-purple/20 to-refuge-magenta/20 rounded-full flex items-center justify-center">
               <Database className="w-8 h-8 text-refuge-purple" />
             </div>
+            {/* SECURITY: Show different messages based on authentication state */}
+            {!user ? (
+              // Authentication failed - show nothing
+              <>
+                <p className="text-sm font-medium text-foreground mb-2">Access Denied</p>
+                <p className="text-xs text-muted-foreground mb-3">Please sign in to continue.</p>
+              </>
+            ) : !navigationMetadata?.userInfo ? (
+              // Authenticated but user not found in database
+              <>
+                <p className="text-sm font-medium text-foreground mb-2">Account Registration Required</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  You are signed in as {user.emailAddresses[0]?.emailAddress || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Your account needs to be registered in the system to access navigation.
+                </p>
+                {/* SECURITY: No links shown when user not found in database */}
+              </>
+            ) : (
+              // User authenticated and found in database - show error info if any
+              <>
             <p className="text-sm font-medium text-foreground mb-2">No navigation items available</p>
             {navError && <p className="text-xs text-red-600 dark:text-red-400 mb-3">Error: {navError}</p>}
             {navigationMetadata?.dbError && (
               <p className="text-xs text-muted-foreground mb-3">Database: {navigationMetadata.dbError}</p>
             )}
+                {/* SECURITY: Only show diagnostics link if user IS found in database */}
             <Link
               href="/diagnostics"
               className="inline-flex items-center text-xs text-refuge-purple hover:text-refuge-magenta font-medium transition-colors duration-200"
@@ -324,10 +359,12 @@ export function AppSidebar() {
               <Database className="w-3 h-3 mr-1" />
               Check diagnostics
             </Link>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Regular Navigation Groups */}
+            {/* Fixed Navigation Groups - Always visible */}
             {navigationGroups.map((group, groupIndex) => (
               <SidebarGroup key={group.title}>
                 <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -337,6 +374,7 @@ export function AppSidebar() {
                   <SidebarMenu className="space-y-1">
                     {group.items.map((item) => {
                       const IconComponent = iconMap[item.icon] || Home
+                      // Fixed items are always direct navigation links
                       return (
                         <SidebarMenuItem key={item.code}>
                           <SidebarMenuButton asChild className="group">
@@ -355,106 +393,58 @@ export function AppSidebar() {
                 </SidebarGroupContent>
               </SidebarGroup>
             ))}
+
           </div>
         )}
       </SidebarContent>
 
-      {/* Administration Section - Anchored to Bottom */}
-      {administrationGroup && administrationGroup.items.length > 0 && (() => {
-        const grouped = groupAdministrationItems(administrationGroup.items)
-
-        return (
-          <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Shield className="h-3 w-3" />
-                {administrationGroup.title}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="space-y-1">
-                  {/* Users Domain */}
-                  {grouped.users.length > 0 && (
-                    <Collapsible open={usersOpen} onOpenChange={setUsersOpen}>
-                      <CollapsibleTrigger asChild>
-                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            <span>Users</span>
-                          </div>
-                          {usersOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronUp className="h-4 w-4" />
-                          )}
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenu className="space-y-1 mt-1 ml-4">
-                          {grouped.users.map((item) => {
-                            const IconComponent = iconMap[item.icon] || Settings
-                            return (
-                              <SidebarMenuItem key={item.code}>
-                                <SidebarMenuButton asChild className="group">
-                                  <Link
-                                    href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                                  >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
-                                    <span className="text-sm font-medium">{item.title}</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            )
-                          })}
-                        </SidebarMenu>
-                      </CollapsibleContent>
-                    </Collapsible>
+      {/* Collapsible Items Section - Anchored to Bottom */}
+      {showCollapsibleSection && (
+        <div className="border-t bg-gradient-to-r from-refuge-purple/5 to-refuge-magenta/5 p-4">
+          <SidebarGroup>
+            <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
+              <CollapsibleTrigger asChild>
+                <SidebarGroupLabel className="text-xs font-semibold text-refuge-purple uppercase tracking-wider mb-3 flex items-center gap-2 cursor-pointer hover:text-refuge-magenta transition-colors w-full">
+                  <Shield className="h-3 w-3" />
+                  {sectionLabel}
+                  {/* Chevron points up when open (menu expanded, can collapse), down when closed (can expand) */}
+                  {systemOpen ? (
+                    <ChevronUp className="h-3 w-3 ml-auto" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 ml-auto" />
                   )}
-
-                  {/* System Domain */}
-                  {grouped.system.length > 0 && (
-                    <Collapsible open={systemOpen} onOpenChange={setSystemOpen}>
-                      <CollapsibleTrigger asChild>
-                        <button className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium text-refuge-purple hover:bg-refuge-purple/10 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Settings className="h-4 w-4" />
-                            <span>System</span>
-                          </div>
-                          {systemOpen ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronUp className="h-4 w-4" />
-                          )}
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenu className="space-y-1 mt-1 ml-4">
-                          {grouped.system.map((item) => {
-                            const IconComponent = iconMap[item.icon] || Settings
-                            return (
-                              <SidebarMenuItem key={item.code}>
-                                <SidebarMenuButton asChild className="group">
-                                  <Link
-                                    href={item.url}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
-                                  >
-                                    <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
-                                    <span className="text-sm font-medium">{item.title}</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            )
-                          })}
-                        </SidebarMenu>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </div>
-        )
-      })()}
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {/* Use collapsibleItems from database if available, otherwise use administrationGroup items */}
+                    {(collapsibleItems.length > 0 
+                      ? collapsibleItems.sort((a, b) => a.order - b.order)
+                      : (administrationGroup?.items || []).sort((a, b) => a.order - b.order)
+                    ).map((item) => {
+                      const IconComponent = iconMap[item.icon] || Settings
+                      return (
+                        <SidebarMenuItem key={item.code}>
+                          <SidebarMenuButton asChild className="group">
+                            <Link
+                              href={item.url}
+                              className="flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:text-refuge-purple dark:hover:text-refuge-light-purple hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200 group-hover:shadow-sm"
+                            >
+                              <IconComponent className="h-4 w-4 text-refuge-purple dark:text-refuge-light-purple group-hover:text-refuge-magenta transition-colors" />
+                              <span className="text-sm font-medium">{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        </div>
+      )}
 
       <SidebarFooter className="p-4 border-t bg-gradient-to-r from-gray-50 to-refuge-light-purple/10">
         <SidebarMenu>
@@ -463,7 +453,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full hover:bg-gradient-to-r hover:from-refuge-light-purple/10 hover:to-refuge-magenta/10 transition-all duration-200">
                   <Avatar className="h-8 w-8 ring-2 ring-refuge-light-purple/30">
-                    <AvatarImage src={user?.imageUrl || "/placeholder.svg"} />
+                    <AvatarImage src={user?.imageUrl} />
                     <AvatarFallback className="bg-gradient-to-br from-refuge-purple to-refuge-magenta text-white text-xs font-semibold">
                       {userInitials}
                     </AvatarFallback>

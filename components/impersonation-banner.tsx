@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { AlertTriangle, X } from "lucide-react"
 import { Button } from "@refugehouse/shared-core/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@refugehouse/shared-core/components/ui/alert"
@@ -20,16 +21,33 @@ interface ImpersonationStatus {
 }
 
 export function ImpersonationBanner() {
+  const { user, isLoaded } = useUser()
   const [status, setStatus] = useState<ImpersonationStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchImpersonationStatus()
-  }, [])
+    if (isLoaded && user) {
+      fetchImpersonationStatus()
+    } else if (isLoaded && !user) {
+      setLoading(false)
+    }
+  }, [isLoaded, user])
+
+  const getAuthHeaders = (): HeadersInit => {
+    if (!user) return {}
+    return {
+      "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+      "x-user-clerk-id": user.id,
+      "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    }
+  }
 
   const fetchImpersonationStatus = async () => {
     try {
-      const response = await fetch("/api/impersonate")
+      const response = await fetch("/api/impersonate", {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      })
       if (response.ok) {
         const data = await response.json()
         setStatus(data)
@@ -45,6 +63,8 @@ export function ImpersonationBanner() {
     try {
       const response = await fetch("/api/impersonate", {
         method: "DELETE",
+        headers: getAuthHeaders(),
+        credentials: 'include',
       })
 
       if (response.ok) {

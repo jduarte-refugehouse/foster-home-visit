@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -16,39 +18,66 @@ export async function GET(request: NextRequest) {
 
     console.log(`Checking coverage from ${startDate} to ${endDate}`, onCallType ? `for type: ${onCallType}` : '(all types)')
 
-    // Build query with optional type filter
-    let whereConditions = [
-      "is_active = 1",
-      "is_deleted = 0",
-      "end_datetime >= @param0",
-      "start_datetime <= @param1"
-    ]
-    const params: any[] = [startDate, endDate]
+    const useApiClient = shouldUseRadiusApiClient()
+    let shifts: any[] = []
 
-    if (onCallType) {
-      params.push(onCallType)
-      whereConditions.push(`on_call_type = @param${params.length - 1}`)
+    if (useApiClient) {
+      // Use API client to fetch on-call schedules
+      console.log(`✅ [API] Using API client to fetch on-call schedules`)
+      const schedules = await radiusApiClient.getOnCallSchedules({
+        startDate,
+        endDate,
+        type: onCallType || undefined,
+      })
+      
+      // Transform API response to match expected format
+      shifts = schedules.map((s: any) => ({
+        id: s.id,
+        user_name: s.user_name || s.userName,
+        start_datetime: s.start_datetime || s.startDateTime,
+        end_datetime: s.end_datetime || s.endDateTime,
+        priority_level: s.priority_level || s.priorityLevel || 1,
+      }))
+      
+      console.log(`Found ${shifts.length} shifts in range via API client`)
+    } else {
+      // Direct DB access for admin microservice
+      throwIfDirectDbNotAllowed("on-call coverage endpoint")
+      
+      // Build query with optional type filter
+      let whereConditions = [
+        "is_active = 1",
+        "is_deleted = 0",
+        "end_datetime >= @param0",
+        "start_datetime <= @param1"
+      ]
+      const params: any[] = [startDate, endDate]
+
+      if (onCallType) {
+        params.push(onCallType)
+        whereConditions.push(`on_call_type = @param${params.length - 1}`)
+      }
+
+      const whereClause = whereConditions.join(" AND ")
+
+      // Get all active shifts in the date range
+      shifts = await query(
+        `
+        SELECT 
+          id,
+          user_name,
+          start_datetime,
+          end_datetime,
+          priority_level
+        FROM on_call_schedule
+        WHERE ${whereClause}
+        ORDER BY start_datetime ASC
+      `,
+        params,
+      )
+
+      console.log(`Found ${shifts.length} shifts in range`)
     }
-
-    const whereClause = whereConditions.join(" AND ")
-
-    // Get all active shifts in the date range
-    const shifts = await query(
-      `
-      SELECT 
-        id,
-        user_name,
-        start_datetime,
-        end_datetime,
-        priority_level
-      FROM on_call_schedule
-      WHERE ${whereClause}
-      ORDER BY start_datetime ASC
-    `,
-      params,
-    )
-
-    console.log(`Found ${shifts.length} shifts in range`)
 
     // Find coverage gaps
     const gaps: any[] = []
@@ -137,19 +166,47 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current on-call person
-    const currentOnCall = await query(`
-      SELECT 
-        user_name,
-        user_email,
-        user_phone,
-        start_datetime,
-        end_datetime
-      FROM on_call_schedule
-      WHERE is_active = 1
-        AND is_deleted = 0
-        AND GETDATE() BETWEEN start_datetime AND end_datetime
-      ORDER BY priority_level DESC
-    `)
+    let currentOnCall: any[] = []
+    if (useApiClient) {
+      // Use API client to get current on-call
+      const now = new Date().toISOString()
+      const currentSchedules = await radiusApiClient.getOnCallSchedules({
+        startDate: now,
+        endDate: now,
+      })
+      
+      // Filter for schedules that include the current time
+      currentOnCall = currentSchedules
+        .filter((s: any) => {
+          const start = new Date(s.start_datetime || s.startDateTime)
+          const end = new Date(s.end_datetime || s.endDateTime)
+          const nowDate = new Date()
+          return nowDate >= start && nowDate <= end
+        })
+        .map((s: any) => ({
+          user_name: s.user_name || s.userName,
+          user_email: s.user_email || s.userEmail,
+          user_phone: s.user_phone || s.userPhone,
+          start_datetime: s.start_datetime || s.startDateTime,
+          end_datetime: s.end_datetime || s.endDateTime,
+        }))
+        .sort((a: any, b: any) => (b.priority_level || b.priorityLevel || 1) - (a.priority_level || a.priorityLevel || 1))
+    } else {
+      // Direct DB access for admin microservice
+      currentOnCall = await query(`
+        SELECT 
+          user_name,
+          user_email,
+          user_phone,
+          start_datetime,
+          end_datetime
+        FROM on_call_schedule
+        WHERE is_active = 1
+          AND is_deleted = 0
+          AND GETDATE() BETWEEN start_datetime AND end_datetime
+        ORDER BY priority_level DESC
+      `)
+    }
 
     console.log(`✅ [API] Coverage analysis complete: ${gaps.length} gaps found, ${coveragePercentage.toFixed(1)}% coverage`)
 

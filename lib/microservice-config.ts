@@ -99,37 +99,15 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
     {
       title: "Administration",
       items: [
-        {
-          code: "user_invitations",
-          title: "User Invitations",
-          url: "/admin/invitations",
-          icon: "Users",
-          permission: "user_management",
-          order: 1,
-        },
-        {
-          code: "user_management",
-          title: "User Management",
-          url: "/admin/users",
-          icon: "UserCog",
-          permission: "user_management",
-          order: 2,
-        },
-        {
-          code: "system_admin",
-          title: "System Admin",
-          url: "/system-admin",
-          icon: "Settings",
-          permission: "system_config",
-          order: 3,
-        },
+        // NOTE: User admin and system admin items removed - centralized in service-domain-admin microservice
+        // Only microservice-specific admin items should remain here
         {
           code: "diagnostics",
           title: "Diagnostics",
           url: "/diagnostics",
           icon: "Database",
           permission: "view_diagnostics",
-          order: 4,
+          order: 1,
         },
         {
           code: "feature_development",
@@ -137,7 +115,7 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
           url: "/admin/feature-development",
           icon: "Plus",
           permission: "system_config",
-          order: 5,
+          order: 2,
         },
       ],
     },
@@ -172,7 +150,10 @@ export function getMicroserviceCode(): string {
     if (branch.includes('case-management') || branch.includes('case-management')) {
       return 'case-management'
     }
-    if (branch.includes('admin') && !branch.includes('case-management')) {
+    if (branch.includes('service-domain-admin') || branch.includes('global-admin') || branch.includes('domain-admin')) {
+      return 'service-domain-admin'
+    }
+    if (branch.includes('admin') && !branch.includes('case-management') && !branch.includes('service-domain')) {
       return 'admin'
     }
     if (branch.includes('training')) {
@@ -184,6 +165,9 @@ export function getMicroserviceCode(): string {
     if (branch.includes('service-plan') || branch.includes('service-plans')) {
       return 'service-plans'
     }
+    if (branch.includes('myhouse')) {
+      return 'myhouse-portal'
+    }
     // Add more microservice branch patterns as needed
   }
 
@@ -194,6 +178,171 @@ export function getMicroserviceCode(): string {
 // Helper functions
 export function isInternalUser(email: string): boolean {
   return email.endsWith(`@${MICROSERVICE_CONFIG.organizationDomain}`)
+}
+
+/**
+ * Determines if the current microservice should use the Radius API Hub client
+ * instead of direct database access.
+ * 
+ * The admin microservice (service-domain-admin) has direct DB access,
+ * so it should NOT use the API client. All other microservices should use it.
+ * 
+ * @returns true if should use API client, false if should use direct DB access
+ */
+export function shouldUseRadiusApiClient(): boolean {
+  const microserviceCode = getMicroserviceCode()
+  // Admin microservice has direct DB access - don't use API client
+  return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+}
+
+/**
+ * Throws an error if direct database access is attempted in a microservice
+ * that should only use the API Hub. This prevents accidental DB connections
+ * after static IPs are removed.
+ * 
+ * @param context Optional context string for the error message
+ * @throws Error with clear message about using API Hub instead
+ */
+export function throwIfDirectDbNotAllowed(context?: string): never {
+  const microserviceCode = getMicroserviceCode()
+  const contextMsg = context ? ` in ${context}` : ''
+  
+  throw new Error(
+    `❌ DIRECT DATABASE ACCESS NOT ALLOWED${contextMsg}\n\n` +
+    `This microservice (${microserviceCode}) must use the API Hub (admin.refugehouse.app) for all database operations.\n` +
+    `Direct database connections are not available after static IP removal.\n\n` +
+    `ACTION REQUIRED: Convert this code to use radiusApiClient instead of direct DB queries.\n` +
+    `See: packages/radius-api-client/client.ts for available methods.\n\n` +
+    `If you are seeing this error, it means:\n` +
+    `1. This endpoint still has direct DB access code that needs to be migrated\n` +
+    `2. The API Hub endpoint may be missing - check admin.refugehouse.app/api/radius/*\n` +
+    `3. Contact the development team to add the missing API Hub endpoint`
+  )
+}
+
+/**
+ * Get the deployment environment (test or production)
+ * Uses VERCEL_ENV or domain/branch detection
+ * @returns 'test' | 'production'
+ */
+export function getDeploymentEnvironment(): 'test' | 'production' {
+  // Tier 1: Explicit environment variable (highest priority)
+  if (process.env.DEPLOYMENT_ENVIRONMENT) {
+    const env = process.env.DEPLOYMENT_ENVIRONMENT.toLowerCase()
+    if (env === 'test' || env === 'production') {
+      return env as 'test' | 'production'
+    }
+  }
+
+  // Tier 2: Vercel environment detection
+  // VERCEL_ENV can be: "production", "preview", or "development"
+  if (process.env.VERCEL_ENV) {
+    if (process.env.VERCEL_ENV === 'production') {
+      return 'production'
+    }
+    // Preview and development are considered "test"
+    if (process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'development') {
+      return 'test'
+    }
+  }
+
+  // Tier 3: Branch name detection (for preview/test branches)
+  if (process.env.VERCEL_BRANCH) {
+    const branch = process.env.VERCEL_BRANCH.toLowerCase()
+    // Test branches typically have "test" in the name
+    if (branch.includes('test') || branch.includes('preview') || branch.includes('staging')) {
+      return 'test'
+    }
+    // Production branches
+    if (branch.includes('main') || branch.includes('master') || branch.includes('production')) {
+      return 'production'
+    }
+  }
+
+  // Tier 4: Domain detection (if available in request context)
+  // This would need to be passed from the request, so we'll default to production for safety
+  // In API routes, you can check request.headers.get('host')
+
+  // Default: production (safer default)
+  return 'production'
+}
+
+/**
+ * Get the full deployment URL for the current environment
+ * This is critical for distributed service domain model where URLs need to be
+ * environment-aware (admin.test.refugehouse.app vs admin.refugehouse.app)
+ * 
+ * Priority:
+ * 1. NEXT_PUBLIC_APP_URL (explicit override - highest priority)
+ * 2. VERCEL_URL (automatically set by Vercel)
+ * 3. Request origin header (from incoming request)
+ * 4. Request host header (from incoming request)
+ * 5. Environment-based fallback (test vs production)
+ * 
+ * @param request Optional NextRequest to extract origin/host from
+ * @returns Full URL with protocol (e.g., https://admin.test.refugehouse.app)
+ */
+export function getDeploymentUrl(request?: { headers: { get: (name: string) => string | null } }): string {
+  // Tier 1: Explicit environment variable (highest priority)
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    let url = process.env.NEXT_PUBLIC_APP_URL.trim()
+    // Ensure protocol is included
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`
+    }
+    return url
+  }
+
+  // Tier 2: Vercel URL (automatically set by Vercel)
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+
+  // Tier 3: Request origin header (if available)
+  if (request) {
+    const origin = request.headers.get('origin')
+    if (origin) {
+      return origin
+    }
+
+    // Tier 4: Request host header (if available)
+    const host = request.headers.get('host')
+    if (host) {
+      // Determine protocol based on host
+      const protocol = host.includes('vercel.app') || host.includes('refugehouse.app') ? 'https' : 'http'
+      return `${protocol}://${host}`
+    }
+  }
+
+  // Tier 5: Environment-based fallback
+  const environment = getDeploymentEnvironment()
+  const microserviceCode = getMicroserviceCode()
+
+  // Map microservice codes to domain patterns
+  const domainMap: Record<string, { test: string; production: string }> = {
+    'home-visits': {
+      test: 'visit.test.refugehouse.app',
+      production: 'visit.refugehouse.app',
+    },
+    'service-domain-admin': {
+      test: 'admin.test.refugehouse.app',
+      production: 'admin.refugehouse.app',
+    },
+    'case-management': {
+      test: 'case-management.test.refugehouse.app',
+      production: 'case-management.refugehouse.app',
+    },
+    'myhouse-portal': {
+      test: 'myhouse.staging.refugehouse.app',
+      production: 'myhouse.refugehouse.app',
+    },
+    // Add more microservices as needed
+  }
+
+  const domain = domainMap[microserviceCode]?.[environment] || 
+                 (environment === 'test' ? `${microserviceCode}.test.refugehouse.app` : `${microserviceCode}.refugehouse.app`)
+
+  return `https://${domain}`
 }
 
 export function getRoleDisplayName(roleCode: string): string {
@@ -218,6 +367,40 @@ export function getPermissionDisplayName(permissionCode: string): string {
     [MICROSERVICE_CONFIG.permissions.SYSTEM_CONFIG]: "System Configuration",
   }
   return permissionMap[permissionCode] || permissionCode
+}
+
+// ============================================================================
+// MyHouse Portal Microservice Configuration
+// ============================================================================
+export const MYHOUSE_PORTAL_CONFIG: MicroserviceConfig = {
+  code: "myhouse-portal",
+  name: "MyHouse Portal",
+  description: "Foster parent information sharing and communication portal",
+  url: "/dashboard",
+  organizationDomain: "refugehouse.org",
+  
+  // Define microservice-specific roles
+  roles: {
+    FOSTER_PARENT: "foster_parent",
+    VIEWER: "viewer",
+  },
+  
+  // Define microservice-specific permissions
+  permissions: {
+    VIEW_DASHBOARD: "view_dashboard",
+    VIEW_DOCUMENTS: "view_documents",
+    SEND_MESSAGES: "send_messages",
+  },
+  
+  // Default navigation structure (used as fallback when database is unavailable)
+  defaultNavigation: [
+    {
+      title: "Main",
+      items: [
+        { code: "dashboard", title: "Dashboard", url: "/dashboard", icon: "Home", order: 1 },
+      ],
+    },
+  ],
 }
 
 // Template example for new microservices:
@@ -256,14 +439,12 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
         { code: "homes_list", title: "Homes List", url: "/homes-list", icon: "List", order: 9 },
       ],
     },
-    // KEEP: Administration section (consistent across microservices)
+    // NOTE: User admin and system admin items removed - centralized in service-domain-admin microservice
+    // Only microservice-specific admin items should remain here
     {
       title: "Administration",
       items: [
-        { code: "user_invitations", title: "User Invitations", url: "/admin/invitations", icon: "Users", permission: "user_management", order: 1 },
-        { code: "user_management", title: "User Management", url: "/admin/users", icon: "UserCog", permission: "user_management", order: 2 },
-        { code: "system_admin", title: "System Admin", url: "/system-admin", icon: "Settings", permission: "system_config", order: 3 },
-        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 4 },
+        { code: "diagnostics", title: "Diagnostics", url: "/diagnostics", icon: "Database", permission: "view_diagnostics", order: 1 },
       ],
     },
   ],

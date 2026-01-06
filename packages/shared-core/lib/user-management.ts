@@ -22,6 +22,9 @@ export interface AppUser {
   core_role: "admin" | "staff" | "external" | "foster_parent"
   department?: string
   job_title?: string
+  // Additional fields for service-domain-admin
+  user_type?: string | null
+  environment?: string | null
 }
 
 export interface MicroserviceApp {
@@ -38,13 +41,13 @@ export interface UserRole {
   user_id: string
   microservice_id: string
   role_name: string
-  role_display_name: string
   granted_by: string
   granted_at: Date
   is_active: boolean
-  // Role hierarchy and inheritance
-  parent_role_id?: string
-  role_level: number // 1=basic, 2=supervisor, 3=admin, 4=system_admin
+  // Computed fields (not in database)
+  role_display_name?: string // Computed from role_name
+  role_level?: number // Computed from role_name (1=basic, 2=supervisor, 3=admin, 4=system_admin)
+  parent_role_id?: string // Not in database
 }
 
 export interface Permission {
@@ -85,6 +88,13 @@ export const CORE_ROLES = {
 export const MICROSERVICE_ROLES = MICROSERVICE_CONFIG.roles
 export const MICROSERVICE_PERMISSIONS = MICROSERVICE_CONFIG.permissions
 
+/**
+ * @deprecated This function uses Clerk APIs (currentUser) which violates our authentication methodology.
+ * DO NOT USE - Clerk should only be used ONCE for initial authentication.
+ * After that, use stored credentials from headers and database lookups only.
+ * 
+ * Use getEffectiveUser(clerkUserId, request) instead, passing clerkUserId from headers.
+ */
 export async function getCurrentAppUser(): Promise<AppUser | null> {
   const user = await currentUser()
   if (!user) return null
@@ -106,10 +116,21 @@ export async function getUserRolesForMicroservice(userId: string, microserviceCo
        FROM user_roles ur
        INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
        WHERE ur.user_id = @param0 AND ma.app_code = @param1 AND ur.is_active = 1
-       ORDER BY ur.role_level DESC, ur.granted_at ASC`,
+       ORDER BY ur.granted_at ASC`,
       [userId, microserviceCode],
     )
-    return result
+    // Add computed fields
+    return result.map(role => ({
+      ...role,
+      role_display_name: role.role_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+      role_level: role.role_name.includes("admin") || role.role_name === "global_admin"
+        ? 4
+        : role.role_name.includes("director")
+          ? 3
+          : role.role_name.includes("liaison") || role.role_name.includes("coordinator") || role.role_name.includes("manager")
+            ? 2
+            : 1
+    }))
   } catch (error) {
     console.error("Error fetching user roles:", error)
     return []
@@ -193,21 +214,11 @@ export async function assignUserToRole(
       throw new Error(`Role ${roleName} not found for microservice ${microserviceCode}`)
     }
 
-    // Determine role level and display name
-    const roleLevel = roleName.includes("admin")
-      ? 4
-      : roleName.includes("director")
-        ? 3
-        : roleName.includes("liaison")
-          ? 2
-          : 1
-    const roleDisplayName = roleName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-
-    // Assign role
+    // Assign role (role_display_name and role_level are computed, not stored)
     await query(
-      `INSERT INTO user_roles (user_id, microservice_id, role_name, role_display_name, role_level, granted_by, granted_at, is_active)
-       VALUES (@param0, @param1, @param2, @param3, @param4, @param5, GETDATE(), 1)`,
-      [userId, microserviceId, roleName, roleDisplayName, roleLevel, grantedBy],
+      `INSERT INTO user_roles (user_id, microservice_id, role_name, granted_by, granted_at, is_active)
+       VALUES (@param0, @param1, @param2, @param3, GETDATE(), 1)`,
+      [userId, microserviceId, roleName, grantedBy],
     )
   } catch (error) {
     console.error("Error assigning user to role:", error)
@@ -393,14 +404,27 @@ export async function getUserProfile(userId: string): Promise<{
       throw new Error("User not found")
     }
 
-    const roles = await query<UserRole>(
+    const rolesResult = await query<UserRole>(
       `SELECT ur.*, ma.app_name, ma.app_code
        FROM user_roles ur
        INNER JOIN microservice_apps ma ON ur.microservice_id = ma.id
        WHERE ur.user_id = @param0 AND ur.is_active = 1
-       ORDER BY ma.app_name, ur.role_level DESC`,
+       ORDER BY ma.app_name, ur.granted_at DESC`,
       [userId],
     )
+    
+    // Add computed fields (role_display_name and role_level)
+    const roles = rolesResult.map(role => ({
+      ...role,
+      role_display_name: role.role_name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+      role_level: role.role_name.includes("admin") || role.role_name === "global_admin"
+        ? 4
+        : role.role_name.includes("director")
+          ? 3
+          : role.role_name.includes("liaison") || role.role_name.includes("coordinator") || role.role_name.includes("manager")
+            ? 2
+            : 1
+    }))
 
     const permissions = await query<Permission>(
       `SELECT DISTINCT p.*, ma.app_name, ma.app_code
@@ -506,16 +530,11 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
         u.email,
         u.first_name,
         u.last_name,
-        u.core_role,
-        u.department,
-        u.job_title,
         u.is_active,
         u.created_at,
         ma.app_name as microservice_name,
         ma.app_code as microservice_code,
         ur.role_name,
-        ur.role_display_name,
-        ur.role_level,
         STRING_AGG(p.permission_code, ', ') as permissions
       FROM app_users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = 1
@@ -523,11 +542,24 @@ export async function getUsersWithRolesAndPermissions(): Promise<any[]> {
       LEFT JOIN user_permissions up ON u.id = up.user_id AND up.is_active = 1
       LEFT JOIN permissions p ON up.permission_id = p.id
       WHERE u.is_active = 1
-      GROUP BY u.id, u.email, u.first_name, u.last_name, u.core_role, u.department, u.job_title,
-               u.is_active, u.created_at, ma.app_name, ma.app_code, ur.role_name, ur.role_display_name, ur.role_level
-      ORDER BY u.email, ma.app_name, ur.role_level DESC
+      GROUP BY u.id, u.email, u.first_name, u.last_name,
+               u.is_active, u.created_at, ma.app_name, ma.app_code, ur.role_name
+      ORDER BY u.email, ma.app_name, ur.granted_at DESC
     `)
-    return result
+    // Add computed fields
+    return result.map((row: any) => ({
+      ...row,
+      role_display_name: row.role_name ? row.role_name.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase()) : null,
+      role_level: row.role_name 
+        ? (row.role_name.includes("admin") || row.role_name === "global_admin"
+          ? 4
+          : row.role_name.includes("director")
+            ? 3
+            : row.role_name.includes("liaison") || row.role_name.includes("coordinator") || row.role_name.includes("manager")
+              ? 2
+              : 1)
+        : null
+    }))
   } catch (error) {
     console.error("Error fetching users with roles and permissions:", error)
     return []

@@ -1,14 +1,32 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 
 export const dynamic = "force-dynamic"
 
 /**
  * POST - Log a continuum entry (activity)
  * Supports multi-dimensional tracking per continuum concept
+ * 
+ * NOTE: This endpoint uses the legacy continuum_entries table.
+ * New code should use ContinuumMark via the API Hub instead.
  */
 export async function POST(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      throwIfDirectDbNotAllowed("continuum entries endpoint")
+      // TODO: Migrate to ContinuumMark via API Hub
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Continuum entries endpoint not yet migrated to API Hub",
+          details: "This endpoint uses the legacy continuum_entries table. Please use ContinuumMark via the API Hub instead.",
+        },
+        { status: 501 }, // 501 Not Implemented
+      )
+    }
     const body = await request.json()
     const {
       appointmentId,
@@ -161,9 +179,26 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET - Fetch continuum entries with optional filtering
+ * 
+ * NOTE: This endpoint uses the legacy continuum_entries table.
+ * New code should use ContinuumMark via the API Hub instead.
  */
 export async function GET(request: NextRequest) {
   try {
+    const useApiClient = shouldUseRadiusApiClient()
+    
+    if (useApiClient) {
+      throwIfDirectDbNotAllowed("continuum entries endpoint")
+      // TODO: Migrate to ContinuumMark via API Hub
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Continuum entries endpoint not yet migrated to API Hub",
+          details: "This endpoint uses the legacy continuum_entries table. Please use ContinuumMark via the API Hub instead.",
+        },
+        { status: 501 }, // 501 Not Implemented
+      )
+    }
     const { searchParams } = new URL(request.url)
     const appointmentId = searchParams.get("appointmentId")
     const homeGuid = searchParams.get("homeGuid")

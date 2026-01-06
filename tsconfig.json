@@ -44,7 +44,9 @@
       "@refugehouse/shared-core/components/access-guard": ["./packages/shared-core/components/access-guard.tsx"],
       "@refugehouse/shared-core/components/ui/*": ["./packages/shared-core/components/ui/*"],
       "@refugehouse/shared-core/hooks/use-permissions": ["./packages/shared-core/hooks/use-permissions.ts"],
-      "@refugehouse/shared-core/hooks/use-safe-user": ["./packages/shared-core/hooks/use-safe-user.ts"]
+      "@refugehouse/shared-core/hooks/use-safe-user": ["./packages/shared-core/hooks/use-safe-user.ts"],
+      "@refugehouse/radius-api-client": ["./packages/radius-api-client/index.ts"],
+      "@refugehouse/api-config": ["./packages/api-config/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

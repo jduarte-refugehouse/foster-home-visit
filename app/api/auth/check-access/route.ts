@@ -1,10 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { checkUserAccess } from "@refugehouse/shared-core/user-access"
 import { requireClerkAuth } from "@refugehouse/shared-core/auth"
-import { getMicroserviceCode } from "@/lib/microservice-config"
+import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { getUserRolesForMicroservice, getUserPermissionsForMicroservice } from "@refugehouse/shared-core/user-management"
 import { getEffectiveUser } from "@refugehouse/shared-core/impersonation"
 import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
+
+export const dynamic = "force-dynamic"
 
 /**
  * @shared-core
@@ -18,39 +21,43 @@ import { isSystemAdmin } from "@refugehouse/shared-core/system-admin"
  */
 export async function GET(request: NextRequest) {
   try {
+    // #region agent log
+    const headerClerkId = request.headers.get("x-user-clerk-id");
+    const headerEmail = request.headers.get("x-user-email");
+    const headerName = request.headers.get("x-user-name");
+    const allHeaders = Array.from(request.headers.entries()).map(([k, v]) => ({ k, v: k.toLowerCase().includes('auth') || k.toLowerCase().includes('user') ? v.substring(0, 20) + '...' : v }));
+    console.log("🔍 [DEBUG] check-access GET entry:", JSON.stringify({ url: request.url, hasClerkId: !!headerClerkId, hasEmail: !!headerEmail, hasName: !!headerName, headers: allHeaders }, null, 2));
+    // #endregion
     // Get Clerk user info from headers OR session cookies
     // This allows mobile to work where headers might not be sent
     let clerkUserId: string | null = null
     let email: string | null = null
     let name: string | null = null
 
-    // Try headers first (desktop/tablet)
+    // Get credentials from headers (stored after initial Clerk authentication)
+    // NO CLERK API CALLS - only use stored credentials
     try {
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
       email = auth.email
       name = auth.name
+      // #region agent log
+      console.log("✅ [DEBUG] requireClerkAuth success:", JSON.stringify({ clerkUserId: clerkUserId?.substring(0, 20) + '...', email, name }, null, 2));
+      // #endregion
     } catch (authError) {
-      // Headers not available - try session cookie (mobile)
-      // Import currentUser to read from session cookie
-      const { currentUser } = await import("@clerk/nextjs/server")
-      try {
-        const user = await currentUser()
-        if (user) {
-          clerkUserId = user.id
-          email = user.emailAddresses[0]?.emailAddress || null
-          name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || null
-        }
-      } catch (sessionError) {
-        // No session either - user is not authenticated
-        return NextResponse.json(
-          {
-            error: "Unauthorized",
-            details: "Not authenticated. Please sign in.",
-          },
-          { status: 401 },
-        )
-      }
+      // #region agent log
+      console.error("❌ [DEBUG] requireClerkAuth failed:", authError instanceof Error ? authError.message : String(authError));
+      console.error("❌ [DEBUG] Headers received:", JSON.stringify({ clerkId: headerClerkId, email: headerEmail, name: headerName }, null, 2));
+      // #endregion
+      // Headers not available - user must send credentials in headers
+      // NO FALLBACK TO CLERK SESSION - all requests must use headers
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          details: "Missing authentication headers. Please ensure credentials are sent in x-user-clerk-id, x-user-email, and x-user-name headers.",
+        },
+        { status: 401 },
+      )
     }
 
     if (!clerkUserId || !email) {
@@ -67,20 +74,76 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Email address required" }, { status: 400 })
     }
 
-    // Check user access to platform (existing check)
-    const accessCheck = await checkUserAccess(
-      clerkUserId,
-      email,
-      name?.split(" ")[0] || undefined,
-      name?.split(" ").slice(1).join(" ") || undefined,
-    )
+    // Check user access to platform
+    const useApiClient = shouldUseRadiusApiClient()
+    let accessCheck: {
+      hasAccess: boolean
+      requiresInvitation: boolean
+      isNewUser: boolean
+      userExists: boolean
+      hasInvitation: boolean
+    }
+
+    if (useApiClient) {
+      // Use API client for non-admin microservices
+      try {
+        console.log("🔍 [AUTH] Checking access via API Hub for:", { clerkUserId, email, name })
+        const result = await radiusApiClient.checkUserAccess({
+          clerkUserId,
+          email,
+          firstName: name?.split(" ")[0] || undefined,
+          lastName: name?.split(" ").slice(1).join(" ") || undefined,
+        })
+        console.log("📥 [AUTH] API Hub response:", JSON.stringify(result, null, 2))
+        accessCheck = {
+          hasAccess: result.hasAccess,
+          requiresInvitation: result.requiresInvitation,
+          isNewUser: result.isNewUser,
+          userExists: result.userExists,
+          hasInvitation: result.hasInvitation,
+        }
+      } catch (apiError) {
+        console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+        console.error("❌ [AUTH] Error details:", {
+          message: apiError instanceof Error ? apiError.message : String(apiError),
+          stack: apiError instanceof Error ? apiError.stack : undefined,
+          name: apiError instanceof Error ? apiError.name : undefined,
+        })
+        // Fail securely - deny access if API call fails
+        return NextResponse.json(
+          {
+            error: "Failed to check user access",
+            details: apiError instanceof Error ? apiError.message : "Unknown error",
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Admin microservice: use direct DB access (existing code)
+      accessCheck = await checkUserAccess(
+        clerkUserId,
+        email,
+        name?.split(" ")[0] || undefined,
+        name?.split(" ").slice(1).join(" ") || undefined,
+      )
+    }
 
     if (!accessCheck.hasAccess) {
+      console.log("🚫 [AUTH] Access denied for user:", {
+        email,
+        clerkUserId,
+        userExists: accessCheck.userExists,
+        hasInvitation: accessCheck.hasInvitation,
+        isNewUser: accessCheck.isNewUser,
+        requiresInvitation: accessCheck.requiresInvitation,
+      })
       return NextResponse.json(
         {
           error: "Access denied. External users require an invitation to join.",
           requiresInvitation: true,
           isNewUser: accessCheck.isNewUser,
+          userExists: accessCheck.userExists,
+          hasInvitation: accessCheck.hasInvitation,
         },
         { status: 403 },
       )
@@ -88,13 +151,8 @@ export async function GET(request: NextRequest) {
 
     // NEW: Check microservice-specific access
     const microserviceCode = getMicroserviceCode()
+    // useApiClient already defined above
     
-    // Get effective user (handles impersonation)
-    const user = await getEffectiveUser(clerkUserId, request)
-    if (!user) {
-      return NextResponse.json({ error: "User not found in system" }, { status: 404 })
-    }
-
     // SECURITY: System admins - check email directly using centralized function
     // Only specific emails can be system admins - this prevents accidental access
     const isSystemAdminUser = isSystemAdmin(email)
@@ -107,16 +165,62 @@ export async function GET(request: NextRequest) {
       // System admins always have access to all microservices
       hasMicroserviceAccess = true
     } else {
-      // All other users (including @refugehouse.org) must have explicit roles or permissions
-      // This ensures we don't accidentally grant access
-      // Using exact field names from schema: user_roles.role_name, permissions.permission_code
-      const userRoles = await getUserRolesForMicroservice(user.id, microserviceCode)
-      const userPermissions = await getUserPermissionsForMicroservice(user.id, microserviceCode)
-      
-      // User must have at least one active role OR one active permission
-      hasMicroserviceAccess = userRoles.length > 0 || userPermissions.length > 0
-      roles = userRoles.map(r => r.role_name)
-      permissions = userPermissions.map(p => p.permission_code)
+      // Use API client for non-admin microservices, direct DB for admin
+      if (useApiClient) {
+        try {
+          // Get user via API client
+          const lookupResult = await radiusApiClient.lookupUser({
+            clerkUserId,
+            email,
+            microserviceCode: microserviceCode,
+          })
+
+          if (!lookupResult.found || !lookupResult.user) {
+            return NextResponse.json({ error: "User not found in system" }, { status: 404 })
+          }
+
+          const userId = lookupResult.user.id
+
+          // Get permissions via API client
+          const permissionsResponse = await radiusApiClient.getPermissions({
+            userId,
+            microserviceCode: microserviceCode,
+          })
+
+          // User must have at least one active role OR one active permission
+          hasMicroserviceAccess = permissionsResponse.roles.length > 0 || permissionsResponse.permissions.length > 0
+          roles = permissionsResponse.roles.map((r: any) => r.role_name)
+          permissions = permissionsResponse.permissionCodes
+        } catch (apiError) {
+          console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+          // Fail securely - deny access if API call fails
+          return NextResponse.json(
+            {
+              error: "Failed to check microservice access",
+              details: apiError instanceof Error ? apiError.message : "Unknown error",
+            },
+            { status: 500 }
+          )
+        }
+      } else {
+        // Admin microservice: use direct DB access (existing code)
+        // Get effective user (handles impersonation)
+        const user = await getEffectiveUser(clerkUserId, request)
+        if (!user) {
+          return NextResponse.json({ error: "User not found in system" }, { status: 404 })
+        }
+
+        // All other users (including @refugehouse.org) must have explicit roles or permissions
+        // This ensures we don't accidentally grant access
+        // Using exact field names from schema: user_roles.role_name, permissions.permission_code
+        const userRoles = await getUserRolesForMicroservice(user.id, microserviceCode)
+        const userPermissions = await getUserPermissionsForMicroservice(user.id, microserviceCode)
+        
+        // User must have at least one active role OR one active permission
+        hasMicroserviceAccess = userRoles.length > 0 || userPermissions.length > 0
+        roles = userRoles.map(r => r.role_name)
+        permissions = userPermissions.map(p => p.permission_code)
+      }
     }
 
     return NextResponse.json({

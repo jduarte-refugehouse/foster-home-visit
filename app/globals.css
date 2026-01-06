@@ -78,3 +78,108 @@
     width: 100%;
   }
 }
+
+/* Print styles for document viewing */
+@layer utilities {
+  @media print {
+    @page {
+      margin: 0.75in;
+      size: letter;
+    }
+    
+    * {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+    
+    body {
+      background: white !important;
+      color: black !important;
+    }
+    
+    /* Hide UI elements when printing */
+    .print\\:hidden {
+      display: none !important;
+    }
+    
+    /* Ensure proper page breaks */
+    .print\\:break-inside-avoid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Adjust spacing for print */
+    .print\\:p-8 {
+      padding: 2rem;
+    }
+    
+    /* Smaller text for print */
+    .print\\:prose-sm {
+      font-size: 0.875rem;
+      line-height: 1.7142857;
+    }
+    
+    /* Enhanced table styling for print */
+    .markdown-content-wrapper table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      border: 1px solid #000 !important;
+      margin: 1rem 0 !important;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    .markdown-content-wrapper table thead {
+      display: table-header-group;
+      background: #f5f5f5 !important;
+    }
+    
+    .markdown-content-wrapper table tbody {
+      display: table-row-group;
+    }
+    
+    .markdown-content-wrapper table tr {
+      border-bottom: 1px solid #000 !important;
+      page-break-inside: avoid;
+    }
+    
+    .markdown-content-wrapper table th,
+    .markdown-content-wrapper table td {
+      border: 1px solid #000 !important;
+      padding: 0.5rem !important;
+      text-align: left;
+    }
+    
+    .markdown-content-wrapper table th {
+      background: #f5f5f5 !important;
+      font-weight: bold;
+    }
+    
+    /* Ensure images fit on page */
+    img {
+      max-width: 100% !important;
+      height: auto !important;
+      page-break-inside: avoid;
+    }
+    
+    /* Better spacing for headings */
+    h1, h2, h3, h4, h5, h6 {
+      page-break-after: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Better paragraph spacing */
+    p {
+      orphans: 3;
+      widows: 3;
+      page-break-inside: avoid;
+    }
+    
+    /* Code blocks */
+    pre {
+      page-break-inside: avoid;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  }
+}

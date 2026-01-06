@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs"
 
 export interface UserPermissions {
   userId: string | null
@@ -46,8 +46,9 @@ const createDefaultPermissions = (): UserPermissions => ({
 })
 
 export function usePermissions(): UserPermissions {
-  const { isSignedIn, userId } = useAuth()
+  const { user, isLoaded } = useUser()
   const [permissionData, setPermissionData] = useState<UserPermissions>(createDefaultPermissions())
+  const [isLoading, setIsLoading] = useState(true)
 
   const constructPermissionSet = useCallback((data: any): UserPermissions => {
     const hasRole = (roleName: string, microservice = "home-visits"): boolean => {
@@ -95,14 +96,34 @@ export function usePermissions(): UserPermissions {
   }, [])
 
   useEffect(() => {
-    if (!isSignedIn) {
-      setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
-      return
-    }
-
     const fetchPermissions = async () => {
+      setIsLoading(true)
+
       try {
-        const response = await fetch("/api/permissions")
+        // Wait for Clerk to load
+        if (!isLoaded) {
+          return
+        }
+
+        // If not authenticated, return default permissions
+        if (!user) {
+          setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+          setIsLoading(false)
+          return
+        }
+
+        // Fetch permissions using headers from Clerk user
+        const headers: HeadersInit = {
+          "x-user-email": user.emailAddresses[0]?.emailAddress || "",
+          "x-user-clerk-id": user.id,
+          "x-user-name": `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        }
+
+        const response = await fetch("/api/permissions", {
+          headers,
+          credentials: 'include', // Include cookies for session
+        })
+
         if (!response.ok) {
           console.error("Failed to fetch permissions:", response.statusText)
           throw new Error("Failed to fetch permissions")
@@ -116,11 +137,13 @@ export function usePermissions(): UserPermissions {
       } catch (error) {
         console.error("Error in usePermissions hook:", error)
         setPermissionData({ ...createDefaultPermissions(), isLoaded: true })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     fetchPermissions()
-  }, [isSignedIn, userId, constructPermissionSet])
+  }, [isLoaded, user, constructPermissionSet])
 
   return permissionData
 }

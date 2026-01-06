@@ -1,0 +1,16 @@
+{
+  "name": "@refugehouse/api-config",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}
+

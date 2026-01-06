@@ -8,9 +8,10 @@ import { Badge } from "@refugehouse/shared-core/components/ui/badge"
 import { Calendar, dateFnsLocalizer } from "react-big-calendar"
 import { format, parse, startOfWeek, getDay } from "date-fns"
 import { enUS } from "date-fns/locale"
-import { Plus, CalendarIcon, Clock, MapPin, RefreshCw, Shield, AlertTriangle, CheckCircle, Phone, Eye, EyeOff } from "lucide-react"
+import { Plus, CalendarIcon, Clock, MapPin, RefreshCw, Shield, AlertTriangle, CheckCircle, Phone, Eye, EyeOff, Calendar as CalendarIconLucide } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { CreateAppointmentDialog } from "@/components/appointments/create-appointment-dialog"
+import { BulkRecurringDialog } from "@/components/appointments/bulk-recurring-dialog"
 import { VisitFormButton } from "@/components/appointments/visit-form-button"
 import { OnCallAssignmentDialog } from "@/components/on-call/on-call-assignment-dialog"
 import { Alert, AlertDescription, AlertTitle } from "@refugehouse/shared-core/components/ui/alert"
@@ -610,6 +611,12 @@ export default function VisitsCalendarPage() {
               Schedule Appointment
             </Button>
           </CreateAppointmentDialog>
+          <BulkRecurringDialog onAppointmentsCreated={handleAppointmentCreated}>
+            <Button variant="outline">
+              <CalendarIconLucide className="h-4 w-4 mr-2" />
+              Create Recurring Appointments
+            </Button>
+          </BulkRecurringDialog>
         </div>
       </div>
 

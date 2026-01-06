@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -116,107 +118,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate journey_id if not provided (new journey)
-    const finalJourneyId = journey_id || crypto.randomUUID()
+    const useApiClient = shouldUseRadiusApiClient()
 
-    // Get leg sequence for this journey (if adding to existing journey)
-    let legSequence = 1
-    if (journey_id) {
-      const existingLegs = await query(
-        `SELECT MAX(leg_sequence) as max_sequence 
-         FROM travel_legs 
-         WHERE journey_id = @param0 AND is_deleted = 0`,
-        [journey_id]
-      )
-      legSequence = (existingLegs[0]?.max_sequence || 0) + 1
+    // NO DB FALLBACK - must use API client
+    if (!useApiClient) {
+      throwIfDirectDbNotAllowed("travel-legs POST endpoint")
     }
 
-    // Insert new leg
-    const result = await query(
-      `INSERT INTO travel_legs (
-        staff_user_id, journey_id, leg_sequence,
-        start_latitude, start_longitude, start_timestamp,
-        start_location_name, start_location_address, start_location_type,
-        appointment_id_from, appointment_id_to, travel_purpose, vehicle_type,
-        is_final_leg, leg_status, created_by_user_id
-      )
-      OUTPUT INSERTED.leg_id, INSERTED.created_at
-      VALUES (
-        @param0, @param1, @param2,
-        @param3, @param4, @param5,
-        @param6, @param7, @param8,
-        @param9, @param10, @param11, @param12,
-        @param13, 'in_progress', @param14
-      )`,
-      [
-        staff_user_id,
-        finalJourneyId,
-        legSequence,
-        start_latitude,
-        start_longitude,
-        start_timestamp,
-        start_location_name || null,
-        start_location_address || null,
-        start_location_type || null,
-        appointment_id_from || null,
-        appointment_id_to || null,
-        travel_purpose || null,
-        vehicle_type || null,
-        is_final_leg || false,
-        authInfo.clerkUserId || authInfo.email,
-      ]
-    )
-
-    // Log continuum entry for drive_start if this leg is tied to an appointment
-    if (appointment_id_to) {
-      try {
-        // Fetch appointment details for continuum entry
-        const appointmentData = await query(
-          `SELECT home_name, home_xref, home_guid, assigned_to_name
-           FROM appointments
-           WHERE appointment_id = @param0 AND is_deleted = 0`,
-          [appointment_id_to]
-        )
-
-        if (appointmentData.length > 0) {
-          const apt = appointmentData[0]
-          // Log drive_start continuum entry
-          await query(
-            `INSERT INTO continuum_entries (
-              appointment_id, activity_type, activity_status, timestamp,
-              staff_user_id, staff_name, home_guid, home_xref, home_name,
-              location_latitude, location_longitude, location_address,
-              activity_description, created_by_user_id, metadata
-            )
-            VALUES (
-              @param0, 'drive_start', 'active', @param1,
-              @param2, @param3, @param4, @param5, @param6,
-              @param7, @param8, @param9,
-              @param10, @param11, @param12
-            )`,
-            [
-              appointment_id_to,
-              start_timestamp,
-              staff_user_id,
-              authInfo.name || null,
-              apt.home_guid || null,
-              apt.home_xref || null,
-              apt.home_name || null,
-              start_latitude,
-              start_longitude,
-              start_location_address || start_location_name || null,
-              travel_purpose || `Travel to ${apt.home_name || 'appointment'}`,
-              authInfo.clerkUserId || authInfo.email,
-              JSON.stringify({ leg_id: result[0].leg_id, journey_id: finalJourneyId }),
-            ]
-          )
-          console.log(`✅ [TRAVEL] Logged drive_start continuum entry for appointment ${appointment_id_to}`)
-        }
-      } catch (continuumError) {
-        // Don't fail the leg creation if continuum logging fails
-        console.error("⚠️ [TRAVEL] Failed to log continuum entry (non-fatal):", continuumError)
-      }
+    // Use API client to create travel leg
+    console.log("✅ [TRAVEL] Using API client to create travel leg")
+    const legData = {
+      staff_user_id,
+      start_latitude,
+      start_longitude,
+      start_timestamp,
+      start_location_name,
+      start_location_address,
+      start_location_type,
+      appointment_id_from,
+      appointment_id_to,
+      journey_id,
+      travel_purpose,
+      vehicle_type,
+      is_final_leg,
     }
+
+    const apiResult = await radiusApiClient.createTravelLeg(legData)
+    const result = [{
+      leg_id: apiResult.leg_id,
+      created_at: apiResult.created_at,
+      journey_id: apiResult.journey_id,
+      leg_sequence: apiResult.leg_sequence,
+    }]
+    const finalJourneyId = apiResult.journey_id
+    const legSequence = apiResult.leg_sequence
+
+    // NO DIRECT DB ACCESS - The API Hub handles continuum entry logging (drive_start)
+    // All continuum entries are created in the API Hub endpoint
 
     return NextResponse.json({
       success: true,
@@ -334,52 +272,7 @@ export async function GET(request: NextRequest) {
       paramIndex++
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
-
-    const legs = await query(
-      `SELECT 
-        leg_id, staff_user_id, staff_name, journey_id, leg_sequence,
-        start_latitude, start_longitude, start_timestamp, start_location_name, 
-        start_location_address, start_location_type, appointment_id_from,
-        end_latitude, end_longitude, end_timestamp, end_location_name,
-        end_location_address, end_location_type, appointment_id_to,
-        calculated_mileage, estimated_toll_cost, actual_toll_cost, duration_minutes,
-        leg_status, is_final_leg, is_manual_entry, is_backdated,
-        manual_mileage, manual_notes, travel_purpose, vehicle_type, reimbursable,
-        created_at, updated_at
-      FROM travel_legs
-      ${whereClause}
-      ORDER BY start_timestamp DESC, leg_sequence ASC`,
-      params
-    )
-
-    // Calculate totals if filtering by date
-    let totals = null
-    if (date) {
-      const totalResult = await query(
-        `SELECT 
-          COUNT(*) as total_legs,
-          SUM(COALESCE(manual_mileage, calculated_mileage, 0)) as total_mileage,
-          SUM(COALESCE(actual_toll_cost, estimated_toll_cost, 0)) as total_tolls,
-          SUM(duration_minutes) as total_duration
-        FROM travel_legs
-        WHERE staff_user_id = @param0 
-          AND start_timestamp >= @param1 
-          AND start_timestamp <= @param2
-          AND is_deleted = 0
-          AND leg_status = 'completed'`,
-        [staffUserId, `${date} 00:00:00`, `${date} 23:59:59`]
-      )
-
-      if (totalResult.length > 0) {
-        totals = {
-          total_legs: totalResult[0].total_legs || 0,
-          total_mileage: parseFloat(totalResult[0].total_mileage || 0).toFixed(2),
-          total_tolls: parseFloat(totalResult[0].total_tolls || 0).toFixed(2),
-          total_duration: totalResult[0].total_duration || 0,
-        }
-      }
-    }
+    // NO DIRECT DB ACCESS - all queries removed, using API client only
 
     return NextResponse.json({
       success: true,

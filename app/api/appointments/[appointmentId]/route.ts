@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -12,7 +14,20 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
 
     console.log(`📅 [API] Fetching appointment: ${appointmentId}`)
 
-    const appointments = await query(
+    const useApiClient = shouldUseRadiusApiClient()
+    let appointment: any = null
+
+    if (useApiClient) {
+      // Use API client
+      console.log("✅ [API] Using API client to fetch appointment")
+      appointment = await radiusApiClient.getAppointment(appointmentId)
+      
+      // Note: API client doesn't return travel legs, so we'll need to fetch those separately if needed
+      // For now, we'll fetch travel legs directly (they're not in the API Hub yet)
+    } else {
+      // Direct DB access for admin microservice
+      console.log("✅ [API] Using direct DB access to fetch appointment (admin microservice)")
+      const appointments = await query(
       `
       SELECT 
         a.*,
@@ -26,16 +41,22 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
         h.CaseManagerEmail
       FROM appointments a
       LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
-      WHERE a.appointment_id = @param0 AND a.is_deleted = 0
-    `,
-      [appointmentId],
-    )
+        WHERE a.appointment_id = @param0 AND a.is_deleted = 0
+      `,
+        [appointmentId],
+      )
 
-    if (appointments.length === 0) {
+      if (appointments.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
+
+      appointment = appointments[0]
+    }
+
+    if (!appointment) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
-    const appointment = appointments[0]
     console.log(`✅ [API] Retrieved appointment: ${appointment.title}`)
 
     // Format datetime as local time string (no timezone conversion)
@@ -361,43 +382,80 @@ export async function PUT(request: NextRequest, { params }: { params: { appointm
       paramIndex++
     }
 
-    // Always update the updated_by_user_id and updated_at fields
-    updateFields.push(`updated_by_user_id = @param${paramIndex}`)
-    queryParams.push("system") // Use system user instead of Clerk userId
-    paramIndex++
+    // Check if we have any fields to update (excluding updated_at which is always added)
+    const hasFieldsToUpdate = updateFields.length > 0
 
-    updateFields.push(`updated_at = @param${paramIndex}`)
-    queryParams.push(new Date())
-    paramIndex++
-
-    if (updateFields.length === 2) {
-      // Only updated_by_user_id and updated_at
+    if (!hasFieldsToUpdate) {
       console.log(`❌ [API] No fields to update for appointment: ${appointmentId}`)
       return NextResponse.json({ error: "No fields to update" }, { status: 400 })
     }
 
-    // Add appointment ID as the last parameter
-    queryParams.push(appointmentId)
+    const useApiClient = shouldUseRadiusApiClient()
 
-    const updateQuery = `
-      UPDATE appointments 
-      SET ${updateFields.join(", ")}
-      WHERE appointment_id = @param${paramIndex} AND is_deleted = 0
-    `
+    if (useApiClient) {
+      // Use API client to update appointment
+      // Build update data object with only defined fields
+      const updateData: any = {}
+      if (title !== undefined) updateData.title = title
+      if (description !== undefined) updateData.description = description
+      if (appointmentType !== undefined) updateData.appointmentType = appointmentType
+      if (startDateTime !== undefined) updateData.startDateTime = startDateTime
+      if (endDateTime !== undefined) updateData.endDateTime = endDateTime
+      if (status !== undefined) updateData.status = status
+      if (homeXref !== undefined) updateData.homeXref = homeXref
+      if (locationAddress !== undefined) updateData.locationAddress = locationAddress
+      if (locationNotes !== undefined) updateData.locationNotes = locationNotes
+      if (assignedToUserId !== undefined) updateData.assignedToUserId = assignedToUserId
+      if (assignedToName !== undefined) updateData.assignedToName = assignedToName
+      if (assignedToRole !== undefined) updateData.assignedToRole = assignedToRole
+      if (priority !== undefined) updateData.priority = priority
+      if (preparationNotes !== undefined) updateData.preparationNotes = preparationNotes
+      if (completionNotes !== undefined) updateData.completionNotes = completionNotes
+      if (outcome !== undefined) updateData.outcome = outcome
+      // Note: tollConfirmed and actualTollCost are not in API Hub yet - will need to add later
 
-    console.log(`🔍 [API] Generated SQL query:`, updateQuery)
-    console.log(`📊 [API] Query parameters:`, queryParams)
+      const result = await radiusApiClient.updateAppointment(appointmentId, updateData)
+      console.log(`✅ [API] Updated appointment: ${appointmentId} via API Hub`)
 
-    const result = await query(updateQuery, queryParams)
+      return NextResponse.json({
+        success: true,
+        message: result.message || "Appointment updated successfully",
+        timestamp: new Date().toISOString(),
+      })
+    } else {
+      // Direct DB access for admin microservice
+      // Always update the updated_by_user_id and updated_at fields
+      updateFields.push(`updated_by_user_id = @param${paramIndex}`)
+      queryParams.push("system") // Use system user instead of Clerk userId
+      paramIndex++
 
-    console.log(`📈 [API] Query result:`, result)
-    console.log(`✅ [API] Updated appointment: ${appointmentId}`)
+      updateFields.push(`updated_at = @param${paramIndex}`)
+      queryParams.push(new Date())
+      paramIndex++
 
-    return NextResponse.json({
-      success: true,
-      message: "Appointment updated successfully",
-      timestamp: new Date().toISOString(),
-    })
+      // Add appointment ID as the last parameter
+      queryParams.push(appointmentId)
+
+      const updateQuery = `
+        UPDATE appointments 
+        SET ${updateFields.join(", ")}
+        WHERE appointment_id = @param${paramIndex} AND is_deleted = 0
+      `
+
+      console.log(`🔍 [API] Generated SQL query:`, updateQuery)
+      console.log(`📊 [API] Query parameters:`, queryParams)
+
+      const result = await query(updateQuery, queryParams)
+
+      console.log(`📈 [API] Query result:`, result)
+      console.log(`✅ [API] Updated appointment: ${appointmentId}`)
+
+      return NextResponse.json({
+        success: true,
+        message: "Appointment updated successfully",
+        timestamp: new Date().toISOString(),
+      })
+    }
   } catch (error) {
     console.error("❌ [API] Error updating appointment:", error)
     console.error("❌ [API] Error stack:", error instanceof Error ? error.stack : "No stack trace")
@@ -458,78 +516,98 @@ export async function DELETE(request: NextRequest, { params }: { params: { appoi
 
     console.log(`📅 [API] Authorized delete request for appointment: ${appointmentId} by ${email}`)
 
-    // First, soft delete all related visit forms
-    const visitForms = await query(
-      `SELECT visit_form_id FROM visit_forms WHERE appointment_id = @param0 AND is_deleted = 0`,
-      [appointmentId],
-    )
+    const useApiClient = shouldUseRadiusApiClient()
 
-    if (visitForms.length > 0) {
-      console.log(`🗑️ [API] Deleting ${visitForms.length} related visit form(s)`)
-      
-      for (const form of visitForms) {
-        await query(
-          `
-          UPDATE visit_forms 
-          SET 
-            is_deleted = 1,
-            deleted_at = GETUTCDATE(),
-            deleted_by_user_id = @param0,
-            deleted_by_name = @param1,
-            updated_at = GETUTCDATE()
-          WHERE visit_form_id = @param2 AND is_deleted = 0
-        `,
-          ["system", "System Administrator", form.visit_form_id],
-        )
-      }
-      
-      console.log(`✅ [API] Deleted ${visitForms.length} visit form(s)`)
-    }
+    if (useApiClient) {
+      // Use API client to delete appointment
+      const result = await radiusApiClient.deleteAppointment(
+        appointmentId,
+        "system",
+        "System Administrator"
+      )
+      console.log(`✅ [API] Deleted appointment: ${appointmentId} via API Hub`)
 
-    // Soft delete all related continuum entries
-    const continuumEntries = await query(
-      `SELECT entry_id FROM continuum_entries WHERE appointment_id = @param0 AND is_deleted = 0`,
-      [appointmentId],
-    )
-
-    if (continuumEntries.length > 0) {
-      console.log(`🗑️ [API] Deleting ${continuumEntries.length} related continuum entry/entries`)
-      
-      await query(
-        `
-        UPDATE continuum_entries 
-        SET is_deleted = 1
-        WHERE appointment_id = @param0 AND is_deleted = 0
-      `,
+      return NextResponse.json({
+        success: true,
+        message: result.message || "Appointment and all related documentation deleted successfully",
+        deletedVisitForms: result.deletedVisitForms || 0,
+        timestamp: new Date().toISOString(),
+      })
+    } else {
+      // Direct DB access for admin microservice
+      // First, soft delete all related visit forms
+      const visitForms = await query(
+        `SELECT visit_form_id FROM visit_forms WHERE appointment_id = @param0 AND is_deleted = 0`,
         [appointmentId],
       )
-      
-      console.log(`✅ [API] Deleted ${continuumEntries.length} continuum entry/entries`)
+
+      if (visitForms.length > 0) {
+        console.log(`🗑️ [API] Deleting ${visitForms.length} related visit form(s)`)
+        
+        for (const form of visitForms) {
+          await query(
+            `
+            UPDATE visit_forms 
+            SET 
+              is_deleted = 1,
+              deleted_at = GETUTCDATE(),
+              deleted_by_user_id = @param0,
+              deleted_by_name = @param1,
+              updated_at = GETUTCDATE()
+            WHERE visit_form_id = @param2 AND is_deleted = 0
+          `,
+            ["system", "System Administrator", form.visit_form_id],
+          )
+        }
+        
+        console.log(`✅ [API] Deleted ${visitForms.length} visit form(s)`)
+      }
+
+      // Soft delete all related continuum entries
+      const continuumEntries = await query(
+        `SELECT entry_id FROM continuum_entries WHERE appointment_id = @param0 AND is_deleted = 0`,
+        [appointmentId],
+      )
+
+      if (continuumEntries.length > 0) {
+        console.log(`🗑️ [API] Deleting ${continuumEntries.length} related continuum entry/entries`)
+        
+        await query(
+          `
+          UPDATE continuum_entries 
+          SET is_deleted = 1
+          WHERE appointment_id = @param0 AND is_deleted = 0
+        `,
+          [appointmentId],
+        )
+        
+        console.log(`✅ [API] Deleted ${continuumEntries.length} continuum entry/entries`)
+      }
+
+      // Then soft delete the appointment
+      await query(
+        `
+        UPDATE appointments 
+        SET 
+          is_deleted = 1,
+          deleted_at = GETUTCDATE(),
+          deleted_by_user_id = @param0,
+          updated_at = GETUTCDATE(),
+          updated_by_user_id = @param0
+        WHERE appointment_id = @param1 AND is_deleted = 0
+      `,
+        ["system", appointmentId],
+      )
+
+      console.log(`✅ [API] Deleted appointment: ${appointmentId} and ${visitForms.length} related visit form(s)`)
+
+      return NextResponse.json({
+        success: true,
+        message: "Appointment and all related documentation deleted successfully",
+        deletedVisitForms: visitForms.length,
+        timestamp: new Date().toISOString(),
+      })
     }
-
-    // Then soft delete the appointment
-    await query(
-      `
-      UPDATE appointments 
-      SET 
-        is_deleted = 1,
-        deleted_at = GETUTCDATE(),
-        deleted_by_user_id = @param0,
-        updated_at = GETUTCDATE(),
-        updated_by_user_id = @param0
-      WHERE appointment_id = @param1 AND is_deleted = 0
-    `,
-      ["system", appointmentId],
-    )
-
-    console.log(`✅ [API] Deleted appointment: ${appointmentId} and ${visitForms.length} related visit form(s)`)
-
-    return NextResponse.json({
-      success: true,
-      message: "Appointment and all related documentation deleted successfully",
-      deletedVisitForms: visitForms.length,
-      timestamp: new Date().toISOString(),
-    })
   } catch (error) {
     console.error("❌ [API] Error deleting appointment:", error)
     return NextResponse.json(
