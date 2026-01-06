@@ -104,30 +104,18 @@ export async function GET(request: NextRequest) {
           const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
           
           if (impersonatedUserId) {
-            // For admin service, don't filter by environment - users should work in both test and production
-            if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
             queryParam = impersonatedUserId
           } else if (userClerkId) {
-            // For admin service, don't filter by environment - users should work in both test and production
-            // Only filter by user_type for global_admin access
-            if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            // The user_type filter was preventing users from being found
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`
             queryParam = userClerkId
           } else if (userEmail) {
-            // For admin service, don't filter by environment - users should work in both test and production
-            // Only filter by user_type for global_admin access
-            if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            // The user_type filter was preventing users from being found
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
             queryParam = userEmail
           }
 
