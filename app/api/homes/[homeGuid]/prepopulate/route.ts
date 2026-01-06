@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
