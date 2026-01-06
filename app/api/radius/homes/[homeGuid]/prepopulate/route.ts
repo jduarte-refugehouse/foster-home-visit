@@ -75,18 +75,17 @@ export async function GET(
         const hasUsefulData = homeInfo && (homeInfo.homeName || homeInfo.name || homeInfo.phone || homeInfo.email)
         if (!hasUsefulData) {
           console.warn(`⚠️ [RADIUS-API] Home info API returned empty data`)
+          console.warn(`⚠️ [RADIUS-API] Response body:`, JSON.stringify(homeInfoData, null, 2))
           homeInfo = null // Treat empty data as failure
         } else {
-          console.log(`✅ [RADIUS-API] Home info retrieved successfully`)
+          console.log(`✅ [RADIUS-API] Home info retrieved successfully: ${homeInfo.homeName || homeInfo.name}`)
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:73',message:'HomeFolio home info API response',data:{hasHome:!!homeInfo,homeName:homeInfo?.homeName||homeInfo?.name,homePhone:homeInfo?.phone,homeEmail:homeInfo?.primaryEmail||homeInfo?.email,hasAddress:!!homeInfo?.address,hasUsefulData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
       } else {
-        console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}`)
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:77',message:'HomeFolio home info API failed',data:{status:homeInfoResponse.status,statusText:homeInfoResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        const errorText = await homeInfoResponse.text().catch(() => "Unable to read error response")
+        console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}: ${errorText}`)
+        if (homeInfoResponse.status === 404) {
+          console.warn(`⚠️ [RADIUS-API] HomeFolio endpoint not found - will use database fallback`)
+        }
       }
     } catch (error: any) {
       console.error(`❌ [RADIUS-API] Error fetching home info:`, error)
@@ -117,18 +116,17 @@ export async function GET(
         )
         if (!hasUsefulData) {
           console.warn(`⚠️ [RADIUS-API] License API returned empty data`)
+          console.warn(`⚠️ [RADIUS-API] Response body:`, JSON.stringify(licenseResponseData, null, 2))
           licenseData = null // Treat empty data as failure
         } else {
           console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:108',message:'HomeFolio license API response',data:{hasLicense:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,licenseType:licenseData?.legacyLicense?.licenseType,licenseEffectiveDate:licenseData?.legacyLicense?.licenseEffectiveDate,licenseExpirationDate:licenseData?.legacyLicense?.licenseExpirationDate,totalCapacity:licenseData?.legacyLicense?.totalCapacity,hasUsefulData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
       } else {
-        console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}`)
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:120',message:'HomeFolio license API failed',data:{status:licenseResponse.status,statusText:licenseResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        const errorText = await licenseResponse.text().catch(() => "Unable to read error response")
+        console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}: ${errorText}`)
+        if (licenseResponse.status === 404) {
+          console.warn(`⚠️ [RADIUS-API] HomeFolio license endpoint not found - will use database fallback`)
+        }
       }
     } catch (error: any) {
       console.error(`❌ [RADIUS-API] Error fetching combined license:`, error)
@@ -278,8 +276,12 @@ export async function GET(
           FROM SyncActiveHomes h
           WHERE h.Guid = @param0
         `
+        console.log(`🔍 [RADIUS-API] Executing fallback query for home GUID: ${homeGuid}`)
         const fallbackResult = await query(fallbackQuery, [homeGuid])
+        console.log(`📊 [RADIUS-API] Fallback query result: ${fallbackResult?.length || 0} rows`)
+        
         if (fallbackResult && fallbackResult.length > 0) {
+          console.log(`📊 [RADIUS-API] Fallback result data:`, JSON.stringify(fallbackResult[0], null, 2))
           fallbackHomeInfo = {
             homeName: fallbackResult[0].HomeName,
             address: {
@@ -293,14 +295,11 @@ export async function GET(
             phone: fallbackResult[0].HomePhone || null,
             email: fallbackResult[0].CaregiverEmail || null,
           }
-          console.log(`✅ [RADIUS-API] Retrieved fallback home info from database`)
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:254',message:'Fallback data retrieved',data:{homeName:fallbackHomeInfo.homeName,phone:fallbackHomeInfo.phone,email:fallbackHomeInfo.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
+          console.log(`✅ [RADIUS-API] Retrieved fallback home info from database: ${fallbackHomeInfo.homeName}`)
         } else {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:287',message:'Fallback home query returned no results',data:{homeGuid,resultCount:fallbackResult?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
+          console.warn(`⚠️ [RADIUS-API] Fallback home query returned no results for GUID: ${homeGuid}`)
+          console.warn(`⚠️ [RADIUS-API] Query: ${fallbackQuery}`)
+          console.warn(`⚠️ [RADIUS-API] Result count: ${fallbackResult?.length || 0}`)
         }
 
         // Also fetch license data from database if license API failed
@@ -321,9 +320,13 @@ export async function GET(
               WHERE lc.FacilityGUID = @param0
                 AND lc.IsActive = 1
             `
+            console.log(`🔍 [RADIUS-API] Executing fallback license query for home GUID: ${homeGuid}`)
             const licenseFallbackResult = await query(licenseFallbackQuery, [homeGuid])
+            console.log(`📊 [RADIUS-API] Fallback license query result: ${licenseFallbackResult?.length || 0} rows`)
+            
             if (licenseFallbackResult && licenseFallbackResult.length > 0) {
               const lc = licenseFallbackResult[0]
+              console.log(`📊 [RADIUS-API] Fallback license result data:`, JSON.stringify(lc, null, 2))
               fallbackLicenseInfo = {
                 licenseType: lc.LicenseType || null,
                 licenseEffectiveDate: lc.LicenseEffective ? new Date(lc.LicenseEffective).toISOString().split('T')[0] : null,
@@ -335,10 +338,11 @@ export async function GET(
                 respiteOnly: lc.RespiteOnly || false,
                 serviceLevelsApproved: lc.LegacyDFPSLevel ? [lc.LegacyDFPSLevel] : [],
               }
-              console.log(`✅ [RADIUS-API] Retrieved fallback license info from database`)
-              // #region agent log
-              fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:310',message:'Fallback license data retrieved',data:{licenseType:fallbackLicenseInfo.licenseType,licenseEffectiveDate:fallbackLicenseInfo.licenseEffectiveDate,totalCapacity:fallbackLicenseInfo.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-              // #endregion
+              console.log(`✅ [RADIUS-API] Retrieved fallback license info from database: ${fallbackLicenseInfo.licenseType}`)
+            } else {
+              console.warn(`⚠️ [RADIUS-API] Fallback license query returned no results for GUID: ${homeGuid}`)
+              console.warn(`⚠️ [RADIUS-API] Query: ${licenseFallbackQuery}`)
+              console.warn(`⚠️ [RADIUS-API] Result count: ${licenseFallbackResult?.length || 0}`)
             }
           } catch (licenseFallbackError) {
             console.error(`❌ [RADIUS-API] License database fallback failed:`, licenseFallbackError)
