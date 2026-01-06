@@ -49,87 +49,142 @@ export async function GET(
 
     console.log(`📋 [RADIUS-API] Fetching pre-population data for home: ${homeGuid}, unit: ${unit}`)
 
-    // Get admin service base URL (for internal API calls)
-    const adminBaseUrl = process.env.ADMIN_SERVICE_URL || process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || "https://admin.test.refugehouse.app"
-    
-    // Get API key for admin service calls
-    const radiusApiKey = process.env.RADIUS_API_KEY || apiKey // Use the validated API key from request or env var
-    
-    // 2. Get Simplified Home Information
+    // 2. Get Home Information directly from database (this endpoint is in admin service - direct DB access allowed)
     let homeInfo: any = null
     try {
-      const homeInfoUrl = `${adminBaseUrl}/admin/api/homes/${homeGuid}/info`
-      console.log(`📋 [RADIUS-API] Fetching home info from: ${homeInfoUrl}`)
+      const homeQuery = `
+        SELECT TOP 1
+          h.Guid,
+          h.HomeName,
+          h.Address1,
+          h.Address2,
+          h.City,
+          h.State,
+          h.Zip,
+          h.County,
+          h.HomePhone,
+          h.CaregiverEmail,
+          h.CaseManager,
+          h.CaseManagerEmail,
+          h.Unit
+        FROM SyncActiveHomes h
+        WHERE h.Guid = @param0
+      `
+      const homeResult = await query(homeQuery, [homeGuid])
       
-      const homeInfoResponse = await fetch(homeInfoUrl, {
-        headers: {
-          "x-api-key": radiusApiKey,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (homeInfoResponse.ok) {
-        const homeInfoData = await homeInfoResponse.json()
-        homeInfo = homeInfoData.home
-        // Check if we got useful data (not just an empty object)
-        const hasUsefulData = homeInfo && (homeInfo.homeName || homeInfo.name || homeInfo.phone || homeInfo.email)
-        if (!hasUsefulData) {
-          console.warn(`⚠️ [RADIUS-API] Home info API returned empty data`)
-          console.warn(`⚠️ [RADIUS-API] Response body:`, JSON.stringify(homeInfoData, null, 2))
-          homeInfo = null // Treat empty data as failure
-        } else {
-          console.log(`✅ [RADIUS-API] Home info retrieved successfully: ${homeInfo.homeName || homeInfo.name}`)
+      if (homeResult && homeResult.length > 0) {
+        const home = homeResult[0]
+        homeInfo = {
+          guid: home.Guid,
+          homeName: home.HomeName,
+          name: home.HomeName,
+          address: {
+            street: home.Address1 || "",
+            street2: home.Address2 || null,
+            city: home.City || "",
+            state: home.State || "",
+            zip: home.Zip || "",
+            county: home.County || null,
+          },
+          phone: home.HomePhone || null,
+          email: home.CaregiverEmail || null,
+          primaryEmail: home.CaregiverEmail || null,
+          caseManager: {
+            name: home.CaseManager || null,
+            email: home.CaseManagerEmail || null,
+          },
+          unit: home.Unit || null,
         }
+        console.log(`✅ [RADIUS-API] Home info retrieved from database: ${homeInfo.homeName}`)
       } else {
-        const errorText = await homeInfoResponse.text().catch(() => "Unable to read error response")
-        console.warn(`⚠️ [RADIUS-API] Home info API returned ${homeInfoResponse.status}: ${errorText}`)
-        if (homeInfoResponse.status === 404) {
-          console.warn(`⚠️ [RADIUS-API] HomeFolio endpoint not found - will use database fallback`)
-        }
+        console.warn(`⚠️ [RADIUS-API] Home not found in database for GUID: ${homeGuid}`)
       }
     } catch (error: any) {
-      console.error(`❌ [RADIUS-API] Error fetching home info:`, error)
+      console.error(`❌ [RADIUS-API] Error fetching home info from database:`, error)
     }
 
-    // 3. Get Combined License Information (PRIMARY ENDPOINT - contains legacy + T3C)
+    // 3. Get License Information directly from database (this endpoint is in admin service - direct DB access allowed)
     let licenseData: any = null
     try {
-      const licenseUrl = `${adminBaseUrl}/admin/api/homes/${homeGuid}/license-combined?unit=${unit}`
-      console.log(`📋 [RADIUS-API] Fetching combined license from: ${licenseUrl}`)
+      const licenseQuery = `
+        SELECT TOP 1
+          lc.LicenseType,
+          lc.LicenseEffective,
+          lc.LicenseExpiration,
+          lc.TotalCapacity,
+          lc.OpenBeds,
+          lc.FilledBeds,
+          lc.OriginallyLicensed,
+          lc.RespiteOnly,
+          lc.LegacyDFPSLevel,
+          lc.LicenseID
+        FROM syncLicenseCurrent lc
+        WHERE lc.FacilityGUID = @param0
+          AND lc.IsActive = 1
+      `
+      const licenseResult = await query(licenseQuery, [homeGuid])
       
-      const licenseResponse = await fetch(licenseUrl, {
-        headers: {
-          "x-api-key": radiusApiKey,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (licenseResponse.ok) {
-        const licenseResponseData = await licenseResponse.json()
-        licenseData = licenseResponseData.license
-        // Check if we got useful data (not just an empty object)
-        const hasUsefulData = licenseData && (
-          licenseData.legacyLicense?.licenseType || 
-          licenseData.legacyLicense?.licenseEffectiveDate ||
-          licenseData.legacyLicense?.totalCapacity ||
-          licenseData.licenseStatus?.type
-        )
-        if (!hasUsefulData) {
-          console.warn(`⚠️ [RADIUS-API] License API returned empty data`)
-          console.warn(`⚠️ [RADIUS-API] Response body:`, JSON.stringify(licenseResponseData, null, 2))
-          licenseData = null // Treat empty data as failure
-        } else {
-          console.log(`✅ [RADIUS-API] Combined license retrieved successfully`)
+      if (licenseResult && licenseResult.length > 0) {
+        const license = licenseResult[0]
+        licenseData = {
+          legacyLicense: {
+            licenseType: license.LicenseType || null,
+            licenseEffectiveDate: license.LicenseEffective
+              ? new Date(license.LicenseEffective).toISOString().split("T")[0]
+              : null,
+            licenseExpirationDate: license.LicenseExpiration
+              ? new Date(license.LicenseExpiration).toISOString().split("T")[0]
+              : null,
+            totalCapacity: license.TotalCapacity || null,
+            fosterCareCapacity: license.TotalCapacity || null,
+            currentCensus: license.FilledBeds || 0,
+            respiteOnly: license.RespiteOnly || false,
+            serviceLevelsApproved: license.LegacyDFPSLevel ? [license.LegacyDFPSLevel] : [],
+            originallyLicensed: license.OriginallyLicensed
+              ? new Date(license.OriginallyLicensed).toISOString().split("T")[0]
+              : null,
+          },
+          t3cCredentials: {
+            hasT3C: false,
+            isCompliant: false,
+            isAuthorized: false,
+          },
+          licenseStatus: {
+            type: "Legacy",
+            effective: license.LicenseExpiration && new Date(license.LicenseExpiration) > new Date() ? "Active" : "Expired",
+            displayText: license.LicenseType || "Legacy License",
+          },
         }
+        console.log(`✅ [RADIUS-API] License info retrieved from database: ${license.LicenseType}`)
       } else {
-        const errorText = await licenseResponse.text().catch(() => "Unable to read error response")
-        console.warn(`⚠️ [RADIUS-API] Combined license API returned ${licenseResponse.status}: ${errorText}`)
-        if (licenseResponse.status === 404) {
-          console.warn(`⚠️ [RADIUS-API] HomeFolio license endpoint not found - will use database fallback`)
+        console.warn(`⚠️ [RADIUS-API] No active license found for GUID: ${homeGuid}`)
+        // Return empty license structure
+        licenseData = {
+          legacyLicense: {
+            licenseType: null,
+            licenseEffectiveDate: null,
+            licenseExpirationDate: null,
+            totalCapacity: null,
+            fosterCareCapacity: null,
+            currentCensus: 0,
+            respiteOnly: false,
+            serviceLevelsApproved: [],
+            originallyLicensed: null,
+          },
+          t3cCredentials: {
+            hasT3C: false,
+            isCompliant: false,
+            isAuthorized: false,
+          },
+          licenseStatus: {
+            type: "Legacy",
+            effective: "Not Found",
+            displayText: "No Active License",
+          },
         }
       }
     } catch (error: any) {
-      console.error(`❌ [RADIUS-API] Error fetching combined license:`, error)
+      console.error(`❌ [RADIUS-API] Error fetching license info from database:`, error)
     }
 
     // 5. Get household members from syncCurrentFosterFacility (fallback if not in HomeFolio)
@@ -196,6 +251,9 @@ export async function GET(
       
       console.log(`📋 [RADIUS-API] Fetching placement history from: ${placementHistoryUrl}`)
       
+      // Get API key for visit service call
+      const radiusApiKey = process.env.RADIUS_API_KEY || apiKey
+      
       const placementResponse = await fetch(placementHistoryUrl, {
         headers: {
           "Content-Type": "application/json",
@@ -248,117 +306,9 @@ export async function GET(
       console.log("📋 [RADIUS-API] No previous visit data found (this is normal for first visits)")
     }
 
-    // 9. Fallback: Get basic home and license info from database if HomeFolio APIs failed
-    // This is allowed because this endpoint is in the admin service (has direct DB access)
-    let fallbackHomeInfo: any = null
-    let fallbackLicenseInfo: any = null
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:235',message:'Fallback check',data:{hasHomeInfo:!!homeInfo,hasLicenseData:!!licenseData,willUseFallback:(!homeInfo||!licenseData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
-    // Use fallback if EITHER API failed (not both) - we need both home and license data
-    if (!homeInfo || !licenseData) {
-      console.warn(`⚠️ [RADIUS-API] HomeFolio APIs failed, attempting database fallback for basic home info`)
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:237',message:'Fallback triggered - querying database',data:{homeGuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-      // #endregion
-      try {
-        const fallbackQuery = `
-          SELECT TOP 1
-            h.HomeName,
-            h.Address1,
-            h.Address2,
-            h.City,
-            h.State,
-            h.Zip,
-            h.County,
-            h.HomePhone,
-            h.CaregiverEmail
-          FROM SyncActiveHomes h
-          WHERE h.Guid = @param0
-        `
-        console.log(`🔍 [RADIUS-API] Executing fallback query for home GUID: ${homeGuid}`)
-        const fallbackResult = await query(fallbackQuery, [homeGuid])
-        console.log(`📊 [RADIUS-API] Fallback query result: ${fallbackResult?.length || 0} rows`)
-        
-        if (fallbackResult && fallbackResult.length > 0) {
-          console.log(`📊 [RADIUS-API] Fallback result data:`, JSON.stringify(fallbackResult[0], null, 2))
-          fallbackHomeInfo = {
-            homeName: fallbackResult[0].HomeName,
-            address: {
-              street: fallbackResult[0].Address1 || "",
-              street2: fallbackResult[0].Address2 || null,
-              city: fallbackResult[0].City || "",
-              state: fallbackResult[0].State || "",
-              zip: fallbackResult[0].Zip || "",
-              county: fallbackResult[0].County || null,
-            },
-            phone: fallbackResult[0].HomePhone || null,
-            email: fallbackResult[0].CaregiverEmail || null,
-          }
-          console.log(`✅ [RADIUS-API] Retrieved fallback home info from database: ${fallbackHomeInfo.homeName}`)
-        } else {
-          console.warn(`⚠️ [RADIUS-API] Fallback home query returned no results for GUID: ${homeGuid}`)
-          console.warn(`⚠️ [RADIUS-API] Query: ${fallbackQuery}`)
-          console.warn(`⚠️ [RADIUS-API] Result count: ${fallbackResult?.length || 0}`)
-        }
-
-        // Also fetch license data from database if license API failed
-        if (!licenseData) {
-          try {
-            const licenseFallbackQuery = `
-              SELECT TOP 1
-                lc.LicenseType,
-                lc.LicenseEffective,
-                lc.LicenseExpiration,
-                lc.TotalCapacity,
-                lc.OpenBeds,
-                lc.FilledBeds,
-                lc.OriginallyLicensed,
-                lc.RespiteOnly,
-                lc.LegacyDFPSLevel
-              FROM syncLicenseCurrent lc
-              WHERE lc.FacilityGUID = @param0
-                AND lc.IsActive = 1
-            `
-            console.log(`🔍 [RADIUS-API] Executing fallback license query for home GUID: ${homeGuid}`)
-            const licenseFallbackResult = await query(licenseFallbackQuery, [homeGuid])
-            console.log(`📊 [RADIUS-API] Fallback license query result: ${licenseFallbackResult?.length || 0} rows`)
-            
-            if (licenseFallbackResult && licenseFallbackResult.length > 0) {
-              const lc = licenseFallbackResult[0]
-              console.log(`📊 [RADIUS-API] Fallback license result data:`, JSON.stringify(lc, null, 2))
-              fallbackLicenseInfo = {
-                licenseType: lc.LicenseType || null,
-                licenseEffectiveDate: lc.LicenseEffective ? new Date(lc.LicenseEffective).toISOString().split('T')[0] : null,
-                licenseExpirationDate: lc.LicenseExpiration ? new Date(lc.LicenseExpiration).toISOString().split('T')[0] : null,
-                totalCapacity: lc.TotalCapacity || null,
-                fosterCareCapacity: lc.TotalCapacity || null, // Use same as total capacity
-                currentCensus: lc.FilledBeds || 0,
-                originallyLicensed: lc.OriginallyLicensed ? new Date(lc.OriginallyLicensed).toISOString().split('T')[0] : null,
-                respiteOnly: lc.RespiteOnly || false,
-                serviceLevelsApproved: lc.LegacyDFPSLevel ? [lc.LegacyDFPSLevel] : [],
-              }
-              console.log(`✅ [RADIUS-API] Retrieved fallback license info from database: ${fallbackLicenseInfo.licenseType}`)
-            } else {
-              console.warn(`⚠️ [RADIUS-API] Fallback license query returned no results for GUID: ${homeGuid}`)
-              console.warn(`⚠️ [RADIUS-API] Query: ${licenseFallbackQuery}`)
-              console.warn(`⚠️ [RADIUS-API] Result count: ${licenseFallbackResult?.length || 0}`)
-            }
-          } catch (licenseFallbackError) {
-            console.error(`❌ [RADIUS-API] License database fallback failed:`, licenseFallbackError)
-          }
-        }
-      } catch (fallbackError) {
-        console.error(`❌ [RADIUS-API] Database fallback also failed:`, fallbackError)
-      }
-    }
-
-    // 10. Extract home information from API responses or fallback
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:275',message:'Home data extraction - before fallback',data:{hasHomeInfo:!!homeInfo,homeInfoName:homeInfo?.homeName,hasLicenseData:!!licenseData,licenseDataName:licenseData?.homeName,hasFallback:!!fallbackHomeInfo,fallbackName:fallbackHomeInfo?.homeName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
-    const homeName = homeInfo?.homeName || licenseData?.homeName || fallbackHomeInfo?.homeName || "Unknown Home"
-    const address = homeInfo?.address || fallbackHomeInfo?.address || {
+    // 9. Extract home information from database query results
+    const homeName = homeInfo?.homeName || homeInfo?.name || "Unknown Home"
+    const address = homeInfo?.address || {
       street: "",
       street2: null,
       city: "",
@@ -366,24 +316,17 @@ export async function GET(
       zip: "",
       county: null,
     }
-    const homePhone = homeInfo?.phone || fallbackHomeInfo?.phone || null
-    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || fallbackHomeInfo?.email || null
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:285',message:'Home data extraction - final values',data:{homeName,homePhone,homeEmail,hasAddress:!!address,addressStreet:address?.street},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
+    const homePhone = homeInfo?.phone || null
+    const homeEmail = homeInfo?.primaryEmail || homeInfo?.email || null
 
-    // 11. Extract T3C credentials from license data (already provided by license-combined endpoint)
+    // 10. Extract T3C credentials and legacy license information from database query results
     const t3cCredentials = licenseData?.t3cCredentials || {
       hasT3C: false,
       isCompliant: false,
       isAuthorized: false,
     }
 
-    // 12. Extract legacy license information from API response or fallback
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:325',message:'License data extraction',data:{hasLicenseData:!!licenseData,hasLegacyLicense:!!licenseData?.legacyLicense,hasFallbackLicense:!!fallbackLicenseInfo,licenseType:licenseData?.legacyLicense?.licenseType||fallbackLicenseInfo?.licenseType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    const legacyLicenseInfo = licenseData?.legacyLicense || fallbackLicenseInfo || {
+    const legacyLicenseInfo = licenseData?.legacyLicense || {
       licenseType: null,
       respiteOnly: false,
       licenseEffectiveDate: null,
@@ -395,9 +338,6 @@ export async function GET(
       homeTypes: [],
       originallyLicensed: null,
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e12938fe-54af-4ca0-be48-847cb3195b05',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/radius/homes/[homeGuid]/prepopulate/route.ts:306',message:'License data extraction - final legacyLicenseInfo',data:{licenseType:legacyLicenseInfo.licenseType,licenseEffectiveDate:legacyLicenseInfo.licenseEffectiveDate,totalCapacity:legacyLicenseInfo.totalCapacity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
 
     // 12. Prepare response data
     const prepopulationData = {
@@ -434,11 +374,11 @@ export async function GET(
         },
       },
       license: {
-        // Legacy License Information (from license-combined endpoint or fallback to database)
-        legacyLicense: licenseData?.legacyLicense || legacyLicenseInfo,
-        // T3C Credentialing Information (from license-combined endpoint)
+        // Legacy License Information (from direct database query)
+        legacyLicense: legacyLicenseInfo,
+        // T3C Credentialing Information (from direct database query)
         t3cCredentials: t3cCredentials,
-        // Combined License Status (from license-combined endpoint)
+        // Combined License Status (from direct database query)
         licenseStatus: licenseData?.licenseStatus || {
           type: "Legacy",
           effective: "Active",
