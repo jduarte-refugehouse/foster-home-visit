@@ -37,75 +37,138 @@ export async function GET(request: NextRequest) {
     const microserviceCode = getMicroserviceCode()
     const useApiClient = shouldUseRadiusApiClient()
 
-    // NO DB FALLBACK - must use API client
-    if (!useApiClient) {
-      throwIfDirectDbNotAllowed("dashboard/home-liaison endpoint")
-    }
-
-    // Use API client for dashboard data (includes user lookup)
-    console.log(`✅ [DASHBOARD] Using API client for dashboard data (microservice: ${microserviceCode}, email: ${userEmail})`)
+    if (useApiClient) {
+      // Non-admin microservice: must use API client
+      console.log(`✅ [DASHBOARD] Using API client for dashboard data (microservice: ${microserviceCode}, email: ${userEmail})`)
+      
+      const dashboardData = await radiusApiClient.getDashboardHomeLiaison(userEmail)
     
-    const dashboardData = await radiusApiClient.getDashboardHomeLiaison(userEmail)
-    
-    // Check if user was found
-    if (!dashboardData.user) {
-      return NextResponse.json({ 
-        error: "User not found",
-        details: "User not found in system database. Please contact an administrator."
-      }, { status: 404 })
-    }
-    
-    const upcomingAppointments = dashboardData.upcomingAppointments || []
-    const upcomingOnCall = dashboardData.upcomingOnCall || []
-    
-    // Use the stats and other data from API Hub
-    const today = startOfDay(new Date())
-    const todayStart = startOfDay(new Date())
-    const todayEnd = endOfDay(new Date())
-    const weekEnd = endOfDay(addDays(today, 7))
+      // Check if user was found
+      if (!dashboardData.user) {
+        return NextResponse.json({ 
+          error: "User not found",
+          details: "User not found in system database. Please contact an administrator."
+        }, { status: 404 })
+      }
+      
+      const upcomingAppointments = dashboardData.upcomingAppointments || []
+      const upcomingOnCall = dashboardData.upcomingOnCall || []
+      
+      // Use the stats and other data from API Hub
+      const today = startOfDay(new Date())
+      const todayStart = startOfDay(new Date())
+      const todayEnd = endOfDay(new Date())
+      const weekEnd = endOfDay(addDays(today, 7))
 
-    const todayAppointments = {
-      count: dashboardData.stats?.todayCount || upcomingAppointments.filter((apt: any) => {
-        const aptDate = new Date(apt.start_datetime)
-        return aptDate >= todayStart && aptDate <= todayEnd
-      }).length,
-    }
+      const todayAppointments = {
+        count: dashboardData.stats?.todayCount || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return aptDate >= todayStart && aptDate <= todayEnd
+        }).length,
+      }
 
-    const weekAppointments = {
-      count: dashboardData.stats?.weekCount || upcomingAppointments.filter((apt: any) => {
-        const aptDate = new Date(apt.start_datetime)
-        return aptDate >= todayStart && aptDate <= weekEnd
-      }).length,
-    }
+      const weekAppointments = {
+        count: dashboardData.stats?.weekCount || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return aptDate >= todayStart && aptDate <= weekEnd
+        }).length,
+      }
 
-    const pendingVisits = {
-      count: dashboardData.stats?.pendingVisits || upcomingAppointments.filter((apt: any) => {
-        const aptDate = new Date(apt.start_datetime)
-        return apt.status === 'scheduled' && aptDate >= today
-      }).length,
-    }
+      const pendingVisits = {
+        count: dashboardData.stats?.pendingVisits || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return apt.status === 'scheduled' && aptDate >= today
+        }).length,
+      }
 
-    const currentOnCall = upcomingOnCall.filter(
-      (schedule: any) => new Date() >= new Date(schedule.start_datetime) && new Date() <= new Date(schedule.end_datetime)
-    )
+      const currentOnCall = upcomingOnCall.filter(
+        (schedule: any) => new Date() >= new Date(schedule.start_datetime) && new Date() <= new Date(schedule.end_datetime)
+      )
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        user: dashboardData.user,
-        stats: {
-          todayCount: todayAppointments.count,
-          weekCount: weekAppointments.count,
-          pendingVisits: pendingVisits.count,
-          upcomingOnCallCount: upcomingOnCall.length,
-          isCurrentlyOnCall: currentOnCall.length > 0,
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          user: dashboardData.user,
+          stats: {
+            todayCount: todayAppointments.count,
+            weekCount: weekAppointments.count,
+            pendingVisits: pendingVisits.count,
+            upcomingOnCallCount: upcomingOnCall.length,
+            isCurrentlyOnCall: currentOnCall.length > 0,
+          },
+          upcomingAppointments: upcomingAppointments.slice(0, 10),
+          upcomingOnCall: upcomingOnCall.slice(0, 5),
+          currentOnCall: currentOnCall.length > 0 ? currentOnCall[0] : null,
         },
-        upcomingAppointments: upcomingAppointments.slice(0, 10),
-        upcomingOnCall: upcomingOnCall.slice(0, 5),
-        currentOnCall: currentOnCall.length > 0 ? currentOnCall[0] : null,
-      },
-    })
-    return addNoCacheHeaders(response)
+      })
+      return addNoCacheHeaders(response)
+    } else {
+      // Admin microservice: use API Hub endpoint (which has direct DB access)
+      // Even admin service should use the API Hub endpoint for consistency
+      console.log(`✅ [DASHBOARD] Admin service using API Hub endpoint (microservice: ${microserviceCode}, email: ${userEmail})`)
+      
+      const dashboardData = await radiusApiClient.getDashboardHomeLiaison(userEmail)
+    
+      // Check if user was found
+      if (!dashboardData.user) {
+        return NextResponse.json({ 
+          error: "User not found",
+          details: "User not found in system database. Please contact an administrator."
+        }, { status: 404 })
+      }
+      
+      const upcomingAppointments = dashboardData.upcomingAppointments || []
+      const upcomingOnCall = dashboardData.upcomingOnCall || []
+      
+      // Use the stats and other data from API Hub
+      const today = startOfDay(new Date())
+      const todayStart = startOfDay(new Date())
+      const todayEnd = endOfDay(new Date())
+      const weekEnd = endOfDay(addDays(today, 7))
+
+      const todayAppointments = {
+        count: dashboardData.stats?.todayCount || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return aptDate >= todayStart && aptDate <= todayEnd
+        }).length,
+      }
+
+      const weekAppointments = {
+        count: dashboardData.stats?.weekCount || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return aptDate >= todayStart && aptDate <= weekEnd
+        }).length,
+      }
+
+      const pendingVisits = {
+        count: dashboardData.stats?.pendingVisits || upcomingAppointments.filter((apt: any) => {
+          const aptDate = new Date(apt.start_datetime)
+          return apt.status === 'scheduled' && aptDate >= today
+        }).length,
+      }
+
+      const currentOnCall = upcomingOnCall.filter(
+        (schedule: any) => new Date() >= new Date(schedule.start_datetime) && new Date() <= new Date(schedule.end_datetime)
+      )
+
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          user: dashboardData.user,
+          stats: {
+            todayCount: todayAppointments.count,
+            weekCount: weekAppointments.count,
+            pendingVisits: pendingVisits.count,
+            upcomingOnCallCount: upcomingOnCall.length,
+            isCurrentlyOnCall: currentOnCall.length > 0,
+          },
+          upcomingAppointments: upcomingAppointments.slice(0, 10),
+          upcomingOnCall: upcomingOnCall.slice(0, 5),
+          currentOnCall: currentOnCall.length > 0 ? currentOnCall[0] : null,
+        },
+      })
+      return addNoCacheHeaders(response)
+    }
   } catch (error) {
     console.error("❌ Error fetching Home Liaison dashboard data:", error)
     console.error("❌ Error details:", {
