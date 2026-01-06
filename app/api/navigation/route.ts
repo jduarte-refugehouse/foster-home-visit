@@ -55,12 +55,21 @@ export async function GET(request: NextRequest) {
       // NO DB FALLBACK - must use API client for non-admin microservices
       if (useApiClient) {
         console.log(`✅ [NAV] Using API client to lookup user (microservice: ${microserviceCode})`)
+        console.log(`🔍 [NAV] Lookup params:`, { clerkUserId: userClerkId, email: userEmail, microserviceCode })
         try {
           // Use API client to lookup user and get permissions
           const lookupResult = await radiusApiClient.lookupUser({
             clerkUserId: userClerkId || undefined,
             email: userEmail || undefined,
             microserviceCode: microserviceCode,
+          })
+
+          console.log(`📥 [NAV] API client response:`, {
+            found: lookupResult.found,
+            hasUser: !!lookupResult.user,
+            userEmail: lookupResult.user?.email,
+            permissionsCount: lookupResult.permissions?.length || 0,
+            rolesCount: lookupResult.roles?.length || 0,
           })
 
           if (lookupResult.found && lookupResult.user) {
@@ -77,11 +86,17 @@ export async function GET(request: NextRequest) {
             console.log(`🔑 [NAV] User permissions:`, userPermissions)
           } else {
             console.log("⚠️ [NAV] User not found via API client")
+            console.log("⚠️ [NAV] Response details:", JSON.stringify(lookupResult, null, 2))
             userInfo = null
             userPermissions = []
           }
         } catch (userError) {
           console.error("❌ [NAV] Error loading user via API client:", userError)
+          console.error("❌ [NAV] Error details:", {
+            message: userError instanceof Error ? userError.message : String(userError),
+            stack: userError instanceof Error ? userError.stack : undefined,
+            name: userError instanceof Error ? userError.name : undefined,
+          })
           userInfo = null
           userPermissions = []
         }
