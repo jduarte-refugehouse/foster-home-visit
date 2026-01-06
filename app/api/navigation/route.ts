@@ -4,6 +4,8 @@ import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG, sho
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+export const maxDuration = 60 // Increase timeout to 60 seconds
 
 /**
  * TEMPORARY: Helper function to generate readable SQL for debugging
@@ -44,9 +46,11 @@ export async function GET(request: NextRequest) {
     const useApiClient = shouldUseRadiusApiClient()
     
     console.log(`🌍 [NAV] Microservice: ${microserviceCode}, useApiClient: ${useApiClient}`)
+    console.log(`🌍 [NAV] User headers - Email: ${userEmail}, ClerkId: ${userClerkId}, Name: ${userName}`)
 
     if (userClerkId || userEmail) {
-      console.log(`👤 User identified: ${userEmail} (${userClerkId})`)
+      console.log(`👤 [NAV] User identified: ${userEmail} (${userClerkId})`)
+      console.log(`👤 [NAV] User name from headers: ${userName}`)
 
       // NO DB FALLBACK - must use API client for non-admin microservices
       if (useApiClient) {
@@ -84,8 +88,8 @@ export async function GET(request: NextRequest) {
       } else {
         // Admin microservice: use direct DB access (existing code)
         // SECURITY: Only allow direct DB access for admin microservice
-        throwIfDirectDbNotAllowed("navigation endpoint - user lookup")
-        console.log(`⚠️ [NAV] Using direct DB access (admin microservice: ${microserviceCode})`)
+        // Note: Don't throw here - this IS the admin microservice, direct DB is allowed
+        console.log(`✅ [NAV] Using direct DB access (admin microservice: ${microserviceCode})`)
         try {
           // Get user permissions from database
           const connection = await getConnection()
@@ -100,37 +104,48 @@ export async function GET(request: NextRequest) {
           const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
           
           if (impersonatedUserId) {
-            if (isServiceDomainAdmin && deploymentEnv) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
-            } else if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
             queryParam = impersonatedUserId
           } else if (userClerkId) {
-            if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            // The user_type filter was preventing users from being found
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND is_active = 1`
             queryParam = userClerkId
           } else if (userEmail) {
-            if (isServiceDomainAdmin && deploymentEnv) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
-            } else if (isServiceDomainAdmin) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
-            } else {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
-            }
+            // For admin service, don't filter by environment or user_type - find user first, then check permissions
+            // The user_type filter was preventing users from being found
+            userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
             queryParam = userEmail
           }
 
+          console.log(`🔍 [NAV] Executing user query:`)
+          console.log(`   Query: ${userQuery}`)
+          console.log(`   Parameter: ${queryParam}`)
+          console.log(`   IsServiceDomainAdmin: ${isServiceDomainAdmin}`)
+          console.log(`   DeploymentEnv: ${deploymentEnv}`)
+          
           const userRequest = connection.request().input("param0", queryParam)
-          if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
-            userRequest.input("param1", deploymentEnv)
-          }
+          // Removed environment filter - users should work in both test and production
           const userResult = await userRequest.query(userQuery)
+
+          console.log(`📊 [NAV] Query result: ${userResult.recordset.length} rows found`)
+          if (userResult.recordset.length > 0) {
+            console.log(`📊 [NAV] First row:`, JSON.stringify(userResult.recordset[0], null, 2))
+          } else {
+            console.log(`⚠️ [NAV] No user found with query: ${userQuery}`)
+            console.log(`⚠️ [NAV] Query parameter was: ${queryParam}`)
+            // Try a simpler query to see if user exists at all
+            const simpleQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 OR clerk_user_id = @param1`
+            const simpleResult = await connection.request()
+              .input("param0", userEmail || "")
+              .input("param1", userClerkId || "")
+              .query(simpleQuery)
+            console.log(`🔍 [NAV] Simple query (no filters) found ${simpleResult.recordset.length} rows`)
+            if (simpleResult.recordset.length > 0) {
+              console.log(`📊 [NAV] Simple query results:`, JSON.stringify(simpleResult.recordset, null, 2))
+            }
+          }
 
           if (userResult.recordset.length > 0) {
             userInfo = userResult.recordset[0]

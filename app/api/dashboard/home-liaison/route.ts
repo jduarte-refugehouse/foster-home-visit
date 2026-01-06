@@ -108,6 +108,11 @@ export async function GET(request: NextRequest) {
     return addNoCacheHeaders(response)
   } catch (error) {
     console.error("❌ Error fetching Home Liaison dashboard data:", error)
+    console.error("❌ Error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : typeof error,
+    })
     
     // Check if this is a direct DB access error
     if (error instanceof Error && error.message.includes("DIRECT DATABASE ACCESS NOT ALLOWED")) {
@@ -118,6 +123,19 @@ export async function GET(request: NextRequest) {
           details: error.message,
         },
         { status: 500 }
+      )
+    }
+    
+    // Check if this is an API client timeout or connection error
+    if (error instanceof Error && (error.message.includes("timed out") || error.message.includes("fetch failed"))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "API Hub Connection Error",
+          details: "Failed to connect to admin service. Please check your network connection and try again.",
+          originalError: error.message,
+        },
+        { status: 503 }
       )
     }
     

@@ -54,18 +54,27 @@ async function apiRequest<T>(
   }
 
   const url = `${API_BASE_URL}/api/radius/${endpoint}`
-  const response = await fetch(url, {
-    ...options,
-    cache: 'no-store', // Disable fetch caching
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY,
-      "Cache-Control": "no-cache",
-      ...options?.headers,
-    },
-  })
+  
+  // Create an AbortController for timeout handling
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal, // Add abort signal
+      cache: 'no-store', // Disable fetch caching
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY,
+        "Cache-Control": "no-cache",
+        ...options?.headers,
+      },
+    })
 
-  if (!response.ok) {
+    clearTimeout(timeoutId) // Clear timeout if request completes
+
+    if (!response.ok) {
     // Try to get the response body as text first, then parse as JSON
     let errorData: any = {}
     let responseText = ""
@@ -109,9 +118,17 @@ async function apiRequest<T>(
     ;(enhancedError as any).responseText = responseText
     ;(enhancedError as any).status = response.status
     throw enhancedError
-  }
+    }
 
-  return response.json()
+    return response.json()
+  } catch (error: any) {
+    clearTimeout(timeoutId) // Clear timeout on error
+    
+    if (error.name === 'AbortError') {
+      throw new Error(`API request timed out after 30 seconds: ${url}`)
+    }
+    throw error
+  }
 }
 
 /**
