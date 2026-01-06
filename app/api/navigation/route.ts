@@ -4,6 +4,8 @@ import { getMicroserviceCode, getDeploymentEnvironment, MICROSERVICE_CONFIG, sho
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+export const maxDuration = 60 // Increase timeout to 60 seconds
 
 /**
  * TEMPORARY: Helper function to generate readable SQL for debugging

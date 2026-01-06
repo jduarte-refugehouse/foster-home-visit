@@ -5,8 +5,12 @@ import { getMicroserviceCode, shouldUseRadiusApiClient } from "@/lib/microservic
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+export const maxDuration = 60 // Increase timeout to 60 seconds
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
     const { clerkUserId, email, firstName, lastName } = await request.json()
 
@@ -14,8 +18,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    console.log(`🔍 [AUTH-TEST] Starting user-info request for ${email} (${Date.now() - startTime}ms)`)
+
     const microserviceCode = getMicroserviceCode()
     const useApiClient = shouldUseRadiusApiClient()
+
+    console.log(`🔍 [AUTH-TEST] Config: useApiClient=${useApiClient}, microserviceCode=${microserviceCode} (${Date.now() - startTime}ms)`)
 
     // Check user access (this will send email notification if new external user without access)
     let accessCheck: {
@@ -29,12 +37,14 @@ export async function POST(request: NextRequest) {
     if (useApiClient) {
       // Use API client for non-admin microservices
       try {
+        console.log(`🔍 [AUTH-TEST] Calling checkUserAccess via API Hub (${Date.now() - startTime}ms)`)
         const result = await radiusApiClient.checkUserAccess({
           clerkUserId,
           email,
           firstName,
           lastName,
         })
+        console.log(`✅ [AUTH-TEST] checkUserAccess completed (${Date.now() - startTime}ms)`)
         accessCheck = {
           hasAccess: result.hasAccess,
           requiresInvitation: result.requiresInvitation,
@@ -43,18 +53,21 @@ export async function POST(request: NextRequest) {
           hasInvitation: result.hasInvitation,
         }
       } catch (apiError) {
-        console.error("❌ [AUTH] Error checking access via API Hub:", apiError)
+        console.error(`❌ [AUTH-TEST] Error checking access via API Hub (${Date.now() - startTime}ms):`, apiError)
         return NextResponse.json(
           {
             error: "Failed to check user access",
             details: apiError instanceof Error ? apiError.message : "Unknown error",
+            elapsed_ms: Date.now() - startTime,
           },
           { status: 500 }
         )
       }
     } else {
       // Admin microservice: use direct DB access
+      console.log(`🔍 [AUTH-TEST] Calling checkUserAccess via direct DB (${Date.now() - startTime}ms)`)
       accessCheck = await checkUserAccess(clerkUserId, email, firstName, lastName)
+      console.log(`✅ [AUTH-TEST] checkUserAccess completed (${Date.now() - startTime}ms)`)
     }
 
     if (!accessCheck.hasAccess) {
@@ -63,6 +76,7 @@ export async function POST(request: NextRequest) {
           error: "Access denied. External users require an invitation to join.",
           requiresInvitation: true,
           isNewUser: accessCheck.isNewUser,
+          elapsed_ms: Date.now() - startTime,
         },
         { status: 403 },
       )
@@ -75,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (useApiClient) {
       // Use Radius API client for non-admin microservices
       try {
-        console.log("🔍 [AUTH-TEST] Getting/creating user via API Hub:", { clerkUserId, email, microserviceCode })
+        console.log(`🔍 [AUTH-TEST] Getting/creating user via API Hub (${Date.now() - startTime}ms):`, { clerkUserId, email, microserviceCode })
         const userResult = await radiusApiClient.getOrCreateUser({
           clerkUserId,
           email,
@@ -83,6 +97,7 @@ export async function POST(request: NextRequest) {
           lastName: lastName || undefined,
           microserviceCode: microserviceCode,
         })
+        console.log(`✅ [AUTH-TEST] getOrCreateUser completed (${Date.now() - startTime}ms)`)
         console.log("📥 [AUTH-TEST] API Hub response:", JSON.stringify({ 
           found: (userResult as any).found ?? undefined,
           isNewUser: (userResult as any).isNewUser ?? undefined,
@@ -92,7 +107,10 @@ export async function POST(request: NextRequest) {
         }, null, 2))
 
         if (!userResult.user) {
-          return NextResponse.json({ error: "Failed to create or retrieve user" }, { status: 500 })
+          return NextResponse.json({ 
+            error: "Failed to create or retrieve user",
+            elapsed_ms: Date.now() - startTime,
+          }, { status: 500 })
         }
 
       // API returns snake_case, map to expected format
@@ -119,7 +137,7 @@ export async function POST(request: NextRequest) {
         app_name: p.microservice_name || microserviceCode || "home-visits",
       }))
       } catch (apiError) {
-        console.error("❌ [AUTH-TEST] Error getting/creating user via API Hub:", apiError)
+        console.error(`❌ [AUTH-TEST] Error getting/creating user via API Hub (${Date.now() - startTime}ms):`, apiError)
         console.error("❌ [AUTH-TEST] Error details:", {
           message: apiError instanceof Error ? apiError.message : String(apiError),
           stack: apiError instanceof Error ? apiError.stack : undefined,
@@ -128,6 +146,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Failed to get or create user",
             details: apiError instanceof Error ? apiError.message : "Unknown error",
+            elapsed_ms: Date.now() - startTime,
           },
           { status: 500 }
         )
@@ -206,17 +225,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const elapsed = Date.now() - startTime
+    console.log(`✅ [AUTH-TEST] Request completed successfully in ${elapsed}ms`)
+
     return NextResponse.json({
       appUser,
       roles: userRoles,
       permissions: userPermissions,
+      elapsed_ms: elapsed,
     })
   } catch (error) {
-    console.error("Error in auth-test user-info:", error)
+    const elapsed = Date.now() - startTime
+    console.error(`❌ [AUTH-TEST] Error in user-info (${elapsed}ms):`, error)
     return NextResponse.json(
       {
         error: "Failed to process user information",
         details: error instanceof Error ? error.message : "Unknown error",
+        elapsed_ms: elapsed,
       },
       { status: 500 },
     )
