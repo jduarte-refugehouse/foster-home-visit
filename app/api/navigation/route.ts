@@ -103,15 +103,16 @@ export async function GET(request: NextRequest) {
           const deploymentEnv = isServiceDomainAdmin ? getDeploymentEnvironment() : null
           
           if (impersonatedUserId) {
-            if (isServiceDomainAdmin && deploymentEnv) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
-            } else if (isServiceDomainAdmin) {
+            // For admin service, don't filter by environment - users should work in both test and production
+            if (isServiceDomainAdmin) {
               userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
             } else {
               userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE id = @param0 AND is_active = 1`
             }
             queryParam = impersonatedUserId
           } else if (userClerkId) {
+            // For admin service, don't filter by environment - users should work in both test and production
+            // Only filter by user_type for global_admin access
             if (isServiceDomainAdmin) {
               userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE clerk_user_id = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
             } else {
@@ -119,9 +120,9 @@ export async function GET(request: NextRequest) {
             }
             queryParam = userClerkId
           } else if (userEmail) {
-            if (isServiceDomainAdmin && deploymentEnv) {
-              userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1 AND environment = @param1`
-            } else if (isServiceDomainAdmin) {
+            // For admin service, don't filter by environment - users should work in both test and production
+            // Only filter by user_type for global_admin access
+            if (isServiceDomainAdmin) {
               userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND (user_type = 'global_admin' OR user_type IS NULL) AND is_active = 1`
             } else {
               userQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 AND is_active = 1`
@@ -130,9 +131,7 @@ export async function GET(request: NextRequest) {
           }
 
           const userRequest = connection.request().input("param0", queryParam)
-          if (isServiceDomainAdmin && deploymentEnv && !userClerkId) {
-            userRequest.input("param1", deploymentEnv)
-          }
+          // Removed environment filter - users should work in both test and production
           const userResult = await userRequest.query(userQuery)
 
           if (userResult.recordset.length > 0) {
