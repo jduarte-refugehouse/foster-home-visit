@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
     console.log(`🌍 [NAV] User headers - Email: ${userEmail}, ClerkId: ${userClerkId}, Name: ${userName}`)
 
     if (userClerkId || userEmail) {
-      console.log(`👤 User identified: ${userEmail} (${userClerkId})`)
+      console.log(`👤 [NAV] User identified: ${userEmail} (${userClerkId})`)
+      console.log(`👤 [NAV] User name from headers: ${userName}`)
 
       // NO DB FALLBACK - must use API client for non-admin microservices
       if (useApiClient) {
@@ -130,9 +131,33 @@ export async function GET(request: NextRequest) {
             queryParam = userEmail
           }
 
+          console.log(`🔍 [NAV] Executing user query:`)
+          console.log(`   Query: ${userQuery}`)
+          console.log(`   Parameter: ${queryParam}`)
+          console.log(`   IsServiceDomainAdmin: ${isServiceDomainAdmin}`)
+          console.log(`   DeploymentEnv: ${deploymentEnv}`)
+          
           const userRequest = connection.request().input("param0", queryParam)
           // Removed environment filter - users should work in both test and production
           const userResult = await userRequest.query(userQuery)
+
+          console.log(`📊 [NAV] Query result: ${userResult.recordset.length} rows found`)
+          if (userResult.recordset.length > 0) {
+            console.log(`📊 [NAV] First row:`, JSON.stringify(userResult.recordset[0], null, 2))
+          } else {
+            console.log(`⚠️ [NAV] No user found with query: ${userQuery}`)
+            console.log(`⚠️ [NAV] Query parameter was: ${queryParam}`)
+            // Try a simpler query to see if user exists at all
+            const simpleQuery = `SELECT id, email, first_name, last_name, is_active, clerk_user_id, user_type, environment FROM app_users WHERE email = @param0 OR clerk_user_id = @param1`
+            const simpleResult = await connection.request()
+              .input("param0", userEmail || "")
+              .input("param1", userClerkId || "")
+              .query(simpleQuery)
+            console.log(`🔍 [NAV] Simple query (no filters) found ${simpleResult.recordset.length} rows`)
+            if (simpleResult.recordset.length > 0) {
+              console.log(`📊 [NAV] Simple query results:`, JSON.stringify(simpleResult.recordset, null, 2))
+            }
+          }
 
           if (userResult.recordset.length > 0) {
             userInfo = userResult.recordset[0]
