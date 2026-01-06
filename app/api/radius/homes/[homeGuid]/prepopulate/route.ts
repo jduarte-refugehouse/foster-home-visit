@@ -67,12 +67,10 @@ export async function GET(
         SELECT TOP 1
           h.Guid,
           h.HomeName,
-          h.Address1,
-          h.Address2,
+          h.Street,
           h.City,
           h.State,
           h.Zip,
-          h.County,
           h.HomePhone,
           h.CaregiverEmail,
           h.CaseManager,
@@ -90,12 +88,12 @@ export async function GET(
           homeName: home.HomeName,
           name: home.HomeName,
           address: {
-            street: home.Address1 || "",
-            street2: home.Address2 || null,
+            street: home.Street || "",
+            street2: null,
             city: home.City || "",
             state: home.State || "",
             zip: home.Zip || "",
-            county: home.County || null,
+            county: null,
           },
           phone: home.HomePhone || null,
           email: home.CaregiverEmail || null,
@@ -126,7 +124,6 @@ export async function GET(
           lc.OpenBeds,
           lc.FilledBeds,
           lc.OriginallyLicensed,
-          lc.RespiteOnly,
           lc.LegacyDFPSLevel,
           lc.LicenseID
         FROM syncLicenseCurrent lc
@@ -149,7 +146,7 @@ export async function GET(
             totalCapacity: license.TotalCapacity || null,
             fosterCareCapacity: license.TotalCapacity || null,
             currentCensus: license.FilledBeds || 0,
-            respiteOnly: license.RespiteOnly || false,
+            respiteOnly: false, // RespiteOnly column doesn't exist in syncLicenseCurrent
             serviceLevelsApproved: license.LegacyDFPSLevel ? [license.LegacyDFPSLevel] : [],
             originallyLicensed: license.OriginallyLicensed
               ? new Date(license.OriginallyLicensed).toISOString().split("T")[0]
