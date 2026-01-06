@@ -112,60 +112,158 @@ export async function GET(
       console.error(`❌ [RADIUS-API] Error fetching home info from database:`, error)
     }
 
-    // 3. Get License Information directly from database (this endpoint is in admin service - direct DB access allowed)
+    // 3. Get License Information from HomeFolio (current and authoritative source)
     let licenseData: any = null
     try {
-      const licenseQuery = `
-        SELECT TOP 1
-          lc.LicenseType,
-          lc.LicenseEffective,
-          lc.LicenseExpiration,
-          lc.TotalCapacity,
-          lc.OpenBeds,
-          lc.FilledBeds,
-          lc.OriginallyLicensed,
-          lc.LegacyDFPSLevel,
-          lc.LicenseID
-        FROM syncLicenseCurrent lc
-        WHERE lc.FacilityGUID = @param0
-          AND lc.IsActive = 1
+      // Query HomeFolio for current record
+      const folioQuery = `
+        SELECT TOP 1 folioJSON
+        FROM HomeFolio
+        WHERE homeGUID = @param0 AND isCurrent = 1
       `
-      const licenseResult = await query(licenseQuery, [homeGuid])
+      const folioResult = await query(folioQuery, [homeGuid])
       
-      if (licenseResult && licenseResult.length > 0) {
-        const license = licenseResult[0]
+      if (folioResult && folioResult.length > 0 && folioResult[0].folioJSON) {
+        console.log(`✅ [RADIUS-API] HomeFolio record found, parsing JSON...`)
+        const folio = JSON.parse(folioResult[0].folioJSON)
+        const license = folio?.folioData?.license || {}
+        const addenda = folio?.folioData?.addenda || []
+        
+        // Helper: Check if addendum is T3C-related
+        const isT3CAddendum = (addendum: any) => {
+          return (
+            addendum.addendum_type === 'T3C_CREDENTIAL_BASIC_FFH' ||
+            addendum.credential_awarded === 'T3C_BASIC_FOSTER_FAMILY_HOME' ||
+            (addendum.credential_awarded && addendum.credential_awarded.startsWith('T3C_')) ||
+            (addendum.t3cBlueprintCredentials && Array.isArray(addendum.t3cBlueprintCredentials) && addendum.t3cBlueprintCredentials.length > 0)
+          )
+        }
+        
+        // Extract legacy license info (may be overridden by addendum)
+        const traditionalAddenda = addenda
+          .filter((a: any) => !isT3CAddendum(a))
+          .filter((a: any) => a.licenseInfo != null && typeof a.licenseInfo === 'object')
+          .sort((a: any, b: any) => {
+            const dateA = a.effectiveDt ? new Date(a.effectiveDt).getTime() : 0
+            const dateB = b.effectiveDt ? new Date(b.effectiveDt).getTime() : 0
+            return dateB - dateA // Most recent first
+          })
+        
+        const mostRecentLicenseInfo = traditionalAddenda[0]?.licenseInfo || null
+        const effectiveLicense = mostRecentLicenseInfo ? { ...license, ...mostRecentLicenseInfo } : license
+        
+        // Extract service levels
+        const serviceLevels: string[] = []
+        if (effectiveLicense.levels) {
+          if (effectiveLicense.levels.basic) serviceLevels.push('Basic')
+          if (effectiveLicense.levels.moderate) serviceLevels.push('Moderate')
+          if (effectiveLicense.levels.specialized) serviceLevels.push('Specialized')
+          if (effectiveLicense.levels.intensive) serviceLevels.push('Intensive')
+          if (effectiveLicense.levels.medicalNeeds) serviceLevels.push('Medical Needs')
+        }
+        
+        // Determine license type
+        const licenseType = effectiveLicense.verification ? 'Full' : 'Pending'
+        const respiteOnly = !effectiveLicense.foster
+        
+        // Extract T3C credentials
+        const t3cAddenda = addenda.filter(isT3CAddendum)
+        const latestT3C = t3cAddenda[t3cAddenda.length - 1] // Last in array = most recent
+        
+        let t3cCredentials: any = {
+          hasT3C: false,
+          isCompliant: false,
+          isAuthorized: false,
+        }
+        
+        if (latestT3C) {
+          const authorizations = latestT3C.authorizations || []
+          const lcpaaAuth = authorizations.find((auth: any) => 
+            auth.role === 'LCPAA/Program Director' && auth.authorizedBy
+          )
+          const t3cLeadAuth = authorizations.find((auth: any) => 
+            auth.role === 'T3C Transition Team Lead' && auth.authorizedBy
+          )
+          
+          const hasLCPAA = !!lcpaaAuth
+          const hasT3CLead = !!t3cLeadAuth
+          const isFullyCompliant = hasLCPAA && hasT3CLead
+          
+          // Extract service packages
+          let servicePackages: any[] = []
+          if (latestT3C.servicePackages && Array.isArray(latestT3C.servicePackages)) {
+            servicePackages = latestT3C.servicePackages
+          } else if (latestT3C.t3cBlueprintCredentials && Array.isArray(latestT3C.t3cBlueprintCredentials)) {
+            const packageNames: Record<string, string> = {
+              'BASIC_FFH': 'T3C Basic Foster Family Home Support Services',
+              'MENTAL_BEHAVIORAL_HEALTH': 'Mental & Behavioral Health Support Services',
+              'IDD_AUTISM': 'IDD/Autism Spectrum Disorder Support Services',
+              'SUBSTANCE_USE': 'Substance Use Support Services',
+              'SHORT_TERM_ASSESSMENT': 'Short-Term Assessment Support Services',
+              'TREATMENT_FOSTER_CARE': 'T3C Treatment Foster Family Care Support Services'
+            }
+            servicePackages = latestT3C.t3cBlueprintCredentials.map((id: string) => ({
+              packageId: id,
+              packageName: packageNames[id] || id,
+              status: 'ACTIVE'
+            }))
+          }
+          
+          t3cCredentials = {
+            hasT3C: true,
+            isCompliant: isFullyCompliant,
+            isAuthorized: hasT3CLead,
+            credential: latestT3C.credential_awarded || 'T3C_BASIC_FOSTER_FAMILY_HOME',
+            status: isFullyCompliant ? 'Compliant' : (hasT3CLead ? 'Pending LCPAA' : 'Pending T3C Lead'),
+            servicePackages: servicePackages,
+            authorizations: {
+              lcpaa: {
+                authorized: hasLCPAA,
+                authorizedBy: lcpaaAuth?.authorizedBy || null,
+                authorizedDate: lcpaaAuth?.authorizedDate || null,
+              },
+              t3cLead: {
+                authorized: hasT3CLead,
+                authorizedBy: t3cLeadAuth?.authorizedBy || null,
+                authorizedDate: t3cLeadAuth?.authorizedDate || null,
+              }
+            }
+          }
+        }
+        
+        // Determine combined license status
+        let licenseStatus: any
+        if (t3cCredentials.hasT3C) {
+          if (t3cCredentials.isCompliant) {
+            licenseStatus = { type: 'T3C', effective: 'Active', displayText: 'T3C Compliant' }
+          } else if (t3cCredentials.isAuthorized) {
+            licenseStatus = { type: 'T3C', effective: 'Pending', displayText: 'T3C Pending LCPAA' }
+          } else {
+            licenseStatus = { type: 'T3C', effective: 'Pending', displayText: 'T3C Pending T3C Lead' }
+          }
+        } else {
+          licenseStatus = { type: 'Legacy', effective: 'Active', displayText: 'Legacy License' }
+        }
+        
         licenseData = {
           legacyLicense: {
-            licenseType: license.LicenseType || null,
-            licenseEffectiveDate: license.LicenseEffective
-              ? new Date(license.LicenseEffective).toISOString().split("T")[0]
-              : null,
-            licenseExpirationDate: license.LicenseExpiration
-              ? new Date(license.LicenseExpiration).toISOString().split("T")[0]
-              : null,
-            totalCapacity: license.TotalCapacity || null,
-            fosterCareCapacity: license.TotalCapacity || null,
-            currentCensus: license.FilledBeds || 0,
-            respiteOnly: false, // RespiteOnly column doesn't exist in syncLicenseCurrent
-            serviceLevelsApproved: license.LegacyDFPSLevel ? [license.LegacyDFPSLevel] : [],
-            originallyLicensed: license.OriginallyLicensed
-              ? new Date(license.OriginallyLicensed).toISOString().split("T")[0]
-              : null,
+            licenseType: licenseType,
+            licenseEffectiveDate: mostRecentLicenseInfo?.effectiveDt || null,
+            licenseExpirationDate: null, // Not tracked in HomeFolio
+            totalCapacity: effectiveLicense.totalCapacity || null,
+            fosterCareCapacity: effectiveLicense.placementCapacity || null,
+            currentCensus: 0, // Will be set to actual placements below
+            respiteOnly: respiteOnly,
+            serviceLevelsApproved: serviceLevels,
+            originallyLicensed: null, // Would need legacy data
           },
-          t3cCredentials: {
-            hasT3C: false,
-            isCompliant: false,
-            isAuthorized: false,
-          },
-          licenseStatus: {
-            type: "Legacy",
-            effective: license.LicenseExpiration && new Date(license.LicenseExpiration) > new Date() ? "Active" : "Expired",
-            displayText: license.LicenseType || "Legacy License",
-          },
+          t3cCredentials: t3cCredentials,
+          licenseStatus: licenseStatus,
         }
-        console.log(`✅ [RADIUS-API] License info retrieved from database: ${license.LicenseType}`)
+        
+        console.log(`✅ [RADIUS-API] License info extracted from HomeFolio: ${licenseType}, T3C: ${t3cCredentials.hasT3C}`)
       } else {
-        console.warn(`⚠️ [RADIUS-API] No active license found for GUID: ${homeGuid}`)
+        console.warn(`⚠️ [RADIUS-API] No current HomeFolio record found for GUID: ${homeGuid}`)
         // Return empty license structure
         licenseData = {
           legacyLicense: {
@@ -187,12 +285,37 @@ export async function GET(
           licenseStatus: {
             type: "Legacy",
             effective: "Not Found",
-            displayText: "No Active License",
+            displayText: "No HomeFolio Record",
           },
         }
       }
     } catch (error: any) {
-      console.error(`❌ [RADIUS-API] Error fetching license info from database:`, error)
+      console.error(`❌ [RADIUS-API] Error fetching license info from HomeFolio:`, error)
+      console.error(`❌ [RADIUS-API] Error stack:`, error.stack)
+      // Return empty license structure on error
+      licenseData = {
+        legacyLicense: {
+          licenseType: null,
+          licenseEffectiveDate: null,
+          licenseExpirationDate: null,
+          totalCapacity: null,
+          fosterCareCapacity: null,
+          currentCensus: 0,
+          respiteOnly: false,
+          serviceLevelsApproved: [],
+          originallyLicensed: null,
+        },
+        t3cCredentials: {
+          hasT3C: false,
+          isCompliant: false,
+          isAuthorized: false,
+        },
+        licenseStatus: {
+          type: "Legacy",
+          effective: "Error",
+          displayText: "Error Loading License",
+        },
+      }
     }
 
     // 5. Get household members from syncCurrentFosterFacility (fallback if not in HomeFolio)
@@ -242,6 +365,11 @@ export async function GET(
     `
 
     const childrenInPlacement = await query(childrenQuery, [homeGuid])
+    
+    // Update license currentCensus with actual placement count
+    if (licenseData && licenseData.legacyLicense) {
+      licenseData.legacyLicense.currentCensus = childrenInPlacement.length
+    }
 
     // 7. Get placement changes (6-month history)
     let placementHistory: any[] = []
