@@ -394,8 +394,11 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       let startLatitude: number | null = null
       let startLongitude: number | null = null
 
-      try {
-        const recentLocations = await query(
+      // Note: Continuum entries query requires direct DB access
+      // For visit service, we'll skip this and use appointment data
+      if (!useApiClient) {
+        try {
+          const recentLocations = await query(
           `SELECT TOP 1 
              location_latitude, 
              location_longitude 
@@ -416,8 +419,12 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             lng: startLongitude,
           })
         }
-      } catch (continuumError) {
-        console.warn("⚠️ [MILEAGE] Could not query continuum entries, falling back to appointments table:", continuumError)
+        } catch (continuumError) {
+          console.warn("⚠️ [MILEAGE] Could not query continuum entries, falling back to appointments table:", continuumError)
+        }
+      } else {
+        // For visit service, use appointment data directly
+        console.log("ℹ️ [MILEAGE] Using appointment data for return start location (visit service)")
       }
 
       // Fallback to appointments table if continuum doesn't have location
@@ -443,17 +450,44 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
       if (isReturnStart) {
         // Starting return travel - save return start location and timestamp
-        // Try to update return columns, but handle gracefully if they don't exist
-        try {
-          await query(
-            `UPDATE appointments 
-             SET return_latitude = @param1,
-                 return_longitude = @param2,
-                 return_timestamp = @param3,
-                 updated_at = GETUTCDATE()
-             WHERE appointment_id = @param0`,
-            [appointmentId, latitude, longitude, now],
-          )
+        if (useApiClient) {
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              returnLatitude: latitude,
+              returnLongitude: longitude,
+              returnTimestamp: now.toISOString(),
+            })
+            console.log("✅ [MILEAGE] Return travel started via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update return travel via API client:", apiError)
+            // If return columns don't exist, return success with warning
+            if (apiError.message?.includes("column") || apiError.message?.includes("Invalid")) {
+              return NextResponse.json({
+                success: true,
+                message: "Return travel started (location captured, but return columns not available in database)",
+                returnStarted: true,
+                timestamp: now.toISOString(),
+                warning: "Return travel columns not found in database",
+              })
+            }
+            return NextResponse.json(
+              { error: "Failed to save return travel location", details: apiError.message },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - return start")
+          try {
+            await query(
+              `UPDATE appointments 
+               SET return_latitude = @param1,
+                   return_longitude = @param2,
+                   return_timestamp = @param3,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, latitude, longitude, now],
+            )
         } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
@@ -515,17 +549,46 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         // Update appointment with return mileage and final location
-        // Try to update return columns, but handle gracefully if they don't exist
-        try {
-          await query(
-            `UPDATE appointments 
-             SET return_latitude = @param1,
-                 return_longitude = @param2,
-                 return_mileage = @param3,
-                 updated_at = GETUTCDATE()
-             WHERE appointment_id = @param0`,
-            [appointmentId, latitude, longitude, returnMileage],
-          )
+        if (useApiClient) {
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              returnLatitude: latitude,
+              returnLongitude: longitude,
+              returnMileage: returnMileage,
+            })
+            console.log("✅ [MILEAGE] Return travel completed via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update return travel via API client:", apiError)
+            // If return columns don't exist, return success with warning
+            if (apiError.message?.includes("column") || apiError.message?.includes("Invalid")) {
+              return NextResponse.json({
+                success: true,
+                message: "Return travel completed (mileage calculated, but return columns not available in database)",
+                returnMileage: returnMileage,
+                returnEstimatedTollCost: returnEstimatedToll,
+                returnCompleted: true,
+                timestamp: now.toISOString(),
+                warning: "Return travel columns not found in database",
+              })
+            }
+            return NextResponse.json(
+              { error: "Failed to save return travel", details: apiError.message },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - return complete")
+          try {
+            await query(
+              `UPDATE appointments 
+               SET return_latitude = @param1,
+                   return_longitude = @param2,
+                   return_mileage = @param3,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, latitude, longitude, returnMileage],
+            )
         } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
