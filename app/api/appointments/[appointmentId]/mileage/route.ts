@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const runtime = "nodejs"
 
@@ -80,41 +82,79 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     }
 
     // Check if appointment exists and verify access
-    // If we have user info, verify they're assigned to this appointment
-    // Note: return_* columns may not exist in all databases, so we'll check for them conditionally
-    const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, 
-                                    arrived_latitude, arrived_longitude, arrived_timestamp,
-                                    assigned_to_user_id 
-                              FROM appointments 
-                              WHERE appointment_id = @param0 AND is_deleted = 0`
+    // Use API client for visit service, direct DB for admin service
+    const useApiClient = shouldUseRadiusApiClient()
+    let appointment: any = null
     
-    const existingAppointment = await query(appointmentQuery, [appointmentId])
-    
-    // Try to get return columns if they exist (they may not be in all databases)
-    let returnColumns: any = {}
-    try {
-      const returnQuery = `SELECT return_latitude, return_longitude, return_timestamp, return_mileage
-                           FROM appointments 
-                           WHERE appointment_id = @param0 AND is_deleted = 0`
-      const returnData = await query(returnQuery, [appointmentId])
-      if (returnData.length > 0) {
-        returnColumns = returnData[0]
+    if (useApiClient) {
+      // Use API client to get appointment
+      try {
+        const appointmentData = await radiusApiClient.getAppointment(appointmentId)
+        appointment = {
+          appointment_id: appointmentData.appointment_id,
+          start_drive_latitude: appointmentData.start_drive_latitude || null,
+          start_drive_longitude: appointmentData.start_drive_longitude || null,
+          arrived_latitude: appointmentData.arrived_latitude || null,
+          arrived_longitude: appointmentData.arrived_longitude || null,
+          arrived_timestamp: appointmentData.arrived_timestamp || null,
+          return_latitude: appointmentData.return_latitude || null,
+          return_longitude: appointmentData.return_longitude || null,
+          return_timestamp: appointmentData.return_timestamp || null,
+          return_mileage: appointmentData.return_mileage || null,
+          assigned_to_user_id: appointmentData.assigned_to_user_id || null,
+        }
+        console.log("✅ [MILEAGE] Fetched appointment via API client")
+      } catch (apiError: any) {
+        console.error("❌ [MILEAGE] Failed to fetch appointment via API client:", apiError)
+        if (apiError.message?.includes("not found") || apiError.message?.includes("404")) {
+          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+        return NextResponse.json(
+          { error: "Failed to fetch appointment", details: apiError.message },
+          { status: 500 }
+        )
       }
-    } catch (returnError: any) {
-      // If return columns don't exist, that's okay - we'll handle it gracefully
-      console.log("⚠️ [MILEAGE] Return columns not found in database, will use NULL checks:", returnError.message)
+    } else {
+      // Direct DB access for admin microservice only
+      throwIfDirectDbNotAllowed("mileage endpoint - fetch appointment")
+      const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, 
+                                      arrived_latitude, arrived_longitude, arrived_timestamp,
+                                      assigned_to_user_id 
+                                FROM appointments 
+                                WHERE appointment_id = @param0 AND is_deleted = 0`
+      
+      const existingAppointment = await query(appointmentQuery, [appointmentId])
+      
+      // Try to get return columns if they exist (they may not be in all databases)
+      let returnColumns: any = {}
+      try {
+        const returnQuery = `SELECT return_latitude, return_longitude, return_timestamp, return_mileage
+                             FROM appointments 
+                             WHERE appointment_id = @param0 AND is_deleted = 0`
+        const returnData = await query(returnQuery, [appointmentId])
+        if (returnData.length > 0) {
+          returnColumns = returnData[0]
+        }
+      } catch (returnError: any) {
+        // If return columns don't exist, that's okay - we'll handle it gracefully
+        console.log("⚠️ [MILEAGE] Return columns not found in database, will use NULL checks:", returnError.message)
+      }
+      
+      // Merge return columns into appointment data if they exist
+      appointment = {
+        ...existingAppointment[0],
+        return_latitude: returnColumns.return_latitude || null,
+        return_longitude: returnColumns.return_longitude || null,
+        return_timestamp: returnColumns.return_timestamp || null,
+        return_mileage: returnColumns.return_mileage || null,
+      }
+
+      if (existingAppointment.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
     }
     
-    // Merge return columns into appointment data if they exist
-    const appointment = {
-      ...existingAppointment[0],
-      return_latitude: returnColumns.return_latitude || null,
-      return_longitude: returnColumns.return_longitude || null,
-      return_timestamp: returnColumns.return_timestamp || null,
-      return_mileage: returnColumns.return_mileage || null,
-    }
-
-    if (existingAppointment.length === 0) {
+    if (!appointment) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
@@ -127,7 +167,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         clerkUserId, 
         email, 
         appointmentId,
-        assignedTo: existingAppointment[0].assigned_to_user_id 
+        assignedTo: appointment.assigned_to_user_id 
       })
       // TODO: Add proper user verification once auth is working
       // Should check: app_users.clerk_user_id matches AND appointment.assigned_to_user_id matches app_users.id
@@ -139,15 +179,35 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     if (action === "start_drive") {
       // Save start drive location
-      await query(
-        `UPDATE appointments 
-         SET start_drive_latitude = @param1,
-             start_drive_longitude = @param2,
-             start_drive_timestamp = @param3,
-             updated_at = GETUTCDATE()
-         WHERE appointment_id = @param0`,
-        [appointmentId, latitude, longitude, now],
-      )
+      if (useApiClient) {
+        // Use API client to update appointment
+        try {
+          await radiusApiClient.updateAppointment(appointmentId, {
+            startDriveLatitude: latitude,
+            startDriveLongitude: longitude,
+            startDriveTimestamp: now.toISOString(),
+          })
+          console.log("✅ [MILEAGE] Start drive location saved via API client")
+        } catch (apiError: any) {
+          console.error("❌ [MILEAGE] Failed to update appointment via API client:", apiError)
+          return NextResponse.json(
+            { error: "Failed to save start drive location", details: apiError.message },
+            { status: 500 }
+          )
+        }
+      } else {
+        // Direct DB access for admin microservice only
+        throwIfDirectDbNotAllowed("mileage endpoint - start_drive")
+        await query(
+          `UPDATE appointments 
+           SET start_drive_latitude = @param1,
+               start_drive_longitude = @param2,
+               start_drive_timestamp = @param3,
+               updated_at = GETUTCDATE()
+           WHERE appointment_id = @param0`,
+          [appointmentId, latitude, longitude, now],
+        )
+      }
 
       return NextResponse.json({
         success: true,
@@ -158,8 +218,6 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     if (action === "arrived") {
       try {
-        const appointment = existingAppointment[0]
-
         // Check if start drive location exists
         if (!appointment.start_drive_latitude || !appointment.start_drive_longitude) {
           return NextResponse.json(
@@ -176,16 +234,36 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           startLng: appointment.start_drive_longitude,
         })
 
-        // Save arrived location
-        await query(
-          `UPDATE appointments 
-           SET arrived_latitude = @param1,
-               arrived_longitude = @param2,
-               arrived_timestamp = @param3,
-               updated_at = GETUTCDATE()
-           WHERE appointment_id = @param0`,
-          [appointmentId, latitude, longitude, now],
-        )
+        // Save arrived location (will update with mileage after calculation)
+        if (useApiClient) {
+          // Initial update with arrived location, mileage will be added after calculation
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              arrivedLatitude: latitude,
+              arrivedLongitude: longitude,
+              arrivedTimestamp: now.toISOString(),
+            })
+            console.log("✅ [MILEAGE] Arrived location saved via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update appointment via API client:", apiError)
+            return NextResponse.json(
+              { error: "Failed to save arrived location", details: apiError.message },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - arrived")
+          await query(
+            `UPDATE appointments 
+             SET arrived_latitude = @param1,
+                 arrived_longitude = @param2,
+                 arrived_timestamp = @param3,
+                 updated_at = GETUTCDATE()
+             WHERE appointment_id = @param0`,
+            [appointmentId, latitude, longitude, now],
+          )
+        }
 
         console.log("✅ [MILEAGE] Arrived location saved, calculating distance...")
 
@@ -228,30 +306,50 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         })
 
         // Always update appointment with calculated mileage and estimated toll (even if 0.00)
-        // Check if estimated_toll_cost column exists before trying to update it
-        try {
-          await query(
-            `UPDATE appointments 
-             SET calculated_mileage = @param1,
-                 estimated_toll_cost = @param2,
-                 updated_at = GETUTCDATE()
-             WHERE appointment_id = @param0`,
-            [appointmentId, finalMileage, estimatedToll],
-          )
-        } catch (tollUpdateError: any) {
-          // If estimated_toll_cost column doesn't exist, update without it
-          if (tollUpdateError?.message?.includes("Invalid column name") || 
-              tollUpdateError?.message?.includes("estimated_toll_cost")) {
-            console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
+        if (useApiClient) {
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              calculatedMileage: finalMileage,
+              estimatedTollCost: estimatedToll,
+            })
+            console.log("✅ [MILEAGE] Mileage and toll cost saved via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update mileage via API client:", apiError)
+            // Don't fail the request - location is already saved
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - update mileage")
+          try {
             await query(
               `UPDATE appointments 
                SET calculated_mileage = @param1,
+                   estimated_toll_cost = @param2,
                    updated_at = GETUTCDATE()
                WHERE appointment_id = @param0`,
-              [appointmentId, finalMileage],
+              [appointmentId, finalMileage, estimatedToll],
             )
-          } else {
-            throw tollUpdateError
+          } catch (tollUpdateError: any) {
+            // If estimated_toll_cost column doesn't exist, update without it
+            if (tollUpdateError?.message?.includes("Invalid column name") || 
+                tollUpdateError?.message?.includes("estimated_toll_cost")) {
+              console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
+              try {
+                await query(
+                  `UPDATE appointments 
+                   SET calculated_mileage = @param1,
+                       updated_at = GETUTCDATE()
+                   WHERE appointment_id = @param0`,
+                  [appointmentId, finalMileage],
+                )
+              } catch (dbError) {
+                console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", dbError)
+                // Don't fail the request - location is already saved
+              }
+            } else {
+              console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", tollUpdateError)
+              // Don't fail the request - location is already saved
+            }
           }
         }
 
@@ -291,7 +389,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     }
 
     if (action === "return") {
-      const appointment = existingAppointment[0]
+      // Use the appointment we already fetched
 
       // Try to get the most recent location from continuum entries (history log)
       // This is more reliable than checking appointments table which might be out of sync
@@ -471,19 +569,38 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       try {
         console.log("🔢 [MILEAGE] Calculate action triggered for appointment:", appointmentId)
         
-        // Get existing appointment with both start and arrived locations
-        const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, arrived_latitude, arrived_longitude 
-                                  FROM appointments 
-                                  WHERE appointment_id = @param0 AND is_deleted = 0`
-        
-        const existingAppointment = await query(appointmentQuery, [appointmentId])
+        // Use the appointment we already fetched (or fetch again if needed)
+        if (!appointment) {
+          if (useApiClient) {
+            try {
+              const appointmentData = await radiusApiClient.getAppointment(appointmentId)
+              appointment = {
+                appointment_id: appointmentData.appointment_id,
+                start_drive_latitude: appointmentData.start_drive_latitude || null,
+                start_drive_longitude: appointmentData.start_drive_longitude || null,
+                arrived_latitude: appointmentData.arrived_latitude || null,
+                arrived_longitude: appointmentData.arrived_longitude || null,
+              }
+            } catch (apiError: any) {
+              console.error("❌ [MILEAGE] Failed to fetch appointment via API client:", apiError)
+              return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            }
+          } else {
+            throwIfDirectDbNotAllowed("mileage endpoint - calculate")
+            const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, arrived_latitude, arrived_longitude 
+                                      FROM appointments 
+                                      WHERE appointment_id = @param0 AND is_deleted = 0`
+            
+            const existingAppointment = await query(appointmentQuery, [appointmentId])
 
-        if (existingAppointment.length === 0) {
-          console.error("❌ [MILEAGE] Appointment not found:", appointmentId)
-          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            if (existingAppointment.length === 0) {
+              console.error("❌ [MILEAGE] Appointment not found:", appointmentId)
+              return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            }
+
+            appointment = existingAppointment[0]
+          }
         }
-
-        const appointment = existingAppointment[0]
         
         // Try to get locations from travel legs first (new system), fall back to appointment fields (legacy)
         let startLat: number | null = null

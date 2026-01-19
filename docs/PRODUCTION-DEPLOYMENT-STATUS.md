@@ -25,17 +25,21 @@ Fixed the firewall error in `visit.refugehouse.app` by converting the `send-link
 ## Deployment Status
 
 ### visit.refugehouse.app
-- ✅ **Status**: Fixed and deployed to main
+- ✅ **Status**: Fixed and deployed to `visits-main` production branch
 - ✅ **API Client**: All endpoints using API Hub pattern
 - ✅ **Static IPs**: Removed (no longer needed)
+- ✅ **Communication Logging**: Non-blocking (skips DB access for visit service)
 - ⚠️ **Environment Variables Required**:
   - `RADIUS_API_KEY` - API key for accessing admin.refugehouse.app
   - `RADIUS_API_HUB_URL` - Should be `https://admin.refugehouse.app` (default if not set)
 
 ### admin.refugehouse.app
 - ✅ **Status**: Production ready
+- ✅ **Test Branch**: Updated with shared-core communication logging changes (`service-domain-admin-test-deployment`)
+- ⚠️ **Production Branch**: Needs manual merge of `packages/shared-core/lib/communication-logging.ts` to `service-domain-admin-main`
 - ✅ **Static IPs**: Required (has direct database access)
 - ✅ **API Hub**: Serving all microservices
+- ℹ️ **Note**: Admin service continues to use direct DB access for communication logging (as expected)
 
 ## Verification Checklist
 
