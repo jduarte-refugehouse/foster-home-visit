@@ -200,11 +200,11 @@ export async function PATCH(
       }
     }
 
-    // 8. If this is the final leg, roll up totals into trips table
+    // 8. If this is the final leg, update Trips record with rolled-up totals using JourneyID
+    let tripId: string | null = null
     if (leg.journey_id && is_final_leg) {
       try {
         // Roll up totals from all completed legs in this journey
-        // Use manual_mileage if available (user override), otherwise use calculated_mileage
         const totalsResult = await query(
           `SELECT 
             SUM(COALESCE(manual_mileage, calculated_mileage, 0)) as total_mileage,
@@ -213,8 +213,16 @@ export async function PATCH(
             SUM(COALESCE(actual_toll_cost, 0)) as total_tolls_actual,
             MIN(start_timestamp) as journey_start,
             MAX(end_timestamp) as journey_end,
-            MAX(CASE WHEN is_manual_entry = 1 THEN 1 ELSE 0 END) as has_manual_entry,
-            MAX(CASE WHEN is_backdated = 1 THEN 1 ELSE 0 END) as has_backdated
+            MIN(start_location_name) as origin_name,
+            MIN(start_location_address) as origin_address,
+            MIN(start_location_type) as origin_type,
+            MIN(start_latitude) as origin_lat,
+            MIN(start_longitude) as origin_lng,
+            MAX(end_location_name) as destination_name,
+            MAX(end_location_address) as destination_address,
+            MAX(end_location_type) as destination_type,
+            MAX(end_latitude) as destination_lat,
+            MAX(end_longitude) as destination_lng
           FROM travel_legs
           WHERE journey_id = @param0 AND is_deleted = 0 AND leg_status = 'completed'`,
           [leg.journey_id]
@@ -223,46 +231,73 @@ export async function PATCH(
         if (totalsResult.length > 0 && totalsResult[0].journey_end) {
           const totals = totalsResult[0]
           
-          // Update travel_journeys table with rolled-up totals
-          await query(
-            `UPDATE travel_journeys
-             SET end_timestamp = @param1,
-                 total_mileage = @param2,
-                 total_duration_minutes = @param3,
-                 total_tolls_estimated = @param4,
-                 total_tolls_actual = @param5,
-                 is_manual_entry = @param6,
-                 is_backdated = @param7,
-                 trip_status = 'completed',
-                 updated_at = GETUTCDATE(),
-                 updated_by_user_id = @param8
-             WHERE journey_id = @param0`,
-            [
-              leg.journey_id,
-              totals.journey_end,
-              totals.total_mileage || 0,
-              totals.total_duration_minutes || 0,
-              totals.total_tolls_estimated || 0,
-              totals.total_tolls_actual || 0,
-              totals.has_manual_entry || 0,
-              totals.has_backdated || 0,
-              updated_by_user_id || leg.staff_user_id,
-            ]
+          // Check if Trips record exists via JourneyID
+          const existingTripByJourney = await query(
+            `SELECT TripID FROM Trips 
+             WHERE JourneyID = @param0 AND IsDeleted = 0`,
+            [leg.journey_id]
           )
-          console.log(`✅ [RADIUS-API] Updated travel_journeys table for journey ${leg.journey_id} with rolled-up totals`)
+
+          if (existingTripByJourney.length > 0) {
+            // Update existing Trips record using JourneyID (much more reliable than fuzzy matching)
+            tripId = existingTripByJourney[0].TripID
+            await query(
+              `UPDATE Trips
+               SET MilesActual = @param1,
+                   MilesEstimated = @param2,
+                   EstimatedTollCost = @param3,
+                   ActualTollCost = @param4,
+                   DurationMinutes = @param5,
+                   DepartureTime = @param6,
+                   ArrivalTime = @param7,
+                   OriginAddress = @param8,
+                   OriginLatitude = @param9,
+                   OriginLongitude = @param10,
+                   DestinationAddress = @param11,
+                   DestinationLatitude = @param12,
+                   DestinationLongitude = @param13,
+                   TripStatus = 'completed',
+                   UpdatedAt = GETUTCDATE(),
+                   UpdatedBy = @param14
+               WHERE JourneyID = @param0 AND IsDeleted = 0`,
+              [
+                leg.journey_id, // JourneyID
+                totals.total_mileage || 0, // MilesActual
+                totals.total_mileage || 0, // MilesEstimated
+                totals.total_tolls_estimated || 0, // EstimatedTollCost
+                totals.total_tolls_actual || 0, // ActualTollCost
+                totals.total_duration_minutes || 0, // DurationMinutes
+                totals.journey_start, // DepartureTime
+                totals.journey_end, // ArrivalTime
+                totals.origin_address || totals.origin_name || null, // OriginAddress
+                totals.origin_lat || null, // OriginLatitude
+                totals.origin_lng || null, // OriginLongitude
+                totals.destination_address || totals.destination_name || null, // DestinationAddress
+                totals.destination_lat || null, // DestinationLatitude
+                totals.destination_lng || null, // DestinationLongitude
+                updated_by_user_id || leg.staff_user_id, // UpdatedBy
+              ]
+            )
+            console.log(`✅ [RADIUS-API] Updated Trips record ${tripId} for JourneyID ${leg.journey_id} with rolled-up totals`)
+          } else {
+            // Trips record doesn't exist yet (JourneyID column might not exist, or trip wasn't created on start)
+            // Fall through to legacy creation logic below
+            console.warn(`⚠️ [RADIUS-API] Trips record not found for JourneyID ${leg.journey_id}, will use legacy creation logic`)
+          }
         }
       } catch (tripsError: any) {
-        // If travel_journeys table doesn't exist yet, log warning but continue
-        if (tripsError.message?.includes("Invalid object name") || tripsError.message?.includes("travel_journeys")) {
-          console.warn("⚠️ [RADIUS-API] travel_journeys table not found - please run create-trips-table.sql migration")
+        // If JourneyID column doesn't exist yet, log warning but continue
+        if (tripsError.message?.includes("Invalid column name") || tripsError.message?.includes("JourneyID")) {
+          console.warn("⚠️ [RADIUS-API] JourneyID column not found in Trips table - please run migration script, using legacy logic")
         } else {
-          console.error("❌ [RADIUS-API] Error updating trips table (non-fatal):", tripsError)
+          console.error("❌ [RADIUS-API] Error updating Trips record (non-fatal):", tripsError)
         }
-        // Continue with Trips table creation/update
+        // Continue with legacy Trips creation/update logic below
       }
     }
 
-    // 9. Check if journey is complete and create/update Trips record for expense reporting
+    // 9. Legacy: Check if journey is complete and create/update Trips record for expense reporting
+    // This is now redundant if JourneyID column exists and trip was created on start, but kept for backward compatibility
     let tripId: string | null = null
     if (leg.journey_id && is_final_leg) {
       try {
@@ -343,19 +378,35 @@ export async function PATCH(
                 }
               }
 
-              // Check if Trips record already exists for this journey
-              const existingTrip = await query(
-                `SELECT TripID FROM Trips 
-                 WHERE StaffClerkId = @param0 
-                   AND TripDate = CAST(@param1 AS DATE)
-                   AND TripPurpose = @param2
-                   AND IsDeleted = 0`,
-                [
-                  identity.clerk_id,
-                  new Date(journeyData.journey_start).toISOString().split('T')[0],
-                  journeyData.travel_purpose || 'Home Visit'
-                ]
-              )
+              // Check if Trips record already exists for this journey (try JourneyID first, then fallback to fuzzy matching)
+              let existingTrip: any[] = []
+              
+              // First try to find by JourneyID (if column exists)
+              try {
+                existingTrip = await query(
+                  `SELECT TripID FROM Trips 
+                   WHERE JourneyID = @param0 AND IsDeleted = 0`,
+                  [leg.journey_id]
+                )
+              } catch (journeyIdError: any) {
+                // JourneyID column might not exist, fall back to fuzzy matching
+                if (journeyIdError.message?.includes("Invalid column name") || journeyIdError.message?.includes("JourneyID")) {
+                  existingTrip = await query(
+                    `SELECT TripID FROM Trips 
+                     WHERE StaffClerkId = @param0 
+                       AND TripDate = CAST(@param1 AS DATE)
+                       AND TripPurpose = @param2
+                       AND IsDeleted = 0`,
+                    [
+                      identity.clerk_id,
+                      new Date(journeyData.journey_start).toISOString().split('T')[0],
+                      journeyData.travel_purpose || 'Home Visit'
+                    ]
+                  )
+                } else {
+                  throw journeyIdError
+                }
+              }
 
               const tripDate = new Date(journeyData.journey_start).toISOString().split('T')[0]
               const totalMileage = parseFloat(journeyData.total_mileage) || 0
@@ -400,30 +451,78 @@ export async function PATCH(
                     @param14, @param15, @param16, @param17,
                     @param18, @param19, @param20, 'completed', 1, 0
                   )`,
-                  [
-                    tripDate,
-                    identity.clerk_id,
-                    identity.radius_person_guid || null,
-                    identity.email || journeyData.staff_user_id,
-                    identity.full_name || journeyData.staff_name || 'Unknown',
-                    journeyData.travel_purpose || 'Home Visit',
-                    journeyData.origin_type || 'office',
-                    journeyData.origin_address || journeyData.origin_name || null,
-                    journeyData.origin_lat || null,
-                    journeyData.origin_lng || null,
-                    journeyData.destination_type || 'foster_home',
-                    journeyData.destination_address || journeyData.destination_name || null,
-                    journeyData.destination_lat || null,
-                    journeyData.destination_lng || null,
-                    totalMileage, // MilesEstimated
-                    totalMileage, // MilesActual
-                    totalToll, // EstimatedTollCost
-                    totalToll, // ActualTollCost
-                    totalDuration,
-                    costCenterUnit,
-                    relatedMarkId
-                  ]
-                )
+                    [
+                      leg.journey_id, // JourneyID (param0)
+                      tripDate, // TripDate (param1)
+                      identity.clerk_id, // StaffClerkId (param2)
+                      identity.radius_person_guid || null, // StaffRadiusGuid (param3)
+                      identity.email || journeyData.staff_user_id, // StaffEmail (param4)
+                      identity.full_name || journeyData.staff_name || 'Unknown', // StaffName (param5)
+                      journeyData.travel_purpose || 'Home Visit', // TripPurpose (param6)
+                      journeyData.origin_type || 'office', // OriginType (param7)
+                      journeyData.origin_address || journeyData.origin_name || null, // OriginAddress (param8)
+                      journeyData.origin_lat || null, // OriginLatitude (param9)
+                      journeyData.origin_lng || null, // OriginLongitude (param10)
+                      journeyData.destination_type || 'foster_home', // DestinationType (param11)
+                      journeyData.destination_address || journeyData.destination_name || null, // DestinationAddress (param12)
+                      journeyData.destination_lat || null, // DestinationLatitude (param13)
+                      journeyData.destination_lng || null, // DestinationLongitude (param14)
+                      totalMileage, // MilesEstimated (param15)
+                      totalMileage, // MilesActual (param16)
+                      totalToll, // EstimatedTollCost (param17)
+                      totalToll, // ActualTollCost (param18)
+                      totalDuration, // DurationMinutes (param19)
+                      costCenterUnit, // CostCenterUnit (param20)
+                      relatedMarkId // RelatedMarkID (param21)
+                    ]
+                  )
+                } catch (journeyIdError: any) {
+                  // JourneyID column doesn't exist, create without it
+                  if (journeyIdError.message?.includes("Invalid column name") || journeyIdError.message?.includes("JourneyID")) {
+                    tripResult = await query(
+                      `INSERT INTO Trips (
+                        TripDate, StaffClerkId, StaffRadiusGuid, StaffEmail, StaffName,
+                        TripPurpose, OriginType, OriginAddress, OriginLatitude, OriginLongitude,
+                        DestinationType, DestinationAddress, DestinationLatitude, DestinationLongitude,
+                        MilesEstimated, MilesActual, EstimatedTollCost, ActualTollCost,
+                        DurationMinutes, CostCenterUnit, RelatedMarkID, TripStatus, IsReimbursable, IsDeleted
+                      )
+                      OUTPUT INSERTED.TripID
+                      VALUES (
+                        @param0, @param1, @param2, @param3, @param4,
+                        @param5, @param6, @param7, @param8, @param9,
+                        @param10, @param11, @param12, @param13,
+                        @param14, @param15, @param16, @param17,
+                        @param18, @param19, @param20, 'completed', 1, 0
+                      )`,
+                      [
+                        tripDate,
+                        identity.clerk_id,
+                        identity.radius_person_guid || null,
+                        identity.email || journeyData.staff_user_id,
+                        identity.full_name || journeyData.staff_name || 'Unknown',
+                        journeyData.travel_purpose || 'Home Visit',
+                        journeyData.origin_type || 'office',
+                        journeyData.origin_address || journeyData.origin_name || null,
+                        journeyData.origin_lat || null,
+                        journeyData.origin_lng || null,
+                        journeyData.destination_type || 'foster_home',
+                        journeyData.destination_address || journeyData.destination_name || null,
+                        journeyData.destination_lat || null,
+                        journeyData.destination_lng || null,
+                        totalMileage, // MilesEstimated
+                        totalMileage, // MilesActual
+                        totalToll, // EstimatedTollCost
+                        totalToll, // ActualTollCost
+                        totalDuration,
+                        costCenterUnit,
+                        relatedMarkId
+                      ]
+                    )
+                  } else {
+                    throw journeyIdError
+                  }
+                }
                 tripId = tripResult[0].TripID
                 console.log(`✅ [RADIUS-API] Created Trips record ${tripId} for completed journey ${leg.journey_id} (Cost Center: ${costCenterUnit})`)
               }

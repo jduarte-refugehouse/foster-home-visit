@@ -219,54 +219,75 @@ export async function POST(request: NextRequest) {
     const finalJourneyId = journey_id || crypto.randomUUID()
     const isNewTrip = !journey_id
 
-    // 5. If this is a new trip, create the trip record first
+    // 5. If this is a new trip, create the Trips record first
     if (isNewTrip) {
-      // Get staff_name if not provided (try to get from app_users)
+      // Get staff_name and identity if not provided
       let staffName = body.staff_name || null
-      if (!staffName && staff_user_id) {
+      let staffEmail = null
+      let staffRadiusGuid = null
+      let costCenterUnit = 'DAL' // Default
+      
+      if (staff_user_id) {
         try {
           const userResult = await query(
-            `SELECT first_name, last_name 
-             FROM app_users 
-             WHERE clerk_user_id = @param0 AND is_active = 1`,
+            `SELECT 
+              au.first_name, 
+              au.last_name,
+              au.email,
+              au.radius_person_guid,
+              CASE WHEN sru.DAL_personID IS NOT NULL THEN 'DAL' ELSE 'SAN' END as unit
+             FROM app_users au
+             LEFT JOIN SyncRadiusUsers sru ON au.radius_person_guid = sru.guid
+             WHERE au.clerk_user_id = @param0 AND au.is_active = 1`,
             [staff_user_id]
           )
           if (userResult.length > 0) {
             const user = userResult[0]
             staffName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || null
+            staffEmail = user.email || null
+            staffRadiusGuid = user.radius_person_guid || null
+            costCenterUnit = user.unit || 'DAL'
           }
         } catch (userError) {
-          console.warn("⚠️ [RADIUS-API] Could not fetch staff name (non-fatal):", userError)
+          console.warn("⚠️ [RADIUS-API] Could not fetch staff info (non-fatal):", userError)
         }
       }
 
-      // Create journey record
+      // Create Trips record with JourneyID
       try {
+        const tripDate = new Date(start_timestamp).toISOString().split('T')[0]
         await query(
-          `INSERT INTO travel_journeys (
-            journey_id, staff_user_id, staff_name, travel_purpose,
-            start_timestamp, trip_status, created_by_user_id
+          `INSERT INTO Trips (
+            JourneyID, TripDate, StaffClerkId, StaffRadiusGuid, StaffEmail, StaffName,
+            TripPurpose, OriginType, DestinationType, CostCenterUnit,
+            TripStatus, IsReimbursable, IsDeleted, CreatedAt, CreatedBy
           )
           VALUES (
-            @param0, @param1, @param2, @param3,
-            @param4, 'in_progress', @param5
+            @param0, @param1, @param2, @param3, @param4, @param5,
+            @param6, @param7, @param8, @param9,
+            'in_progress', 1, 0, GETUTCDATE(), @param10
           )`,
           [
-            finalJourneyId,
-            staff_user_id,
-            staffName,
-            travel_purpose || null,
-            start_timestamp,
-            staff_user_id, // created_by_user_id
+            finalJourneyId, // JourneyID
+            tripDate,
+            staff_user_id, // StaffClerkId
+            staffRadiusGuid,
+            staffEmail || staff_user_id, // StaffEmail
+            staffName || 'Unknown', // StaffName
+            travel_purpose || 'Home Visit', // TripPurpose
+            start_location_type || 'office', // OriginType
+            'foster_home', // DestinationType (will be updated when leg completes)
+            costCenterUnit, // CostCenterUnit
+            staff_user_id, // CreatedBy
           ]
         )
-        console.log(`✅ [RADIUS-API] Created journey record ${finalJourneyId}`)
+        console.log(`✅ [RADIUS-API] Created Trips record with JourneyID ${finalJourneyId}`)
       } catch (tripError: any) {
-        // If travel_journeys table doesn't exist yet, log warning but continue
-        if (tripError.message?.includes("Invalid object name") || tripError.message?.includes("travel_journeys")) {
-          console.warn("⚠️ [RADIUS-API] travel_journeys table not found - please run create-trips-table.sql migration")
+        // If JourneyID column doesn't exist yet, log warning but continue
+        if (tripError.message?.includes("Invalid column name") || tripError.message?.includes("JourneyID")) {
+          console.warn("⚠️ [RADIUS-API] JourneyID column not found in Trips table - please run migration script")
         } else {
-          console.error("❌ [RADIUS-API] Error creating trip record (non-fatal):", tripError)
+          console.error("❌ [RADIUS-API] Error creating Trips record (non-fatal):", tripError)
         }
         // Continue with leg creation even if trip creation fails
       }

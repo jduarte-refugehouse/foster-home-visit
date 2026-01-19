@@ -1,79 +1,41 @@
--- Travel Journeys Table
--- This table tracks complete journeys (trips) that consist of one or more travel legs
--- Each journey has a journey_id (PK) that matches the journey_id FK in travel_legs
--- This allows rolling up totals from all legs in a journey
--- NOTE: This is separate from the existing Trips table (with TripID) which is for expense reporting
+-- Add journey_id column to existing Trips table
+-- This links Trips records to travel_legs via journey_id
+-- Allows creating trip record when journey starts, updating when it completes
 
--- Check if table exists before creating
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'travel_journeys' AND schema_id = SCHEMA_ID('dbo'))
+IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.Trips') 
+    AND name = 'JourneyID'
+)
 BEGIN
-    CREATE TABLE [dbo].[travel_journeys] (
-        -- Primary key (matches journey_id FK in travel_legs)
-        [journey_id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-        
-        -- Staff tracking
-        [staff_user_id] NVARCHAR(255) NOT NULL,
-        [staff_name] NVARCHAR(255) NULL,
-        
-        -- Trip purpose (matches leg purpose)
-        [travel_purpose] NVARCHAR(500) NULL,
-        [trip_type] NVARCHAR(50) NULL, -- Optional: 'home_visit', 'training', etc.
-        
-        -- Timing (first leg start, last leg end)
-        [start_timestamp] DATETIME2(7) NOT NULL, -- First leg start
-        [end_timestamp] DATETIME2(7) NULL, -- Last leg end (set when trip completes)
-        
-        -- Rolled-up totals from all legs
-        [total_mileage] DECIMAL(10,2) NULL, -- SUM of calculated_mileage or manual_mileage from all legs
-        [total_duration_minutes] INT NULL, -- SUM of duration_minutes from all legs
-        [total_tolls_estimated] DECIMAL(10,2) NULL, -- SUM of estimated_toll_cost from all legs
-        [total_tolls_actual] DECIMAL(10,2) NULL, -- SUM of actual_toll_cost from all legs
-        
-        -- Optional overall origin/destination (can be derived from first/last leg)
-        [origin_name] NVARCHAR(500) NULL,
-        [origin_address] NVARCHAR(500) NULL,
-        [destination_name] NVARCHAR(500) NULL,
-        [destination_address] NVARCHAR(500) NULL,
-        
-        -- Flags
-        [is_manual_entry] BIT NOT NULL DEFAULT 0, -- TRUE if any leg is manual
-        [is_backdated] BIT NOT NULL DEFAULT 0, -- TRUE if any leg is backdated
-        [reimbursable] BIT NOT NULL DEFAULT 1, -- Whether trip is eligible for reimbursement
-        
-        -- Status
-        [trip_status] NVARCHAR(50) NOT NULL DEFAULT 'in_progress', -- 'draft', 'in_progress', 'completed'
-        
-        -- Audit
-        [created_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
-        [created_by_user_id] NVARCHAR(255) NULL,
-        [updated_at] DATETIME2(7) NULL,
-        [updated_by_user_id] NVARCHAR(255) NULL,
-        [is_deleted] BIT NOT NULL DEFAULT 0,
-        
-        -- Optional: unit/staff_radius_guid if schema uses it
-        [staff_radius_guid] UNIQUEIDENTIFIER NULL,
-        [unit] NVARCHAR(10) NULL, -- 'DAL', 'SAN', etc.
-    )
-    GO
-
-    -- Indexes for common queries
-    CREATE INDEX [IX_travel_journeys_staff_date] ON [dbo].[travel_journeys] ([staff_user_id], [start_timestamp], [is_deleted])
-    CREATE INDEX [IX_travel_journeys_status] ON [dbo].[travel_journeys] ([trip_status], [is_deleted])
-    CREATE INDEX [IX_travel_journeys_purpose] ON [dbo].[travel_journeys] ([travel_purpose], [is_deleted])
-    GO
-
-    -- Add comments
-    EXEC sp_addextendedproperty 
-        @name = N'MS_Description', 
-        @value = N'Tracks complete journeys (trips) consisting of one or more travel legs. Each journey has a journey_id (PK) that matches the journey_id FK in travel_legs. Totals are rolled up from all legs when the journey completes. This is separate from the Trips table (with TripID) which is for expense reporting.', 
-        @level0type = N'SCHEMA', @level0name = N'dbo', 
-        @level1type = N'TABLE', @level1name = N'travel_journeys'
-    GO
-
-    PRINT 'Table travel_journeys created successfully.'
+    ALTER TABLE [dbo].[Trips]
+    ADD [JourneyID] [uniqueidentifier] NULL;
+    
+    PRINT 'Added JourneyID column to Trips table.'
 END
 ELSE
 BEGIN
-    PRINT 'Table travel_journeys already exists. Skipping creation.'
+    PRINT 'JourneyID column already exists in Trips table.'
+END
+GO
+
+-- Add index for journey_id lookups
+IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.indexes 
+    WHERE name = 'IX_Trips_JourneyID' 
+    AND object_id = OBJECT_ID('dbo.Trips')
+)
+BEGIN
+    CREATE INDEX [IX_Trips_JourneyID] 
+    ON [dbo].[Trips] ([JourneyID])
+    WHERE [JourneyID] IS NOT NULL;
+    
+    PRINT 'Created index IX_Trips_JourneyID.'
+END
+ELSE
+BEGIN
+    PRINT 'Index IX_Trips_JourneyID already exists.'
 END
 GO
