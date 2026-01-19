@@ -329,6 +329,11 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
                WHERE appointment_id = @param0`,
               [appointmentId, finalMileage, estimatedToll],
             )
+          } catch (dbError) {
+            console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", dbError)
+            // Don't fail the request - location is already saved
+          }
+        }
         } catch (tollUpdateError: any) {
           // If estimated_toll_cost column doesn't exist, update without it
           if (tollUpdateError?.message?.includes("Invalid column name") || 
