@@ -83,9 +83,10 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     // Check if appointment exists and verify access
     // Use API client for visit service, direct DB for admin service
-    const useApiClient = shouldUseRadiusApiClient()
-    const microserviceCode = getMicroserviceCode()
-    console.log(`🔍 [MILEAGE] Microservice detection: code=${microserviceCode}, useApiClient=${useApiClient}`)
+    const useApiClient = shouldUseRadiusApiClient(request)
+    const microserviceCode = getMicroserviceCode(request)
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown'
+    console.log(`🔍 [MILEAGE] Microservice detection: host=${host}, code=${microserviceCode}, useApiClient=${useApiClient}`)
     let appointment: any = null
     
     if (useApiClient) {

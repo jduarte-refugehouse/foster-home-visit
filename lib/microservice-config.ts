@@ -130,11 +130,32 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
  * 2. Branch name detection (for Vercel preview deployments)
  * 3. Fall back to config (default)
  */
-export function getMicroserviceCode(): string {
+export function getMicroserviceCode(request?: { headers: { get: (name: string) => string | null } }): string {
   // Tier 1: Environment variable (explicit override - highest priority)
   // This is set in Vercel project settings and takes precedence
   if (process.env.MICROSERVICE_CODE) {
     return process.env.MICROSERVICE_CODE
+  }
+
+  // Tier 1.5: Hostname detection (for production deployments)
+  // Check request hostname to determine microservice
+  if (request) {
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+    if (host) {
+      const hostLower = host.toLowerCase()
+      if (hostLower.includes('visit.refugehouse.app') || hostLower.includes('visit.test.refugehouse.app')) {
+        return 'home-visits'
+      }
+      if (hostLower.includes('admin.refugehouse.app') || hostLower.includes('admin.test.refugehouse.app')) {
+        return 'service-domain-admin'
+      }
+      if (hostLower.includes('case-management.refugehouse.app')) {
+        return 'case-management'
+      }
+      if (hostLower.includes('myhouse.refugehouse.app')) {
+        return 'myhouse-portal'
+      }
+    }
   }
 
   // Tier 2: Branch name detection (for Vercel preview deployments)
@@ -193,8 +214,8 @@ export function isInternalUser(email: string): boolean {
  * 
  * @returns true if should use API client, false if should use direct DB access
  */
-export function shouldUseRadiusApiClient(): boolean {
-  const microserviceCode = getMicroserviceCode()
+export function shouldUseRadiusApiClient(request?: { headers: { get: (name: string) => string | null } }): boolean {
+  const microserviceCode = getMicroserviceCode(request)
   // Admin microservice has direct DB access - don't use API client
   return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
 }
