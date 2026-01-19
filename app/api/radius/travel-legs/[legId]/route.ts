@@ -298,8 +298,7 @@ export async function PATCH(
 
     // 9. Legacy: Check if journey is complete and create/update Trips record for expense reporting
     // This is now redundant if JourneyID column exists and trip was created on start, but kept for backward compatibility
-    let tripId: string | null = null
-    if (leg.journey_id && is_final_leg) {
+    if (leg.journey_id && is_final_leg && !tripId) {
       try {
         // Check if all legs in journey are completed
         const journeyLegs = await query(
