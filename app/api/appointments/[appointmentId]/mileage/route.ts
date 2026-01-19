@@ -490,7 +490,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
                WHERE appointment_id = @param0`,
               [appointmentId, latitude, longitude, now],
             )
-        } catch (updateError: any) {
+          } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
               (updateError.message.includes("return_latitude") || 
@@ -591,7 +591,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
                WHERE appointment_id = @param0`,
               [appointmentId, latitude, longitude, returnMileage],
             )
-        } catch (updateError: any) {
+          } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
               (updateError.message.includes("return_latitude") || 
