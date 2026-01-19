@@ -17,6 +17,15 @@ export const runtime = "nodejs"
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
+    // DEBUG: Log environment variables at the start
+    console.log(`🔍 [MILEAGE] Environment check at function start:`)
+    console.log(`  - MICROSERVICE_CODE: ${process.env.MICROSERVICE_CODE || 'NOT SET'}`)
+    console.log(`  - NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_URL: ${process.env.VERCEL_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`)
+    console.log(`  - RADIUS_API_KEY: ${process.env.RADIUS_API_KEY ? 'SET (length: ' + process.env.RADIUS_API_KEY.length + ')' : 'NOT SET'}`)
+    console.log(`  - RADIUS_API_HUB_URL: ${process.env.RADIUS_API_HUB_URL || 'NOT SET'}`)
+    
     // TEMPORARY: For testing - since this is called from a protected route, 
     // we can be more lenient with authentication
     // TODO: Re-enable strict auth once mobile auth is working reliably
