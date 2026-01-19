@@ -162,6 +162,19 @@ export async function PUT(
       preparationNotes,
       completionNotes,
       outcome,
+      // Mileage tracking fields
+      startDriveLatitude,
+      startDriveLongitude,
+      startDriveTimestamp,
+      arrivedLatitude,
+      arrivedLongitude,
+      arrivedTimestamp,
+      calculatedMileage,
+      estimatedTollCost,
+      returnLatitude,
+      returnLongitude,
+      returnTimestamp,
+      returnMileage,
     } = body
 
     // 2. Check if appointment exists
@@ -298,6 +311,79 @@ export async function PUT(
     if (outcome !== undefined) {
       updateFields.push(`outcome = @param${paramIndex}`)
       queryParams.push(outcome)
+      paramIndex++
+    }
+
+    // Mileage tracking fields
+    if (startDriveLatitude !== undefined) {
+      updateFields.push(`start_drive_latitude = @param${paramIndex}`)
+      queryParams.push(startDriveLatitude)
+      paramIndex++
+    }
+
+    if (startDriveLongitude !== undefined) {
+      updateFields.push(`start_drive_longitude = @param${paramIndex}`)
+      queryParams.push(startDriveLongitude)
+      paramIndex++
+    }
+
+    if (startDriveTimestamp !== undefined) {
+      updateFields.push(`start_drive_timestamp = @param${paramIndex}`)
+      queryParams.push(startDriveTimestamp instanceof Date ? startDriveTimestamp : new Date(startDriveTimestamp))
+      paramIndex++
+    }
+
+    if (arrivedLatitude !== undefined) {
+      updateFields.push(`arrived_latitude = @param${paramIndex}`)
+      queryParams.push(arrivedLatitude)
+      paramIndex++
+    }
+
+    if (arrivedLongitude !== undefined) {
+      updateFields.push(`arrived_longitude = @param${paramIndex}`)
+      queryParams.push(arrivedLongitude)
+      paramIndex++
+    }
+
+    if (arrivedTimestamp !== undefined) {
+      updateFields.push(`arrived_timestamp = @param${paramIndex}`)
+      queryParams.push(arrivedTimestamp instanceof Date ? arrivedTimestamp : new Date(arrivedTimestamp))
+      paramIndex++
+    }
+
+    if (calculatedMileage !== undefined) {
+      updateFields.push(`calculated_mileage = @param${paramIndex}`)
+      queryParams.push(calculatedMileage)
+      paramIndex++
+    }
+
+    if (estimatedTollCost !== undefined) {
+      updateFields.push(`estimated_toll_cost = @param${paramIndex}`)
+      queryParams.push(estimatedTollCost)
+      paramIndex++
+    }
+
+    if (returnLatitude !== undefined) {
+      updateFields.push(`return_latitude = @param${paramIndex}`)
+      queryParams.push(returnLatitude)
+      paramIndex++
+    }
+
+    if (returnLongitude !== undefined) {
+      updateFields.push(`return_longitude = @param${paramIndex}`)
+      queryParams.push(returnLongitude)
+      paramIndex++
+    }
+
+    if (returnTimestamp !== undefined) {
+      updateFields.push(`return_timestamp = @param${paramIndex}`)
+      queryParams.push(returnTimestamp instanceof Date ? returnTimestamp : new Date(returnTimestamp))
+      paramIndex++
+    }
+
+    if (returnMileage !== undefined) {
+      updateFields.push(`return_mileage = @param${paramIndex}`)
+      queryParams.push(returnMileage)
       paramIndex++
     }
 
