@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { radiusApiClient } from "@refugehouse/radius-api-client"
 import { query } from "@refugehouse/shared-core/db"
 import { logCommunication, updateCommunicationStatus, getMicroserviceId } from "@refugehouse/shared-core/communication"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
@@ -39,28 +41,51 @@ export async function POST(
       console.log("No recipient override provided, using assigned staff member")
     }
 
-    // Get appointment details
-    const appointments = await query(
-      `
-      SELECT 
-        a.appointment_id,
-        a.assigned_to_user_id,
-        a.assigned_to_name,
-        a.title,
-        a.start_datetime,
-        h.HomeName as home_name
-      FROM appointments a
-      LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
-      WHERE a.appointment_id = @param0 AND a.is_deleted = 0
-    `,
-      [appointmentId],
-    )
+    // Get appointment details - use API client for visit service
+    const useApiClient = shouldUseRadiusApiClient()
+    let appointment: any = null
 
-    if (appointments.length === 0) {
-      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    if (useApiClient) {
+      // Use API client for visit service
+      console.log("✅ [SEND-LINK] Using API client to fetch appointment")
+      try {
+        appointment = await radiusApiClient.getAppointment(appointmentId)
+      } catch (apiError: any) {
+        console.error("❌ [SEND-LINK] API client error:", apiError)
+        if (apiError.status === 404) {
+          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+        }
+        throw apiError
+      }
+    } else {
+      // Direct DB access for admin microservice only
+      throwIfDirectDbNotAllowed("send-link - appointment fetch")
+      const appointments = await query(
+        `
+        SELECT 
+          a.appointment_id,
+          a.assigned_to_user_id,
+          a.assigned_to_name,
+          a.title,
+          a.start_datetime,
+          h.HomeName as home_name
+        FROM appointments a
+        LEFT JOIN SyncActiveHomes h ON a.home_xref = h.Xref
+        WHERE a.appointment_id = @param0 AND a.is_deleted = 0
+      `,
+        [appointmentId],
+      )
+
+      if (appointments.length === 0) {
+        return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+      }
+
+      appointment = appointments[0]
     }
 
-    const appointment = appointments[0]
+    if (!appointment) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
 
     // Determine recipient - prioritize logged-in user first, then override, then assigned staff
     // This ensures the person sending the link gets it sent to themselves if they're assigned
@@ -79,11 +104,21 @@ export async function POST(
       } else {
         // Check if assigned_to_user_id is a GUID that matches logged-in user's app_users.id
         try {
-          const userCheck = await query(
-            `SELECT id FROM app_users WHERE clerk_user_id = @param0 AND id = @param1`,
-            [auth.clerkUserId, appointment.assigned_to_user_id]
-          )
-          loggedInUserMatches = userCheck.length > 0
+          if (useApiClient) {
+            // Use API client to lookup user
+            const userLookup = await radiusApiClient.lookupUser({
+              clerkUserId: auth.clerkUserId,
+              microserviceCode: 'home-visits'
+            })
+            loggedInUserMatches = userLookup.user?.id === appointment.assigned_to_user_id
+          } else {
+            // Direct DB for admin service
+            const userCheck = await query(
+              `SELECT id FROM app_users WHERE clerk_user_id = @param0 AND id = @param1`,
+              [auth.clerkUserId, appointment.assigned_to_user_id]
+            )
+            loggedInUserMatches = userCheck.length > 0
+          }
         } catch (checkError) {
           console.error(`❌ [SEND-LINK] Error checking user match:`, checkError)
         }
@@ -115,51 +150,84 @@ export async function POST(
       )
     }
 
-    // If phone not provided in override, fetch from database
+    // If phone not provided in override, fetch from database via API client
     // Check both clerk_user_id and id (GUID) since staff list can return either
     if (!recipientPhone && recipientClerkUserId) {
-      // First try by clerk_user_id (most common case)
-      let staffUsers = await query(
-        `
-        SELECT 
-          u.id,
-          u.clerk_user_id,
-          u.phone,
-          u.first_name,
-          u.last_name,
-          u.email
-        FROM app_users u
-        WHERE u.clerk_user_id = @param0 AND u.is_active = 1
-      `,
-        [recipientClerkUserId],
-      )
+      let staffUser: any = null
 
-      // If not found, try by id (GUID) - in case staff list returned GUID instead of clerk_user_id
-      if (staffUsers.length === 0) {
-        // Check if it looks like a GUID
-        const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientClerkUserId)
-        if (isGuid) {
-          staffUsers = await query(
-            `
-            SELECT 
-              u.id,
-              u.clerk_user_id,
-              u.phone,
-              u.first_name,
-              u.last_name,
-              u.email
-            FROM app_users u
-            WHERE u.id = @param0 AND u.is_active = 1
-          `,
-            [recipientClerkUserId],
-          )
+      if (useApiClient) {
+        // Use API client to lookup user
+        try {
+          const userLookup = await radiusApiClient.lookupUser({
+            clerkUserId: recipientClerkUserId,
+            microserviceCode: 'home-visits'
+          })
+          
+          if (userLookup.user) {
+            staffUser = userLookup.user
+          } else {
+            // If not found by clerkUserId, check if it's a GUID
+            // Note: API client doesn't support lookup by GUID directly
+            // This case should be rare - typically assigned_to_user_id is clerk_user_id
+            const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientClerkUserId)
+            if (isGuid) {
+              console.warn(`⚠️ [SEND-LINK] assigned_to_user_id is a GUID (${recipientClerkUserId}). API client doesn't support GUID lookup. This may be a case manager.`)
+              // For GUIDs, we can't look up via API client - this would require a new API endpoint
+              // For now, we'll return an error suggesting the user needs to be looked up differently
+            }
+          }
+        } catch (apiError) {
+          console.error("❌ [SEND-LINK] API client error fetching user:", apiError)
+        }
+      } else {
+        // Direct DB access for admin microservice only
+        throwIfDirectDbNotAllowed("send-link - user lookup")
+        // First try by clerk_user_id (most common case)
+        let staffUsers = await query(
+          `
+          SELECT 
+            u.id,
+            u.clerk_user_id,
+            u.phone,
+            u.first_name,
+            u.last_name,
+            u.email
+          FROM app_users u
+          WHERE u.clerk_user_id = @param0 AND u.is_active = 1
+        `,
+          [recipientClerkUserId],
+        )
+
+        // If not found, try by id (GUID) - in case staff list returned GUID instead of clerk_user_id
+        if (staffUsers.length === 0) {
+          // Check if it looks like a GUID
+          const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientClerkUserId)
+          if (isGuid) {
+            staffUsers = await query(
+              `
+              SELECT 
+                u.id,
+                u.clerk_user_id,
+                u.phone,
+                u.first_name,
+                u.last_name,
+                u.email
+              FROM app_users u
+              WHERE u.id = @param0 AND u.is_active = 1
+            `,
+              [recipientClerkUserId],
+            )
+          }
+        }
+
+        if (staffUsers.length > 0) {
+          staffUser = staffUsers[0]
         }
       }
 
       // NO CLERK API CALLS - user must exist in database
       // If user not found, return error (do not sync from Clerk)
-
-      if (staffUsers.length === 0) {
+      if (!staffUser) {
         // Staff member not found - return error with details for UI to handle
         // This could be a case manager (not in app_users) or user doesn't exist
         return NextResponse.json(
@@ -173,9 +241,8 @@ export async function POST(
         )
       }
 
-      const staffUser = staffUsers[0]
       recipientPhone = staffUser.phone || null
-      recipientName = recipientName || `${staffUser.first_name} ${staffUser.last_name}`.trim()
+      recipientName = recipientName || `${staffUser.first_name || ''} ${staffUser.last_name || ''}`.trim() || staffUser.name || recipientName
     }
 
     if (!recipientPhone || recipientPhone.trim() === "") {
