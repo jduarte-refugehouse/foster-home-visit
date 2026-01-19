@@ -34,30 +34,57 @@ export async function GET(request: NextRequest) {
     let email: string | null = null
     let name: string | null = null
 
-    // Get credentials from headers (stored after initial Clerk authentication)
-    // NO CLERK API CALLS - only use stored credentials
+    // Try to get credentials from headers first (preferred method)
     try {
       const auth = requireClerkAuth(request)
       clerkUserId = auth.clerkUserId
       email = auth.email
       name = auth.name
       // #region agent log
-      console.log("✅ [DEBUG] requireClerkAuth success:", JSON.stringify({ clerkUserId: clerkUserId?.substring(0, 20) + '...', email, name }, null, 2));
+      console.log("✅ [DEBUG] requireClerkAuth from headers success:", JSON.stringify({ clerkUserId: clerkUserId?.substring(0, 20) + '...', email, name }, null, 2));
       // #endregion
     } catch (authError) {
       // #region agent log
-      console.error("❌ [DEBUG] requireClerkAuth failed:", authError instanceof Error ? authError.message : String(authError));
-      console.error("❌ [DEBUG] Headers received:", JSON.stringify({ clerkId: headerClerkId, email: headerEmail, name: headerName }, null, 2));
+      console.log("⚠️ [DEBUG] Headers not available, trying Clerk session fallback...");
       // #endregion
-      // Headers not available - user must send credentials in headers
-      // NO FALLBACK TO CLERK SESSION - all requests must use headers
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-          details: "Missing authentication headers. Please ensure credentials are sent in x-user-clerk-id, x-user-email, and x-user-name headers.",
-        },
-        { status: 401 },
-      )
+      
+      // FALLBACK: Try to read from Clerk session directly
+      // This is critical for production where useUser() hook might not work properly
+      try {
+        const { currentUser } = await import("@clerk/nextjs/server")
+        const user = await currentUser()
+        
+        if (user) {
+          clerkUserId = user.id
+          email = user.emailAddresses?.[0]?.emailAddress || null
+          name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || null
+          // #region agent log
+          console.log("✅ [DEBUG] Clerk session fallback success:", JSON.stringify({ clerkUserId: clerkUserId?.substring(0, 20) + '...', email, name }, null, 2));
+          // #endregion
+        } else {
+          // #region agent log
+          console.error("❌ [DEBUG] Clerk session returned null user");
+          // #endregion
+          return NextResponse.json(
+            {
+              error: "Unauthorized",
+              details: "No active Clerk session found. Please sign in.",
+            },
+            { status: 401 },
+          )
+        }
+      } catch (sessionError) {
+        // #region agent log
+        console.error("❌ [DEBUG] Clerk session fallback failed:", sessionError instanceof Error ? sessionError.message : String(sessionError));
+        // #endregion
+        return NextResponse.json(
+          {
+            error: "Unauthorized",
+            details: "Unable to authenticate. Please sign in again.",
+          },
+          { status: 401 },
+        )
+      }
     }
 
     if (!clerkUserId || !email) {

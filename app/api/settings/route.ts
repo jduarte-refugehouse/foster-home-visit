@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const useApiClient = shouldUseRadiusApiClient()
     
     if (useApiClient) {
-      // Use API client to fetch settings
+      // Use API client for non-admin microservices (visit service, etc.)
       const { searchParams } = new URL(request.url)
       const key = searchParams.get("key")
 
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Direct DB access for admin microservice
     const { searchParams } = new URL(request.url)
     const key = searchParams.get("key")
 
@@ -82,8 +83,6 @@ export async function GET(request: NextRequest) {
         setting: result[0],
       })
     } else {
-      // Direct DB access for admin microservice
-      throwIfDirectDbNotAllowed("settings GET endpoint")
       // Get all settings
       const result = await query(
         `SELECT ConfigKey, ConfigValue, Description, ModifiedDate, ModifiedBy 
@@ -116,7 +115,7 @@ export async function PUT(request: NextRequest) {
     const useApiClient = shouldUseRadiusApiClient()
     
     if (useApiClient) {
-      // Use API client to update setting
+      // Use API client for non-admin microservices (visit service, etc.)
       const auth = getClerkUserIdFromRequest(request)
       if (!auth.clerkUserId && !auth.email) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -129,17 +128,36 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "Setting key is required" }, { status: 400 })
       }
 
-      const modifiedBy = auth.email || auth.clerkUserId || "system"
-      const result = await radiusApiClient.updateSetting(key, value, description, modifiedBy)
+      try {
+        const modifiedBy = auth.email || auth.clerkUserId || "system"
+        const result = await radiusApiClient.updateSetting(key, value, description, modifiedBy)
 
-      return NextResponse.json({
-        success: true,
-        message: result.message || "Setting updated successfully",
-      })
+        return NextResponse.json({
+          success: true,
+          message: result.message || "Setting updated successfully",
+        })
+      } catch (apiError: any) {
+        console.error(`❌ [API] Error updating setting via API Hub:`, apiError)
+        console.error(`❌ [API] API error details:`, {
+          message: apiError?.message,
+          status: apiError?.status,
+          statusText: apiError?.statusText,
+          response: apiError?.response,
+          stack: apiError?.stack,
+        })
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to update setting via API Hub",
+            details: apiError?.message || "Unknown error",
+            status: apiError?.status,
+          },
+          { status: apiError?.status || 500 }
+        )
+      }
     }
 
     // Direct DB access for admin microservice
-    throwIfDirectDbNotAllowed("settings PUT endpoint")
     const auth = getClerkUserIdFromRequest(request)
     if (!auth.clerkUserId && !auth.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -196,4 +214,3 @@ export async function PUT(request: NextRequest) {
     )
   }
 }
-
