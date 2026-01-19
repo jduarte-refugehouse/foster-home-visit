@@ -215,10 +215,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. Generate journey_id if not provided
+    // 4. Generate journey_id if not provided (new trip)
     const finalJourneyId = journey_id || crypto.randomUUID()
+    const isNewTrip = !journey_id
 
-    // 5. Get leg sequence for this journey
+    // 5. If this is a new trip, create the trip record first
+    if (isNewTrip) {
+      // Get staff_name if not provided (try to get from app_users)
+      let staffName = body.staff_name || null
+      if (!staffName && staff_user_id) {
+        try {
+          const userResult = await query(
+            `SELECT first_name, last_name 
+             FROM app_users 
+             WHERE clerk_user_id = @param0 AND is_active = 1`,
+            [staff_user_id]
+          )
+          if (userResult.length > 0) {
+            const user = userResult[0]
+            staffName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || null
+          }
+        } catch (userError) {
+          console.warn("⚠️ [RADIUS-API] Could not fetch staff name (non-fatal):", userError)
+        }
+      }
+
+      // Create trip record
+      try {
+        await query(
+          `INSERT INTO trips (
+            journey_id, staff_user_id, staff_name, travel_purpose,
+            start_timestamp, trip_status, created_by_user_id
+          )
+          VALUES (
+            @param0, @param1, @param2, @param3,
+            @param4, 'in_progress', @param5
+          )`,
+          [
+            finalJourneyId,
+            staff_user_id,
+            staffName,
+            travel_purpose || null,
+            start_timestamp,
+            staff_user_id, // created_by_user_id
+          ]
+        )
+        console.log(`✅ [RADIUS-API] Created trip record ${finalJourneyId}`)
+      } catch (tripError: any) {
+        // If trips table doesn't exist yet, log warning but continue
+        if (tripError.message?.includes("Invalid object name") || tripError.message?.includes("trips")) {
+          console.warn("⚠️ [RADIUS-API] trips table not found - please run create-trips-table.sql migration")
+        } else {
+          console.error("❌ [RADIUS-API] Error creating trip record (non-fatal):", tripError)
+        }
+        // Continue with leg creation even if trip creation fails
+      }
+    }
+
+    // 6. Get leg sequence for this journey
     let legSequence = 1
     if (journey_id) {
       const existingLegs = await query(
@@ -230,7 +284,7 @@ export async function POST(request: NextRequest) {
       legSequence = (existingLegs[0]?.max_sequence || 0) + 1
     }
 
-    // 6. Insert new leg
+    // 7. Insert new leg
     const result = await query(
       `INSERT INTO travel_legs (
         staff_user_id, journey_id, leg_sequence,

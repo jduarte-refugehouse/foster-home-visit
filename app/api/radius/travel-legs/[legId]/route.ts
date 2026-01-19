@@ -47,6 +47,8 @@ export async function PATCH(
       end_location_type,
       appointment_id_to,
       is_final_leg,
+      manual_mileage, // Optional: user override for calculated mileage
+      manual_notes, // Optional: notes about manual entry/override
       updated_by_user_id,
     } = body
 
@@ -127,6 +129,9 @@ export async function PATCH(
     }
 
     // 6. Update leg
+    // Use manual_mileage if provided (user override), otherwise use calculated_mileage
+    const finalMileage = manual_mileage !== undefined && manual_mileage !== null ? manual_mileage : calculatedMileage
+    
     await query(
       `UPDATE travel_legs
        SET end_latitude = @param1,
@@ -137,12 +142,14 @@ export async function PATCH(
            end_location_type = @param6,
            appointment_id_to = @param7,
            calculated_mileage = @param8,
-           estimated_toll_cost = @param9,
-           duration_minutes = @param10,
-           is_final_leg = @param11,
+           manual_mileage = @param9,
+           manual_notes = @param10,
+           estimated_toll_cost = @param11,
+           duration_minutes = @param12,
+           is_final_leg = @param13,
            leg_status = 'completed',
            updated_at = GETUTCDATE(),
-           updated_by_user_id = @param12
+           updated_by_user_id = @param14
        WHERE leg_id = @param0`,
       [
         legId,
@@ -153,7 +160,9 @@ export async function PATCH(
         end_location_address || null,
         end_location_type || null,
         appointment_id_to || null,
-        calculatedMileage,
+        calculatedMileage, // Always store calculated value
+        manual_mileage || null, // Store manual override if provided
+        manual_notes || null, // Store notes if provided
         estimatedToll,
         durationMinutes,
         is_final_leg || false,
@@ -191,7 +200,69 @@ export async function PATCH(
       }
     }
 
-    // 8. Check if journey is complete and create/update Trips record for expense reporting
+    // 8. If this is the final leg, roll up totals into trips table
+    if (leg.journey_id && is_final_leg) {
+      try {
+        // Roll up totals from all completed legs in this journey
+        // Use manual_mileage if available (user override), otherwise use calculated_mileage
+        const totalsResult = await query(
+          `SELECT 
+            SUM(COALESCE(manual_mileage, calculated_mileage, 0)) as total_mileage,
+            SUM(COALESCE(duration_minutes, 0)) as total_duration_minutes,
+            SUM(COALESCE(estimated_toll_cost, 0)) as total_tolls_estimated,
+            SUM(COALESCE(actual_toll_cost, 0)) as total_tolls_actual,
+            MIN(start_timestamp) as journey_start,
+            MAX(end_timestamp) as journey_end,
+            MAX(CASE WHEN is_manual_entry = 1 THEN 1 ELSE 0 END) as has_manual_entry,
+            MAX(CASE WHEN is_backdated = 1 THEN 1 ELSE 0 END) as has_backdated
+          FROM travel_legs
+          WHERE journey_id = @param0 AND is_deleted = 0 AND leg_status = 'completed'`,
+          [leg.journey_id]
+        )
+
+        if (totalsResult.length > 0 && totalsResult[0].journey_end) {
+          const totals = totalsResult[0]
+          
+          // Update trips table with rolled-up totals
+          await query(
+            `UPDATE trips
+             SET end_timestamp = @param1,
+                 total_mileage = @param2,
+                 total_duration_minutes = @param3,
+                 total_tolls_estimated = @param4,
+                 total_tolls_actual = @param5,
+                 is_manual_entry = @param6,
+                 is_backdated = @param7,
+                 trip_status = 'completed',
+                 updated_at = GETUTCDATE(),
+                 updated_by_user_id = @param8
+             WHERE journey_id = @param0`,
+            [
+              leg.journey_id,
+              totals.journey_end,
+              totals.total_mileage || 0,
+              totals.total_duration_minutes || 0,
+              totals.total_tolls_estimated || 0,
+              totals.total_tolls_actual || 0,
+              totals.has_manual_entry || 0,
+              totals.has_backdated || 0,
+              updated_by_user_id || leg.staff_user_id,
+            ]
+          )
+          console.log(`✅ [RADIUS-API] Updated trips table for journey ${leg.journey_id} with rolled-up totals`)
+        }
+      } catch (tripsError: any) {
+        // If trips table doesn't exist yet, log warning but continue
+        if (tripsError.message?.includes("Invalid object name") || tripsError.message?.includes("trips")) {
+          console.warn("⚠️ [RADIUS-API] trips table not found - please run create-trips-table.sql migration")
+        } else {
+          console.error("❌ [RADIUS-API] Error updating trips table (non-fatal):", tripsError)
+        }
+        // Continue with Trips table creation/update
+      }
+    }
+
+    // 9. Check if journey is complete and create/update Trips record for expense reporting
     let tripId: string | null = null
     if (leg.journey_id && is_final_leg) {
       try {
