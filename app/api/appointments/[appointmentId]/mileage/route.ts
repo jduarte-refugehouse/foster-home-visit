@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed, getMicroserviceCode } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const runtime = "nodejs"
@@ -84,6 +84,8 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     // Check if appointment exists and verify access
     // Use API client for visit service, direct DB for admin service
     const useApiClient = shouldUseRadiusApiClient()
+    const microserviceCode = getMicroserviceCode()
+    console.log(`🔍 [MILEAGE] Microservice detection: code=${microserviceCode}, useApiClient=${useApiClient}`)
     let appointment: any = null
     
     if (useApiClient) {

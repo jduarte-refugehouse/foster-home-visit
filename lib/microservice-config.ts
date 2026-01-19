@@ -144,6 +144,10 @@ export function getMicroserviceCode(): string {
     
     // Match branch names to microservice codes
     // Pattern: branch names containing microservice identifier
+    // Check for visits-main first (production branch for visit service)
+    if (branch === 'visits-main' || branch.includes('visits-main')) {
+      return 'home-visits'
+    }
     if (branch.includes('visits') || branch.includes('home-visit')) {
       return 'home-visits'
     }
