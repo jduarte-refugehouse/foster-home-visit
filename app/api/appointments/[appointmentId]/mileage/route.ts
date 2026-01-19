@@ -387,7 +387,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
     }
 
     if (action === "return") {
-      const appointment = existingAppointment[0]
+      // Use the appointment we already fetched
 
       // Try to get the most recent location from continuum entries (history log)
       // This is more reliable than checking appointments table which might be out of sync
@@ -567,19 +567,38 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       try {
         console.log("🔢 [MILEAGE] Calculate action triggered for appointment:", appointmentId)
         
-        // Get existing appointment with both start and arrived locations
-        const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, arrived_latitude, arrived_longitude 
-                                  FROM appointments 
-                                  WHERE appointment_id = @param0 AND is_deleted = 0`
-        
-        const existingAppointment = await query(appointmentQuery, [appointmentId])
+        // Use the appointment we already fetched (or fetch again if needed)
+        if (!appointment) {
+          if (useApiClient) {
+            try {
+              const appointmentData = await radiusApiClient.getAppointment(appointmentId)
+              appointment = {
+                appointment_id: appointmentData.appointment_id,
+                start_drive_latitude: appointmentData.start_drive_latitude || null,
+                start_drive_longitude: appointmentData.start_drive_longitude || null,
+                arrived_latitude: appointmentData.arrived_latitude || null,
+                arrived_longitude: appointmentData.arrived_longitude || null,
+              }
+            } catch (apiError: any) {
+              console.error("❌ [MILEAGE] Failed to fetch appointment via API client:", apiError)
+              return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            }
+          } else {
+            throwIfDirectDbNotAllowed("mileage endpoint - calculate")
+            const appointmentQuery = `SELECT appointment_id, start_drive_latitude, start_drive_longitude, arrived_latitude, arrived_longitude 
+                                      FROM appointments 
+                                      WHERE appointment_id = @param0 AND is_deleted = 0`
+            
+            const existingAppointment = await query(appointmentQuery, [appointmentId])
 
-        if (existingAppointment.length === 0) {
-          console.error("❌ [MILEAGE] Appointment not found:", appointmentId)
-          return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            if (existingAppointment.length === 0) {
+              console.error("❌ [MILEAGE] Appointment not found:", appointmentId)
+              return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+            }
+
+            appointment = existingAppointment[0]
+          }
         }
-
-        const appointment = existingAppointment[0]
         
         // Try to get locations from travel legs first (new system), fall back to appointment fields (legacy)
         let startLat: number | null = null
