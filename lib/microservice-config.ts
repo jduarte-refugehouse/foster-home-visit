@@ -233,8 +233,17 @@ export function isInternalUser(email: string): boolean {
  */
 export function shouldUseRadiusApiClient(request?: { headers: { get: (name: string) => string | null } }): boolean {
   const microserviceCode = getMicroserviceCode(request)
+  
+  // Log detection for debugging
+  const host = request?.headers.get('host') || request?.headers.get('x-forwarded-host') || 'not-provided'
+  const vercelUrl = process.env.VERCEL_URL || 'not-set'
+  const vercelBranch = process.env.VERCEL_BRANCH || 'not-set'
+  console.log(`🔍 [API-CLIENT] Detection check: code=${microserviceCode}, host=${host}, VERCEL_URL=${vercelUrl}, VERCEL_BRANCH=${vercelBranch}`)
+  
   // Admin microservice has direct DB access - don't use API client
-  return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+  const shouldUse = microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+  console.log(`🔍 [API-CLIENT] shouldUseRadiusApiClient=${shouldUse} (microserviceCode=${microserviceCode})`)
+  return shouldUse
 }
 
 /**
