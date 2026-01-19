@@ -1,7 +1,8 @@
 import { query } from "@refugehouse/shared-core/db"
+import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
 
 // Communication logging service for tracking SMS and email messages
-// Uses the locked database connection safely
+// Uses API client for visit service, direct DB for admin service
 
 export interface CommunicationLogEntry {
   id?: string
@@ -72,12 +73,24 @@ export interface CommunicationLogFilters {
 
 /**
  * Log a communication attempt to the database
+ * For visit service: Returns null if logging fails (non-blocking)
+ * For admin service: Throws error if logging fails (blocking)
  */
 export async function logCommunication(
   entry: Omit<CommunicationLogEntry, "id" | "created_at" | "updated_at">,
-): Promise<string> {
+): Promise<string | null> {
   console.log("📝 [Communication] Logging communication to database...")
 
+  const useApiClient = shouldUseRadiusApiClient()
+  
+  // For visit service (using API client), communication logging is not available via API Hub yet
+  // Return null to allow the operation to continue without blocking
+  if (useApiClient) {
+    console.warn("⚠️ [Communication] Communication logging not available via API Hub. Skipping log (non-blocking).")
+    return null
+  }
+
+  // For admin service, use direct DB access
   const queryText = `
     INSERT INTO communication_logs (
       source_application, source_feature, source_reference_id,
@@ -149,16 +162,34 @@ export async function logCommunication(
 
 /**
  * Update communication status (e.g., when delivery confirmation is received)
+ * For visit service: Silently fails if logId is null (non-blocking)
+ * For admin service: Throws error if update fails (blocking)
  */
 export async function updateCommunicationStatus(
-  logId: string,
+  logId: string | null,
   status: "sent" | "delivered" | "failed",
   errorMessage?: string,
   providerId?: string,
   providerType?: "sendgrid" | "twilio",
 ): Promise<void> {
+  // If logId is null (visit service, logging was skipped), silently return
+  if (!logId) {
+    console.log(`ℹ️ [Communication] Skipping status update (no log ID - visit service)`)
+    return
+  }
+
   console.log(`📝 [Communication] Updating status for log ID ${logId} to ${status}`)
 
+  const useApiClient = shouldUseRadiusApiClient()
+  
+  // For visit service (using API client), communication logging is not available via API Hub yet
+  // Silently return to allow the operation to continue without blocking
+  if (useApiClient) {
+    console.warn("⚠️ [Communication] Communication status update not available via API Hub. Skipping update (non-blocking).")
+    return
+  }
+
+  // For admin service, use direct DB access
   let queryText = `
     UPDATE communication_logs 
     SET status = @param0, updated_at = GETDATE()
