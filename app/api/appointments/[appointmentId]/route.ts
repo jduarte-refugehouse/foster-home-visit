@@ -14,7 +14,8 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
 
     console.log(`📅 [API] Fetching appointment: ${appointmentId}`)
 
-    const useApiClient = shouldUseRadiusApiClient()
+    // CRITICAL: Pass request parameter for hostname detection
+    const useApiClient = shouldUseRadiusApiClient(request)
     let appointment: any = null
 
     if (useApiClient) {
@@ -22,8 +23,8 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
       console.log("✅ [API] Using API client to fetch appointment")
       appointment = await radiusApiClient.getAppointment(appointmentId)
       
-      // Note: API client doesn't return travel legs, so we'll need to fetch those separately if needed
-      // For now, we'll fetch travel legs directly (they're not in the API Hub yet)
+      // Note: API client doesn't return travel legs, so we'll skip that for visit service
+      // Travel legs are not in the API Hub yet - this is non-blocking
     } else {
       // Direct DB access for admin microservice
       console.log("✅ [API] Using direct DB access to fetch appointment (admin microservice)")
@@ -93,82 +94,90 @@ export async function GET(request: NextRequest, { params }: { params: { appointm
     let returnLegStartLat: number | null = null
     let returnLegStartLng: number | null = null
     
-    try {
-      const travelLegs = await query(
-        `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from,
-                calculated_mileage, start_timestamp, end_timestamp,
-                start_latitude, start_longitude, end_latitude, end_longitude,
-                start_location_name, end_location_name
-         FROM travel_legs
-         WHERE (appointment_id_to = @param0 OR appointment_id_from = @param0)
-           AND is_deleted = 0
-         ORDER BY start_timestamp DESC`,
-        [appointmentId]
-      )
+    // Only query travel legs if using direct DB access (admin service)
+    // For visit service, travel legs are not available via API Hub yet (non-blocking)
+    if (!useApiClient) {
+      try {
+        const travelLegs = await query(
+          `SELECT leg_id, leg_status, appointment_id_to, appointment_id_from,
+                  calculated_mileage, start_timestamp, end_timestamp,
+                  start_latitude, start_longitude, end_latitude, end_longitude,
+                  start_location_name, end_location_name
+           FROM travel_legs
+           WHERE (appointment_id_to = @param0 OR appointment_id_from = @param0)
+             AND is_deleted = 0
+           ORDER BY start_timestamp DESC`,
+          [appointmentId]
+        )
 
-      if (travelLegs.length > 0) {
-        // Check for legs TO this appointment (arrival)
-        hasInProgressLeg = travelLegs.some((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_to === appointmentId)
-        hasCompletedLeg = travelLegs.some((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
-        
-        // Check for return legs FROM this appointment (departure)
-        const returnLeg = travelLegs.find((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_from === appointmentId)
-        if (returnLeg) {
-          hasInProgressReturnLeg = true
-          returnLegId = returnLeg.leg_id
-        }
-        
-        // Get the most recent completed leg for this appointment (arrival)
-        const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
-        if (completedLeg) {
-          legMileage = completedLeg.calculated_mileage || null
-          legStartLat = completedLeg.start_latitude || null
-          legStartLng = completedLeg.start_longitude || null
-          legEndLat = completedLeg.end_latitude || null
-          legEndLng = completedLeg.end_longitude || null
-          // Format timestamps while we have access to completedLeg
-          legStartTimestamp = completedLeg.start_timestamp ? formatLocalDatetime(completedLeg.start_timestamp) : null
-          legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
-        }
-        
-        // Check for completed return leg mileage
-        const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
-        
-        if (completedReturnLeg) {
-          returnLegMileage = completedReturnLeg.calculated_mileage || null
-          try {
-            returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
-            returnLegStartTimestamp = completedReturnLeg.start_timestamp ? formatLocalDatetime(completedReturnLeg.start_timestamp) : null
-          } catch (timestampError) {
-            console.error("⚠️ [API] Error formatting return leg timestamp:", timestampError)
-            returnLegTimestamp = null
-            returnLegStartTimestamp = null
-          }
-          // End location (where they arrived - office/home)
-          returnLegLat = completedReturnLeg.end_latitude || null
-          returnLegLng = completedReturnLeg.end_longitude || null
-          // Start location (where they left from - appointment location)
-          // If return leg doesn't have start location, use arrival location from outbound leg (they start return from where they arrived)
-          returnLegStartLat = completedReturnLeg.start_latitude || null
-          returnLegStartLng = completedReturnLeg.start_longitude || null
+        if (travelLegs.length > 0) {
+          // Check for legs TO this appointment (arrival)
+          hasInProgressLeg = travelLegs.some((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_to === appointmentId)
+          hasCompletedLeg = travelLegs.some((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
           
-          // If return leg start location is missing, use the arrival location from the outbound leg
-          if ((!returnLegStartLat || !returnLegStartLng) && legEndLat && legEndLng) {
-            returnLegStartLat = legEndLat
-            returnLegStartLng = legEndLng
-            // Use arrival timestamp as start timestamp if return leg doesn't have one
-            if (!returnLegStartTimestamp && legEndTimestamp) {
-              returnLegStartTimestamp = legEndTimestamp
-            }
-            console.log("📍 [API] Using arrival location as return start location:", { returnLegStartLat, returnLegStartLng })
+          // Check for return legs FROM this appointment (departure)
+          const returnLeg = travelLegs.find((leg: any) => leg.leg_status === 'in_progress' && leg.appointment_id_from === appointmentId)
+          if (returnLeg) {
+            hasInProgressReturnLeg = true
+            returnLegId = returnLeg.leg_id
           }
+          
+          // Get the most recent completed leg for this appointment (arrival)
+          const completedLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_to === appointmentId)
+          if (completedLeg) {
+            legMileage = completedLeg.calculated_mileage || null
+            legStartLat = completedLeg.start_latitude || null
+            legStartLng = completedLeg.start_longitude || null
+            legEndLat = completedLeg.end_latitude || null
+            legEndLng = completedLeg.end_longitude || null
+            // Format timestamps while we have access to completedLeg
+            legStartTimestamp = completedLeg.start_timestamp ? formatLocalDatetime(completedLeg.start_timestamp) : null
+            legEndTimestamp = completedLeg.end_timestamp ? formatLocalDatetime(completedLeg.end_timestamp) : null
+          }
+          
+          // Check for completed return leg mileage
+          const completedReturnLeg = travelLegs.find((leg: any) => leg.leg_status === 'completed' && leg.appointment_id_from === appointmentId)
+          
+          if (completedReturnLeg) {
+            returnLegMileage = completedReturnLeg.calculated_mileage || null
+            try {
+              returnLegTimestamp = completedReturnLeg.end_timestamp ? formatLocalDatetime(completedReturnLeg.end_timestamp) : null
+              returnLegStartTimestamp = completedReturnLeg.start_timestamp ? formatLocalDatetime(completedReturnLeg.start_timestamp) : null
+            } catch (timestampError) {
+              console.error("⚠️ [API] Error formatting return leg timestamp:", timestampError)
+              returnLegTimestamp = null
+              returnLegStartTimestamp = null
+            }
+            // End location (where they arrived - office/home)
+            returnLegLat = completedReturnLeg.end_latitude || null
+            returnLegLng = completedReturnLeg.end_longitude || null
+            // Start location (where they left from - appointment location)
+            // If return leg doesn't have start location, use arrival location from outbound leg (they start return from where they arrived)
+            returnLegStartLat = completedReturnLeg.start_latitude || null
+            returnLegStartLng = completedReturnLeg.start_longitude || null
+            
+            // If return leg start location is missing, use the arrival location from the outbound leg
+            if ((!returnLegStartLat || !returnLegStartLng) && legEndLat && legEndLng) {
+              returnLegStartLat = legEndLat
+              returnLegStartLng = legEndLng
+              // Use arrival timestamp as start timestamp if return leg doesn't have one
+              if (!returnLegStartTimestamp && legEndTimestamp) {
+                returnLegStartTimestamp = legEndTimestamp
+              }
+              console.log("📍 [API] Using arrival location as return start location:", { returnLegStartLat, returnLegStartLng })
+            }
+          }
+          
+          console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, return_in_progress=${hasInProgressReturnLeg}, return_leg_id=${returnLegId}, mileage=${legMileage}`)
         }
-        
-        console.log(`🚗 [API] Found ${travelLegs.length} travel leg(s) for appointment: in_progress=${hasInProgressLeg}, completed=${hasCompletedLeg}, return_in_progress=${hasInProgressReturnLeg}, return_leg_id=${returnLegId}, mileage=${legMileage}`)
+      } catch (legError) {
+        // Don't fail if travel_legs table doesn't exist or query fails
+        console.log("⚠️ [API] Could not check travel legs (non-fatal):", legError)
       }
-    } catch (legError) {
-      // Don't fail if travel_legs table doesn't exist or query fails
-      console.log("⚠️ [API] Could not check travel legs (non-fatal):", legError)
+    } else {
+      // For visit service, travel legs are not available via API Hub yet
+      // Use appointment data from API Hub response (which includes travel leg flags if available)
+      console.log("ℹ️ [API] Travel legs not available via API Hub for visit service - using appointment data")
     }
 
     return NextResponse.json({
