@@ -92,10 +92,29 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     // Check if appointment exists and verify access
     // Use API client for visit service, direct DB for admin service
-    const useApiClient = shouldUseRadiusApiClient(request)
+    // CRITICAL: Check this BEFORE any database operations
     const microserviceCode = getMicroserviceCode(request)
+    const useApiClient = shouldUseRadiusApiClient(request)
     const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown'
     console.log(`🔍 [MILEAGE] Microservice detection: host=${host}, code=${microserviceCode}, useApiClient=${useApiClient}`)
+    
+    // SAFETY CHECK: If we should use API client but somehow got here, throw immediately
+    if (useApiClient) {
+      console.log(`✅ [MILEAGE] Using API client (microservice: ${microserviceCode})`)
+    } else {
+      console.log(`⚠️ [MILEAGE] WARNING: useApiClient=false for microservice: ${microserviceCode}`)
+      console.log(`⚠️ [MILEAGE] This should only happen for admin microservice. If this is visit service, detection failed!`)
+      // For visit service, this should NEVER happen - throw immediately
+      if (microserviceCode === 'home-visits') {
+        throw new Error(
+          `❌ CRITICAL ERROR: visit.refugehouse.app detected as 'home-visits' but useApiClient=false!\n` +
+          `This should never happen. The detection logic is broken.\n` +
+          `Environment: MICROSERVICE_CODE=${process.env.MICROSERVICE_CODE || 'NOT SET'}\n` +
+          `Host: ${host}\n` +
+          `VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`
+        )
+      }
+    }
     let appointment: any = null
     
     if (useApiClient) {
