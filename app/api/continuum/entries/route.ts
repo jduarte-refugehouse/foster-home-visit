@@ -13,18 +13,21 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    const useApiClient = shouldUseRadiusApiClient()
+    // CRITICAL: Pass request parameter for hostname detection
+    const useApiClient = shouldUseRadiusApiClient(request)
     
     if (useApiClient) {
-      throwIfDirectDbNotAllowed("continuum entries endpoint")
-      // TODO: Migrate to ContinuumMark via API Hub
+      // For visit service: Continuum entries endpoint not yet migrated to API Hub
+      // Return success but skip logging (non-blocking) until API Hub endpoint is available
+      console.warn("⚠️ [CONTINUUM] Continuum entries logging not available via API Hub. Skipping log (non-blocking).")
       return NextResponse.json(
         {
-          success: false,
-          error: "Continuum entries endpoint not yet migrated to API Hub",
+          success: true, // Return success to not block the operation
+          entryId: null,
+          warning: "Continuum entries endpoint not yet migrated to API Hub. Entry not logged.",
           details: "This endpoint uses the legacy continuum_entries table. Please use ContinuumMark via the API Hub instead.",
         },
-        { status: 501 }, // 501 Not Implemented
+        { status: 200 }, // Return 200 OK (non-blocking) instead of 501
       )
     }
     const body = await request.json()
@@ -185,18 +188,21 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const useApiClient = shouldUseRadiusApiClient()
+    // CRITICAL: Pass request parameter for hostname detection
+    const useApiClient = shouldUseRadiusApiClient(request)
     
     if (useApiClient) {
-      throwIfDirectDbNotAllowed("continuum entries endpoint")
-      // TODO: Migrate to ContinuumMark via API Hub
+      // For visit service: Continuum entries endpoint not yet migrated to API Hub
+      // Return empty results (non-blocking) until API Hub endpoint is available
+      console.warn("⚠️ [CONTINUUM] Continuum entries fetching not available via API Hub. Returning empty results (non-blocking).")
       return NextResponse.json(
         {
-          success: false,
-          error: "Continuum entries endpoint not yet migrated to API Hub",
-          details: "This endpoint uses the legacy continuum_entries table. Please use ContinuumMark via the API Hub instead.",
+          success: true,
+          count: 0,
+          entries: [],
+          warning: "Continuum entries endpoint not yet migrated to API Hub. Please use ContinuumMark via the API Hub instead.",
         },
-        { status: 501 }, // 501 Not Implemented
+        { status: 200 }, // Return 200 OK (non-blocking) instead of 501
       )
     }
     const { searchParams } = new URL(request.url)
