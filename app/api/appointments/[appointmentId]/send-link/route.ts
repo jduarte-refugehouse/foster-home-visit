@@ -317,8 +317,15 @@ export async function POST(
     // Create SMS message
     const messageText = `Refuge House: Appointment link for ${appointment.home_name || appointment.title} on ${appointmentDate}. Open: ${mobileLink}`
 
-    // Log communication
-    const microserviceId = await getMicroserviceId()
+    // Log communication (non-blocking for visit service)
+    let microserviceId: string | null = null
+    try {
+      microserviceId = await getMicroserviceId()
+    } catch (microserviceError) {
+      console.warn("⚠️ [SEND-LINK] Failed to get microservice ID (non-blocking):", microserviceError)
+      // Continue without microservice ID
+    }
+    
     try {
       logId = await logCommunication({
         source_application: "home-visit-app",
