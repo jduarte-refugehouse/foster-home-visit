@@ -81,9 +81,41 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       }
     }
 
+    // DEBUG: Log environment variables at the start
+    console.log(`🔍 [MILEAGE] Environment check at function start:`)
+    console.log(`  - MICROSERVICE_CODE: ${process.env.MICROSERVICE_CODE || 'NOT SET'}`)
+    console.log(`  - NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_URL: ${process.env.VERCEL_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`)
+    console.log(`  - RADIUS_API_KEY: ${process.env.RADIUS_API_KEY ? 'SET (length: ' + process.env.RADIUS_API_KEY.length + ')' : 'NOT SET'}`)
+    console.log(`  - RADIUS_API_HUB_URL: ${process.env.RADIUS_API_HUB_URL || 'NOT SET'}`)
+    
     // Check if appointment exists and verify access
     // Use API client for visit service, direct DB for admin service
-    const useApiClient = shouldUseRadiusApiClient()
+    // CRITICAL: Pass request parameter for hostname detection
+    const microserviceCode = getMicroserviceCode(request)
+    const useApiClient = shouldUseRadiusApiClient(request)
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown'
+    console.log(`🔍 [MILEAGE] Microservice detection: host=${host}, code=${microserviceCode}, useApiClient=${useApiClient}`)
+    
+    // SAFETY CHECK: If we should use API client but somehow got here, throw immediately
+    if (useApiClient) {
+      console.log(`✅ [MILEAGE] Using API client (microservice: ${microserviceCode})`)
+    } else {
+      console.log(`⚠️ [MILEAGE] WARNING: useApiClient=false for microservice: ${microserviceCode}`)
+      console.log(`⚠️ [MILEAGE] This should only happen for admin microservice. If this is visit service, detection failed!`)
+      // For visit service, this should NEVER happen - throw immediately
+      if (microserviceCode === 'home-visits') {
+        throw new Error(
+          `❌ CRITICAL ERROR: visit.refugehouse.app detected as 'home-visits' but useApiClient=false!\n` +
+          `This should never happen. The detection logic is broken.\n` +
+          `Environment: MICROSERVICE_CODE=${process.env.MICROSERVICE_CODE || 'NOT SET'}\n` +
+          `Host: ${host}\n` +
+          `VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`
+        )
+      }
+    }
+    
     let appointment: any = null
     
     if (useApiClient) {

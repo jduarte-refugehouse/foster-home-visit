@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { shouldUseRadiusApiClient } from "@/lib/microservice-config"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const dynamic = "force-dynamic"
@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Direct DB access for admin microservice
+    // Direct DB access for admin microservice only
+    throwIfDirectDbNotAllowed("settings GET endpoint")
     const { searchParams } = new URL(request.url)
     const key = searchParams.get("key")
 
