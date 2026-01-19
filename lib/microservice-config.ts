@@ -134,7 +134,22 @@ export function getMicroserviceCode(request?: { headers: { get: (name: string) =
   // Tier 1: Environment variable (explicit override - highest priority)
   // This is set in Vercel project settings and takes precedence
   if (process.env.MICROSERVICE_CODE) {
+    console.log(`🔍 [MICROSERVICE] Using MICROSERVICE_CODE env var: ${process.env.MICROSERVICE_CODE}`)
     return process.env.MICROSERVICE_CODE
+  }
+  
+  // Tier 1.1: Check NEXT_PUBLIC_APP_URL for production deployments
+  // This is often set in Vercel and can help identify the microservice
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL.toLowerCase()
+    if (appUrl.includes('visit.refugehouse.app') || appUrl.includes('visit-test')) {
+      console.log(`🔍 [MICROSERVICE] Detected from NEXT_PUBLIC_APP_URL: home-visits`)
+      return 'home-visits'
+    }
+    if (appUrl.includes('admin.refugehouse.app') || appUrl.includes('admin-test')) {
+      console.log(`🔍 [MICROSERVICE] Detected from NEXT_PUBLIC_APP_URL: service-domain-admin`)
+      return 'service-domain-admin'
+    }
   }
 
   // Tier 1.5: Hostname detection (for production deployments)
