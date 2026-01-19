@@ -475,24 +475,38 @@ export default function MobileAppointmentDetailPage() {
     } catch (error) {
       console.error("Error starting drive:", error)
       
-      // Provide more specific error messages
+      // Provide more specific error messages with better user guidance
       let errorMessage = "Failed to start drive"
+      let errorTitle = "Error"
+      
       if (error instanceof Error) {
-        if (error.message.includes("timeout")) {
-          errorMessage = "Location capture timed out. Please try again."
-        } else if (error.message.includes("permission") || error.message.includes("denied")) {
-          errorMessage = "Location permission denied. Please enable location access in your browser settings."
-        } else if (error.message.includes("not supported")) {
-          errorMessage = "Geolocation is not supported by your browser."
+        const errorMsg = error.message.toLowerCase()
+        
+        if (errorMsg.includes("timeout")) {
+          errorTitle = "Location Timeout"
+          errorMessage = "Location capture timed out. Please move to an area with better GPS signal and try again."
+        } else if (errorMsg.includes("permission") || errorMsg.includes("denied")) {
+          errorTitle = "Location Permission Required"
+          errorMessage = error.message.includes("\n") 
+            ? error.message // Use multi-line message from geolocation helper
+            : "Location permission denied. Please enable location access in your browser settings and refresh the page."
+        } else if (errorMsg.includes("not supported")) {
+          errorTitle = "Location Not Supported"
+          errorMessage = "Geolocation is not supported by your browser. Please use a different device or browser."
+        } else if (errorMsg.includes("https")) {
+          errorTitle = "Secure Connection Required"
+          errorMessage = "Location services require HTTPS. Please access this page over a secure connection."
         } else {
-          errorMessage = error.message
+          errorTitle = "Location Error"
+          errorMessage = error.message || "Failed to capture location. Please check that location services are enabled and try again."
         }
       }
       
       toast({
-        title: "Error",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
+        duration: 10000, // Show for 10 seconds to give user time to read
       })
     } finally {
       // Ensure state is always reset

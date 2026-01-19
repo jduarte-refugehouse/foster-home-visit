@@ -56,30 +56,47 @@ export function captureLocation(action?: string): Promise<LocationResult> {
         resolve(result)
       },
       (error) => {
-        // Provide more descriptive error messages with iOS-specific guidance
+        // Provide more descriptive error messages with device-specific guidance
         let errorMessage = error.message
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        const isAndroid = /Android/.test(navigator.userAgent)
+        const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+        const isHTTPS = typeof window !== "undefined" && window.location.protocol === "https:"
 
         let userFriendlyMessage: string | undefined
 
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = "Location permission denied"
-            userFriendlyMessage = isIOS
-              ? "Location permission denied. Please enable location services in Settings > Privacy & Security > Location Services, then refresh the page."
-              : "Location permission denied. Please enable location access in your browser settings and refresh the page."
+            if (isIOS && isSafari) {
+              userFriendlyMessage = "Location permission denied.\n\nTo enable:\n1. Tap the 'aA' icon in the address bar\n2. Select 'Website Settings'\n3. Enable 'Location'\n4. Refresh the page and try again"
+            } else if (isIOS) {
+              userFriendlyMessage = "Location permission denied.\n\nTo enable:\n1. Go to Settings > Privacy & Security > Location Services\n2. Enable location services for your browser\n3. Refresh the page and try again"
+            } else if (isAndroid) {
+              userFriendlyMessage = "Location permission denied.\n\nTo enable:\n1. Tap the lock icon in the address bar\n2. Select 'Site settings'\n3. Enable 'Location'\n4. Refresh the page and try again"
+            } else {
+              userFriendlyMessage = "Location permission denied. Please enable location access in your browser settings and refresh the page."
+            }
             break
           case error.POSITION_UNAVAILABLE:
             errorMessage = "Location information unavailable"
-            userFriendlyMessage = "Unable to determine your location. Please check that location services are enabled and try again."
+            if (!isHTTPS) {
+              userFriendlyMessage = "Location services require HTTPS. Please access this page over a secure connection."
+            } else {
+              userFriendlyMessage = "Unable to determine your location.\n\nPlease:\n1. Check that location services are enabled on your device\n2. Ensure you're in an area with GPS signal\n3. Try again"
+            }
             break
           case error.TIMEOUT:
             errorMessage = "Location request timed out"
-            userFriendlyMessage = "Location request took too long. Please try again in a location with better GPS signal."
+            userFriendlyMessage = "Location request took too long.\n\nPlease:\n1. Move to an area with better GPS signal\n2. Ensure location services are enabled\n3. Try again"
             break
           default:
             errorMessage = error.message || "Unknown location error"
-            userFriendlyMessage = "An error occurred while getting your location. Please try again."
+            if (!isHTTPS) {
+              userFriendlyMessage = "Location services require HTTPS. Please access this page over a secure connection."
+            } else {
+              userFriendlyMessage = "An error occurred while getting your location.\n\nPlease:\n1. Check that location services are enabled\n2. Refresh the page\n3. Try again"
+            }
         }
 
         const locationError: LocationError = {
