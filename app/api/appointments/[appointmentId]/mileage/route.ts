@@ -508,6 +508,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
           }
           throw updateError
         }
+        }
 
         console.log("🚗 [MILEAGE] Return travel started:", {
           appointmentId,
@@ -610,6 +611,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             })
           }
           throw updateError
+        }
         }
 
         console.log("✅ [MILEAGE] Return travel completed:", {
