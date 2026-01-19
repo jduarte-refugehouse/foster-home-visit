@@ -130,11 +130,64 @@ export const MICROSERVICE_CONFIG: MicroserviceConfig = {
  * 2. Branch name detection (for Vercel preview deployments)
  * 3. Fall back to config (default)
  */
-export function getMicroserviceCode(): string {
+export function getMicroserviceCode(request?: { headers: { get: (name: string) => string | null } }): string {
   // Tier 1: Environment variable (explicit override - highest priority)
   // This is set in Vercel project settings and takes precedence
   if (process.env.MICROSERVICE_CODE) {
+    console.log(`🔍 [MICROSERVICE] Using MICROSERVICE_CODE env var: ${process.env.MICROSERVICE_CODE}`)
     return process.env.MICROSERVICE_CODE
+  }
+  
+  // Tier 1.1: Check NEXT_PUBLIC_APP_URL for production deployments
+  // This is often set in Vercel and can help identify the microservice
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL.toLowerCase()
+    if (appUrl.includes('visit.refugehouse.app') || appUrl.includes('visit-test')) {
+      console.log(`🔍 [MICROSERVICE] Detected from NEXT_PUBLIC_APP_URL: home-visits`)
+      return 'home-visits'
+    }
+    if (appUrl.includes('admin.refugehouse.app') || appUrl.includes('admin-test')) {
+      console.log(`🔍 [MICROSERVICE] Detected from NEXT_PUBLIC_APP_URL: service-domain-admin`)
+      return 'service-domain-admin'
+    }
+  }
+
+  // Tier 1.5: Hostname detection (for production deployments)
+  // Check request hostname to determine microservice
+  if (request) {
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+    if (host) {
+      const hostLower = host.toLowerCase()
+      // Remove port if present (e.g., "visit.refugehouse.app:443" -> "visit.refugehouse.app")
+      const hostWithoutPort = hostLower.split(':')[0]
+      
+      if (hostWithoutPort === 'visit.refugehouse.app' || hostWithoutPort === 'visit.test.refugehouse.app' || 
+          hostWithoutPort.includes('visit.refugehouse.app') || hostWithoutPort.includes('visit.test.refugehouse.app')) {
+        return 'home-visits'
+      }
+      if (hostWithoutPort === 'admin.refugehouse.app' || hostWithoutPort === 'admin.test.refugehouse.app' ||
+          hostWithoutPort.includes('admin.refugehouse.app') || hostWithoutPort.includes('admin.test.refugehouse.app')) {
+        return 'service-domain-admin'
+      }
+      if (hostWithoutPort.includes('case-management.refugehouse.app')) {
+        return 'case-management'
+      }
+      if (hostWithoutPort.includes('myhouse.refugehouse.app')) {
+        return 'myhouse-portal'
+      }
+    }
+  }
+  
+  // Tier 1.6: VERCEL_URL environment variable (for serverless functions)
+  // Vercel sets this automatically in production
+  if (process.env.VERCEL_URL) {
+    const vercelUrl = process.env.VERCEL_URL.toLowerCase()
+    if (vercelUrl.includes('visit.refugehouse.app') || vercelUrl.includes('visit-test')) {
+      return 'home-visits'
+    }
+    if (vercelUrl.includes('admin.refugehouse.app') || vercelUrl.includes('admin-test')) {
+      return 'service-domain-admin'
+    }
   }
 
   // Tier 2: Branch name detection (for Vercel preview deployments)
@@ -144,6 +197,10 @@ export function getMicroserviceCode(): string {
     
     // Match branch names to microservice codes
     // Pattern: branch names containing microservice identifier
+    // Check for visits-main first (production branch for visit service)
+    if (branch === 'visits-main' || branch.includes('visits-main')) {
+      return 'home-visits'
+    }
     if (branch.includes('visits') || branch.includes('home-visit')) {
       return 'home-visits'
     }
@@ -189,10 +246,19 @@ export function isInternalUser(email: string): boolean {
  * 
  * @returns true if should use API client, false if should use direct DB access
  */
-export function shouldUseRadiusApiClient(): boolean {
-  const microserviceCode = getMicroserviceCode()
+export function shouldUseRadiusApiClient(request?: { headers: { get: (name: string) => string | null } }): boolean {
+  const microserviceCode = getMicroserviceCode(request)
+  
+  // Log detection for debugging
+  const host = request?.headers.get('host') || request?.headers.get('x-forwarded-host') || 'not-provided'
+  const vercelUrl = process.env.VERCEL_URL || 'not-set'
+  const vercelBranch = process.env.VERCEL_BRANCH || 'not-set'
+  console.log(`🔍 [API-CLIENT] Detection check: code=${microserviceCode}, host=${host}, VERCEL_URL=${vercelUrl}, VERCEL_BRANCH=${vercelBranch}`)
+  
   // Admin microservice has direct DB access - don't use API client
-  return microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+  const shouldUse = microserviceCode !== 'service-domain-admin' && microserviceCode !== 'admin'
+  console.log(`🔍 [API-CLIENT] shouldUseRadiusApiClient=${shouldUse} (microserviceCode=${microserviceCode})`)
+  return shouldUse
 }
 
 /**

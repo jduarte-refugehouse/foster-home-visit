@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@refugehouse/shared-core/db"
 import { getClerkUserIdFromRequest } from "@refugehouse/shared-core/auth"
-import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed } from "@/lib/microservice-config"
+import { shouldUseRadiusApiClient, throwIfDirectDbNotAllowed, getMicroserviceCode } from "@/lib/microservice-config"
 import { radiusApiClient } from "@refugehouse/radius-api-client"
 
 export const runtime = "nodejs"
@@ -17,6 +17,15 @@ export const runtime = "nodejs"
  */
 export async function POST(request: NextRequest, { params }: { params: { appointmentId: string } }) {
   try {
+    // DEBUG: Log environment variables at the start
+    console.log(`🔍 [MILEAGE] Environment check at function start:`)
+    console.log(`  - MICROSERVICE_CODE: ${process.env.MICROSERVICE_CODE || 'NOT SET'}`)
+    console.log(`  - NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_URL: ${process.env.VERCEL_URL || 'NOT SET'}`)
+    console.log(`  - VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`)
+    console.log(`  - RADIUS_API_KEY: ${process.env.RADIUS_API_KEY ? 'SET (length: ' + process.env.RADIUS_API_KEY.length + ')' : 'NOT SET'}`)
+    console.log(`  - RADIUS_API_HUB_URL: ${process.env.RADIUS_API_HUB_URL || 'NOT SET'}`)
+    
     // TEMPORARY: For testing - since this is called from a protected route, 
     // we can be more lenient with authentication
     // TODO: Re-enable strict auth once mobile auth is working reliably
@@ -83,7 +92,29 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
     // Check if appointment exists and verify access
     // Use API client for visit service, direct DB for admin service
-    const useApiClient = shouldUseRadiusApiClient()
+    // CRITICAL: Check this BEFORE any database operations
+    const microserviceCode = getMicroserviceCode(request)
+    const useApiClient = shouldUseRadiusApiClient(request)
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host') || 'unknown'
+    console.log(`🔍 [MILEAGE] Microservice detection: host=${host}, code=${microserviceCode}, useApiClient=${useApiClient}`)
+    
+    // SAFETY CHECK: If we should use API client but somehow got here, throw immediately
+    if (useApiClient) {
+      console.log(`✅ [MILEAGE] Using API client (microservice: ${microserviceCode})`)
+    } else {
+      console.log(`⚠️ [MILEAGE] WARNING: useApiClient=false for microservice: ${microserviceCode}`)
+      console.log(`⚠️ [MILEAGE] This should only happen for admin microservice. If this is visit service, detection failed!`)
+      // For visit service, this should NEVER happen - throw immediately
+      if (microserviceCode === 'home-visits') {
+        throw new Error(
+          `❌ CRITICAL ERROR: visit.refugehouse.app detected as 'home-visits' but useApiClient=false!\n` +
+          `This should never happen. The detection logic is broken.\n` +
+          `Environment: MICROSERVICE_CODE=${process.env.MICROSERVICE_CODE || 'NOT SET'}\n` +
+          `Host: ${host}\n` +
+          `VERCEL_BRANCH: ${process.env.VERCEL_BRANCH || 'NOT SET'}`
+        )
+      }
+    }
     let appointment: any = null
     
     if (useApiClient) {
@@ -396,8 +427,11 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
       let startLatitude: number | null = null
       let startLongitude: number | null = null
 
-      try {
-        const recentLocations = await query(
+      // Note: Continuum entries query requires direct DB access
+      // For visit service, we'll skip this and use appointment data
+      if (!useApiClient) {
+        try {
+          const recentLocations = await query(
           `SELECT TOP 1 
              location_latitude, 
              location_longitude 
@@ -418,8 +452,12 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             lng: startLongitude,
           })
         }
-      } catch (continuumError) {
-        console.warn("⚠️ [MILEAGE] Could not query continuum entries, falling back to appointments table:", continuumError)
+        } catch (continuumError) {
+          console.warn("⚠️ [MILEAGE] Could not query continuum entries, falling back to appointments table:", continuumError)
+        }
+      } else {
+        // For visit service, use appointment data directly
+        console.log("ℹ️ [MILEAGE] Using appointment data for return start location (visit service)")
       }
 
       // Fallback to appointments table if continuum doesn't have location
@@ -445,18 +483,45 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
 
       if (isReturnStart) {
         // Starting return travel - save return start location and timestamp
-        // Try to update return columns, but handle gracefully if they don't exist
-        try {
-          await query(
-            `UPDATE appointments 
-             SET return_latitude = @param1,
-                 return_longitude = @param2,
-                 return_timestamp = @param3,
-                 updated_at = GETUTCDATE()
-             WHERE appointment_id = @param0`,
-            [appointmentId, latitude, longitude, now],
-          )
-        } catch (updateError: any) {
+        if (useApiClient) {
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              returnLatitude: latitude,
+              returnLongitude: longitude,
+              returnTimestamp: now.toISOString(),
+            })
+            console.log("✅ [MILEAGE] Return travel started via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update return travel via API client:", apiError)
+            // If return columns don't exist, return success with warning
+            if (apiError.message?.includes("column") || apiError.message?.includes("Invalid")) {
+              return NextResponse.json({
+                success: true,
+                message: "Return travel started (location captured, but return columns not available in database)",
+                returnStarted: true,
+                timestamp: now.toISOString(),
+                warning: "Return travel columns not found in database",
+              })
+            }
+            return NextResponse.json(
+              { error: "Failed to save return travel location", details: apiError.message },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - return start")
+          try {
+            await query(
+              `UPDATE appointments 
+               SET return_latitude = @param1,
+                   return_longitude = @param2,
+                   return_timestamp = @param3,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, latitude, longitude, now],
+            )
+          } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
               (updateError.message.includes("return_latitude") || 
@@ -473,6 +538,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             })
           }
           throw updateError
+        }
         }
 
         console.log("🚗 [MILEAGE] Return travel started:", {
@@ -517,18 +583,47 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
         }
 
         // Update appointment with return mileage and final location
-        // Try to update return columns, but handle gracefully if they don't exist
-        try {
-          await query(
-            `UPDATE appointments 
-             SET return_latitude = @param1,
-                 return_longitude = @param2,
-                 return_mileage = @param3,
-                 updated_at = GETUTCDATE()
-             WHERE appointment_id = @param0`,
-            [appointmentId, latitude, longitude, returnMileage],
-          )
-        } catch (updateError: any) {
+        if (useApiClient) {
+          try {
+            await radiusApiClient.updateAppointment(appointmentId, {
+              returnLatitude: latitude,
+              returnLongitude: longitude,
+              returnMileage: returnMileage,
+            })
+            console.log("✅ [MILEAGE] Return travel completed via API client")
+          } catch (apiError: any) {
+            console.error("❌ [MILEAGE] Failed to update return travel via API client:", apiError)
+            // If return columns don't exist, return success with warning
+            if (apiError.message?.includes("column") || apiError.message?.includes("Invalid")) {
+              return NextResponse.json({
+                success: true,
+                message: "Return travel completed (mileage calculated, but return columns not available in database)",
+                returnMileage: returnMileage,
+                returnEstimatedTollCost: returnEstimatedToll,
+                returnCompleted: true,
+                timestamp: now.toISOString(),
+                warning: "Return travel columns not found in database",
+              })
+            }
+            return NextResponse.json(
+              { error: "Failed to save return travel", details: apiError.message },
+              { status: 500 }
+            )
+          }
+        } else {
+          // Direct DB access for admin microservice only
+          throwIfDirectDbNotAllowed("mileage endpoint - return complete")
+          try {
+            await query(
+              `UPDATE appointments 
+               SET return_latitude = @param1,
+                   return_longitude = @param2,
+                   return_mileage = @param3,
+                   updated_at = GETUTCDATE()
+               WHERE appointment_id = @param0`,
+              [appointmentId, latitude, longitude, returnMileage],
+            )
+          } catch (updateError: any) {
           // If return columns don't exist, log a warning but don't fail
           if (updateError.message?.includes("Invalid column name") && 
               (updateError.message.includes("return_latitude") || 
@@ -547,6 +642,7 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
             })
           }
           throw updateError
+        }
         }
 
         console.log("✅ [MILEAGE] Return travel completed:", {
