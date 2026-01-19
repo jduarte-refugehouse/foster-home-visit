@@ -240,10 +240,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create trip record
+      // Create journey record
       try {
         await query(
-          `INSERT INTO trips (
+          `INSERT INTO travel_journeys (
             journey_id, staff_user_id, staff_name, travel_purpose,
             start_timestamp, trip_status, created_by_user_id
           )
@@ -260,11 +260,11 @@ export async function POST(request: NextRequest) {
             staff_user_id, // created_by_user_id
           ]
         )
-        console.log(`✅ [RADIUS-API] Created trip record ${finalJourneyId}`)
+        console.log(`✅ [RADIUS-API] Created journey record ${finalJourneyId}`)
       } catch (tripError: any) {
-        // If trips table doesn't exist yet, log warning but continue
-        if (tripError.message?.includes("Invalid object name") || tripError.message?.includes("trips")) {
-          console.warn("⚠️ [RADIUS-API] trips table not found - please run create-trips-table.sql migration")
+        // If travel_journeys table doesn't exist yet, log warning but continue
+        if (tripError.message?.includes("Invalid object name") || tripError.message?.includes("travel_journeys")) {
+          console.warn("⚠️ [RADIUS-API] travel_journeys table not found - please run create-trips-table.sql migration")
         } else {
           console.error("❌ [RADIUS-API] Error creating trip record (non-fatal):", tripError)
         }

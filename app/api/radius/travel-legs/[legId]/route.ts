@@ -223,9 +223,9 @@ export async function PATCH(
         if (totalsResult.length > 0 && totalsResult[0].journey_end) {
           const totals = totalsResult[0]
           
-          // Update trips table with rolled-up totals
+          // Update travel_journeys table with rolled-up totals
           await query(
-            `UPDATE trips
+            `UPDATE travel_journeys
              SET end_timestamp = @param1,
                  total_mileage = @param2,
                  total_duration_minutes = @param3,
@@ -249,12 +249,12 @@ export async function PATCH(
               updated_by_user_id || leg.staff_user_id,
             ]
           )
-          console.log(`✅ [RADIUS-API] Updated trips table for journey ${leg.journey_id} with rolled-up totals`)
+          console.log(`✅ [RADIUS-API] Updated travel_journeys table for journey ${leg.journey_id} with rolled-up totals`)
         }
       } catch (tripsError: any) {
-        // If trips table doesn't exist yet, log warning but continue
-        if (tripsError.message?.includes("Invalid object name") || tripsError.message?.includes("trips")) {
-          console.warn("⚠️ [RADIUS-API] trips table not found - please run create-trips-table.sql migration")
+        // If travel_journeys table doesn't exist yet, log warning but continue
+        if (tripsError.message?.includes("Invalid object name") || tripsError.message?.includes("travel_journeys")) {
+          console.warn("⚠️ [RADIUS-API] travel_journeys table not found - please run create-trips-table.sql migration")
         } else {
           console.error("❌ [RADIUS-API] Error updating trips table (non-fatal):", tripsError)
         }

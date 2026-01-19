@@ -1,12 +1,13 @@
--- Trips Table
+-- Travel Journeys Table
 -- This table tracks complete journeys (trips) that consist of one or more travel legs
--- Each trip has a journey_id (PK) that matches the journey_id FK in travel_legs
+-- Each journey has a journey_id (PK) that matches the journey_id FK in travel_legs
 -- This allows rolling up totals from all legs in a journey
+-- NOTE: This is separate from the existing Trips table (with TripID) which is for expense reporting
 
 -- Check if table exists before creating
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'trips' AND schema_id = SCHEMA_ID('dbo'))
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'travel_journeys' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
-    CREATE TABLE [dbo].[trips] (
+    CREATE TABLE [dbo].[travel_journeys] (
         -- Primary key (matches journey_id FK in travel_legs)
         [journey_id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
         
@@ -56,23 +57,23 @@ BEGIN
     GO
 
     -- Indexes for common queries
-    CREATE INDEX [IX_trips_staff_date] ON [dbo].[trips] ([staff_user_id], [start_timestamp], [is_deleted])
-    CREATE INDEX [IX_trips_status] ON [dbo].[trips] ([trip_status], [is_deleted])
-    CREATE INDEX [IX_trips_purpose] ON [dbo].[trips] ([travel_purpose], [is_deleted])
+    CREATE INDEX [IX_travel_journeys_staff_date] ON [dbo].[travel_journeys] ([staff_user_id], [start_timestamp], [is_deleted])
+    CREATE INDEX [IX_travel_journeys_status] ON [dbo].[travel_journeys] ([trip_status], [is_deleted])
+    CREATE INDEX [IX_travel_journeys_purpose] ON [dbo].[travel_journeys] ([travel_purpose], [is_deleted])
     GO
 
     -- Add comments
     EXEC sp_addextendedproperty 
         @name = N'MS_Description', 
-        @value = N'Tracks complete journeys (trips) consisting of one or more travel legs. Each trip has a journey_id (PK) that matches the journey_id FK in travel_legs. Totals are rolled up from all legs when the trip completes.', 
+        @value = N'Tracks complete journeys (trips) consisting of one or more travel legs. Each journey has a journey_id (PK) that matches the journey_id FK in travel_legs. Totals are rolled up from all legs when the journey completes. This is separate from the Trips table (with TripID) which is for expense reporting.', 
         @level0type = N'SCHEMA', @level0name = N'dbo', 
-        @level1type = N'TABLE', @level1name = N'trips'
+        @level1type = N'TABLE', @level1name = N'travel_journeys'
     GO
 
-    PRINT 'Table trips created successfully.'
+    PRINT 'Table travel_journeys created successfully.'
 END
 ELSE
 BEGIN
-    PRINT 'Table trips already exists. Skipping creation.'
+    PRINT 'Table travel_journeys already exists. Skipping creation.'
 END
 GO
