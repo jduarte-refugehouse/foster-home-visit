@@ -143,18 +143,35 @@ export function getMicroserviceCode(request?: { headers: { get: (name: string) =
     const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
     if (host) {
       const hostLower = host.toLowerCase()
-      if (hostLower.includes('visit.refugehouse.app') || hostLower.includes('visit.test.refugehouse.app')) {
+      // Remove port if present (e.g., "visit.refugehouse.app:443" -> "visit.refugehouse.app")
+      const hostWithoutPort = hostLower.split(':')[0]
+      
+      if (hostWithoutPort === 'visit.refugehouse.app' || hostWithoutPort === 'visit.test.refugehouse.app' || 
+          hostWithoutPort.includes('visit.refugehouse.app') || hostWithoutPort.includes('visit.test.refugehouse.app')) {
         return 'home-visits'
       }
-      if (hostLower.includes('admin.refugehouse.app') || hostLower.includes('admin.test.refugehouse.app')) {
+      if (hostWithoutPort === 'admin.refugehouse.app' || hostWithoutPort === 'admin.test.refugehouse.app' ||
+          hostWithoutPort.includes('admin.refugehouse.app') || hostWithoutPort.includes('admin.test.refugehouse.app')) {
         return 'service-domain-admin'
       }
-      if (hostLower.includes('case-management.refugehouse.app')) {
+      if (hostWithoutPort.includes('case-management.refugehouse.app')) {
         return 'case-management'
       }
-      if (hostLower.includes('myhouse.refugehouse.app')) {
+      if (hostWithoutPort.includes('myhouse.refugehouse.app')) {
         return 'myhouse-portal'
       }
+    }
+  }
+  
+  // Tier 1.6: VERCEL_URL environment variable (for serverless functions)
+  // Vercel sets this automatically in production
+  if (process.env.VERCEL_URL) {
+    const vercelUrl = process.env.VERCEL_URL.toLowerCase()
+    if (vercelUrl.includes('visit.refugehouse.app') || vercelUrl.includes('visit-test')) {
+      return 'home-visits'
+    }
+    if (vercelUrl.includes('admin.refugehouse.app') || vercelUrl.includes('admin-test')) {
+      return 'service-domain-admin'
     }
   }
 
