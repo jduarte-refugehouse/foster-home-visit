@@ -329,25 +329,27 @@ export async function POST(request: NextRequest, { params }: { params: { appoint
                WHERE appointment_id = @param0`,
               [appointmentId, finalMileage, estimatedToll],
             )
-          } catch (dbError) {
-            console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", dbError)
-            // Don't fail the request - location is already saved
-          }
-        }
-        } catch (tollUpdateError: any) {
-          // If estimated_toll_cost column doesn't exist, update without it
-          if (tollUpdateError?.message?.includes("Invalid column name") || 
-              tollUpdateError?.message?.includes("estimated_toll_cost")) {
-            console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
-            await query(
-              `UPDATE appointments 
-               SET calculated_mileage = @param1,
-                   updated_at = GETUTCDATE()
-               WHERE appointment_id = @param0`,
-              [appointmentId, finalMileage],
-            )
-          } else {
-            throw tollUpdateError
+          } catch (tollUpdateError: any) {
+            // If estimated_toll_cost column doesn't exist, update without it
+            if (tollUpdateError?.message?.includes("Invalid column name") || 
+                tollUpdateError?.message?.includes("estimated_toll_cost")) {
+              console.warn("⚠️ [MILEAGE] estimated_toll_cost column not found, updating without it")
+              try {
+                await query(
+                  `UPDATE appointments 
+                   SET calculated_mileage = @param1,
+                       updated_at = GETUTCDATE()
+                   WHERE appointment_id = @param0`,
+                  [appointmentId, finalMileage],
+                )
+              } catch (dbError) {
+                console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", dbError)
+                // Don't fail the request - location is already saved
+              }
+            } else {
+              console.error("❌ [MILEAGE] Failed to update mileage via direct DB:", tollUpdateError)
+              // Don't fail the request - location is already saved
+            }
           }
         }
 
